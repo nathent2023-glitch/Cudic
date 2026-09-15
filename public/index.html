@@ -340,14 +340,16 @@
       const errEl = document.getElementById('signupError');
       btn.disabled = true; btn.textContent = 'Creating account...'; errEl.style.display = 'none';
       try {
-        await signUpWithEmail(
+        const result = await signUpWithEmail(
           document.getElementById('signupEmail').value,
           document.getElementById('signupPass').value,
           document.getElementById('signupName').value
         );
-        errEl.textContent = 'Check your email for a confirmation link.';
+        errEl.textContent = 'Account created!';
         errEl.style.color = '#22c55e';
         errEl.style.display = 'block';
+        // Supabase auto-logs in when email confirm is off — reload to show logged-in state
+        setTimeout(() => window.location.href = '/', 800);
       } catch (err) {
         errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ef4444';
       } finally { btn.disabled = false; btn.textContent = 'Create account'; }

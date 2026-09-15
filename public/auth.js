@@ -68,12 +68,13 @@ async function signInWithEmail(email, password) {
 async function signUpWithEmail(email, password, displayName) {
   const db = await getSupabase();
   if (!db) { alert('Supabase not configured'); return; }
-  const { error } = await db.auth.signUp({
+  const { data, error } = await db.auth.signUp({
     email,
     password,
     options: { data: { full_name: displayName } },
   });
   if (error) throw error;
+  return data;
 }
 
 // ── Get session ──────────────────────────────────────────────────
