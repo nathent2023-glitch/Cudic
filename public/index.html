@@ -4,71 +4,323 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox</title>
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a12;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      display: flex;
+      width: 920px;
+      max-width: 95vw;
+      min-height: 580px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    /* ── Left visual ── */
+    .visual {
+      flex: 1;
+      background: linear-gradient(135deg, #1a1040 0%, #2d1b69 40%, #1e3a5f 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .visual::before {
+      content: '';
+      position: absolute;
+      inset: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at 30% 70%, rgba(139,92,246,.15) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 30%, rgba(59,130,246,.1) 0%, transparent 50%);
+      animation: drift 20s ease-in-out infinite;
+    }
+
+    @keyframes drift {
+      0%,100% { transform: translate(0,0) rotate(0); }
+      33% { transform: translate(2%,-2%) rotate(1deg); }
+      66% { transform: translate(-1%,1%) rotate(-.5deg); }
+    }
+
+    .visual-brand { font-size: 1.5rem; font-weight: 700; color: #fff; position: relative; z-index: 1; }
+
+    .visual-bottom { position: relative; z-index: 1; margin-top: auto; padding-top: 100px; }
+    .visual-bottom h2 { font-size: 1.7rem; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 10px; }
+    .visual-bottom p { color: rgba(255,255,255,.55); font-size: .9rem; line-height: 1.5; }
+
+    .dots { display: flex; gap: 6px; margin-top: 20px; }
+    .dots span { width: 24px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.2); }
+    .dots span.active { background: #8b5cf6; width: 32px; }
+
+    /* ── Right panel ── */
+    .panel {
+      flex: 1;
+      background: #12121e;
+      padding: 44px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+    }
+
+    .panel h1 { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .panel .sub { color: #888; font-size: .88rem; margin-bottom: 24px; }
+    .panel .sub a { color: #8b5cf6; text-decoration: none; font-weight: 500; }
+    .panel .sub a:hover { text-decoration: underline; }
+
+    /* ── OAuth ── */
+    .oauth-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid #2a2a40;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-size: .9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .2s;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+    .oauth-btn:hover { border-color: #8b5cf6; background: #1e1e35; }
+    .oauth-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* ── Divider ── */
+    .divider { display: flex; align-items: center; gap: 14px; margin: 4px 0 16px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2a2a40; }
+    .divider span { color: #555; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; background: #1a1a2e; border-radius: 12px; padding: 4px; }
+    .tab {
+      flex: 1; padding: 10px; background: transparent; border: none; color: #888;
+      cursor: pointer; font-size: .88rem; font-weight: 500; border-radius: 10px;
+      transition: all .25s; font-family: inherit;
+    }
+    .tab.active { background: #8b5cf6; color: #fff; }
+    .tab:not(.active):hover { color: #ccc; }
+
+    /* ── Forms ── */
+    .form { display: none; flex-direction: column; gap: 14px; }
+    .form.active { display: flex; }
+
+    .field input {
+      width: 100%;
+      padding: 13px 15px;
+      background: #1a1a2e;
+      border: 1px solid #2a2a40;
+      border-radius: 12px;
+      color: #fff;
+      font-size: .92rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .field input::placeholder { color: #555; }
+    .field input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.15); }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      background: #8b5cf6;
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: .92rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background .2s, transform .1s;
+      margin-top: 2px;
+    }
+    .btn:hover { background: #7c3aed; }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .error {
+      color: #ef4444;
+      font-size: .82rem;
+      text-align: center;
+      display: none;
+      padding: 8px 12px;
+      background: rgba(239,68,68,.1);
+      border-radius: 8px;
+    }
+
+    .or-divider { display: flex; align-items: center; gap: 12px; margin: 2px 0; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: #2a2a40; }
+    .or-divider span { color: #555; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Active lobbies ── */
+    .lobbies-label { color: #555; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
+    .lobby-list { display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto; }
+    .lobby-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; background: #1a1a2e; border: 1px solid #2a2a40;
+      border-radius: 10px; cursor: pointer; transition: all .2s; font-family: inherit;
+      color: #e0e0e0; font-size: .88rem;
+    }
+    .lobby-item:hover { border-color: #8b5cf6; background: #1e1e35; }
+    .lobby-item .name { font-weight: 500; }
+    .lobby-item .count { color: #888; font-size: .8rem; }
+    .empty { color: #444; font-size: .82rem; text-align: center; padding: 8px; }
+
+    /* ── User bar ── */
+    .user-bar {
+      display: none; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #1a1a2e; border: 1px solid #2a2a40;
+      border-radius: 12px; margin-bottom: 12px;
+    }
+    .user-bar span { color: #8b5cf6; font-size: .85rem; font-weight: 500; }
+    .btn-sm {
+      padding: 6px 14px; background: transparent; border: 1px solid #2a2a40;
+      border-radius: 8px; color: #888; font-size: .8rem; cursor: pointer;
+      font-family: inherit; transition: all .2s;
+    }
+    .btn-sm:hover { border-color: #ef4444; color: #ef4444; }
+
+    @media (max-width: 768px) {
+      .container { flex-direction: column; min-height: auto; }
+      .visual { display: none; }
+      .panel { padding: 28px 20px; }
+    }
+  </style>
 </head>
 <body>
-  <div class="lobby-page">
-    <div class="lobby-card">
-      <h1 class="logo">glox</h1>
-      <p class="subtitle" id="subtitle">join a lobby or create one</p>
+  <div class="container">
+    <!-- Left visual -->
+    <div class="visual">
+      <div class="visual-brand">glox</div>
+      <div class="visual-bottom">
+        <h2>Real-time chat,<br>zero friction.</h2>
+        <p>Join lobbies, talk to people, and have fun. No bloat, just vibes.</p>
+        <div class="dots">
+          <span class="active"></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
 
-      <div id="userBar" class="user-bar" style="display:none">
+    <!-- Right panel -->
+    <div class="panel">
+      <h1 id="heading">Welcome to Glox</h1>
+      <p class="sub" id="subText">Sign in or join as a guest</p>
+
+      <!-- User bar (shown when signed in) -->
+      <div id="userBar" class="user-bar">
         <span id="userDisplay"></span>
-        <button class="btn-logout" onclick="handleSignOut()">sign out</button>
+        <button class="btn-sm" onclick="handleSignOut()">sign out</button>
       </div>
 
-      <form id="joinForm" autocomplete="off">
-        <input type="text" id="username" placeholder="your name" maxlength="20" required autofocus>
-        <input type="text" id="lobbyName" placeholder="lobby name" maxlength="30" required>
-        <button type="submit" class="btn-primary">Join</button>
+      <!-- OAuth -->
+      <button class="oauth-btn" onclick="signInWithGitHub()">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Sign in with GitHub
+      </button>
+
+      <!-- Tabs: Sign In / Sign Up -->
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('login')">Sign In</button>
+        <button class="tab" onclick="showTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- Sign In -->
+      <form id="loginForm" class="form active" onsubmit="handleLogin(event)">
+        <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
+        <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
+        <button type="submit" class="btn" id="loginBtn">Sign in</button>
+        <div id="loginError" class="error"></div>
       </form>
 
-      <div class="divider"><span>or join an active lobby</span></div>
+      <!-- Sign Up -->
+      <form id="signupForm" class="form" onsubmit="handleSignup(event)">
+        <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
+        <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
+        <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
+        <button type="submit" class="btn" id="signupBtn">Create account</button>
+        <div id="signupError" class="error"></div>
+      </form>
 
-      <div id="lobbyList" class="lobby-list">
-        <p class="empty-state">no active lobbies yet</p>
-      </div>
+      <!-- Guest join -->
+      <div class="or-divider"><span>or join as guest</span></div>
 
-      <a href="/login.html" class="login-link" id="loginLink">sign in</a>
+      <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
+        <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
+        <button type="submit" class="btn">Join</button>
+      </form>
+
+      <!-- Active lobbies -->
+      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">or join an active lobby</p>
+      <div id="lobbyList" class="lobby-list"></div>
     </div>
   </div>
 
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script>
-    const joinForm = document.getElementById('joinForm');
-    const usernameInput = document.getElementById('username');
-    const lobbyInput = document.getElementById('lobbyName');
-    const lobbyList = document.getElementById('lobbyList');
-    const loginLink = document.getElementById('loginLink');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const guestForm = document.getElementById('guestForm');
     const userBar = document.getElementById('userBar');
     const userDisplay = document.getElementById('userDisplay');
-    const subtitle = document.getElementById('subtitle');
+    const heading = document.getElementById('heading');
+    const subText = document.getElementById('subText');
+    const lobbyList = document.getElementById('lobbyList');
+    const lobbiesLabel = document.getElementById('lobbiesLabel');
 
     let currentUser = null;
 
-    // Check auth session
+    function showTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'signup' && i === 1));
+      });
+      loginForm.classList.toggle('active', tab === 'login');
+      signupForm.classList.toggle('active', tab === 'signup');
+    }
+
+    // Auth session check
     (async () => {
       try {
         const session = await getSession();
         if (session && session.user) {
           currentUser = session.user;
           const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email;
-          usernameInput.value = name;
-          usernameInput.readOnly = true;
-          userDisplay.textContent = `signed in as ${name}`;
+          document.getElementById('guestName').value = name;
+          document.getElementById('guestName').readOnly = true;
+          userDisplay.textContent = name;
           userBar.style.display = 'flex';
-          loginLink.textContent = '';
-          loginLink.style.display = 'none';
-          subtitle.textContent = 'you\'re signed in — pick a lobby';
+          heading.textContent = 'Welcome back';
+          subText.textContent = `Signed in as ${name}`;
+          document.querySelector('.tabs').style.display = 'none';
+          loginForm.style.display = 'none';
+          signupForm.style.display = 'none';
+          document.querySelector('.or-divider span').textContent = 'pick a lobby';
         } else {
-          // Guest mode — restore saved name
           const saved = localStorage.getItem('glox_username');
-          if (saved) usernameInput.value = saved;
+          if (saved) document.getElementById('guestName').value = saved;
         }
       } catch {
         const saved = localStorage.getItem('glox_username');
-        if (saved) usernameInput.value = saved;
+        if (saved) document.getElementById('guestName').value = saved;
       }
     })();
 
@@ -78,7 +330,51 @@
       window.location.href = '/';
     }
 
-    // Connect to get lobby list
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const errEl = document.getElementById('loginError');
+      btn.disabled = true; btn.textContent = 'Signing in...'; errEl.style.display = 'none';
+      try {
+        await signInWithEmail(document.getElementById('loginEmail').value, document.getElementById('loginPass').value);
+        window.location.href = '/';
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = 'block';
+      } finally { btn.disabled = false; btn.textContent = 'Sign in'; }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const btn = document.getElementById('signupBtn');
+      const errEl = document.getElementById('signupError');
+      btn.disabled = true; btn.textContent = 'Creating account...'; errEl.style.display = 'none';
+      try {
+        await signUpWithEmail(
+          document.getElementById('signupEmail').value,
+          document.getElementById('signupPass').value,
+          document.getElementById('signupName').value
+        );
+        errEl.textContent = 'Check your email for a confirmation link!';
+        errEl.style.color = '#22c55e';
+        errEl.style.display = 'block';
+      } catch (err) {
+        errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ef4444';
+      } finally { btn.disabled = false; btn.textContent = 'Create account'; }
+    }
+
+    function handleGuest(e) {
+      e.preventDefault();
+      const name = document.getElementById('guestName').value.trim();
+      const lobby = document.getElementById('lobbyName').value.trim();
+      if (!name || !lobby) return;
+      localStorage.setItem('glox_username', name);
+      listWs.close();
+      let url = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(name)}`;
+      if (currentUser) url += `&token=${currentUser.access_token}`;
+      window.location.href = url;
+    }
+
+    // Lobby list via WebSocket
     const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
     const proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws';
     const listWs = new WebSocket(`${proto}://${wsHost}`);
@@ -86,43 +382,26 @@
     listWs.onmessage = (e) => {
       const msg = JSON.parse(e.data);
       if (msg.type === 'lobby_list') {
-        renderLobbies(msg.lobbies);
+        if (msg.lobbies.length) {
+          lobbiesLabel.style.display = 'block';
+          lobbyList.innerHTML = msg.lobbies.map(l => `
+            <button class="lobby-item" data-name="${l.name}">
+              <span class="name">#${l.name}</span>
+              <span class="count">${l.count} ${l.count === 1 ? 'person' : 'people'}</span>
+            </button>
+          `).join('');
+          lobbyList.querySelectorAll('.lobby-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+              document.getElementById('lobbyName').value = btn.dataset.name;
+              guestForm.dispatchEvent(new Event('submit'));
+            });
+          });
+        } else {
+          lobbiesLabel.style.display = 'none';
+          lobbyList.innerHTML = '';
+        }
       }
     };
-
-    function renderLobbies(lobbies) {
-      if (!lobbies.length) {
-        lobbyList.innerHTML = '<p class="empty-state">no active lobbies yet</p>';
-        return;
-      }
-      lobbyList.innerHTML = lobbies.map(l => `
-        <button class="lobby-item" data-name="${l.name}">
-          <span class="lobby-name">#${l.name}</span>
-          <span class="lobby-count">${l.count} ${l.count === 1 ? 'person' : 'people'}</span>
-        </button>
-      `).join('');
-
-      lobbyList.querySelectorAll('.lobby-item').forEach(btn => {
-        btn.addEventListener('click', () => {
-          lobbyInput.value = btn.dataset.name;
-          joinForm.dispatchEvent(new Event('submit'));
-        });
-      });
-    }
-
-    joinForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const username = usernameInput.value.trim();
-      const lobby = lobbyInput.value.trim();
-      if (!username || !lobby) return;
-
-      localStorage.setItem('glox_username', username);
-      listWs.close();
-
-      let url = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(username)}`;
-      if (currentUser) url += `&token=${currentUser.access_token}`;
-      window.location.href = url;
-    });
   </script>
 </body>
 </html>
