@@ -9,78 +9,69 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background: #0a0a12;
-      color: #e0e0e0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #09090b;
+      color: #fafafa;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
       display: flex;
-      width: 920px;
-      max-width: 95vw;
-      min-height: 580px;
-      border-radius: 20px;
+      width: 880px;
+      max-width: 94vw;
+      min-height: 540px;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255,255,255,.06);
+      box-shadow: 0 16px 70px rgba(0,0,0,.4);
     }
 
     /* ── Left visual ── */
     .visual {
-      flex: 1;
-      background: linear-gradient(135deg, #1a1040 0%, #2d1b69 40%, #1e3a5f 100%);
+      flex: 1.05;
+      background: #18181b;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 32px;
+      padding: 28px 30px;
       position: relative;
-      overflow: hidden;
+      border-right: 1px solid rgba(255,255,255,.06);
     }
 
     .visual::before {
       content: '';
       position: absolute;
-      inset: -50%;
-      width: 200%; height: 200%;
-      background: radial-gradient(circle at 30% 70%, rgba(139,92,246,.15) 0%, transparent 50%),
-                  radial-gradient(circle at 70% 30%, rgba(59,130,246,.1) 0%, transparent 50%);
-      animation: drift 20s ease-in-out infinite;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 80%, rgba(59,130,246,.08) 0%, transparent 100%),
+        radial-gradient(ellipse 50% 60% at 80% 20%, rgba(16,185,129,.05) 0%, transparent 100%);
+      pointer-events: none;
     }
 
-    @keyframes drift {
-      0%,100% { transform: translate(0,0) rotate(0); }
-      33% { transform: translate(2%,-2%) rotate(1deg); }
-      66% { transform: translate(-1%,1%) rotate(-.5deg); }
-    }
+    .visual-brand { font-size: 1.25rem; font-weight: 700; color: #fafafa; position: relative; letter-spacing: -.02em; }
+    .visual-brand span { color: #3b82f6; }
 
-    .visual-brand { font-size: 1.5rem; font-weight: 700; color: #fff; position: relative; z-index: 1; }
-
-    .visual-bottom { position: relative; z-index: 1; margin-top: auto; padding-top: 100px; }
-    .visual-bottom h2 { font-size: 1.7rem; font-weight: 700; color: #fff; line-height: 1.2; margin-bottom: 10px; }
-    .visual-bottom p { color: rgba(255,255,255,.55); font-size: .9rem; line-height: 1.5; }
-
-    .dots { display: flex; gap: 6px; margin-top: 20px; }
-    .dots span { width: 24px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.2); }
-    .dots span.active { background: #8b5cf6; width: 32px; }
+    .visual-bottom { position: relative; }
+    .visual-bottom h2 { font-size: 1.6rem; font-weight: 700; color: #fafafa; line-height: 1.25; letter-spacing: -.02em; margin-bottom: 10px; }
+    .visual-bottom p { color: #71717a; font-size: .85rem; line-height: 1.6; max-width: 280px; }
 
     /* ── Right panel ── */
     .panel {
       flex: 1;
-      background: #12121e;
-      padding: 44px 36px;
+      background: #09090b;
+      padding: 40px 32px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       overflow-y: auto;
     }
 
-    .panel h1 { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
-    .panel .sub { color: #888; font-size: .88rem; margin-bottom: 24px; }
-    .panel .sub a { color: #8b5cf6; text-decoration: none; font-weight: 500; }
-    .panel .sub a:hover { text-decoration: underline; }
+    .panel h1 { font-size: 1.35rem; font-weight: 600; color: #fafafa; margin-bottom: 3px; letter-spacing: -.01em; }
+    .panel .sub { color: #71717a; font-size: .85rem; margin-bottom: 22px; }
 
     /* ── OAuth ── */
     .oauth-btn {
@@ -89,112 +80,112 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid #2a2a40;
-      background: #1a1a2e;
-      color: #e0e0e0;
-      font-size: .9rem;
+      padding: 11px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: #18181b;
+      color: #fafafa;
+      font-size: .87rem;
       font-weight: 500;
       cursor: pointer;
-      transition: all .2s;
+      transition: all .15s ease;
       font-family: inherit;
-      margin-bottom: 12px;
+      margin-bottom: 20px;
     }
-    .oauth-btn:hover { border-color: #8b5cf6; background: #1e1e35; }
-    .oauth-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+    .oauth-btn:hover { background: #1f1f23; border-color: rgba(255,255,255,.16); }
+    .oauth-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
     /* ── Divider ── */
-    .divider { display: flex; align-items: center; gap: 14px; margin: 4px 0 16px; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #2a2a40; }
-    .divider span { color: #555; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .divider { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+    .divider span { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; }
 
     /* ── Tabs ── */
-    .tabs { display: flex; gap: 0; margin-bottom: 20px; background: #1a1a2e; border-radius: 12px; padding: 4px; }
+    .tabs { display: flex; gap: 0; margin-bottom: 18px; background: #18181b; border-radius: 10px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
     .tab {
-      flex: 1; padding: 10px; background: transparent; border: none; color: #888;
-      cursor: pointer; font-size: .88rem; font-weight: 500; border-radius: 10px;
-      transition: all .25s; font-family: inherit;
+      flex: 1; padding: 9px; background: transparent; border: none; color: #71717a;
+      cursor: pointer; font-size: .84rem; font-weight: 500; border-radius: 8px;
+      transition: all .15s ease; font-family: inherit;
     }
-    .tab.active { background: #8b5cf6; color: #fff; }
-    .tab:not(.active):hover { color: #ccc; }
+    .tab.active { background: #27272a; color: #fafafa; }
+    .tab:not(.active):hover { color: #a1a1aa; }
 
     /* ── Forms ── */
-    .form { display: none; flex-direction: column; gap: 14px; }
+    .form { display: none; flex-direction: column; gap: 12px; }
     .form.active { display: flex; }
 
     .field input {
       width: 100%;
-      padding: 13px 15px;
-      background: #1a1a2e;
-      border: 1px solid #2a2a40;
-      border-radius: 12px;
-      color: #fff;
-      font-size: .92rem;
+      padding: 11px 13px;
+      background: #18181b;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      color: #fafafa;
+      font-size: .87rem;
       font-family: inherit;
       outline: none;
-      transition: border-color .2s, box-shadow .2s;
+      transition: border-color .15s ease, box-shadow .15s ease;
     }
-    .field input::placeholder { color: #555; }
-    .field input:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.15); }
+    .field input::placeholder { color: #52525b; }
+    .field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
 
     .btn {
       width: 100%;
-      padding: 13px;
-      background: #8b5cf6;
+      padding: 11px;
+      background: #3b82f6;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       color: #fff;
-      font-size: .92rem;
+      font-size: .87rem;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
-      transition: background .2s, transform .1s;
+      transition: background .15s ease, transform .1s ease;
       margin-top: 2px;
     }
-    .btn:hover { background: #7c3aed; }
+    .btn:hover { background: #2563eb; }
     .btn:active { transform: scale(.98); }
-    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
 
     .error {
       color: #ef4444;
-      font-size: .82rem;
+      font-size: .8rem;
       text-align: center;
       display: none;
       padding: 8px 12px;
-      background: rgba(239,68,68,.1);
+      background: rgba(239,68,68,.08);
       border-radius: 8px;
+      border: 1px solid rgba(239,68,68,.12);
     }
 
-    .or-divider { display: flex; align-items: center; gap: 12px; margin: 2px 0; }
-    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: #2a2a40; }
-    .or-divider span { color: #555; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+    .or-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+    .or-divider span { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; }
 
     /* ── Active lobbies ── */
-    .lobbies-label { color: #555; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
-    .lobby-list { display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto; }
+    .lobbies-label { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; margin-top: 8px; margin-bottom: 4px; }
+    .lobby-list { display: flex; flex-direction: column; gap: 5px; max-height: 110px; overflow-y: auto; }
     .lobby-item {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 14px; background: #1a1a2e; border: 1px solid #2a2a40;
-      border-radius: 10px; cursor: pointer; transition: all .2s; font-family: inherit;
-      color: #e0e0e0; font-size: .88rem;
+      padding: 9px 12px; background: #18181b; border: 1px solid rgba(255,255,255,.06);
+      border-radius: 10px; cursor: pointer; transition: all .15s ease; font-family: inherit;
+      color: #fafafa; font-size: .84rem;
     }
-    .lobby-item:hover { border-color: #8b5cf6; background: #1e1e35; }
+    .lobby-item:hover { border-color: rgba(59,130,246,.3); background: #1a1a1e; }
     .lobby-item .name { font-weight: 500; }
-    .lobby-item .count { color: #888; font-size: .8rem; }
-    .empty { color: #444; font-size: .82rem; text-align: center; padding: 8px; }
+    .lobby-item .count { color: #71717a; font-size: .78rem; }
 
     /* ── User bar ── */
     .user-bar {
       display: none; align-items: center; justify-content: space-between;
-      padding: 10px 14px; background: #1a1a2e; border: 1px solid #2a2a40;
-      border-radius: 12px; margin-bottom: 12px;
+      padding: 9px 13px; background: #18181b; border: 1px solid rgba(255,255,255,.06);
+      border-radius: 10px; margin-bottom: 14px;
     }
-    .user-bar span { color: #8b5cf6; font-size: .85rem; font-weight: 500; }
+    .user-bar span { color: #3b82f6; font-size: .83rem; font-weight: 500; }
     .btn-sm {
-      padding: 6px 14px; background: transparent; border: 1px solid #2a2a40;
-      border-radius: 8px; color: #888; font-size: .8rem; cursor: pointer;
-      font-family: inherit; transition: all .2s;
+      padding: 5px 12px; background: transparent; border: 1px solid rgba(255,255,255,.1);
+      border-radius: 7px; color: #71717a; font-size: .78rem; cursor: pointer;
+      font-family: inherit; transition: all .15s ease;
     }
     .btn-sm:hover { border-color: #ef4444; color: #ef4444; }
 
@@ -209,20 +200,17 @@
   <div class="container">
     <!-- Left visual -->
     <div class="visual">
-      <div class="visual-brand">glox</div>
+      <div class="visual-brand">glox<span>.</span></div>
       <div class="visual-bottom">
-        <h2>Real-time chat,<br>zero friction.</h2>
-        <p>Join lobbies, talk to people, and have fun. No bloat, just vibes.</p>
-        <div class="dots">
-          <span class="active"></span><span></span><span></span>
-        </div>
+        <h2>Start a conversation,<br>join the room.</h2>
+        <p>Pick a lobby or create your own. Real-time chat, no setup required.</p>
       </div>
     </div>
 
     <!-- Right panel -->
     <div class="panel">
       <h1 id="heading">Welcome to Glox</h1>
-      <p class="sub" id="subText">Sign in or join as a guest</p>
+      <p class="sub" id="subText">Sign in or create an account to get started.</p>
 
       <!-- User bar (shown when signed in) -->
       <div id="userBar" class="user-bar">
@@ -233,13 +221,13 @@
       <!-- OAuth -->
       <button class="oauth-btn" onclick="signInWithGitHub()">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-        Sign in with GitHub
+        Continue with GitHub
       </button>
 
       <!-- Tabs: Sign In / Sign Up -->
-      <div class="tabs">
-        <button class="tab active" onclick="showTab('login')">Sign In</button>
-        <button class="tab" onclick="showTab('signup')">Sign Up</button>
+      <div class="tabs" id="authTabs">
+        <button class="tab active" onclick="showTab('login')">Sign in</button>
+        <button class="tab" onclick="showTab('signup')">Create account</button>
       </div>
 
       <!-- Sign In -->
@@ -260,16 +248,16 @@
       </form>
 
       <!-- Guest join -->
-      <div class="or-divider"><span>or join as guest</span></div>
+      <div class="or-divider"><span>or join without an account</span></div>
 
-      <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:14px;">
+      <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:12px;">
         <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
         <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
-        <button type="submit" class="btn">Join</button>
+        <button type="submit" class="btn">Join lobby</button>
       </form>
 
       <!-- Active lobbies -->
-      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">or join an active lobby</p>
+      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
       <div id="lobbyList" class="lobby-list"></div>
     </div>
   </div>
@@ -310,7 +298,7 @@
           userBar.style.display = 'flex';
           heading.textContent = 'Welcome back';
           subText.textContent = `Signed in as ${name}`;
-          document.querySelector('.tabs').style.display = 'none';
+          document.getElementById('authTabs').style.display = 'none';
           loginForm.style.display = 'none';
           signupForm.style.display = 'none';
           document.querySelector('.or-divider span').textContent = 'pick a lobby';
@@ -354,7 +342,7 @@
           document.getElementById('signupPass').value,
           document.getElementById('signupName').value
         );
-        errEl.textContent = 'Check your email for a confirmation link!';
+        errEl.textContent = 'Check your email for a confirmation link.';
         errEl.style.color = '#22c55e';
         errEl.style.display = 'block';
       } catch (err) {
