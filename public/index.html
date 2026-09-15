@@ -13,9 +13,6 @@
       background: #16171a;
       color: #fafdff;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
       -webkit-font-smoothing: antialiased;
     }
@@ -29,10 +26,15 @@
     }
 
     .card {
-      position: relative;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       z-index: 1;
       width: 420px;
       max-width: 94vw;
+      max-height: 90vh;
+      overflow-y: auto;
       background: rgba(22, 23, 26, 0.88);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
