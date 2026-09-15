@@ -1,0 +1,5 @@
+node_modules/
+agora.db
+agora.db-shm
+agora.db-wal
+.env

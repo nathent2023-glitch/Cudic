@@ -1,0 +1,13 @@
+{
+  "name": "glox",
+  "version": "1.0.0",
+  "description": "Real-time chat lobbies",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glox</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="lobby-page">
+    <div class="lobby-card">
+      <h1 class="logo">glox</h1>
+      <p class="subtitle">join a lobby or create one</p>
+
+      <form id="joinForm" autocomplete="off">
+        <input type="text" id="username" placeholder="your name" maxlength="20" required autofocus>
+        <input type="text" id="lobbyName" placeholder="lobby name" maxlength="30" required>
+        <button type="submit" class="btn-primary">Join</button>
+      </form>
+
+      <div class="divider"><span>or join an active lobby</span></div>
+
+      <div id="lobbyList" class="lobby-list">
+        <p class="empty-state">no active lobbies yet</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const joinForm = document.getElementById('joinForm');
+    const usernameInput = document.getElementById('username');
+    const lobbyInput = document.getElementById('lobbyName');
+    const lobbyList = document.getElementById('lobbyList');
+
+    // Restore last username
+    const saved = localStorage.getItem('glox_username');
+    if (saved) usernameInput.value = saved;
+
+    // Connect to get lobby list
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const listWs = new WebSocket(`${proto}://${location.host}`);
+
+    listWs.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'lobby_list') {
+        renderLobbies(msg.lobbies);
+      }
+    };
+
+    function renderLobbies(lobbies) {
+      if (!lobbies.length) {
+        lobbyList.innerHTML = '<p class="empty-state">no active lobbies yet</p>';
+        return;
+      }
+      lobbyList.innerHTML = lobbies.map(l => `
+        <button class="lobby-item" data-name="${l.name}">
+          <span class="lobby-name">#${l.name}</span>
+          <span class="lobby-count">${l.count} ${l.count === 1 ? 'person' : 'people'}</span>
+        </button>
+      `).join('');
+
+      lobbyList.querySelectorAll('.lobby-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+          lobbyInput.value = btn.dataset.name;
+          joinForm.dispatchEvent(new Event('submit'));
+        });
+      });
+    }
+
+    joinForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const username = usernameInput.value.trim();
+      const lobby = lobbyInput.value.trim();
+      if (!username || !lobby) return;
+
+      localStorage.setItem('glox_username', username);
+      listWs.close();
+      window.location.href = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(username)}`;
+    });
+  </script>
+</body>
+</html>

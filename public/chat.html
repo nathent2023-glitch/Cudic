@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glox — Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="chat-page">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a href="/" class="back-link">&larr; lobbies</a>
+        <h2 class="sidebar-title" id="lobbyTitle"></h2>
+      </div>
+      <div class="sidebar-section">
+        <h3 class="sidebar-label">Online — <span id="userCount">0</span></h3>
+        <ul id="userList" class="user-list"></ul>
+      </div>
+    </aside>
+
+    <!-- Main chat -->
+    <main class="chat-main">
+      <header class="chat-header">
+        <button class="menu-btn" id="menuBtn" title="Toggle user list">&#9776;</button>
+        <span id="chatTitle"></span>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <div id="typingIndicator" class="typing-indicator" style="display:none"></div>
+
+      <form id="chatForm" class="chat-input-area">
+        <input type="text" id="msgInput" placeholder="type a message..." maxlength="2000" autocomplete="off">
+        <button type="submit" class="btn-send" title="Send">&#10148;</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="client.js"></script>
+</body>
+</html>
