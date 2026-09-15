@@ -277,6 +277,9 @@
 
     let currentUser = null;
 
+    // Handle OAuth callback (GitHub redirects back with ?code=...)
+    handleAuthCallback().then(() => initPage());
+
     function showTab(tab) {
       document.querySelectorAll('.tab').forEach((t, i) => {
         t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'signup' && i === 1));
@@ -286,7 +289,7 @@
     }
 
     // Auth session check
-    (async () => {
+    async function initPage() {
       try {
         const session = await getSession();
         if (session && session.user) {
@@ -310,7 +313,7 @@
         const saved = localStorage.getItem('glox_username');
         if (saved) document.getElementById('guestName').value = saved;
       }
-    })();
+    }
 
     async function handleSignOut() {
       await signOut();

@@ -28,7 +28,7 @@ const MIME = {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  // ── Auth callback ──────────────────────────────────────────────
+  // ── Auth callback (server-side fallback) ───────────────────────
   if (url.pathname === '/auth/callback') {
     const code = url.searchParams.get('code');
     if (code) {
@@ -37,7 +37,9 @@ const server = http.createServer(async (req, res) => {
         console.error('Auth callback error:', error.message);
       }
     }
-    res.writeHead(302, { Location: '/' });
+    // Redirect to the Vercel frontend, not localhost
+    const frontend = 'https://glox-two.vercel.app';
+    res.writeHead(302, { Location: frontend + '/' });
     res.end();
     return;
   }

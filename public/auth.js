@@ -1,6 +1,6 @@
 // ── Glox Auth Helper ──────────────────────────────────────────────
-// Provides: initSupabase(), signInWithGitHub(), signInWithGoogle(),
-//           getSession(), signOut()
+// Provides: signInWithGitHub(), signInWithEmail(), signUpWithEmail(),
+//           getSession(), signOut(), handleAuthCallback()
 
 function getSupabase() {
   if (window._supabase) return window._supabase;
@@ -18,26 +18,45 @@ function getSupabase() {
   });
 }
 
+// ── Handle OAuth callback (runs on every page load) ──────────────
+// Supabase redirects back with ?code=... in the URL.
+// We exchange it for a session client-side.
+async function handleAuthCallback() {
+  const url = new URL(window.location.href);
+  const code = url.searchParams.get('code');
+  if (!code) return;
+
+  const db = await getSupabase();
+  if (!db) return;
+
+  // Exchange the code for a session
+  const { error } = await db.auth.exchangeCodeForSession(code);
+  if (error) {
+    console.error('Auth callback error:', error.message);
+  }
+
+  // Clean the URL — remove ?code=... so it doesn't re-trigger
+  url.searchParams.delete('code');
+  url.searchParams.delete('state');
+  window.history.replaceState({}, '', url.pathname + url.search);
+}
+
+// ── GitHub OAuth ─────────────────────────────────────────────────
 async function signInWithGitHub() {
   const db = await getSupabase();
   if (!db) { alert('Supabase not configured'); return; }
-  const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '').replace(/^ws/, 'http') : location.origin;
-  await db.auth.signInWithOAuth({
+
+  // Redirect back to the Vercel frontend after auth
+  const redirectTo = window.location.origin + '/';
+
+  const { error } = await db.auth.signInWithOAuth({
     provider: 'github',
-    options: { redirectTo: wsHost + '/auth/callback' },
+    options: { redirectTo },
   });
+  if (error) console.error('GitHub OAuth error:', error);
 }
 
-async function signInWithGoogle() {
-  const db = await getSupabase();
-  if (!db) { alert('Supabase not configured'); return; }
-  const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '').replace(/^ws/, 'http') : location.origin;
-  await db.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: wsHost + '/auth/callback' },
-  });
-}
-
+// ── Email sign in ────────────────────────────────────────────────
 async function signInWithEmail(email, password) {
   const db = await getSupabase();
   if (!db) { alert('Supabase not configured'); return; }
@@ -45,6 +64,7 @@ async function signInWithEmail(email, password) {
   if (error) throw error;
 }
 
+// ── Email sign up ────────────────────────────────────────────────
 async function signUpWithEmail(email, password, displayName) {
   const db = await getSupabase();
   if (!db) { alert('Supabase not configured'); return; }
@@ -56,6 +76,7 @@ async function signUpWithEmail(email, password, displayName) {
   if (error) throw error;
 }
 
+// ── Get session ──────────────────────────────────────────────────
 async function getSession() {
   const db = await getSupabase();
   if (!db) return null;
@@ -63,6 +84,7 @@ async function getSession() {
   return session;
 }
 
+// ── Sign out ─────────────────────────────────────────────────────
 async function signOut() {
   const db = await getSupabase();
   if (!db) return;
