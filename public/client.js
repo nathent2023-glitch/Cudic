@@ -2,6 +2,7 @@
 const params = new URLSearchParams(window.location.search);
 const lobby = params.get('lobby');
 const username = params.get('username');
+const token = params.get('token');
 
 if (!lobby || !username) {
   window.location.href = '/';
@@ -27,10 +28,39 @@ menuBtn.addEventListener('click', () => {
   sidebar.classList.toggle('open');
 });
 
-// Close sidebar when clicking outside on mobile
 document.querySelector('.chat-main').addEventListener('click', () => {
   sidebar.classList.remove('open');
 });
+
+// ── Resolve user ID from token ───────────────────────────────────
+let userId = null;
+
+async function resolveUser() {
+  if (!token) return;
+  try {
+    const apiHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '').replace(/^ws/, 'http') : '';
+    const res = await fetch(`${apiHost}/api/session`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (data.user) userId = data.user.id;
+  } catch {}
+}
+
+// ── Load message history ─────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const apiHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '').replace(/^ws/, 'http') : '';
+    const res = await fetch(`${apiHost}/api/messages?lobby=${encodeURIComponent(lobby)}`);
+    const data = await res.json();
+    if (data.messages && data.messages.length) {
+      data.messages.forEach(m => {
+        const time = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        addChatMessage(m.display_name, m.text, time);
+      });
+    }
+  } catch {}
+}
 
 // ── WebSocket connection ─────────────────────────────────────────
 const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
@@ -40,8 +70,10 @@ const ws = new WebSocket(`${proto}://${wsHost}`);
 let typingTimeout = null;
 let isTyping = false;
 
-ws.onopen = () => {
-  ws.send(JSON.stringify({ type: 'join', lobby, username }));
+ws.onopen = async () => {
+  await resolveUser();
+  ws.send(JSON.stringify({ type: 'join', lobby, username, userId }));
+  await loadHistory();
 };
 
 ws.onmessage = (e) => {
@@ -73,7 +105,6 @@ ws.onmessage = (e) => {
       break;
 
     case 'lobby_list':
-      // Ignore on chat page
       break;
 
     case 'error':
@@ -97,7 +128,6 @@ chatForm.addEventListener('submit', (e) => {
   msgInput.value = '';
   msgInput.focus();
 
-  // Stop typing indicator
   if (isTyping) {
     isTyping = false;
     clearTimeout(typingTimeout);
@@ -163,7 +193,6 @@ function escapeHtml(str) {
   return d.innerHTML;
 }
 
-// Consistent color per username
 function nameColor(name) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) {

@@ -1,11 +1,19 @@
+require('dotenv').config();
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const { createClient } = require('@supabase/supabase-js');
 
 const PORT = process.env.PORT || 3000;
 
-// ── Static file server ──────────────────────────────────────────────
+// ── Supabase ─────────────────────────────────────────────────────
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ''
+);
+
+// ── Static file server ───────────────────────────────────────────
 const MIME = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -17,13 +25,89 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-const server = http.createServer((req, res) => {
-  // Redirect /chat to /chat.html
-  if (req.url === '/chat') {
-    req.url = '/chat.html';
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+
+  // ── Auth callback ──────────────────────────────────────────────
+  if (url.pathname === '/auth/callback') {
+    const code = url.searchParams.get('code');
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error('Auth callback error:', error.message);
+      }
+    }
+    res.writeHead(302, { Location: '/' });
+    res.end();
+    return;
   }
 
-  let filePath = path.join(__dirname, 'public', req.url === '/' ? 'index.html' : req.url);
+  // ── API: get session ───────────────────────────────────────────
+  if (url.pathname === '/api/session') {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+
+    if (!token) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ user: null }));
+      return;
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ user: error ? null : user }));
+    return;
+  }
+
+  // ── API: get message history ───────────────────────────────────
+  if (url.pathname === '/api/messages') {
+    const lobbyName = url.searchParams.get('lobby');
+    if (!lobbyName) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'lobby param required' }));
+      return;
+    }
+
+    // Get or create lobby
+    let { data: lobby } = await supabase
+      .from('lobbies')
+      .select('id')
+      .eq('name', lobbyName)
+      .single();
+
+    if (!lobby) {
+      const { data: newLobby } = await supabase
+        .from('lobbies')
+        .insert({ name: lobbyName })
+        .select('id')
+        .single();
+      lobby = newLobby;
+    }
+
+    if (!lobby) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ messages: [] }));
+      return;
+    }
+
+    const { data: messages } = await supabase
+      .from('messages')
+      .select('display_name, text, created_at')
+      .eq('lobby_id', lobby.id)
+      .order('created_at', { ascending: true })
+      .limit(100);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ messages: messages || [] }));
+    return;
+  }
+
+  // ── Redirect /chat to /chat.html ───────────────────────────────
+  if (url.pathname === '/chat') {
+    url.pathname = '/chat.html';
+  }
+
+  let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   const ext = path.extname(filePath);
 
   fs.readFile(filePath, (err, data) => {
@@ -37,13 +121,13 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// ── WebSocket server ────────────────────────────────────────────────
+// ── WebSocket server ─────────────────────────────────────────────
 const wss = new WebSocketServer({ server });
 
-// lobby name → Set of { username, ws }
+// lobby name → Set of { username, ws, userId }
 const lobbies = new Map();
 
-// ws → { username, lobby }
+// ws → { username, lobby, userId }
 const clients = new Map();
 
 function broadcast(lobbyName, msg, excludeWs = null) {
@@ -74,6 +158,38 @@ function sendLobbyListToAll() {
   }
 }
 
+// Save message to Supabase (fire and forget)
+async function saveMessage(lobbyName, userId, displayName, text) {
+  try {
+    // Get or create lobby
+    let { data: lobby } = await supabase
+      .from('lobbies')
+      .select('id')
+      .eq('name', lobbyName)
+      .single();
+
+    if (!lobby) {
+      const { data: newLobby } = await supabase
+        .from('lobbies')
+        .insert({ name: lobbyName })
+        .select('id')
+        .single();
+      lobby = newLobby;
+    }
+
+    if (lobby) {
+      await supabase.from('messages').insert({
+        lobby_id: lobby.id,
+        user_id: userId || '00000000-0000-0000-0000-000000000000',
+        display_name: displayName,
+        text,
+      });
+    }
+  } catch (err) {
+    console.error('Failed to save message:', err.message);
+  }
+}
+
 wss.on('connection', (ws) => {
   // Send current lobby list immediately
   ws.send(JSON.stringify({ type: 'lobby_list', lobbies: getLobbyList() }));
@@ -90,6 +206,7 @@ wss.on('connection', (ws) => {
     if (msg.type === 'join') {
       const lobby = (msg.lobby || '').trim();
       const username = (msg.username || '').trim();
+      const userId = msg.userId || null;
 
       if (!lobby || !username) {
         ws.send(JSON.stringify({ type: 'error', text: 'Lobby and username are required.' }));
@@ -101,7 +218,12 @@ wss.on('connection', (ws) => {
       if (prev) {
         const prevRoom = lobbies.get(prev.lobby);
         if (prevRoom) {
-          prevRoom.delete({ username: prev.username, ws });
+          for (const client of prevRoom) {
+            if (client.ws === ws) {
+              prevRoom.delete(client);
+              break;
+            }
+          }
           broadcast(prev.lobby, { type: 'user_leave', username: prev.username });
           if (prevRoom.size === 0) lobbies.delete(prev.lobby);
         }
@@ -111,9 +233,9 @@ wss.on('connection', (ws) => {
       if (!lobbies.has(lobby)) {
         lobbies.set(lobby, new Set());
       }
-      const entry = { username, ws };
+      const entry = { username, ws, userId };
       lobbies.get(lobby).add(entry);
-      clients.set(ws, { username, lobby });
+      clients.set(ws, { username, lobby, userId });
 
       // Confirm join to this client
       ws.send(JSON.stringify({ type: 'joined', lobby, username }));
@@ -137,12 +259,17 @@ wss.on('connection', (ws) => {
       const text = (msg.text || '').trim();
       if (!text) return;
 
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
       broadcast(info.lobby, {
         type: 'message',
         username: info.username,
         text,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time,
       });
+
+      // Persist to database
+      saveMessage(info.lobby, info.userId, info.username, text);
       return;
     }
 
@@ -166,7 +293,6 @@ wss.on('connection', (ws) => {
     if (info) {
       const room = lobbies.get(info.lobby);
       if (room) {
-        // Find and remove this client
         for (const client of room) {
           if (client.ws === ws) {
             room.delete(client);
@@ -175,7 +301,6 @@ wss.on('connection', (ws) => {
         }
         broadcast(info.lobby, { type: 'user_leave', username: info.username });
 
-        // Send updated user list
         const users = [...room].map(c => c.username);
         broadcast(info.lobby, { type: 'user_list', users });
 
@@ -187,7 +312,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-// ── Start ───────────────────────────────────────────────────────────
+// ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n  Glox is running → http://localhost:${PORT}\n`);
 });

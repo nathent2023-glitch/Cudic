@@ -1,0 +1,62 @@
+-- Run this SQL in your Supabase SQL Editor (Dashboard → SQL Editor → New query)
+
+-- Users table (auto-populated by Supabase Auth)
+create table if not exists public.users (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null,
+  avatar_url text,
+  created_at timestamptz default now()
+);
+
+-- Auto-create user profile on signup
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.users (id, display_name, avatar_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', null)
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- Lobbies table
+create table if not exists public.lobbies (
+  id uuid primary key default gen_random_uuid(),
+  name text unique not null,
+  created_by uuid references public.users(id),
+  created_at timestamptz default now()
+);
+
+-- Messages table
+create table if not exists public.messages (
+  id uuid primary key default gen_random_uuid(),
+  lobby_id uuid not null references public.lobbies(id) on delete cascade,
+  user_id uuid not null references public.users(id),
+  display_name text not null,
+  text text not null,
+  created_at timestamptz default now()
+);
+
+-- Index for fast message loading
+create index if not exists messages_lobby_created_idx on public.messages (lobby_id, created_at);
+
+-- Row Level Security (optional, for direct client queries)
+alter table public.messages enable row level security;
+alter table public.lobbies enable row level security;
+
+-- Allow anyone to read messages
+create policy "Anyone can read messages" on public.messages for select using (true);
+-- Allow authenticated users to insert messages
+create policy "Authenticated users can insert messages" on public.messages for insert with check (auth.role() = 'authenticated');
+-- Allow anyone to read lobbies
+create policy "Anyone can read lobbies" on public.lobbies for select using (true);
+-- Allow authenticated users to create lobbies
+create policy "Authenticated users can create lobbies" on public.lobbies for insert with check (auth.role() = 'authenticated');

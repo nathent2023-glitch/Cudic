@@ -380,3 +380,38 @@ input[type="text"]::placeholder {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* ── Auth extras ─────────────────────────────────────────────── */
+.user-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.btn-logout {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-logout:hover { text-decoration: underline; }
+
+.login-link {
+  display: block;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  text-decoration: none;
+  margin-top: 16px;
+}
+
+.login-link:hover { color: var(--accent); }

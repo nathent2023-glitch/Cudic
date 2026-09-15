@@ -10,7 +10,12 @@
   <div class="lobby-page">
     <div class="lobby-card">
       <h1 class="logo">glox</h1>
-      <p class="subtitle">join a lobby or create one</p>
+      <p class="subtitle" id="subtitle">join a lobby or create one</p>
+
+      <div id="userBar" class="user-bar" style="display:none">
+        <span id="userDisplay"></span>
+        <button class="btn-logout" onclick="handleSignOut()">sign out</button>
+      </div>
 
       <form id="joinForm" autocomplete="off">
         <input type="text" id="username" placeholder="your name" maxlength="20" required autofocus>
@@ -23,19 +28,55 @@
       <div id="lobbyList" class="lobby-list">
         <p class="empty-state">no active lobbies yet</p>
       </div>
+
+      <a href="/login.html" class="login-link" id="loginLink">sign in</a>
     </div>
   </div>
 
   <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script>
     const joinForm = document.getElementById('joinForm');
     const usernameInput = document.getElementById('username');
     const lobbyInput = document.getElementById('lobbyName');
     const lobbyList = document.getElementById('lobbyList');
+    const loginLink = document.getElementById('loginLink');
+    const userBar = document.getElementById('userBar');
+    const userDisplay = document.getElementById('userDisplay');
+    const subtitle = document.getElementById('subtitle');
 
-    // Restore last username
-    const saved = localStorage.getItem('glox_username');
-    if (saved) usernameInput.value = saved;
+    let currentUser = null;
+
+    // Check auth session
+    (async () => {
+      try {
+        const session = await getSession();
+        if (session && session.user) {
+          currentUser = session.user;
+          const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email;
+          usernameInput.value = name;
+          usernameInput.readOnly = true;
+          userDisplay.textContent = `signed in as ${name}`;
+          userBar.style.display = 'flex';
+          loginLink.textContent = '';
+          loginLink.style.display = 'none';
+          subtitle.textContent = 'you\'re signed in — pick a lobby';
+        } else {
+          // Guest mode — restore saved name
+          const saved = localStorage.getItem('glox_username');
+          if (saved) usernameInput.value = saved;
+        }
+      } catch {
+        const saved = localStorage.getItem('glox_username');
+        if (saved) usernameInput.value = saved;
+      }
+    })();
+
+    async function handleSignOut() {
+      await signOut();
+      localStorage.removeItem('glox_username');
+      window.location.href = '/';
+    }
 
     // Connect to get lobby list
     const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
@@ -77,7 +118,10 @@
 
       localStorage.setItem('glox_username', username);
       listWs.close();
-      window.location.href = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(username)}`;
+
+      let url = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(username)}`;
+      if (currentUser) url += `&token=${currentUser.access_token}`;
+      window.location.href = url;
     });
   </script>
 </body>

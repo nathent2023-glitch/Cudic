@@ -3,3 +3,5 @@ agora.db
 agora.db-shm
 agora.db-wal
 .env
+.env.local
+.env.*.local
