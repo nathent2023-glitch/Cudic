@@ -132,6 +132,9 @@ const lobbies = new Map();
 // ws → { username, lobby, userId }
 const clients = new Map();
 
+// All connected WebSocket connections (including homepage watchers)
+const allConnections = new Set();
+
 function broadcast(lobbyName, msg, excludeWs = null) {
   const room = lobbies.get(lobbyName);
   if (!room) return;
@@ -153,9 +156,10 @@ function getLobbyList() {
 
 function sendLobbyListToAll() {
   const list = getLobbyList();
-  for (const [ws] of clients) {
+  const data = JSON.stringify({ type: 'lobby_list', lobbies: list });
+  for (const ws of allConnections) {
     if (ws.readyState === 1) {
-      ws.send(JSON.stringify({ type: 'lobby_list', lobbies: list }));
+      ws.send(data);
     }
   }
 }
@@ -193,6 +197,9 @@ async function saveMessage(lobbyName, userId, displayName, text) {
 }
 
 wss.on('connection', (ws) => {
+  // Track all connections for lobby list broadcasts
+  allConnections.add(ws);
+
   // Send current lobby list immediately
   ws.send(JSON.stringify({ type: 'lobby_list', lobbies: getLobbyList() }));
 
@@ -291,6 +298,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    allConnections.delete(ws);
     const info = clients.get(ws);
     if (info) {
       const room = lobbies.get(info.lobby);
