@@ -433,6 +433,11 @@
 
     handleAuthCallback().then(() => initPage());
 
+    // Re-check verification when user returns to this tab (e.g. after clicking verify link)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && currentUser && !isVerified) initPage();
+    });
+
     function showTab(tab) {
       document.querySelectorAll('.tab').forEach((t, i) => {
         t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'signup' && i === 1));
