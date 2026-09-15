@@ -542,11 +542,11 @@
           document.getElementById('signupName').value
         );
         // Show "check your email" message
-        errEl.textContent = 'Account created! Check your email to verify your account.';
+        errEl.textContent = 'Account created! Check your email for a verification link.';
         errEl.style.color = '#bfff3c';
         errEl.style.display = 'block';
         // Switch to login tab after a moment
-        setTimeout(() => { showTab('login'); }, 2000);
+        setTimeout(() => { showTab('login'); }, 2500);
       } catch (err) {
         errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ff2674';
       } finally { btn.disabled = false; btn.textContent = 'Create account'; }

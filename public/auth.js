@@ -75,7 +75,7 @@ async function signUpWithEmail(email, password, displayName) {
   });
   if (error) throw error;
 
-  // Send verification email via our server
+  // Send verification email via our server (non-blocking)
   if (data.user) {
     try {
       const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
@@ -89,7 +89,8 @@ async function signUpWithEmail(email, password, displayName) {
         }),
       });
     } catch (err) {
-      console.error('Failed to send verification email:', err);
+      // Silently fail — Supabase's own confirmation email will handle it
+      console.warn('Custom verification email failed, relying on Supabase:', err);
     }
   }
 
