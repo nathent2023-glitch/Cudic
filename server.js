@@ -41,11 +41,25 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
+function cors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  if (req.method === 'OPTIONS') {
+    cors(res);
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
   // ── API: send verification email ──────────────────────────────
   if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
+    cors(res);
     let body = '';
     for await (const chunk of req) body += chunk;
     try {
@@ -102,6 +116,7 @@ const server = http.createServer(async (req, res) => {
 
   // ── API: check verification status ─────────────────────────────
   if (url.pathname === '/auth/check-verified') {
+    cors(res);
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
     if (!token) {
@@ -197,6 +212,7 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
 
   // ── API: get session ───────────────────────────────────────────
   if (url.pathname === '/api/session') {
+    cors(res);
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
 
@@ -214,6 +230,7 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
 
   // ── API: get message history ───────────────────────────────────
   if (url.pathname === '/api/messages') {
+    cors(res);
     const lobbyName = url.searchParams.get('lobby');
     if (!lobbyName) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
