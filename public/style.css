@@ -6,19 +6,32 @@
 }
 
 :root {
-  --bg: #09090b;
-  --surface: #18181b;
-  --surface2: #27272a;
-  --border: rgba(255,255,255,.08);
-  --border-strong: rgba(255,255,255,.12);
-  --text: #fafafa;
-  --text-dim: #71717a;
+  --bg: #16171a;
+  --surface: rgba(255,255,255,.04);
+  --surface2: rgba(255,255,255,.07);
+  --border: rgba(255,255,255,.07);
+  --border-strong: rgba(255,255,255,.1);
+  --text: #fafdff;
+  --text-dim: #68aed4;
   --text-muted: #52525b;
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --danger: #ef4444;
-  --success: #22c55e;
-  --radius: 10px;
+  --accent: #bfff3c;
+  --accent-hover: #a8e62e;
+  --accent-text: #16171a;
+  --danger: #ff2674;
+  --success: #10d275;
+  --pink: #ff80a4;
+  --orange: #ff8426;
+  --red: #d62411;
+  --yellow: #ffd100;
+  --purple: #94216a;
+  --deep-purple: #430067;
+  --blue: #234975;
+  --light-blue: #68aed4;
+  --teal: #007899;
+  --navy: #002859;
+  --lime: #bfff3c;
+  --green: #10d275;
+  --radius: 12px;
 }
 
 html, body {
@@ -39,7 +52,8 @@ html, body {
 /* Sidebar */
 .sidebar {
   width: 240px;
-  background: var(--surface);
+  background: rgba(22, 23, 26, 0.95);
+  backdrop-filter: blur(12px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -52,19 +66,19 @@ html, body {
 }
 
 .back-link {
-  color: var(--accent);
+  color: var(--lime);
   text-decoration: none;
   font-size: .82rem;
   display: inline-block;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .back-link:hover { text-decoration: underline; }
 
 .sidebar-title {
   font-size: 1.05rem;
-  font-weight: 600;
+  font-weight: 700;
   word-break: break-word;
   letter-spacing: -.01em;
 }
@@ -79,7 +93,7 @@ html, body {
   font-size: .72rem;
   text-transform: uppercase;
   letter-spacing: .06em;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 10px;
 }
@@ -93,7 +107,7 @@ html, body {
 
 .user-list li {
   padding: 6px 10px;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: .87rem;
   color: var(--text-dim);
   transition: background .1s ease;
@@ -107,8 +121,9 @@ html, body {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--green);
   margin-right: 8px;
+  box-shadow: 0 0 6px rgba(16,210,117,.4);
 }
 
 /* Chat main */
@@ -117,6 +132,7 @@ html, body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--bg);
 }
 
 .chat-header {
@@ -125,8 +141,9 @@ html, body {
   gap: 12px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  font-weight: 600;
+  background: rgba(22, 23, 26, 0.95);
+  backdrop-filter: blur(12px);
+  font-weight: 700;
   font-size: .95rem;
   letter-spacing: -.01em;
 }
@@ -165,9 +182,9 @@ html, body {
 }
 
 .msg .author {
-  font-weight: 600;
+  font-weight: 700;
   margin-right: 6px;
-  color: var(--text);
+  color: var(--lime);
 }
 
 .msg .time {
@@ -183,7 +200,7 @@ html, body {
   padding: 4px 0;
 }
 
-.msg.system.join { color: var(--success); }
+.msg.system.join { color: var(--green); }
 .msg.system.leave { color: var(--danger); }
 
 /* Typing indicator */
@@ -200,12 +217,13 @@ html, body {
   gap: 10px;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
-  background: var(--surface);
+  background: rgba(22, 23, 26, 0.95);
+  backdrop-filter: blur(12px);
 }
 
 .chat-input-area input {
   flex: 1;
-  background: var(--bg);
+  background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   padding: 11px 14px;
@@ -217,16 +235,16 @@ html, body {
 }
 
 .chat-input-area input::placeholder { color: var(--text-muted); }
-.chat-input-area input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+.chat-input-area input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px rgba(191,255,60,.1); }
 
 .btn-send {
-  background: var(--accent);
-  color: #fff;
+  background: var(--lime);
+  color: var(--accent-text);
   border: none;
   border-radius: var(--radius);
   padding: 10px 18px;
   font-size: .92rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: background .15s ease, transform .1s ease;
   white-space: nowrap;

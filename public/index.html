@@ -4,74 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #09090b;
-      color: #fafafa;
+      background: #16171a;
+      color: #fafdff;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
-    .container {
-      display: flex;
-      width: 880px;
-      max-width: 94vw;
-      min-height: 540px;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,.06);
-      box-shadow: 0 16px 70px rgba(0,0,0,.4);
-    }
-
-    /* ── Left visual ── */
-    .visual {
-      flex: 1.05;
-      background: #18181b;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 28px 30px;
-      position: relative;
-      border-right: 1px solid rgba(255,255,255,.06);
-    }
-
-    .visual::before {
-      content: '';
-      position: absolute;
+    canvas#bg {
+      position: fixed;
       inset: 0;
-      background:
-        radial-gradient(ellipse 60% 50% at 20% 80%, rgba(59,130,246,.08) 0%, transparent 100%),
-        radial-gradient(ellipse 50% 60% at 80% 20%, rgba(16,185,129,.05) 0%, transparent 100%);
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
     }
 
-    .visual-brand { font-size: 1.25rem; font-weight: 700; color: #fafafa; position: relative; letter-spacing: -.02em; }
-    .visual-brand span { color: #3b82f6; }
-
-    .visual-bottom { position: relative; }
-    .visual-bottom h2 { font-size: 1.6rem; font-weight: 700; color: #fafafa; line-height: 1.25; letter-spacing: -.02em; margin-bottom: 10px; }
-    .visual-bottom p { color: #71717a; font-size: .85rem; line-height: 1.6; max-width: 280px; }
-
-    /* ── Right panel ── */
-    .panel {
-      flex: 1;
-      background: #09090b;
-      padding: 40px 32px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      overflow-y: auto;
+    .card {
+      position: relative;
+      z-index: 1;
+      width: 420px;
+      max-width: 94vw;
+      background: rgba(22, 23, 26, 0.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.07);
+      padding: 36px 32px 32px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.6);
     }
 
-    .panel h1 { font-size: 1.35rem; font-weight: 600; color: #fafafa; margin-bottom: 3px; letter-spacing: -.01em; }
-    .panel .sub { color: #71717a; font-size: .85rem; margin-bottom: 22px; }
+    .brand { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
+    .brand span { color: #bfff3c; }
+    .tagline { color: #68aed4; font-size: .82rem; margin-bottom: 24px; font-weight: 500; }
 
     /* ── OAuth ── */
     .oauth-btn {
@@ -80,35 +53,30 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      padding: 11px;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,.1);
-      background: #18181b;
-      color: #fafafa;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      color: #fafdff;
       font-size: .87rem;
       font-weight: 500;
       cursor: pointer;
       transition: all .15s ease;
       font-family: inherit;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
-    .oauth-btn:hover { background: #1f1f23; border-color: rgba(255,255,255,.16); }
+    .oauth-btn:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); }
     .oauth-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-    /* ── Divider ── */
-    .divider { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
-    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
-    .divider span { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; }
-
     /* ── Tabs ── */
-    .tabs { display: flex; gap: 0; margin-bottom: 18px; background: #18181b; border-radius: 10px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; background: rgba(255,255,255,.04); border-radius: 12px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
     .tab {
-      flex: 1; padding: 9px; background: transparent; border: none; color: #71717a;
-      cursor: pointer; font-size: .84rem; font-weight: 500; border-radius: 8px;
+      flex: 1; padding: 10px; background: transparent; border: none; color: #68aed4;
+      cursor: pointer; font-size: .84rem; font-weight: 600; border-radius: 10px;
       transition: all .15s ease; font-family: inherit;
     }
-    .tab.active { background: #27272a; color: #fafafa; }
-    .tab:not(.active):hover { color: #a1a1aa; }
+    .tab.active { background: rgba(255,255,255,.08); color: #fafdff; }
+    .tab:not(.active):hover { color: #bfff3c; }
 
     /* ── Forms ── */
     .form { display: none; flex-direction: column; gap: 12px; }
@@ -116,50 +84,50 @@
 
     .field input {
       width: 100%;
-      padding: 11px 13px;
-      background: #18181b;
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 10px;
-      color: #fafafa;
+      padding: 12px 14px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      color: #fafdff;
       font-size: .87rem;
       font-family: inherit;
       outline: none;
       transition: border-color .15s ease, box-shadow .15s ease;
     }
     .field input::placeholder { color: #52525b; }
-    .field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+    .field input:focus { border-color: #bfff3c; box-shadow: 0 0 0 3px rgba(191,255,60,.1); }
 
     .btn {
       width: 100%;
-      padding: 11px;
-      background: #3b82f6;
+      padding: 12px;
+      background: #bfff3c;
       border: none;
-      border-radius: 10px;
-      color: #fff;
+      border-radius: 12px;
+      color: #16171a;
       font-size: .87rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       font-family: inherit;
       transition: background .15s ease, transform .1s ease;
       margin-top: 2px;
     }
-    .btn:hover { background: #2563eb; }
+    .btn:hover { background: #a8e62e; }
     .btn:active { transform: scale(.98); }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
 
     .error {
-      color: #ef4444;
+      color: #ff2674;
       font-size: .8rem;
       text-align: center;
       display: none;
       padding: 8px 12px;
-      background: rgba(239,68,68,.08);
-      border-radius: 8px;
-      border: 1px solid rgba(239,68,68,.12);
+      background: rgba(255,38,116,.08);
+      border-radius: 10px;
+      border: 1px solid rgba(255,38,116,.12);
     }
 
     .or-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
-    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.08); }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.06); }
     .or-divider span { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; }
 
     /* ── Active lobbies ── */
@@ -167,117 +135,276 @@
     .lobby-list { display: flex; flex-direction: column; gap: 5px; max-height: 110px; overflow-y: auto; }
     .lobby-item {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 9px 12px; background: #18181b; border: 1px solid rgba(255,255,255,.06);
-      border-radius: 10px; cursor: pointer; transition: all .15s ease; font-family: inherit;
-      color: #fafafa; font-size: .84rem;
+      padding: 10px 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px; cursor: pointer; transition: all .15s ease; font-family: inherit;
+      color: #fafdff; font-size: .84rem;
     }
-    .lobby-item:hover { border-color: rgba(59,130,246,.3); background: #1a1a1e; }
-    .lobby-item .name { font-weight: 500; }
-    .lobby-item .count { color: #71717a; font-size: .78rem; }
+    .lobby-item:hover { border-color: rgba(191,255,60,.3); background: rgba(191,255,60,.04); }
+    .lobby-item .name { font-weight: 600; }
+    .lobby-item .count { color: #68aed4; font-size: .78rem; }
 
     /* ── User bar ── */
     .user-bar {
       display: none; align-items: center; justify-content: space-between;
-      padding: 9px 13px; background: #18181b; border: 1px solid rgba(255,255,255,.06);
-      border-radius: 10px; margin-bottom: 14px;
+      padding: 10px 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px; margin-bottom: 14px;
     }
-    .user-bar span { color: #3b82f6; font-size: .83rem; font-weight: 500; }
+    .user-bar span { color: #bfff3c; font-size: .83rem; font-weight: 600; }
     .btn-sm {
-      padding: 5px 12px; background: transparent; border: 1px solid rgba(255,255,255,.1);
-      border-radius: 7px; color: #71717a; font-size: .78rem; cursor: pointer;
+      padding: 5px 12px; background: transparent; border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px; color: #68aed4; font-size: .78rem; cursor: pointer;
       font-family: inherit; transition: all .15s ease;
     }
-    .btn-sm:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-sm:hover { border-color: #ff2674; color: #ff2674; }
 
-    @media (max-width: 768px) {
-      .container { flex-direction: column; min-height: auto; }
-      .visual { display: none; }
-      .panel { padding: 28px 20px; }
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px 24px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Left visual -->
-    <div class="visual">
-      <div class="visual-brand">glox<span>.</span></div>
-      <div class="visual-bottom">
-        <h2>Start a conversation,<br>join the room.</h2>
-        <p>Pick a lobby or create your own. Real-time chat, no setup required.</p>
-      </div>
+  <canvas id="bg"></canvas>
+
+  <div class="card">
+    <div class="brand">glox<span>.</span></div>
+    <p class="tagline">Real-time chat, pixel-powered.</p>
+
+    <!-- User bar (shown when signed in) -->
+    <div id="userBar" class="user-bar">
+      <span id="userDisplay"></span>
+      <button class="btn-sm" onclick="handleSignOut()">sign out</button>
     </div>
 
-    <!-- Right panel -->
-    <div class="panel">
-      <h1 id="heading">Welcome to Glox</h1>
-      <p class="sub" id="subText">Sign in or create an account to get started.</p>
+    <!-- OAuth -->
+    <button class="oauth-btn" onclick="signInWithGitHub()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      Continue with GitHub
+    </button>
 
-      <!-- User bar (shown when signed in) -->
-      <div id="userBar" class="user-bar">
-        <span id="userDisplay"></span>
-        <button class="btn-sm" onclick="handleSignOut()">sign out</button>
-      </div>
-
-      <!-- OAuth -->
-      <button class="oauth-btn" onclick="signInWithGitHub()">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-        Continue with GitHub
-      </button>
-
-      <!-- Tabs: Sign In / Sign Up -->
-      <div class="tabs" id="authTabs">
-        <button class="tab active" onclick="showTab('login')">Sign in</button>
-        <button class="tab" onclick="showTab('signup')">Create account</button>
-      </div>
-
-      <!-- Sign In -->
-      <form id="loginForm" class="form active" onsubmit="handleLogin(event)">
-        <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
-        <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
-        <button type="submit" class="btn" id="loginBtn">Sign in</button>
-        <div id="loginError" class="error"></div>
-      </form>
-
-      <!-- Sign Up -->
-      <form id="signupForm" class="form" onsubmit="handleSignup(event)">
-        <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
-        <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
-        <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
-        <button type="submit" class="btn" id="signupBtn">Create account</button>
-        <div id="signupError" class="error"></div>
-      </form>
-
-      <!-- Guest join -->
-      <div class="or-divider"><span>or join without an account</span></div>
-
-      <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:12px;">
-        <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
-        <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
-        <button type="submit" class="btn">Join lobby</button>
-      </form>
-
-      <!-- Active lobbies -->
-      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
-      <div id="lobbyList" class="lobby-list"></div>
+    <!-- Tabs: Sign In / Sign Up -->
+    <div class="tabs" id="authTabs">
+      <button class="tab active" onclick="showTab('login')">Sign in</button>
+      <button class="tab" onclick="showTab('signup')">Create account</button>
     </div>
+
+    <!-- Sign In -->
+    <form id="loginForm" class="form active" onsubmit="handleLogin(event)">
+      <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
+      <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
+      <button type="submit" class="btn" id="loginBtn">Sign in</button>
+      <div id="loginError" class="error"></div>
+    </form>
+
+    <!-- Sign Up -->
+    <form id="signupForm" class="form" onsubmit="handleSignup(event)">
+      <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
+      <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
+      <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
+      <button type="submit" class="btn" id="signupBtn">Create account</button>
+      <div id="signupError" class="error"></div>
+    </form>
+
+    <!-- Guest join -->
+    <div class="or-divider"><span>or join without an account</span></div>
+
+    <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
+      <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
+      <button type="submit" class="btn">Join lobby</button>
+    </form>
+
+    <!-- Active lobbies -->
+    <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
+    <div id="lobbyList" class="lobby-list"></div>
   </div>
 
   <script src="config.js"></script>
   <script src="auth.js"></script>
   <script>
+    // ── Canvas Background ─────────────────────────────────────────
+    const canvas = document.getElementById('bg');
+    const ctx = canvas.getContext('2d');
+    let W, H, mouse = { x: -1000, y: -1000 };
+
+    const PALETTE = [
+      '#7f0622', '#d62411', '#ff8426', '#ffd100',
+      '#ff80a4', '#ff2674', '#94216a', '#430067',
+      '#234975', '#68aed4', '#007899', '#002859',
+      '#bfff3c', '#10d275'
+    ];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+    // 3D floating cubes
+    class Cube {
+      constructor() { this.reset(true); }
+
+      reset(init) {
+        this.x = Math.random() * W;
+        this.y = init ? Math.random() * H : H + 60;
+        this.z = Math.random() * 400 + 200;
+        this.size = Math.random() * 18 + 8;
+        this.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+        this.rotX = Math.random() * Math.PI;
+        this.rotY = Math.random() * Math.PI;
+        this.rotZ = Math.random() * Math.PI;
+        this.speedX = (Math.random() - 0.5) * 0.012;
+        this.speedY = (Math.random() - 0.5) * 0.012;
+        this.speedZ = (Math.random() - 0.5) * 0.008;
+        this.vy = -(Math.random() * 0.3 + 0.15);
+        this.vx = (Math.random() - 0.5) * 0.4;
+        this.opacity = Math.random() * 0.4 + 0.15;
+        this.glow = Math.random() > 0.7;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.rotX += this.speedX;
+        this.rotY += this.speedY;
+        this.rotZ += this.speedZ;
+
+        // Mouse repel
+        const dx = this.x - mouse.x;
+        const dy = this.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 150) {
+          const force = (150 - dist) / 150 * 0.8;
+          this.x += (dx / dist) * force;
+          this.y += (dy / dist) * force;
+        }
+
+        if (this.y < -60 || this.x < -60 || this.x > W + 60) this.reset(false);
+      }
+
+      draw() {
+        const s = this.size * (300 / this.z);
+        const cos = Math.cos, sin = Math.sin;
+        const rx = this.rotX, ry = this.rotY, rz = this.rotZ;
+
+        // 3D cube vertices
+        const verts = [
+          [-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],
+          [-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]
+        ].map(([vx,vy,vz]) => {
+          // Rotate X
+          let y1 = vy * cos(rx) - vz * sin(rx);
+          let z1 = vy * sin(rx) + vz * cos(rx);
+          // Rotate Y
+          let x1 = vx * cos(ry) + z1 * sin(ry);
+          let z2 = -vx * sin(ry) + z1 * cos(ry);
+          // Rotate Z
+          let x2 = x1 * cos(rz) - y1 * sin(rz);
+          let y2 = x1 * sin(rz) + y1 * cos(rz);
+          // Project
+          const scale = 300 / (300 + z2);
+          return [this.x + x2 * s * scale, this.y + y2 * s * scale, z2];
+        });
+
+        // 12 edges
+        const edges = [
+          [0,1],[1,2],[2,3],[3,0],
+          [4,5],[5,6],[6,7],[7,4],
+          [0,4],[1,5],[2,6],[3,7]
+        ];
+
+        ctx.strokeStyle = this.color;
+        ctx.globalAlpha = this.opacity * (0.6 + 0.4 * (300 / this.z));
+        ctx.lineWidth = Math.max(1, s * 0.12);
+
+        if (this.glow) {
+          ctx.shadowColor = this.color;
+          ctx.shadowBlur = s * 0.8;
+        }
+
+        ctx.beginPath();
+        for (const [a, b] of edges) {
+          ctx.moveTo(verts[a][0], verts[a][1]);
+          ctx.lineTo(verts[b][0], verts[b][1]);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Particles
+    class Particle {
+      constructor() { this.reset(true); }
+
+      reset(init) {
+        this.x = Math.random() * W;
+        this.y = init ? Math.random() * H : H + 10;
+        this.size = Math.random() * 3 + 1;
+        this.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+        this.vy = -(Math.random() * 0.5 + 0.2);
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.opacity = Math.random() * 0.5 + 0.2;
+        this.pulse = Math.random() * Math.PI * 2;
+        this.pulseSpeed = Math.random() * 0.03 + 0.01;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.pulse += this.pulseSpeed;
+        if (this.y < -10) this.reset(false);
+      }
+
+      draw() {
+        const glow = Math.sin(this.pulse) * 0.3 + 0.7;
+        ctx.globalAlpha = this.opacity * glow;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    const cubes = Array.from({ length: 18 }, () => new Cube());
+    const particles = Array.from({ length: 60 }, () => new Particle());
+
+    function animate() {
+      ctx.clearRect(0, 0, W, H);
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.015)';
+      ctx.lineWidth = 1;
+      const gridSize = 60;
+      for (let x = 0; x < W; x += gridSize) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += gridSize) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      for (const p of particles) { p.update(); p.draw(); }
+      for (const c of cubes) { c.update(); c.draw(); }
+
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    // ── Auth Logic ────────────────────────────────────────────────
     const loginForm = document.getElementById('loginForm');
     const signupForm = document.getElementById('signupForm');
     const guestForm = document.getElementById('guestForm');
     const userBar = document.getElementById('userBar');
     const userDisplay = document.getElementById('userDisplay');
     const heading = document.getElementById('heading');
-    const subText = document.getElementById('subText');
     const lobbyList = document.getElementById('lobbyList');
     const lobbiesLabel = document.getElementById('lobbiesLabel');
 
     let currentUser = null;
 
-    // Handle OAuth callback (GitHub redirects back with ?code=...)
     handleAuthCallback().then(() => initPage());
 
     function showTab(tab) {
@@ -288,7 +415,6 @@
       signupForm.classList.toggle('active', tab === 'signup');
     }
 
-    // Auth session check
     async function initPage() {
       try {
         const session = await getSession();
@@ -299,8 +425,6 @@
           document.getElementById('guestName').readOnly = true;
           userDisplay.textContent = name;
           userBar.style.display = 'flex';
-          heading.textContent = 'Welcome back';
-          subText.textContent = `Signed in as ${name}`;
           document.getElementById('authTabs').style.display = 'none';
           loginForm.style.display = 'none';
           signupForm.style.display = 'none';
@@ -340,18 +464,17 @@
       const errEl = document.getElementById('signupError');
       btn.disabled = true; btn.textContent = 'Creating account...'; errEl.style.display = 'none';
       try {
-        const result = await signUpWithEmail(
+        await signUpWithEmail(
           document.getElementById('signupEmail').value,
           document.getElementById('signupPass').value,
           document.getElementById('signupName').value
         );
         errEl.textContent = 'Account created!';
-        errEl.style.color = '#22c55e';
+        errEl.style.color = '#bfff3c';
         errEl.style.display = 'block';
-        // Supabase auto-logs in when email confirm is off — reload to show logged-in state
         setTimeout(() => window.location.href = '/', 800);
       } catch (err) {
-        errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ef4444';
+        errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ff2674';
       } finally { btn.disabled = false; btn.textContent = 'Create account'; }
     }
 
