@@ -158,6 +158,22 @@
     }
     .btn-sm:hover { border-color: #ff2674; color: #ff2674; }
 
+    /* ── Verify notice ── */
+    .verify-notice {
+      display: none; text-align: center; padding: 16px;
+      background: rgba(255,209,0,.06); border: 1px solid rgba(255,209,0,.15);
+      border-radius: 12px; margin-bottom: 14px;
+    }
+    .verify-notice .icon { font-size: 2rem; margin-bottom: 8px; }
+    .verify-notice p { color: #ccc; font-size: .84rem; line-height: 1.5; margin-bottom: 12px; }
+    .verify-notice .btn-resend {
+      padding: 8px 20px; background: transparent; border: 1px solid #bfff3c;
+      border-radius: 8px; color: #bfff3c; font-size: .82rem; cursor: pointer;
+      font-family: inherit; transition: all .15s ease;
+    }
+    .verify-notice .btn-resend:hover { background: rgba(191,255,60,.08); }
+    .verify-notice .btn-resend:disabled { opacity: .4; cursor: not-allowed; }
+
     @media (max-width: 480px) {
       .card { padding: 28px 20px 24px; }
     }
@@ -173,6 +189,13 @@
     <div id="userBar" class="user-bar">
       <span id="userDisplay"></span>
       <button class="btn-sm" onclick="handleSignOut()">sign out</button>
+    </div>
+
+    <!-- Email verification notice -->
+    <div id="verifyNotice" class="verify-notice">
+      <div class="icon">&#9993;</div>
+      <p><strong>Check your email</strong><br>We sent a verification link to <span id="verifyEmail"></span>. Click it to verify your account.</p>
+      <button class="btn-resend" id="resendBtn" onclick="resendVerification()">Resend email</button>
     </div>
 
     <!-- OAuth -->
@@ -402,8 +425,11 @@
     const heading = document.getElementById('heading');
     const lobbyList = document.getElementById('lobbyList');
     const lobbiesLabel = document.getElementById('lobbiesLabel');
+    const verifyNotice = document.getElementById('verifyNotice');
+    const verifyEmail = document.getElementById('verifyEmail');
 
     let currentUser = null;
+    let isVerified = false;
 
     handleAuthCallback().then(() => initPage());
 
@@ -429,6 +455,28 @@
           loginForm.style.display = 'none';
           signupForm.style.display = 'none';
           document.querySelector('.or-divider span').textContent = 'pick a lobby';
+
+          // Check email verification status
+          try {
+            const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+            const res = await fetch(serverBase + '/auth/check-verified', {
+              headers: { 'Authorization': 'Bearer ' + session.access_token }
+            });
+            const data = await res.json();
+            isVerified = data.verified;
+
+            if (!isVerified) {
+              // Show verify notice, hide lobby join
+              verifyNotice.style.display = 'block';
+              verifyEmail.textContent = currentUser.email;
+              guestForm.style.display = 'none';
+              document.querySelector('.or-divider').style.display = 'none';
+              lobbiesLabel.style.display = 'none';
+              lobbyList.innerHTML = '';
+            }
+          } catch {
+            // If check fails, still allow (don't block on server errors)
+          }
         } else {
           const saved = localStorage.getItem('glox_username');
           if (saved) document.getElementById('guestName').value = saved;
@@ -443,6 +491,30 @@
       await signOut();
       localStorage.removeItem('glox_username');
       window.location.href = '/';
+    }
+
+    async function resendVerification() {
+      if (!currentUser) return;
+      const btn = document.getElementById('resendBtn');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      try {
+        const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+        await fetch(serverBase + '/auth/send-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: currentUser.email,
+            userId: currentUser.id,
+            displayName: currentUser.user_metadata?.full_name || currentUser.email,
+          }),
+        });
+        btn.textContent = 'Sent!';
+        setTimeout(() => { btn.textContent = 'Resend email'; btn.disabled = false; }, 3000);
+      } catch {
+        btn.textContent = 'Failed — try again';
+        btn.disabled = false;
+      }
     }
 
     async function handleLogin(e) {
@@ -464,15 +536,17 @@
       const errEl = document.getElementById('signupError');
       btn.disabled = true; btn.textContent = 'Creating account...'; errEl.style.display = 'none';
       try {
-        await signUpWithEmail(
+        const data = await signUpWithEmail(
           document.getElementById('signupEmail').value,
           document.getElementById('signupPass').value,
           document.getElementById('signupName').value
         );
-        errEl.textContent = 'Account created!';
+        // Show "check your email" message
+        errEl.textContent = 'Account created! Check your email to verify your account.';
         errEl.style.color = '#bfff3c';
         errEl.style.display = 'block';
-        setTimeout(() => window.location.href = '/', 800);
+        // Switch to login tab after a moment
+        setTimeout(() => { showTab('login'); }, 2000);
       } catch (err) {
         errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ff2674';
       } finally { btn.disabled = false; btn.textContent = 'Create account'; }

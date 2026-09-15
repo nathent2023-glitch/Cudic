@@ -74,6 +74,25 @@ async function signUpWithEmail(email, password, displayName) {
     options: { data: { full_name: displayName } },
   });
   if (error) throw error;
+
+  // Send verification email via our server
+  if (data.user) {
+    try {
+      const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+      await fetch(serverBase + '/auth/send-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email,
+          userId: data.user.id,
+          displayName: displayName,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to send verification email:', err);
+    }
+  }
+
   return data;
 }
 

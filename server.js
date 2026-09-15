@@ -2,8 +2,24 @@ require('dotenv').config();
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY || '');
+
+// ── Email verification tokens ───────────────────────────────────
+// token → { email, userId, displayName, expires }
+const verifyTokens = new Map();
+
+// Clean expired tokens every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of verifyTokens) {
+    if (data.expires < now) verifyTokens.delete(token);
+  }
+}, 600000);
 
 const PORT = process.env.PORT || 3000;
 
@@ -27,6 +43,141 @@ const MIME = {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  // ── API: send verification email ──────────────────────────────
+  if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    try {
+      const { email, userId, displayName } = JSON.parse(body);
+      if (!email || !userId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'email and userId required' }));
+        return;
+      }
+
+      // Generate token
+      const token = crypto.randomBytes(32).toString('hex');
+      verifyTokens.set(token, {
+        email: email.toLowerCase(),
+        userId,
+        displayName: displayName || email,
+        expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      });
+
+      // Send email via Resend
+      const verifyUrl = `https://glox-o7rr.onrender.com/auth/verify?token=${token}`;
+      const { error } = await resend.emails.send({
+        from: 'Glox <onboarding@resend.dev>',
+        to: email,
+        subject: 'Verify your Glox account',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#16171a;color:#fafdff;border-radius:16px;">
+            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#bfff3c;">.</span></h1>
+            <p style="color:#888;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
+            <p style="font-size:15px;line-height:1.6;color:#ccc;">Hi ${displayName || email},</p>
+            <p style="font-size:15px;line-height:1.6;color:#ccc;">Click the button below to verify your email and start using Glox:</p>
+            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#bfff3c;color:#16171a;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
+            <p style="font-size:13px;color:#555;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+          </div>
+        `,
+      });
+
+      if (error) {
+        console.error('Resend error:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to send email' }));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      console.error('send-verification error:', err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Server error' }));
+    }
+    return;
+  }
+
+  // ── API: check verification status ─────────────────────────────
+  if (url.pathname === '/auth/check-verified') {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ verified: false }));
+      return;
+    }
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ verified: false }));
+      return;
+    }
+
+    // Check if Supabase says email is confirmed
+    const verified = !!user.email_confirmed_at;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ verified }));
+    return;
+  }
+
+  // ── Verify page ─────────────────────────────────────────────────
+  if (url.pathname === '/auth/verify') {
+    const token = url.searchParams.get('token');
+    let status = 'error';
+    let message = 'Invalid or expired verification link.';
+
+    if (token && verifyTokens.has(token)) {
+      const data = verifyTokens.get(token);
+      if (data.expires < Date.now()) {
+        verifyTokens.delete(token);
+        message = 'This verification link has expired. Please sign up again.';
+      } else {
+        // Mark email as confirmed in Supabase using service role
+        try {
+          await supabase.auth.admin.updateUserById(data.userId, {
+            email_confirm: true,
+          });
+          status = 'success';
+          message = `Email verified! You can now use Glox.`;
+        } catch (err) {
+          console.error('Verify update error:', err);
+          message = 'Verification failed. Please try again.';
+        }
+        verifyTokens.delete(token);
+      }
+    }
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Glox — Email Verified</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{max-width:420px;width:94vw;background:rgba(22,23,26,.88);backdrop-filter:blur(24px);border-radius:20px;border:1px solid rgba(255,255,255,.07);padding:36px 32px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.brand{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
+.brand span{color:#bfff3c}
+.status{font-size:3rem;margin-bottom:16px}
+.msg{font-size:1rem;color:#ccc;line-height:1.6;margin-bottom:24px}
+.btn{display:inline-block;padding:12px 32px;background:#bfff3c;color:#16171a;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
+.btn:hover{background:#a8e62e}
+</style></head>
+<body>
+<div class="card">
+  <div class="brand">glox<span>.</span></div>
+  <div class="status">${status === 'success' ? '&#9989;' : '&#10060;'}</div>
+  <p class="msg">${message}</p>
+  <a href="/" class="btn">${status === 'success' ? 'Go to Glox' : 'Back to Glox'}</a>
+</div></body></html>`;
+
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(html);
+    return;
+  }
 
   // ── Auth callback (server-side fallback) ───────────────────────
   if (url.pathname === '/auth/callback') {
