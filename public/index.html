@@ -26,6 +26,7 @@
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script>
     const joinForm = document.getElementById('joinForm');
     const usernameInput = document.getElementById('username');
@@ -37,8 +38,9 @@
     if (saved) usernameInput.value = saved;
 
     // Connect to get lobby list
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const listWs = new WebSocket(`${proto}://${location.host}`);
+    const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
+    const proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws';
+    const listWs = new WebSocket(`${proto}://${wsHost}`);
 
     listWs.onmessage = (e) => {
       const msg = JSON.parse(e.data);

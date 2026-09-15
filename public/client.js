@@ -33,8 +33,9 @@ document.querySelector('.chat-main').addEventListener('click', () => {
 });
 
 // ── WebSocket connection ─────────────────────────────────────────
-const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-const ws = new WebSocket(`${proto}://${location.host}`);
+const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
+const proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws';
+const ws = new WebSocket(`${proto}://${wsHost}`);
 
 let typingTimeout = null;
 let isTyping = false;
