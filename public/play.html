@@ -22,7 +22,7 @@ const canvas = document.getElementById('c');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x252630);
 
-const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+let camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
 camera.position.set(5, 4, 5);
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -62,78 +62,133 @@ const primitiveGeos = {
 };
 
 let gameObjects = [];
+let updateFns = [];
 let running = false;
 
 function buildScene(sceneData) {
   gameObjects.forEach(o => scene.remove(o));
   gameObjects = [];
+  let userCamera = null;
   (sceneData || []).forEach(d => {
-    const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
-    const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    mesh.name = d.name || 'Object';
-    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
-    mesh.position.set(...(d.position || [0, 0.5, 0]));
-    mesh.rotation.set(...(d.rotation || [0, 0, 0]));
-    mesh.scale.set(...(d.scale || [1, 1, 1]));
-    scene.add(mesh);
-    gameObjects.push(mesh);
+    let obj;
+    if (d.type === 'light') {
+      obj = new THREE.PointLight(0xffffff, 1, 20);
+    } else if (d.type === 'directional_light') {
+      obj = new THREE.DirectionalLight(0xfff4e0, 1.5);
+    } else if (d.type === 'spot_light') {
+      obj = new THREE.SpotLight(0xffffff, 1, 30, Math.PI / 6, 0.3, 1);
+    } else if (d.type === 'ambient_light') {
+      obj = new THREE.AmbientLight(0x404060, 0.4);
+    } else if (d.type === 'hemisphere_light') {
+      obj = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.6);
+    } else if (d.type === 'camera') {
+      obj = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+      userCamera = obj;
+    } else if (d.type === 'empty') {
+      obj = new THREE.Object3D();
+    } else if (d.type === 'gradient_sky') {
+      const skyGeo = new THREE.SphereGeometry(50, 32, 15);
+      const skyCanvas = document.createElement('canvas');
+      skyCanvas.width = 512; skyCanvas.height = 512;
+      const skyCtx = skyCanvas.getContext('2d');
+      const grad = skyCtx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0, '#0a0a2e'); grad.addColorStop(0.4, '#1a1a5e');
+      grad.addColorStop(0.6, '#4a6fa5'); grad.addColorStop(1, '#87ceeb');
+      skyCtx.fillStyle = grad; skyCtx.fillRect(0, 0, 512, 512);
+      obj = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(skyCanvas), side: THREE.BackSide }));
+    } else if (d.type === 'starfield_sky') {
+      const sfGeo = new THREE.SphereGeometry(50, 32, 15);
+      const sfCanvas = document.createElement('canvas');
+      sfCanvas.width = 512; sfCanvas.height = 512;
+      const sfCtx = sfCanvas.getContext('2d');
+      sfCtx.fillStyle = '#050510'; sfCtx.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 400; i++) {
+        const sx = Math.random() * 512, sy = Math.random() * 512;
+        const sr = Math.random() * 1.5 + 0.3;
+        const b = Math.floor(Math.random() * 155 + 100);
+        sfCtx.beginPath(); sfCtx.arc(sx, sy, sr, 0, Math.PI * 2);
+        sfCtx.fillStyle = `rgb(${b},${b},${b + 30})`; sfCtx.fill();
+      }
+      obj = new THREE.Mesh(sfGeo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sfCanvas), side: THREE.BackSide }));
+    } else if (d.type === 'solid_sky') {
+      obj = new THREE.Mesh(new THREE.SphereGeometry(50, 32, 15), new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide }));
+    } else {
+      const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+      const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+      obj = new THREE.Mesh(geo, mat);
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+    obj.name = d.name || 'Object';
+    obj.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
+    if (d.position) obj.position.set(d.position[0], d.position[1], d.position[2]);
+    if (d.rotation) obj.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
+    if (d.scale) obj.scale.set(d.scale[0], d.scale[1], d.scale[2]);
+    scene.add(obj);
+    gameObjects.push(obj);
   });
+  if (userCamera) {
+    camera = userCamera;
+    controls.object = camera;
+    resize();
+  }
 }
 
-function runScripts(scripts) {
-  if (!scripts || !scripts.length) return;
-  for (const s of scripts) {
-    try {
-      const fn = new Function('scene', 'objects', 'camera', 'self', s.code);
-      fn(scene, gameObjects, camera, null);
-    } catch (e) {
-      parent.postMessage({ type: 'console', level: 'error', text: e.message }, '*');
-    }
-  }
+function startScripts() {
+  updateFns = [];
+  gameObjects.forEach(obj => {
+    const scripts = obj.userData.scripts || [];
+    scripts.forEach(s => {
+      if (!s.code || !s.code.trim()) return;
+      try {
+        const fn = new Function('scene', 'objects', 'camera', 'self', 'update', s.code);
+        fn(scene, gameObjects, camera, obj, null);
+      } catch(e) {
+        parent.postMessage({ type: 'console', level: 'error', text: obj.name + ': ' + e.message }, '*');
+      }
+    });
+    const scripts2 = obj.userData.scripts || [];
+    scripts2.forEach(s => {
+      if (!s.code || !s.code.trim()) return;
+      try {
+        const wrapper = new Function('scene', 'objects', 'camera', 'self', `
+          ${s.code}
+          if (typeof update === 'function') return update;
+          return null;
+        `);
+        const updateFn = wrapper(scene, gameObjects, camera, obj);
+        if (typeof updateFn === 'function') {
+          updateFns.push({ self: obj, fn: updateFn });
+        }
+      } catch(e) {}
+    });
+  });
 }
 
 window.addEventListener('message', (e) => {
   const data = e.data;
   if (data.type === 'play') {
     buildScene(data.scene);
-    const scripts = data.scripts || [];
     running = true;
-    parent.postMessage({ type: 'console', level: 'info', text: 'Game started' }, '*');
-    try {
-      const scriptCode = scripts.map(s => s.code).join('\n');
-      if (scriptCode) {
-        const gameLoop = new Function('scene', 'objects', 'camera', 'update', `
-          ${scriptCode}
-          if (typeof update === 'function') {
-            let _run = true;
-            const _stop = () => { _run = false; };
-            function _loop() {
-              if (!_run) return;
-              try { update(); } catch(e) { console.error(e); }
-              requestAnimationFrame(_loop);
-            }
-            _loop();
-          }
-        `);
-        gameLoop(scene, gameObjects, camera, null);
-      }
-    } catch (err) {
-      parent.postMessage({ type: 'console', level: 'error', text: err.message }, '*');
-    }
+    startScripts();
+    parent.postMessage({ type: 'console', level: 'info', text: 'Game started — ' + gameObjects.length + ' objects' }, '*');
   }
   if (data.type === 'stop') {
     running = false;
-    buildScene(data.scene);
+    updateFns = [];
+    if (data.scene) buildScene(data.scene);
   }
 });
 
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  if (running) {
+    updateFns.forEach(({ self, fn }) => {
+      try { fn(); } catch(e) { parent.postMessage({ type: 'console', level: 'error', text: self.name + ': ' + e.message }, '*'); }
+    });
+  }
   renderer.render(scene, camera);
 }
 animate();

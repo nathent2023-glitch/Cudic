@@ -98,6 +98,10 @@
     .file-item .fi{font-size:.7rem;color:#52525b}
     .file-item.folder .fi{color:#ffd100}
     .shader-preview{height:60px;border-radius:6px;border:1px solid rgba(255,255,255,.06);margin:6px 0;background:#1a1b1e;overflow:hidden}
+    .cam-preview{position:absolute;bottom:0;right:0;width:220px;height:165px;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:6px 0 0 0;overflow:hidden;z-index:5;display:none}
+    .cam-preview.active{display:block}
+    .cam-preview-label{position:absolute;top:4px;left:6px;font-size:.6rem;color:#bfff3c;font-weight:600;text-transform:uppercase;letter-spacing:.04em;z-index:6;pointer-events:none}
+    .cam-preview canvas{display:block;width:100%;height:100%}
   </style>
 </head>
 <body>
@@ -136,7 +140,9 @@
       <button class="t-btn" id="btnGrid" title="Grid">G</button>
       <button class="t-btn" id="btnWire" title="Wireframe">W</button>
     </div>
-    <div class="viewport" id="viewport"></div>
+    <div class="viewport" id="viewport">
+      <div class="cam-preview" id="camPreview"><div class="cam-preview-label">Camera Preview</div><canvas id="camPreviewCanvas"></canvas></div>
+    </div>
     <div class="bottom-resize" id="bottomHandle"></div>
     <div class="bottom" id="bottomPanel">
       <div class="bottom-tabs">
@@ -646,6 +652,7 @@ function addPrimitive(type) {
   mesh.userData = { type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [], matType: 'standard', matProps: {} };
   scene.add(mesh);
   sceneObjects.push(mesh);
+  if (mesh.isCamera) createFrustumHelper(mesh);
   selectObject(mesh);
   logToConsole('Created ' + mesh.name, 'info');
 }
@@ -654,6 +661,7 @@ function deleteSelected() {
   if (!selectedObj) return;
   pushUndo();
   logToConsole('Deleted ' + selectedObj.name, 'warn');
+  if (selectedObj.isCamera) removeFrustumHelper(selectedObj);
   scene.remove(selectedObj);
   sceneObjects = sceneObjects.filter(function(o) { return o !== selectedObj; });
   transform.detach();
@@ -692,6 +700,8 @@ function serializeScene() {
 }
 
 function deserializeScene(data) {
+  Object.keys(camHelpers).forEach(function(k) { if (camHelpers[k]) scene.remove(camHelpers[k]); });
+  for (var k in camHelpers) delete camHelpers[k];
   sceneObjects.forEach(function(o) { scene.remove(o); });
   sceneObjects = [];
   (data || []).forEach(function(d) {
@@ -714,6 +724,7 @@ function deserializeScene(data) {
     if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
     if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
     if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
+    if (mesh.isCamera) createFrustumHelper(mesh);
     scene.add(mesh);
     sceneObjects.push(mesh);
   });
@@ -1312,9 +1323,67 @@ function loadMonaco() {
 loadMonaco();
 
 /* ════════════════════════════════════════════════════
+   CAMERA FRUSTUM + PREVIEW
+   ════════════════════════════════════════════════════ */
+const camHelpers = {};
+const camPreviewEl = document.getElementById('camPreview');
+const camPreviewCanvas = document.getElementById('camPreviewCanvas');
+const camPreviewRenderer = new THREE.WebGLRenderer({ canvas: camPreviewCanvas, antialias: true });
+camPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+camPreviewRenderer.setSize(220, 165);
+camPreviewRenderer.shadowMap.enabled = true;
+camPreviewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+camPreviewRenderer.setScissorTest(true);
+
+function createFrustumHelper(camObj) {
+  if (camHelpers[camObj.uuid]) { scene.remove(camHelpers[camObj.uuid]); delete camHelpers[camObj.uuid]; }
+  var helper = new THREE.CameraHelper(camObj);
+  scene.add(helper);
+  camHelpers[camObj.uuid] = helper;
+}
+function removeFrustumHelper(camObj) {
+  if (camHelpers[camObj.uuid]) { scene.remove(camHelpers[camObj.uuid]); delete camHelpers[camObj.uuid]; }
+}
+function updateAllFrustumHelpers() {
+  sceneObjects.forEach(function(o) {
+    if (o.isCamera && camHelpers[o.uuid]) camHelpers[o.uuid].update();
+  });
+}
+
+function refreshCameraPreview() {
+  var cam = null;
+  if (selectedObj && selectedObj.isCamera) cam = selectedObj;
+  var anyCam = !cam;
+  if (!cam) {
+    for (var i = 0; i < sceneObjects.length; i++) {
+      if (sceneObjects[i].isCamera) { cam = sceneObjects[i]; break; }
+    }
+  }
+  if (cam) {
+    camPreviewEl.classList.add('active');
+    var w = camPreviewCanvas.parentElement.clientWidth || 220;
+    var h = camPreviewCanvas.parentElement.clientHeight || 165;
+    cam.aspect = w / h;
+    cam.updateProjectionMatrix();
+    camPreviewRenderer.setSize(w, h);
+    camPreviewRenderer.setScissor(0, 0, w, h);
+    camPreviewRenderer.setViewport(0, 0, w, h);
+    camPreviewRenderer.render(scene, cam);
+  } else {
+    camPreviewEl.classList.remove('active');
+  }
+}
+
+/* ════════════════════════════════════════════════════
    RENDER LOOP
    ════════════════════════════════════════════════════ */
-function animate() { requestAnimationFrame(animate); orbit.update(); renderer.render(scene, camera); }
+function animate() {
+  requestAnimationFrame(animate);
+  orbit.update();
+  updateAllFrustumHelpers();
+  renderer.render(scene, camera);
+  if (!playMode) refreshCameraPreview();
+}
 animate();
 loadGame();
 refreshHierarchy();
