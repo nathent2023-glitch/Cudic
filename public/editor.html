@@ -281,6 +281,12 @@
 <script>
 (function(){
   window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
+  if (!window.currentToken) {
+    try {
+      var raw = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      if (raw) { var s = JSON.parse(raw); if (s && s.access_token) window.currentToken = s.access_token; }
+    } catch(e) {}
+  }
 })();
 </script>
 

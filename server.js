@@ -198,12 +198,17 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
   if (url.pathname === '/auth/callback') {
     const code = url.searchParams.get('code');
     if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
       if (error) {
         console.error('Auth callback error:', error.message);
       }
+      if (data && data.session) {
+        const frontend = 'https://glox-two.vercel.app';
+        res.writeHead(302, { Location: frontend + '/?token=' + data.session.access_token });
+        res.end();
+        return;
+      }
     }
-    // Redirect to the Vercel frontend, not localhost
     const frontend = 'https://glox-two.vercel.app';
     res.writeHead(302, { Location: frontend + '/' });
     res.end();
