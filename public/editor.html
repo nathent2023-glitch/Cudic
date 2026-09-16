@@ -196,8 +196,6 @@
         <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:100px">
           <div class="panel-tabs">
             <div class="panel-tab active" data-right="props">Inspector</div>
-            <div class="panel-tab" data-right="scripts">Scripts</div>
-            <div class="panel-tab" data-right="material">Material</div>
           </div>
           <div class="panel-content" id="propsPanel">
             <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
@@ -224,63 +222,6 @@
               <div class="prop-group" id="cameraAttachGroup" style="display:none">
                 <label>Attach To Object</label>
                 <select class="p-select" id="cameraAttach"><option value="">None (Free Camera)</option></select>
-              </div>
-            </div>
-          </div>
-          <div class="panel-content hidden" id="scriptsPanel">
-            <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
-            <div id="scriptsContent" style="display:none;padding:8px 12px">
-              <div id="scriptList"></div>
-              <button class="add-btn" id="btnAddScript">+ Add Script</button>
-            </div>
-          </div>
-          <div class="panel-content hidden" id="materialPanel">
-            <div class="empty-state" id="matEmpty">Select an object to edit material</div>
-            <div id="matContent" style="display:none">
-              <div class="prop-group">
-                <label>Type</label>
-                <select class="p-select" id="matType">
-                  <option value="standard">Standard (PBR)</option>
-                  <option value="phong">Phong</option>
-                  <option value="lambert">Lambert</option>
-                  <option value="toon">Toon</option>
-                  <option value="shader">Custom Shader</option>
-                </select>
-              </div>
-              <div class="prop-group" id="matColorGroup">
-                <label>Color</label>
-                <div class="prop-row"><input class="p-input" id="matColor" type="color"><input class="p-input" id="matColorHex" value="#bfff3c"></div>
-              </div>
-              <div class="prop-group" id="matMetalnessGroup">
-                <label>Metalness</label>
-                <div class="prop-row"><input class="p-input" id="matMetalness" type="range" min="0" max="1" step="0.01" value="0.1"></div>
-              </div>
-              <div class="prop-group" id="matRoughnessGroup">
-                <label>Roughness</label>
-                <div class="prop-row"><input class="p-input" id="matRoughness" type="range" min="0" max="1" step="0.01" value="0.6"></div>
-              </div>
-              <div class="prop-group" id="matEmissiveGroup" style="display:none">
-                <label>Emissive</label>
-                <div class="prop-row"><input class="p-input" id="matEmissive" type="color" value="#000000"></div>
-              </div>
-              <div class="prop-group" id="matShininessGroup" style="display:none">
-                <label>Shininess</label>
-                <div class="prop-row"><input class="p-input" id="matShininess" type="range" min="0" max="100" step="1" value="30"></div>
-              </div>
-              <div class="prop-group" id="matShaderGroup" style="display:none">
-                <label>Vertex Shader</label>
-                <textarea class="p-input" id="matVertShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}</textarea>
-                <label style="margin-top:8px">Fragment Shader</label>
-                <textarea class="p-input" id="matFragShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
-void main() {
-  float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;
-}</textarea>
-                <button class="add-btn" id="btnApplyShader" style="margin-top:6px">Apply Shader</button>
               </div>
             </div>
           </div>
@@ -499,32 +440,7 @@ function buildMaterial(type, color, props) {
 }
 
 function updateMaterialUI() {
-  if (!selectedObj || !selectedObj.material) return;
-  const type = selectedObj.userData.matType || 'standard';
-  const props = selectedObj.userData.matProps || {};
-  document.getElementById('matType').value = type;
-
-  const isCustomShader = type === 'shader';
-  const isStandard = type === 'standard';
-  const isPhong = type === 'phong';
-
-  document.getElementById('matColorGroup').style.display = isCustomShader ? 'none' : '';
-  document.getElementById('matMetalnessGroup').style.display = isStandard ? '' : 'none';
-  document.getElementById('matRoughnessGroup').style.display = isStandard ? '' : 'none';
-  document.getElementById('matEmissiveGroup').style.display = isPhong ? '' : 'none';
-  document.getElementById('matShininessGroup').style.display = isPhong ? '' : 'none';
-  document.getElementById('matShaderGroup').style.display = isCustomShader ? '' : 'none';
-
-  if (selectedObj.material.color) {
-    const col = '#' + selectedObj.material.color.getHexString();
-    document.getElementById('matColor').value = col;
-    document.getElementById('matColorHex').value = col;
-  }
-  if (selectedObj.material.metalness != null) document.getElementById('matMetalness').value = selectedObj.material.metalness;
-  if (selectedObj.material.roughness != null) document.getElementById('matRoughness').value = selectedObj.material.roughness;
-  if (props.shininess != null) document.getElementById('matShininess').value = props.shininess;
-  if (props.vertShader) document.getElementById('matVertShader').value = props.vertShader;
-  if (props.fragShader) document.getElementById('matFragShader').value = props.fragShader;
+  // Materials are now managed through the Packages panel
 }
 
 /* ════════════════════════════════════════════════════
@@ -626,12 +542,7 @@ function updatePropsUI() {
 }
 
 function refreshScriptList() {
-  var el = document.getElementById('scriptList');
-  if (!selectedObj) { el.innerHTML = ''; return; }
-  var scripts = selectedObj.userData.scripts || [];
-  el.innerHTML = scripts.map(function(s, i) {
-    return '<div class="script-tag" data-sidx="' + i + '"><span>&#9998; ' + s.name + '</span><span class="del" data-delscript="' + i + '">x</span></div>';
-  }).join('');
+  // Scripts are now managed through the Packages panel
 }
 
 function selectObject(obj) {
@@ -640,20 +551,11 @@ function selectObject(obj) {
     transform.attach(obj);
     document.getElementById('propsEmpty').style.display = 'none';
     document.getElementById('propsContent').style.display = 'block';
-    document.getElementById('scriptsEmpty').style.display = 'none';
-    document.getElementById('scriptsContent').style.display = 'block';
-    document.getElementById('matEmpty').style.display = 'none';
-    document.getElementById('matContent').style.display = 'block';
     updatePropsUI();
-    refreshScriptList();
   } else {
     transform.detach();
     document.getElementById('propsEmpty').style.display = 'block';
     document.getElementById('propsContent').style.display = 'none';
-    document.getElementById('scriptsEmpty').style.display = 'block';
-    document.getElementById('scriptsContent').style.display = 'none';
-    document.getElementById('matEmpty').style.display = 'block';
-    document.getElementById('matContent').style.display = 'none';
   }
   refreshHierarchy();
 }
@@ -903,8 +805,6 @@ document.querySelectorAll('[data-right]').forEach(function(tab) {
     document.querySelectorAll('[data-right]').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');
     document.getElementById('propsPanel').classList.toggle('hidden', tab.dataset.right !== 'props');
-    document.getElementById('scriptsPanel').classList.toggle('hidden', tab.dataset.right !== 'scripts');
-    document.getElementById('materialPanel').classList.toggle('hidden', tab.dataset.right !== 'material');
   });
 });
 
@@ -1262,7 +1162,6 @@ document.getElementById('fileTree').addEventListener('click', function(e) {
     if (obj && obj.userData.scripts && obj.userData.scripts[si]) {
       selectObject(obj);
       if (window._monacoEditor) window._monacoEditor.setValue(obj.userData.scripts[si].code);
-      document.querySelector('[data-right="scripts"]').click();
       document.querySelector('[data-btab="code"]').click();
     }
   }
@@ -1304,114 +1203,6 @@ document.getElementById('fileTree').addEventListener('contextmenu', function(e) 
     { icon: '&#9998;', label: 'New Script', action: 'new_script_file' },
     '---',
   ].concat(buildAddItems()), null);
-});
-
-/* ════════════════════════════════════════════════════
-   SCRIPTS
-   ════════════════════════════════════════════════════ */
-document.getElementById('scriptList').addEventListener('click', function(e) {
-  var delBtn = e.target.closest('[data-delscript]');
-  if (delBtn) {
-    if (!selectedObj) return;
-    pushUndo();
-    var idx = parseInt(delBtn.dataset.delscript);
-    selectedObj.userData.scripts.splice(idx, 1);
-    refreshScriptList();
-    if (window._monacoEditor) window._monacoEditor.setValue('// Select an object and attach a script');
-    return;
-  }
-  var tag = e.target.closest('[data-sidx]');
-  if (tag && selectedObj && selectedObj.userData.scripts) {
-    var s = selectedObj.userData.scripts[parseInt(tag.dataset.sidx)];
-    if (s && window._monacoEditor) {
-      window._monacoEditor.setValue(s.code);
-      document.querySelector('[data-btab="code"]').click();
-    }
-  }
-});
-
-document.getElementById('btnAddScript').addEventListener('click', function() {
-  if (!selectedObj) return;
-  pushUndo();
-  if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
-  selectedObj.userData.scripts.push({ name: 'Script_' + (selectedObj.userData.scripts.length + 1), code: '// Runs every frame\nfunction update() {\n  self.position.y += 0.01;\n}' });
-  refreshScriptList();
-  if (window._monacoEditor) window._monacoEditor.setValue(selectedObj.userData.scripts[selectedObj.userData.scripts.length - 1].code);
-  logToConsole('Added script to ' + selectedObj.name, 'info');
-  refreshFileTree();
-});
-
-/* ════════════════════════════════════════════════════
-   MATERIAL CONTROLS
-   ════════════════════════════════════════════════════ */
-document.getElementById('matType').addEventListener('change', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  pushUndo();
-  const type = this.value;
-  const oldColor = selectedObj.material.color ? selectedObj.material.color.clone() : new THREE.Color(0xbfff3c);
-  const oldProps = selectedObj.userData.matProps || {};
-  const newMat = buildMaterial(type, oldColor, oldProps);
-  selectedObj.material.dispose();
-  selectedObj.material = newMat;
-  selectedObj.userData.matType = type;
-  selectedObj.userData.matProps = oldProps;
-  updateMaterialUI();
-});
-
-document.getElementById('matColor').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  selectedObj.material.color.set(this.value);
-  document.getElementById('matColorHex').value = this.value;
-  selectedObj.userData.color = this.value;
-});
-
-document.getElementById('matColorHex').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  if (/^#[0-9a-f]{6}$/i.test(this.value)) {
-    selectedObj.material.color.set(this.value);
-    document.getElementById('matColor').value = this.value;
-    selectedObj.userData.color = this.value;
-  }
-});
-
-document.getElementById('matMetalness').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material || selectedObj.material.metalness == null) return;
-  selectedObj.material.metalness = parseFloat(this.value);
-  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
-  selectedObj.userData.matProps.metalness = parseFloat(this.value);
-});
-
-document.getElementById('matRoughness').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material || selectedObj.material.roughness == null) return;
-  selectedObj.material.roughness = parseFloat(this.value);
-  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
-  selectedObj.userData.matProps.roughness = parseFloat(this.value);
-});
-
-document.getElementById('matShininess').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material || selectedObj.material.shininess == null) return;
-  selectedObj.material.shininess = parseFloat(this.value);
-  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
-  selectedObj.userData.matProps.shininess = parseFloat(this.value);
-});
-
-document.getElementById('matEmissive').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material || !selectedObj.material.emissive) return;
-  selectedObj.material.emissive.set(this.value);
-  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
-  selectedObj.userData.matProps.emissive = this.value;
-});
-
-document.getElementById('btnApplyShader').addEventListener('click', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  pushUndo();
-  const vs = document.getElementById('matVertShader').value;
-  const fs = document.getElementById('matFragShader').value;
-  selectedObj.material.dispose();
-  selectedObj.material = new THREE.ShaderMaterial({ vertexShader: vs, fragmentShader: fs });
-  selectedObj.userData.matType = 'shader';
-  selectedObj.userData.matProps = { vertShader: vs, fragShader: fs };
-  logToConsole('Applied custom shader to ' + selectedObj.name, 'info');
 });
 
 /* ════════════════════════════════════════════════════
