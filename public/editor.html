@@ -7,10 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:grid;grid-template-rows:42px 1fr;user-select:none}
-
-    /* ── Top Bar ── */
-    .topbar{display:flex;align-items:center;gap:6px;padding:0 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);z-index:10}
+    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
+    .topbar{display:flex;align-items:center;gap:6px;padding:0 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);z-index:10;height:42px;flex-shrink:0}
     .brand{font-weight:800;font-size:1rem;letter-spacing:-.03em;margin-right:8px}
     .brand span{color:#bfff3c}
     .nav-btn{color:#68aed4;text-decoration:none;font-size:.78rem;font-weight:500;padding:5px 10px;border-radius:7px;transition:all .12s}
@@ -25,66 +23,47 @@
     .btn.primary:hover{background:#a8e62e}
     .btn.play{background:#10d275;color:#fff;border-color:#10d275}
     .btn.play:hover{background:#0eb868}
-
-    /* ── Main Grid ── */
-    .main{display:grid;grid-template-columns:200px 1fr 240px;grid-template-rows:1fr;overflow:hidden;height:calc(100vh - 42px)}
-
-    /* ── Left Panel ── */
-    .panel-left{background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+    .main-wrap{display:flex;flex:1;overflow:hidden}
+    .panel-left{width:200px;flex-shrink:0;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
     .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
     .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
     .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
     .panel-tab:hover{color:#fafdff}
     .panel-content{flex:1;overflow-y:auto;padding:4px}
     .panel-content.hidden{display:none}
-
     .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
     .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
     .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
     .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
-
     .asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}
     .asset-btn{padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#888;font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;transition:all .12s;font-family:inherit}
     .asset-btn:hover{border-color:#bfff3c;color:#bfff3c;background:rgba(191,255,60,.04)}
     .asset-btn .icon{font-size:1.2rem;display:block;margin-bottom:4px}
-
-    /* ── Center ── */
-    .center{display:flex;flex-direction:column;overflow:hidden}
-
-    /* ── Toolbar ── */
+    .center-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
     .toolbar{display:flex;align-items:center;gap:3px;padding:4px 10px;background:#111214;border-bottom:1px solid rgba(255,255,255,.04);height:32px;flex-shrink:0}
     .t-btn{width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:none;background:transparent;color:#666;font-size:.72rem;cursor:pointer;font-weight:700;transition:all .1s}
     .t-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
     .t-btn.active{background:rgba(191,255,60,.1);color:#bfff3c}
     .t-sep{width:1px;height:16px;background:rgba(255,255,255,.05);margin:0 3px}
-
-    /* ── Viewport ── */
-    .viewport{flex:1;position:relative;overflow:hidden;background:#1a1b1e}
+    .viewport{flex:1;position:relative;overflow:hidden;background:#252630;min-height:100px}
     .viewport canvas{display:block;width:100%!important;height:100%!important}
-    .vp-info{position:absolute;bottom:6px;left:8px;font-size:.65rem;color:#444;pointer-events:none}
-
-    /* ── Bottom Panel (Code + Console) ── */
-    .bottom{height:220px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;background:#131416}
+    .bottom-resize{height:5px;cursor:ns-resize;background:#131416;border-top:1px solid rgba(255,255,255,.04);flex-shrink:0}
+    .bottom-resize:hover{background:rgba(191,255,60,.3)}
+    .bottom{height:200px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;background:#131416;flex-shrink:0}
     .bottom.collapsed{height:28px;min-height:28px}
     .bottom-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);height:28px;flex-shrink:0}
     .bottom-tab{padding:4px 14px;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
     .bottom-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
     .bottom-tab:hover{color:#fafdff}
     .bottom-spacer{flex:1}
-    .resize-handle{height:4px;cursor:ns-resize;background:transparent;transition:background .15s}
-    .resize-handle:hover{background:rgba(191,255,60,.3)}
     .bottom-content{flex:1;overflow:hidden;position:relative}
     .bottom-content.hidden{display:none}
     #console{padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:.72rem;overflow-y:auto;height:100%;color:#aaa}
-    .log-info{color:#68aed4}
-    .log-warn{color:#ffd100}
-    .log-error{color:#ff2674}
+    .log-info{color:#68aed4}.log-warn{color:#ffd100}.log-error{color:#ff2674}
     .log-info::before{content:'[INFO] ';font-weight:600}
     .log-warn::before{content:'[WARN] ';font-weight:600}
     .log-error::before{content:'[ERROR] ';font-weight:600}
-
-    /* ── Right Panel ── */
-    .panel-right{background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+    .panel-right{width:240px;flex-shrink:0;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
     .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
     .prop-group label{display:block;font-size:.68rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
     .prop-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
@@ -97,18 +76,15 @@
     .script-tag:hover{background:rgba(191,255,60,.12)}
     .add-script-btn{display:block;width:100%;padding:6px;margin-top:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .12s}
     .add-script-btn:hover{border-color:#bfff3c;color:#bfff3c}
-
-    /* ── Play Overlay ── */
     .play-overlay{position:fixed;inset:0;z-index:100;background:#000;display:none}
-    .play-overlay.active{display:block}
-    .play-overlay iframe{width:100%;height:100%;border:none}
-    .play-bar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(22,23,26,.9);display:flex;align-items:center;padding:0 12px;gap:8px;z-index:101}
+    .play-overlay.active{display:flex;flex-direction:column}
+    .play-overlay iframe{flex:1;width:100%;border:none}
+    .play-bar{height:32px;background:#16171a;display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
     .play-bar .btn{font-size:.72rem;padding:4px 12px}
   </style>
 </head>
 <body>
 
-<!-- Top Bar -->
 <div class="topbar">
   <div class="brand">glox<span>.</span></div>
   <a href="/" class="nav-btn">&#8592; Home</a>
@@ -116,110 +92,88 @@
   <div class="sep"></div>
   <input class="title-input" id="gameTitle" value="Untitled Game" spellcheck="false">
   <div class="spacer"></div>
-  <button class="btn" onclick="saveGame(false)">Save</button>
-  <button class="btn primary" onclick="saveGame(true)">Publish</button>
-  <button class="btn play" onclick="enterPlayMode()">&#9654; Play</button>
+  <button class="btn" id="btnSave">Save</button>
+  <button class="btn primary" id="btnPublish">Publish</button>
+  <button class="btn play" id="btnPlay">&#9654; Play</button>
 </div>
 
-<!-- Main Layout -->
-<div class="main">
-
-  <!-- Left Panel -->
+<div class="main-wrap">
   <div class="panel-left">
     <div class="panel-tabs">
-      <div class="panel-tab active" onclick="switchLeftTab('hierarchy')">Scene</div>
-      <div class="panel-tab" onclick="switchLeftTab('assets')">Assets</div>
+      <div class="panel-tab active" data-left="hierarchy">Scene</div>
+      <div class="panel-tab" data-left="assets">Assets</div>
     </div>
-    <div class="panel-content" id="hierarchyPanel">
-      <div id="hierarchy"></div>
-    </div>
+    <div class="panel-content" id="hierarchyPanel"><div id="hierarchy"></div></div>
     <div class="panel-content hidden" id="assetsPanel">
       <div class="asset-grid">
-        <button class="asset-btn" onclick="addPrimitive('box')"><span class="icon">C</span>Cube</button>
-        <button class="asset-btn" onclick="addPrimitive('sphere')"><span class="icon">S</span>Sphere</button>
-        <button class="asset-btn" onclick="addPrimitive('cylinder')"><span class="icon">Y</span>Cylinder</button>
-        <button class="asset-btn" onclick="addPrimitive('cone')"><span class="icon">N</span>Cone</button>
-        <button class="asset-btn" onclick="addPrimitive('torus')"><span class="icon">T</span>Torus</button>
-        <button class="asset-btn" onclick="addPrimitive('plane')"><span class="icon">P</span>Plane</button>
-        <button class="asset-btn" onclick="addLight()"><span class="icon">&#9728;</span>Light</button>
-        <button class="asset-btn" onclick="addCamera()"><span class="icon">&#128247;</span>Camera</button>
+        <button class="asset-btn" data-add="box"><span class="icon">C</span>Cube</button>
+        <button class="asset-btn" data-add="sphere"><span class="icon">S</span>Sphere</button>
+        <button class="asset-btn" data-add="cylinder"><span class="icon">Y</span>Cylinder</button>
+        <button class="asset-btn" data-add="cone"><span class="icon">N</span>Cone</button>
+        <button class="asset-btn" data-add="torus"><span class="icon">T</span>Torus</button>
+        <button class="asset-btn" data-add="plane"><span class="icon">P</span>Plane</button>
+        <button class="asset-btn" data-add="light"><span class="icon">&#9728;</span>Light</button>
+        <button class="asset-btn" data-add="camera"><span class="icon">&#128247;</span>Camera</button>
       </div>
     </div>
   </div>
 
-  <!-- Center -->
-  <div class="center">
-    <!-- Toolbar -->
+  <div class="center-col">
     <div class="toolbar">
-      <button class="t-btn active" id="toolMove" onclick="setTool('translate')" title="Move (G)">&#432;</button>
-      <button class="t-btn" id="toolRotate" onclick="setTool('rotate')" title="Rotate (R)">&#8635;</button>
-      <button class="t-btn" id="toolScale" onclick="setTool('scale')" title="Scale (S)">&#8644;</button>
+      <button class="t-btn active" id="toolMove" data-tool="translate" title="Move (G)">&#432;</button>
+      <button class="t-btn" id="toolRotate" data-tool="rotate" title="Rotate (R)">&#8635;</button>
+      <button class="t-btn" id="toolScale" data-tool="scale" title="Scale (S)">&#8644;</button>
       <div class="t-sep"></div>
-      <button class="t-btn" onclick="duplicateSelected()" title="Duplicate (Ctrl+D)">D+</button>
-      <button class="t-btn" onclick="deleteSelected()" title="Delete (Del)" style="color:#ff2674">X</button>
+      <button class="t-btn" id="btnDup" title="Duplicate (Ctrl+D)">D+</button>
+      <button class="t-btn" id="btnDel" title="Delete (Del)" style="color:#ff2674">X</button>
       <div class="t-sep"></div>
-      <button class="t-btn" onclick="toggleGrid()" title="Grid">G</button>
-      <button class="t-btn" onclick="toggleWireframe()" title="Wireframe">W</button>
+      <button class="t-btn" id="btnGrid" title="Grid">G</button>
+      <button class="t-btn" id="btnWire" title="Wireframe">W</button>
     </div>
-
-    <!-- 3D Viewport -->
     <div class="viewport" id="viewport"></div>
-
-    <!-- Bottom Panel -->
-    <div class="resize-handle" id="bottomHandle"></div>
+    <div class="bottom-resize" id="bottomHandle"></div>
     <div class="bottom" id="bottomPanel">
       <div class="bottom-tabs">
-        <div class="bottom-tab active" onclick="switchBottomTab('code')">&#9998; Code</div>
-        <div class="bottom-tab" onclick="switchBottomTab('console')">&#9638; Console</div>
+        <div class="bottom-tab active" data-btab="code">&#9998; Code</div>
+        <div class="bottom-tab" data-btab="console">&#9638; Console</div>
         <div class="bottom-spacer"></div>
-        <button class="t-btn" onclick="toggleBottom()" title="Toggle">&#9660;</button>
+        <button class="t-btn" id="btnToggleBottom" title="Toggle">&#9660;</button>
       </div>
-      <div class="bottom-content" id="codePanel">
-        <div id="monacoEditor" style="width:100%;height:100%"></div>
-      </div>
-      <div class="bottom-content hidden" id="consolePanel">
-        <div id="console"></div>
-      </div>
+      <div class="bottom-content" id="codePanel"><div id="monacoEditor" style="width:100%;height:100%"></div></div>
+      <div class="bottom-content hidden" id="consolePanel"><div id="console"></div></div>
     </div>
   </div>
 
-  <!-- Right Panel -->
   <div class="panel-right">
     <div class="panel-tabs">
-      <div class="panel-tab active" onclick="switchRightTab('props')">Inspector</div>
-      <div class="panel-tab" onclick="switchRightTab('scripts')">Scripts</div>
+      <div class="panel-tab active" data-right="props">Inspector</div>
+      <div class="panel-tab" data-right="scripts">Scripts</div>
     </div>
     <div class="panel-content" id="propsPanel">
       <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
       <div id="propsContent" style="display:none">
-        <div class="prop-group">
-          <label>Name</label>
-          <input class="p-input" id="propName" oninput="updateProp('name')">
-        </div>
+        <div class="prop-group"><label>Name</label><input class="p-input" id="propName"></div>
         <div class="prop-group">
           <label>Position</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1" oninput="updateProp('pos')"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1" oninput="updateProp('pos')"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1" oninput="updateProp('pos')"></div>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1"></div>
         </div>
         <div class="prop-group">
           <label>Rotation</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1" oninput="updateProp('rot')"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1" oninput="updateProp('rot')"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1" oninput="updateProp('rot')"></div>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1"></div>
         </div>
         <div class="prop-group">
           <label>Scale</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
         </div>
         <div class="prop-group">
           <label>Color</label>
-          <div class="prop-row">
-            <input class="p-input" id="propColor" type="color" oninput="updateProp('color')">
-            <input class="p-input" id="propColorHex" value="#bfff3c" oninput="updateProp('colorHex')">
-          </div>
+          <div class="prop-row"><input class="p-input" id="propColor" type="color"><input class="p-input" id="propColorHex" value="#bfff3c"></div>
         </div>
       </div>
     </div>
@@ -227,22 +181,20 @@
       <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
       <div id="scriptsContent" style="display:none;padding:8px 12px">
         <div id="scriptList"></div>
-        <button class="add-script-btn" onclick="addScriptComponent()">+ Add Script</button>
+        <button class="add-script-btn" id="btnAddScript">+ Add Script</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Play Overlay -->
 <div class="play-overlay" id="playOverlay">
   <div class="play-bar">
-    <button class="btn" onclick="exitPlayMode()" style="border-color:#ff2674;color:#ff2674">&#9632; Stop</button>
+    <button class="btn" id="btnStop" style="border-color:#ff2674;color:#ff2674">&#9632; Stop</button>
     <span style="font-size:.76rem;color:#888">Play Mode — press Esc or Stop to exit</span>
   </div>
-  <iframe id="playFrame" src="/play.html"></iframe>
+  <iframe id="playFrame" srcdoc="<html><body style='margin:0;background:#000'></body></html>"></iframe>
 </div>
 
-<!-- Three.js -->
 <script type="importmap">
 {
   "imports": {
@@ -252,13 +204,22 @@
 }
 </script>
 
+<script>
+(function(){
+  window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
+  window.E = {};
+  var _sel = null;
+  window.__selObj = function(i){ if(window.E.selectObject) window.E.selectObject(window.E.sceneObjects[i]); };
+})();
+</script>
+
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
-/* ── THREE.JS SETUP ── */
 const container = document.getElementById('viewport');
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x252630);
 
@@ -306,11 +267,12 @@ const transform = new TransformControls(camera, renderer.domElement);
 transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
 scene.add(transform.getHelper());
 
-/* ── STATE ── */
 let sceneObjects = [];
 let selectedObj = null;
 let currentTool = 'translate';
 let playMode = false;
+let gridVisible = true;
+let wireframeMode = false;
 
 const primitiveGeos = {
   box: () => new THREE.BoxGeometry(1, 1, 1),
@@ -320,97 +282,33 @@ const primitiveGeos = {
   cone: () => new THREE.ConeGeometry(0.5, 1, 24),
   torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
 };
-
 const primitiveColors = {
   box: 0xbfff3c, sphere: 0x68aed4, cylinder: 0xff8426,
   plane: 0x444455, cone: 0xff2674, torus: 0x94216a,
 };
 
-/* ── ADD OBJECTS ── */
-window.addPrimitive = function(type) {
-  const geo = primitiveGeos[type]();
-  const color = primitiveColors[type] || 0xbfff3c;
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.position.y = type === 'plane' ? 0.01 : 0.5;
-  if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
-  const name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
-  mesh.name = name;
-  mesh.userData = { type, color: '#' + new THREE.Color(color).getHexString(), scripts: [] };
-  scene.add(mesh);
-  sceneObjects.push(mesh);
-  selectObject(mesh);
-  refreshHierarchy();
-  logToConsole('Created ' + name, 'info');
-};
-
-window.addLight = function() {
-  const light = new THREE.PointLight(0xffffff, 1, 20);
-  light.position.set(2, 3, 2);
-  light.castShadow = true;
-  const name = 'Light_' + (sceneObjects.length + 1);
-  light.name = name;
-  light.userData = { type: 'light', color: '#ffffff', scripts: [] };
-  scene.add(light);
-  sceneObjects.push(light);
-  selectObject(light);
-  refreshHierarchy();
-  logToConsole('Created ' + name, 'info');
-};
-
-window.addCamera = function() {
-  const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-  cam.position.set(0, 2, 5);
-  const name = 'Camera_' + (sceneObjects.length + 1);
-  cam.name = name;
-  cam.userData = { type: 'camera', scripts: [] };
-  scene.add(cam);
-  sceneObjects.push(cam);
-  selectObject(cam);
-  refreshHierarchy();
-  logToConsole('Created ' + name, 'info');
-};
-
-/* ── SELECTION ── */
-function selectObject(obj) {
-  selectedObj = obj;
-  if (obj) {
-    transform.attach(obj);
-    document.getElementById('propsEmpty').style.display = 'none';
-    document.getElementById('propsContent').style.display = 'block';
-    document.getElementById('scriptsEmpty').style.display = 'none';
-    document.getElementById('scriptsContent').style.display = 'block';
-    updatePropsUI();
-    refreshScriptList();
-    if (editor) editor.setValue(getObjectScript(obj));
-  } else {
-    transform.detach();
-    document.getElementById('propsEmpty').style.display = 'block';
-    document.getElementById('propsContent').style.display = 'none';
-    document.getElementById('scriptsEmpty').style.display = 'block';
-    document.getElementById('scriptsContent').style.display = 'none';
-    if (editor) editor.setValue('// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}');
-  }
-  refreshHierarchy();
+function logToConsole(text, level) {
+  level = level || 'info';
+  const el = document.getElementById('console');
+  const line = document.createElement('div');
+  line.className = 'log-' + level;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
 }
 
-/* ── HIERARCHY ── */
 function refreshHierarchy() {
   const el = document.getElementById('hierarchy');
-  el.innerHTML = sceneObjects.map((o, i) => {
-    const icon = o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' :
-                 o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' :
-                 o.userData.type === 'torus' ? 'T' : o.userData.type === 'light' ? '&#9728;' :
-                 o.userData.type === 'camera' ? '&#128247;' : 'P';
-    return `<div class="h-item ${selectedObj === o ? 'selected' : ''}" onclick="window._sel(${i})">
-      <span class="h-icon">${icon}</span>${o.name}</div>`;
+  el.innerHTML = sceneObjects.map(function(o, i) {
+    var icon = o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' :
+               o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' :
+               o.userData.type === 'torus' ? 'T' : o.userData.type === 'light' ? '&#9728;' :
+               o.userData.type === 'camera' ? '&#128247;' : 'P';
+    return '<div class="h-item' + (selectedObj === o ? ' selected' : '') + '" data-hidx="' + i + '">' +
+      '<span class="h-icon">' + icon + '</span>' + o.name + '</div>';
   }).join('');
 }
-window._sel = function(i) { selectObject(sceneObjects[i]); };
 
-/* ── PROPERTIES UI ── */
 function updatePropsUI() {
   if (!selectedObj) return;
   document.getElementById('propName').value = selectedObj.name;
@@ -424,374 +322,477 @@ function updatePropsUI() {
   document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
   document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
   if (selectedObj.material && selectedObj.material.color) {
-    const col = '#' + selectedObj.material.color.getHexString();
+    var col = '#' + selectedObj.material.color.getHexString();
     document.getElementById('propColor').value = col;
     document.getElementById('propColorHex').value = col;
   }
 }
 
-window.updateProp = function(type) {
-  if (!selectedObj) return;
-  if (type === 'name') { selectedObj.name = document.getElementById('propName').value; refreshHierarchy(); }
-  if (type === 'pos') {
-    selectedObj.position.x = parseFloat(document.getElementById('propPosX').value) || 0;
-    selectedObj.position.y = parseFloat(document.getElementById('propPosY').value) || 0;
-    selectedObj.position.z = parseFloat(document.getElementById('propPosZ').value) || 0;
-  }
-  if (type === 'rot') {
-    selectedObj.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotX').value) || 0);
-    selectedObj.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotY').value) || 0);
-    selectedObj.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotZ').value) || 0);
-  }
-  if (type === 'scale') {
-    selectedObj.scale.x = parseFloat(document.getElementById('propScaleX').value) || 1;
-    selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
-    selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
-  }
-  if (type === 'color' && selectedObj.material) {
-    const c = document.getElementById('propColor').value;
-    selectedObj.material.color.set(c);
-    document.getElementById('propColorHex').value = c;
-    selectedObj.userData.color = c;
-  }
-  if (type === 'colorHex' && selectedObj.material) {
-    const c = document.getElementById('propColorHex').value;
-    if (/^#[0-9a-f]{6}$/i.test(c)) {
-      selectedObj.material.color.set(c);
-      document.getElementById('propColor').value = c;
-      selectedObj.userData.color = c;
-    }
-  }
-};
+function refreshScriptList() {
+  var el = document.getElementById('scriptList');
+  if (!selectedObj) { el.innerHTML = ''; return; }
+  var scripts = selectedObj.userData.scripts || [];
+  el.innerHTML = scripts.map(function(s, i) {
+    return '<div class="script-tag" data-sidx="' + i + '">&#9998; ' + s.name + '</div>';
+  }).join('');
+}
 
-/* ── TOOLS ── */
-window.setTool = function(tool) {
-  currentTool = tool;
-  transform.setMode(tool);
-  document.querySelectorAll('.toolbar .t-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tool === 'translate' ? 'toolMove' : tool === 'rotate' ? 'toolRotate' : 'toolScale').classList.add('active');
-};
+function selectObject(obj) {
+  selectedObj = obj;
+  if (obj) {
+    transform.attach(obj);
+    document.getElementById('propsEmpty').style.display = 'none';
+    document.getElementById('propsContent').style.display = 'block';
+    document.getElementById('scriptsEmpty').style.display = 'none';
+    document.getElementById('scriptsContent').style.display = 'block';
+    updatePropsUI();
+    refreshScriptList();
+  } else {
+    transform.detach();
+    document.getElementById('propsEmpty').style.display = 'block';
+    document.getElementById('propsContent').style.display = 'none';
+    document.getElementById('scriptsEmpty').style.display = 'block';
+    document.getElementById('scriptsContent').style.display = 'none';
+  }
+  refreshHierarchy();
+}
 
-window.deleteSelected = function() {
+function addPrimitive(type) {
+  var mesh;
+  if (type === 'light') {
+    var l = new THREE.PointLight(0xffffff, 1, 20);
+    l.position.set(2, 3, 2);
+    l.castShadow = true;
+    mesh = l;
+  } else if (type === 'camera') {
+    var c = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    c.position.set(0, 2, 5);
+    mesh = c;
+  } else {
+    var geo = primitiveGeos[type]();
+    var color = primitiveColors[type] || 0xbfff3c;
+    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6, metalness: 0.1 });
+    mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.position.y = type === 'plane' ? 0.01 : 0.5;
+    if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
+  }
+  var name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
+  mesh.name = name;
+  mesh.userData = { type: type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [] };
+  scene.add(mesh);
+  sceneObjects.push(mesh);
+  selectObject(mesh);
+  logToConsole('Created ' + name, 'info');
+}
+
+function deleteSelected() {
   if (!selectedObj) return;
   logToConsole('Deleted ' + selectedObj.name, 'warn');
   scene.remove(selectedObj);
-  sceneObjects = sceneObjects.filter(o => o !== selectedObj);
+  sceneObjects = sceneObjects.filter(function(o) { return o !== selectedObj; });
   transform.detach();
   selectedObj = null;
   selectObject(null);
-  refreshHierarchy();
-};
+}
 
-window.duplicateSelected = function() {
+function duplicateSelected() {
   if (!selectedObj) return;
-  const clone = selectedObj.clone();
+  var clone = selectedObj.clone();
   if (selectedObj.material) clone.material = selectedObj.material.clone();
   clone.position.x += 1;
   clone.name = selectedObj.name + '_copy';
-  clone.userData = { ...selectedObj.userData, scripts: [...(selectedObj.userData.scripts || [])] };
+  clone.userData = { type: selectedObj.userData.type, color: selectedObj.userData.color, scripts: JSON.parse(JSON.stringify(selectedObj.userData.scripts || [])) };
   scene.add(clone);
   sceneObjects.push(clone);
   selectObject(clone);
-  refreshHierarchy();
-};
-
-let gridVisible = true;
-window.toggleGrid = function() { gridVisible = !gridVisible; gridHelper.visible = gridVisible; };
-
-let wireframeMode = false;
-window.toggleWireframe = function() {
-  wireframeMode = !wireframeMode;
-  sceneObjects.forEach(o => { if (o.material) o.material.wireframe = wireframeMode; });
-};
-
-/* ── SCRIPTS ── */
-function getObjectScript(obj) {
-  const scripts = obj.userData.scripts || [];
-  if (scripts.length) return scripts[0].code || '';
-  return '// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}';
 }
 
-function setObjectScript(obj, code) {
-  if (!obj.userData.scripts) obj.userData.scripts = [];
-  if (obj.userData.scripts.length === 0) {
-    obj.userData.scripts.push({ name: 'Script', code });
-  } else {
-    obj.userData.scripts[0].code = code;
-  }
-}
-
-window.addScriptComponent = function() {
-  if (!selectedObj) return;
-  if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
-  if (selectedObj.userData.scripts.length === 0) {
-    selectedObj.userData.scripts.push({ name: 'Script', code: 'function update() {\n  // Runs every frame\n}' });
-  }
-  refreshScriptList();
-  if (editor) editor.setValue(getObjectScript(selectedObj));
-  logToConsole('Added script to ' + selectedObj.name, 'info');
-};
-
-function refreshScriptList() {
-  const el = document.getElementById('scriptList');
-  if (!selectedObj) { el.innerHTML = ''; return; }
-  const scripts = selectedObj.userData.scripts || [];
-  el.innerHTML = scripts.map((s, i) =>
-    `<div class="script-tag" onclick="editScript(${i})">&#9998; ${s.name}</div>`
-  ).join('');
-}
-
-window.editScript = function(i) {
-  if (!selectedObj || !selectedObj.userData.scripts[i]) return;
-  if (editor) editor.setValue(selectedObj.userData.scripts[i].code);
-  switchBottomTab('code');
-};
-
-/* ── TAB SWITCHING ── */
-window.switchLeftTab = function(tab) {
-  document.querySelectorAll('.panel-left .panel-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'hierarchy' && i === 0) || (tab === 'assets' && i === 1)));
-  document.getElementById('hierarchyPanel').classList.toggle('hidden', tab !== 'hierarchy');
-  document.getElementById('assetsPanel').classList.toggle('hidden', tab !== 'assets');
-};
-
-window.switchRightTab = function(tab) {
-  document.querySelectorAll('.panel-right .panel-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'props' && i === 0) || (tab === 'scripts' && i === 1)));
-  document.getElementById('propsPanel').classList.toggle('hidden', tab !== 'props');
-  document.getElementById('scriptsPanel').classList.toggle('hidden', tab !== 'scripts');
-};
-
-window.switchBottomTab = function(tab) {
-  document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.bottom-tab').forEach(t => { if (t.textContent.includes(tab === 'code' ? 'Code' : 'Console')) t.classList.add('active'); });
-  document.getElementById('codePanel').classList.toggle('hidden', tab !== 'code');
-  document.getElementById('consolePanel').classList.toggle('hidden', tab !== 'console');
-  if (tab === 'code' && editor) editor.layout();
-};
-
-let bottomCollapsed = false;
-window.toggleBottom = function() {
-  bottomCollapsed = !bottomCollapsed;
-  document.getElementById('bottomPanel').classList.toggle('collapsed', bottomCollapsed);
-  if (editor) setTimeout(() => editor.layout(), 50);
-};
-
-/* ── CONSOLE ── */
-window.logToConsole = function(text, level = 'info') {
-  const el = document.getElementById('console');
-  const line = document.createElement('div');
-  line.className = 'log-' + level;
-  line.textContent = text;
-  el.appendChild(line);
-  el.scrollTop = el.scrollHeight;
-};
-
-/* ── BOTTOM RESIZE ── */
-{
-  const handle = document.getElementById('bottomHandle');
-  const panel = document.getElementById('bottomPanel');
-  let startY, startH;
-  handle.addEventListener('mousedown', e => {
-    startY = e.clientY;
-    startH = panel.offsetHeight;
-    const onMove = ev => {
-      const h = Math.max(100, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY)));
-      panel.style.height = h + 'px';
-      if (editor) editor.layout();
+function serializeScene() {
+  return sceneObjects.filter(function(o) { return o.name !== '__ground'; }).map(function(o) {
+    return {
+      name: o.name, type: o.userData.type,
+      position: [o.position.x, o.position.y, o.position.z],
+      rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
+      scale: [o.scale.x, o.scale.y, o.scale.z],
+      color: o.userData.color,
+      scripts: o.userData.scripts || [],
     };
-    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
   });
 }
 
-/* ── RAYCASTING ── */
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-renderer.domElement.addEventListener('pointerdown', e => {
-  if (transform.dragging) return;
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(sceneObjects.filter(o => o.name !== '__ground'), false);
-  if (hits.length > 0) selectObject(hits[0].object);
-  else selectObject(null);
-});
-
-transform.addEventListener('objectChange', () => { if (selectedObj) updatePropsUI(); });
-
-/* ── RESIZE ── */
-function onResize() {
-  const w = container.clientWidth, h = container.clientHeight;
-  if (w && h) { camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
-}
-window.addEventListener('resize', onResize);
-setTimeout(onResize, 50);
-
-/* ── KEYBOARD ── */
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (typeof monaco !== 'undefined' && document.activeElement?.closest('.monaco-editor')) return;
-  if (e.key === 'g') window.setTool('translate');
-  if (e.key === 'r') window.setTool('rotate');
-  if (e.key === 's' && !e.ctrlKey) window.setTool('scale');
-  if (e.key === 'Delete' || e.key === 'Backspace') window.deleteSelected();
-  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); window.duplicateSelected(); }
-  if (e.key === 'Escape') { if (playMode) exitPlayMode(); else selectObject(null); }
-});
-
-/* ── SAVE/LOAD ── */
-function serializeScene() {
-  return sceneObjects.filter(o => o.name !== '__ground').map(o => ({
-    name: o.name,
-    type: o.userData.type,
-    position: [o.position.x, o.position.y, o.position.z],
-    rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
-    scale: [o.scale.x, o.scale.y, o.scale.z],
-    color: o.userData.color,
-    scripts: o.userData.scripts || [],
-  }));
-}
-
 function deserializeScene(data) {
-  sceneObjects.forEach(o => scene.remove(o));
+  sceneObjects.forEach(function(o) { scene.remove(o); });
   sceneObjects = [];
-  (data || []).forEach(d => {
-    let mesh;
+  (data || []).forEach(function(d) {
+    var mesh;
     if (d.type === 'light') {
       mesh = new THREE.PointLight(0xffffff, 1, 20);
     } else if (d.type === 'camera') {
       mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
     } else {
-      const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
-      const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+      var geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+      var color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+      var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6, metalness: 0.1 });
       mesh = new THREE.Mesh(geo, mat);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
     }
     mesh.name = d.name || 'Object';
     mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
-    mesh.position.set(...(d.position || [0, 0.5, 0]));
-    mesh.rotation.set(...(d.rotation || [0, 0, 0]));
-    mesh.scale.set(...(d.scale || [1, 1, 1]));
+    if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
+    if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
+    if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
     scene.add(mesh);
     sceneObjects.push(mesh);
   });
   refreshHierarchy();
 }
 
-let currentGameId = new URLSearchParams(window.location.search).get('id');
+/* ── EXPOSE TO NON-MODULE SCRIPT ── */
+window.E = {
+  sceneObjects: sceneObjects,
+  selectObject: selectObject,
+  addPrimitive: addPrimitive,
+  deleteSelected: deleteSelected,
+  duplicateSelected: duplicateSelected,
+  serializeScene: serializeScene,
+  deserializeScene: deserializeScene,
+  logToConsole: logToConsole,
+  scene: scene,
+};
 
-window.saveGame = async function(publish) {
-  const token = window.currentToken;
+/* ── RESIZE ── */
+function onResize() {
+  var w = container.clientWidth, h = container.clientHeight;
+  if (w > 0 && h > 0) {
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+}
+window.addEventListener('resize', onResize);
+new ResizeObserver(onResize).observe(container);
+setTimeout(onResize, 0);
+setTimeout(onResize, 200);
+
+/* ── RAYCASTING ── */
+var raycaster = new THREE.Raycaster();
+var mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown', function(e) {
+  if (transform.dragging) return;
+  var rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  var targets = sceneObjects.filter(function(o) { return o.name !== '__ground'; });
+  var hits = raycaster.intersectObjects(targets, false);
+  if (hits.length > 0) selectObject(hits[0].object);
+  else selectObject(null);
+});
+
+transform.addEventListener('objectChange', function() { if (selectedObj) updatePropsUI(); });
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (window.monaco && document.activeElement && document.activeElement.closest('.monaco-editor')) return;
+  if (e.key === 'g') setTool('translate');
+  if (e.key === 'r') setTool('rotate');
+  if (e.key === 's' && !e.ctrlKey) setTool('scale');
+  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
+  if (e.key === 'Escape') { if (playMode) exitPlayMode(); else selectObject(null); }
+});
+
+function setTool(tool) {
+  currentTool = tool;
+  transform.setMode(tool);
+  document.getElementById('toolMove').classList.toggle('active', tool === 'translate');
+  document.getElementById('toolRotate').classList.toggle('active', tool === 'rotate');
+  document.getElementById('toolScale').classList.toggle('active', tool === 'scale');
+}
+
+/* ── TABS ── */
+document.querySelectorAll('[data-left]').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('[data-left]').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    var v = tab.dataset.left;
+    document.getElementById('hierarchyPanel').classList.toggle('hidden', v !== 'hierarchy');
+    document.getElementById('assetsPanel').classList.toggle('hidden', v !== 'assets');
+  });
+});
+
+document.querySelectorAll('[data-right]').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('[data-right]').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    var v = tab.dataset.right;
+    document.getElementById('propsPanel').classList.toggle('hidden', v !== 'props');
+    document.getElementById('scriptsPanel').classList.toggle('hidden', v !== 'scripts');
+  });
+});
+
+document.querySelectorAll('[data-btab]').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('[data-btab]').forEach(function(t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    var v = tab.dataset.btab;
+    document.getElementById('codePanel').classList.toggle('hidden', v !== 'code');
+    document.getElementById('consolePanel').classList.toggle('hidden', v !== 'console');
+    if (v === 'code' && window._monacoEditor) window._monacoEditor.layout();
+  });
+});
+
+/* ── TOOLBAR BUTTONS ── */
+document.querySelectorAll('[data-tool]').forEach(function(btn) {
+  btn.addEventListener('click', function() { setTool(btn.dataset.tool); });
+});
+
+document.getElementById('btnDup').addEventListener('click', duplicateSelected);
+document.getElementById('btnDel').addEventListener('click', deleteSelected);
+document.getElementById('btnGrid').addEventListener('click', function() {
+  gridVisible = !gridVisible;
+  gridHelper.visible = gridVisible;
+});
+document.getElementById('btnWire').addEventListener('click', function() {
+  wireframeMode = !wireframeMode;
+  sceneObjects.forEach(function(o) { if (o.material) o.material.wireframe = wireframeMode; });
+});
+
+/* ── ASSET BUTTONS ── */
+document.querySelectorAll('[data-add]').forEach(function(btn) {
+  btn.addEventListener('click', function() { addPrimitive(btn.dataset.add); });
+});
+
+/* ── HIERARCHY CLICKS ── */
+document.getElementById('hierarchy').addEventListener('click', function(e) {
+  var item = e.target.closest('[data-hidx]');
+  if (item) selectObject(sceneObjects[parseInt(item.dataset.hidx)]);
+});
+
+/* ── SCRIPT CLICKS ── */
+document.getElementById('scriptList').addEventListener('click', function(e) {
+  var tag = e.target.closest('[data-sidx]');
+  if (tag && selectedObj && selectedObj.userData.scripts) {
+    var s = selectedObj.userData.scripts[parseInt(tag.dataset.sidx)];
+    if (s && window._monacoEditor) {
+      window._monacoEditor.setValue(s.code);
+      document.querySelectorAll('[data-btab]').forEach(function(t) { t.classList.remove('active'); });
+      document.querySelector('[data-btab="code"]').classList.add('active');
+      document.getElementById('codePanel').classList.remove('hidden');
+      document.getElementById('consolePanel').classList.add('hidden');
+      window._monacoEditor.layout();
+    }
+  }
+});
+
+document.getElementById('btnAddScript').addEventListener('click', function() {
+  if (!selectedObj) return;
+  if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
+  if (selectedObj.userData.scripts.length === 0) {
+    selectedObj.userData.scripts.push({ name: 'Script', code: '// Runs every frame\nfunction update() {\n\n}' });
+  }
+  refreshScriptList();
+  if (window._monacoEditor) window._monacoEditor.setValue(selectedObj.userData.scripts[0].code);
+  logToConsole('Added script to ' + selectedObj.name, 'info');
+});
+
+/* ── PROPERTY INPUTS ── */
+['propPosX','propPosY','propPosZ'].forEach(function(id, i) {
+  document.getElementById(id).addEventListener('input', function() {
+    if (!selectedObj) return;
+    selectedObj.position.x = parseFloat(document.getElementById('propPosX').value) || 0;
+    selectedObj.position.y = parseFloat(document.getElementById('propPosY').value) || 0;
+    selectedObj.position.z = parseFloat(document.getElementById('propPosZ').value) || 0;
+  });
+});
+['propRotX','propRotY','propRotZ'].forEach(function(id, i) {
+  document.getElementById(id).addEventListener('input', function() {
+    if (!selectedObj) return;
+    selectedObj.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotX').value) || 0);
+    selectedObj.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotY').value) || 0);
+    selectedObj.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotZ').value) || 0);
+  });
+});
+['propScaleX','propScaleY','propScaleZ'].forEach(function(id, i) {
+  document.getElementById(id).addEventListener('input', function() {
+    if (!selectedObj) return;
+    selectedObj.scale.x = parseFloat(document.getElementById('propScaleX').value) || 1;
+    selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
+    selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
+  });
+});
+document.getElementById('propName').addEventListener('input', function() {
+  if (!selectedObj) return;
+  selectedObj.name = document.getElementById('propName').value;
+  refreshHierarchy();
+});
+document.getElementById('propColor').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  var c = document.getElementById('propColor').value;
+  selectedObj.material.color.set(c);
+  document.getElementById('propColorHex').value = c;
+  selectedObj.userData.color = c;
+});
+document.getElementById('propColorHex').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  var c = document.getElementById('propColorHex').value;
+  if (/^#[0-9a-f]{6}$/i.test(c)) {
+    selectedObj.material.color.set(c);
+    document.getElementById('propColor').value = c;
+    selectedObj.userData.color = c;
+  }
+});
+
+/* ── BOTTOM RESIZE ── */
+(function() {
+  var handle = document.getElementById('bottomHandle');
+  var panel = document.getElementById('bottomPanel');
+  var startY, startH;
+  handle.addEventListener('mousedown', function(e) {
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    function onMove(ev) {
+      var h = Math.max(80, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY)));
+      panel.style.height = h + 'px';
+      if (window._monacoEditor) window._monacoEditor.layout();
+    }
+    function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+
+document.getElementById('btnToggleBottom').addEventListener('click', function() {
+  var p = document.getElementById('bottomPanel');
+  p.classList.toggle('collapsed');
+  if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
+});
+
+/* ── SAVE / LOAD ── */
+var currentGameId = new URLSearchParams(window.location.search).get('id');
+
+async function getApiBase() {
+  try {
+    var r = await fetch('/config.js');
+    var t = await r.text();
+    var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/);
+    if (m) return m[1].replace(/^wss?:\/\//, 'https://');
+  } catch(e) {}
+  return '';
+}
+
+document.getElementById('btnSave').addEventListener('click', function() { saveGame(false); });
+document.getElementById('btnPublish').addEventListener('click', function() { saveGame(true); });
+
+async function saveGame(publish) {
+  var token = window.currentToken;
   if (!token) { alert('Sign in to save games'); return; }
-  const title = document.getElementById('gameTitle').value || 'Untitled Game';
-  const sceneData = JSON.stringify(serializeScene());
-  const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+  var title = document.getElementById('gameTitle').value || 'Untitled Game';
+  var sceneData = JSON.stringify(serializeScene());
+  var apiBase = await getApiBase();
   try {
     if (currentGameId) {
-      await fetch(`${apiBase}/api/games/${currentGameId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ title, scene: sceneData, published: publish }),
+      await fetch(apiBase + '/api/games/' + currentGameId, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ title: title, scene: sceneData, published: publish }),
       });
     } else {
-      const res = await fetch(`${apiBase}/api/games`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ title, scene: sceneData, published: publish }),
+      var res = await fetch(apiBase + '/api/games', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ title: title, scene: sceneData, published: publish }),
       });
-      const d = await res.json();
-      if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', `/editor?id=${currentGameId}`); }
+      var d = await res.json();
+      if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
     logToConsole(publish ? 'Published!' : 'Saved!', 'info');
   } catch (err) { logToConsole('Save failed: ' + err.message, 'error'); }
-};
+}
 
 async function loadGame() {
   if (!currentGameId) return;
-  const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+  var apiBase = await getApiBase();
   try {
-    const res = await fetch(`${apiBase}/api/games/${currentGameId}`);
-    const d = await res.json();
+    var res = await fetch(apiBase + '/api/games/' + currentGameId);
+    var d = await res.json();
     if (d.game) {
       document.getElementById('gameTitle').value = d.game.title;
-      const sceneData = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene;
-      deserializeScene(sceneData);
+      var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene;
+      deserializeScene(sd);
     }
-  } catch {}
+  } catch(e) {}
 }
 
-/* ── PLAY MODE (SANDBOXED) ── */
-window.enterPlayMode = function() {
+/* ── PLAY MODE ── */
+function enterPlayMode() {
   playMode = true;
   transform.detach();
-  const overlay = document.getElementById('playOverlay');
-  overlay.classList.add('active');
-  const frame = document.getElementById('playFrame');
-  frame.src = '/play.html';
-  frame.onload = () => {
-    frame.contentWindow.postMessage({
-      type: 'play',
-      scene: serializeScene(),
-      scripts: sceneObjects.flatMap(o => (o.userData.scripts || []).filter(s => s.code)),
-    }, '*');
+  document.getElementById('playOverlay').classList.add('active');
+  var frame = document.getElementById('playFrame');
+  frame.onload = function() {
+    try {
+      frame.contentWindow.postMessage({
+        type: 'play',
+        scene: serializeScene(),
+        scripts: sceneObjects.reduce(function(acc, o) {
+          return acc.concat((o.userData.scripts || []).filter(function(s) { return s.code; }));
+        }, []),
+      }, '*');
+    } catch(e) {}
   };
-};
+  frame.src = '/play.html';
+}
 
-window.exitPlayMode = function() {
+function exitPlayMode() {
   playMode = false;
   document.getElementById('playOverlay').classList.remove('active');
-  const frame = document.getElementById('playFrame');
-  try { frame.contentWindow.postMessage({ type: 'stop', scene: serializeScene() }, '*'); } catch {}
-};
+  try {
+    document.getElementById('playFrame').contentWindow.postMessage({ type: 'stop' }, '*');
+  } catch(e) {}
+  document.getElementById('playFrame').srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
+}
 
-window.addEventListener('message', e => {
-  if (e.data?.type === 'console') logToConsole(e.data.text, e.data.level);
+document.getElementById('btnPlay').addEventListener('click', enterPlayMode);
+document.getElementById('btnStop').addEventListener('click', exitPlayMode);
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'console') logToConsole(e.data.text, e.data.level);
 });
 
-/* ── MONACO EDITOR ── */
-let editor = null;
-
+/* ── MONACO ── */
 function loadMonaco() {
-  const script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
-  script.onload = () => {
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
+  s.onload = function() {
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-    require(['vs/editor/editor.main'], () => {
-      editor = monaco.editor.create(document.getElementById('monacoEditor'), {
+    require(['vs/editor/editor.main'], function() {
+      var ed = monaco.editor.create(document.getElementById('monacoEditor'), {
         value: '// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}',
-        language: 'javascript',
-        theme: 'vs-dark',
-        fontSize: 13,
-        minimap: { enabled: false },
-        automaticLayout: true,
-        scrollBeyondLastLine: false,
-        padding: { top: 8 },
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-        tabSize: 2,
+        language: 'javascript', theme: 'vs-dark', fontSize: 13,
+        minimap: { enabled: false }, automaticLayout: false,
+        scrollBeyondLastLine: false, padding: { top: 8 },
+        fontFamily: "'JetBrains Mono', 'Fira Code', monospace", tabSize: 2,
       });
-
-      editor.onDidChangeModelContent(() => {
+      window._monacoEditor = ed;
+      ed.onDidChangeModelContent(function() {
         if (selectedObj) {
           if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
           if (selectedObj.userData.scripts.length === 0) {
-            selectedObj.userData.scripts.push({ name: 'Script', code: editor.getValue() });
+            selectedObj.userData.scripts.push({ name: 'Script', code: ed.getValue() });
           } else {
-            selectedObj.userData.scripts[0].code = editor.getValue();
+            selectedObj.userData.scripts[0].code = ed.getValue();
           }
         }
       });
+      ed.layout();
     });
   };
-  document.head.appendChild(script);
+  document.head.appendChild(s);
 }
-
 loadMonaco();
-
-/* ── TOKEN ── */
-const params = new URLSearchParams(window.location.search);
-window.currentToken = params.get('token') || null;
 
 /* ── RENDER LOOP ── */
 function animate() {
@@ -800,10 +801,8 @@ function animate() {
   renderer.render(scene, camera);
 }
 animate();
-
 loadGame();
 refreshHierarchy();
-window._scene = scene;
 </script>
 
 </body>
