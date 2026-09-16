@@ -43,7 +43,7 @@ const MIME = {
 
 function cors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
@@ -269,6 +269,99 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ messages: messages || [] }));
+    return;
+  }
+
+  // ── Helper: parse JSON body ───────────────────────────────────
+  function readBody(req) {
+    return new Promise((resolve, reject) => {
+      let body = '';
+      req.on('data', c => body += c);
+      req.on('end', () => { try { resolve(JSON.parse(body)); } catch { reject(new Error('Invalid JSON')); } });
+    });
+  }
+
+  // ── API: list published games ──────────────────────────────────
+  if (url.pathname === '/api/games' && req.method === 'GET') {
+    cors(res);
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, title, description, thumbnail, owner_id, created_at, updated_at')
+      .eq('published', true)
+      .order('updated_at', { ascending: false })
+      .limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ games: data || [], error: error?.message }));
+    return;
+  }
+
+  // ── API: get single game ───────────────────────────────────────
+  if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const { data, error } = await supabase.from('games').select('*').eq('id', id).single();
+    if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ game: data }));
+    return;
+  }
+
+  // ── API: create game ──────────────────────────────────────────
+  if (url.pathname === '/api/games' && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const body = await readBody(req);
+    const { data, error } = await supabase.from('games').insert({
+      owner_id: user.id,
+      title: body.title || 'Untitled Game',
+      description: body.description || '',
+      scene: body.scene || '[]',
+      published: body.published || false,
+    }).select().single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ game: data, error: error?.message }));
+    return;
+  }
+
+  // ── API: update game ──────────────────────────────────────────
+  if (url.pathname.startsWith('/api/games/') && req.method === 'PUT') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const id = url.pathname.split('/')[3];
+    const body = await readBody(req);
+    const updates = {};
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.description !== undefined) updates.description = body.description;
+    if (body.scene !== undefined) updates.scene = body.scene;
+    if (body.published !== undefined) updates.published = body.published;
+    if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;
+    updates.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('games').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ game: data, error: error?.message }));
+    return;
+  }
+
+  // ── API: delete game ──────────────────────────────────────────
+  if (url.pathname.startsWith('/api/games/') && req.method === 'DELETE') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const id = url.pathname.split('/')[3];
+    await supabase.from('games').delete().eq('id', id).eq('owner_id', user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

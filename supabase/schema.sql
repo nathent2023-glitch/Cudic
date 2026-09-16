@@ -60,3 +60,26 @@ create policy "Authenticated users can insert messages" on public.messages for i
 create policy "Anyone can read lobbies" on public.lobbies for select using (true);
 -- Allow authenticated users to create lobbies
 create policy "Authenticated users can create lobbies" on public.lobbies for insert with check (auth.role() = 'authenticated');
+
+-- Games table
+create table if not exists public.games (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references public.users(id) on delete cascade,
+  title text not null,
+  description text default '',
+  scene jsonb not null default '[]'::jsonb,
+  thumbnail text,
+  published boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists games_owner_idx on public.games (owner_id);
+create index if not exists games_published_idx on public.games (published) where published = true;
+
+alter table public.games enable row level security;
+create policy "Anyone can read published games" on public.games for select using (published = true);
+create policy "Owners can read own games" on public.games for select using (auth.uid() = owner_id);
+create policy "Owners can update own games" on public.games for update using (auth.uid() = owner_id);
+create policy "Owners can delete own games" on public.games for delete using (auth.uid() = owner_id);
+create policy "Authenticated users can create games" on public.games for insert with check (auth.uid() = owner_id);
