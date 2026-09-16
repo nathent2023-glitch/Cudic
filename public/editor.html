@@ -7,68 +7,103 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:grid;grid-template-rows:42px 1fr;user-select:none}
 
     /* ── Top Bar ── */
-    .topbar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);height:44px;z-index:10;flex-shrink:0}
-    .topbar .brand{font-weight:800;font-size:1rem;letter-spacing:-.03em;margin-right:12px}
-    .topbar .brand span{color:#bfff3c}
-    .topbar a{color:#68aed4;text-decoration:none;font-size:.8rem;font-weight:500;padding:6px 10px;border-radius:8px;transition:all .15s}
-    .topbar a:hover{color:#fafdff;background:rgba(255,255,255,.06)}
-    .divider{width:1px;height:20px;background:rgba(255,255,255,.08);margin:0 4px}
-    .topbar .title-input{background:transparent;border:none;color:#fafdff;font-size:.84rem;font-weight:600;font-family:inherit;width:200px;outline:none;padding:4px 8px;border-radius:6px}
-    .topbar .title-input:focus{background:rgba(255,255,255,.06)}
+    .topbar{display:flex;align-items:center;gap:6px;padding:0 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);z-index:10}
+    .brand{font-weight:800;font-size:1rem;letter-spacing:-.03em;margin-right:8px}
+    .brand span{color:#bfff3c}
+    .nav-btn{color:#68aed4;text-decoration:none;font-size:.78rem;font-weight:500;padding:5px 10px;border-radius:7px;transition:all .12s}
+    .nav-btn:hover{color:#fafdff;background:rgba(255,255,255,.06)}
+    .sep{width:1px;height:18px;background:rgba(255,255,255,.07);margin:0 2px}
+    .title-input{background:transparent;border:none;color:#fafdff;font-size:.84rem;font-weight:600;font-family:inherit;width:180px;outline:none;padding:4px 8px;border-radius:6px}
+    .title-input:focus{background:rgba(255,255,255,.06)}
     .spacer{flex:1}
-    .btn-sm{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
-    .btn-sm:hover{background:rgba(255,255,255,.08)}
-    .btn-sm.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
-    .btn-sm.primary:hover{background:#a8e62e}
-    .btn-sm.danger{border-color:#ff2674;color:#ff2674}
-    .btn-sm.danger:hover{background:rgba(255,38,116,.1)}
+    .btn{padding:5px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
+    .btn:hover{background:rgba(255,255,255,.08)}
+    .btn.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
+    .btn.primary:hover{background:#a8e62e}
+    .btn.play{background:#10d275;color:#fff;border-color:#10d275}
+    .btn.play:hover{background:#0eb868}
+
+    /* ── Main Grid ── */
+    .main{display:grid;grid-template-columns:200px 1fr 240px;grid-template-rows:1fr;overflow:hidden;height:calc(100vh - 42px)}
+
+    /* ── Left Panel ── */
+    .panel-left{background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
+    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
+    .panel-tab:hover{color:#fafdff}
+    .panel-content{flex:1;overflow-y:auto;padding:4px}
+    .panel-content.hidden{display:none}
+
+    .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
+    .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
+    .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
+    .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
+
+    .asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}
+    .asset-btn{padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#888;font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;transition:all .12s;font-family:inherit}
+    .asset-btn:hover{border-color:#bfff3c;color:#bfff3c;background:rgba(191,255,60,.04)}
+    .asset-btn .icon{font-size:1.2rem;display:block;margin-bottom:4px}
+
+    /* ── Center ── */
+    .center{display:flex;flex-direction:column;overflow:hidden}
 
     /* ── Toolbar ── */
-    .toolbar{display:flex;align-items:center;gap:4px;padding:4px 12px;background:#131416;border-bottom:1px solid rgba(255,255,255,.04);height:36px;flex-shrink:0}
-    .tool-btn{width:30px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;color:#888;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;transition:all .12s}
-    .tool-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
-    .tool-btn.active{background:rgba(191,255,60,.12);color:#bfff3c}
-    .tool-sep{width:1px;height:18px;background:rgba(255,255,255,.06);margin:0 4px}
-
-    /* ── Main Layout ── */
-    .main{display:flex;flex:1;overflow:hidden}
-
-    /* ── Left Panel (Hierarchy) ── */
-    .panel-left{width:220px;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0}
-    .panel-header{padding:10px 12px;font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#52525b;border-bottom:1px solid rgba(255,255,255,.04)}
-    .hierarchy{flex:1;overflow-y:auto;padding:4px}
-    .hierarchy-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.82rem;color:#aaa;transition:all .1s}
-    .hierarchy-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
-    .hierarchy-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
-    .hierarchy-item .icon{width:16px;text-align:center;font-size:.72rem}
-    .add-menu{padding:8px;border-top:1px solid rgba(255,255,255,.04)}
-    .add-btn{width:100%;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.76rem;cursor:pointer;font-family:inherit;transition:all .12s}
-    .add-btn:hover{border-color:#bfff3c;color:#bfff3c;background:rgba(191,255,60,.04)}
-    .add-menu.open .dropdown{display:block}
-    .dropdown{display:none;position:absolute;bottom:100%;left:8px;right:8px;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-    .dropdown-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#ccc;transition:all .1s}
-    .dropdown-item:hover{background:rgba(191,255,60,.08);color:#bfff3c}
+    .toolbar{display:flex;align-items:center;gap:3px;padding:4px 10px;background:#111214;border-bottom:1px solid rgba(255,255,255,.04);height:32px;flex-shrink:0}
+    .t-btn{width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:none;background:transparent;color:#666;font-size:.72rem;cursor:pointer;font-weight:700;transition:all .1s}
+    .t-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
+    .t-btn.active{background:rgba(191,255,60,.1);color:#bfff3c}
+    .t-sep{width:1px;height:16px;background:rgba(255,255,255,.05);margin:0 3px}
 
     /* ── Viewport ── */
-    .viewport{flex:1;position:relative;overflow:hidden;background:#0d0e10}
+    .viewport{flex:1;position:relative;overflow:hidden;background:#1a1b1e}
     .viewport canvas{display:block;width:100%!important;height:100%!important}
-    .viewport-overlay{position:absolute;bottom:8px;left:8px;font-size:.7rem;color:#52525b;pointer-events:none}
+    .vp-info{position:absolute;bottom:6px;left:8px;font-size:.65rem;color:#444;pointer-events:none}
 
-    /* ── Right Panel (Properties) ── */
-    .panel-right{width:240px;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+    /* ── Bottom Panel (Code + Console) ── */
+    .bottom{height:220px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;background:#131416}
+    .bottom.collapsed{height:28px;min-height:28px}
+    .bottom-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);height:28px;flex-shrink:0}
+    .bottom-tab{padding:4px 14px;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+    .bottom-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
+    .bottom-tab:hover{color:#fafdff}
+    .bottom-spacer{flex:1}
+    .resize-handle{height:4px;cursor:ns-resize;background:transparent;transition:background .15s}
+    .resize-handle:hover{background:rgba(191,255,60,.3)}
+    .bottom-content{flex:1;overflow:hidden;position:relative}
+    .bottom-content.hidden{display:none}
+    #console{padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:.72rem;overflow-y:auto;height:100%;color:#aaa}
+    .log-info{color:#68aed4}
+    .log-warn{color:#ffd100}
+    .log-error{color:#ff2674}
+    .log-info::before{content:'[INFO] ';font-weight:600}
+    .log-warn::before{content:'[WARN] ';font-weight:600}
+    .log-error::before{content:'[ERROR] ';font-weight:600}
+
+    /* ── Right Panel ── */
+    .panel-right{background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
     .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
-    .prop-group label{display:block;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
-    .prop-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
-    .prop-row span{font-size:.72rem;color:#888;width:18px;text-align:center;flex-shrink:0}
-    .prop-input{flex:1;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;color:#fafdff;font-size:.78rem;font-family:inherit;outline:none}
-    .prop-input:focus{border-color:#bfff3c}
-    .prop-input[type="color"]{padding:2px;height:28px;cursor:pointer}
-    .color-row{display:flex;gap:6px;align-items:center}
-    .color-preview{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.08);cursor:pointer}
-    .empty-state{padding:20px 12px;text-align:center;color:#52525b;font-size:.78rem}
+    .prop-group label{display:block;font-size:.68rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+    .prop-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
+    .prop-row span{font-size:.7rem;color:#666;width:16px;text-align:center;flex-shrink:0}
+    .p-input{flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:5px;color:#fafdff;font-size:.76rem;font-family:inherit;outline:none}
+    .p-input:focus{border-color:#bfff3c}
+    .p-input[type="color"]{padding:2px;height:26px;cursor:pointer}
+    .empty-state{padding:20px 12px;text-align:center;color:#52525b;font-size:.76rem;line-height:1.5}
+    .script-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;margin:2px;border-radius:5px;background:rgba(191,255,60,.06);border:1px solid rgba(191,255,60,.12);font-size:.7rem;color:#bfff3c;cursor:pointer}
+    .script-tag:hover{background:rgba(191,255,60,.12)}
+    .add-script-btn{display:block;width:100%;padding:6px;margin-top:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .12s}
+    .add-script-btn:hover{border-color:#bfff3c;color:#bfff3c}
+
+    /* ── Play Overlay ── */
+    .play-overlay{position:fixed;inset:0;z-index:100;background:#000;display:none}
+    .play-overlay.active{display:block}
+    .play-overlay iframe{width:100%;height:100%;border:none}
+    .play-bar{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(22,23,26,.9);display:flex;align-items:center;padding:0 12px;gap:8px;z-index:101}
+    .play-bar .btn{font-size:.72rem;padding:4px 12px}
   </style>
 </head>
 <body>
@@ -76,95 +111,138 @@
 <!-- Top Bar -->
 <div class="topbar">
   <div class="brand">glox<span>.</span></div>
-  <a href="/">&#8592; Home</a>
-  <a href="/games">Gallery</a>
-  <div class="divider"></div>
+  <a href="/" class="nav-btn">&#8592; Home</a>
+  <a href="/games" class="nav-btn">Gallery</a>
+  <div class="sep"></div>
   <input class="title-input" id="gameTitle" value="Untitled Game" spellcheck="false">
   <div class="spacer"></div>
-  <button class="btn-sm" onclick="saveGame(false)">Save</button>
-  <button class="btn-sm primary" onclick="saveGame(true)">Publish</button>
-  <button class="btn-sm" onclick="enterPlayMode()" style="background:#10d275;color:#fff;border-color:#10d275">&#9654; Play</button>
-</div>
-
-<!-- Toolbar -->
-<div class="toolbar">
-  <button class="tool-btn active" id="toolMove" onclick="setTool('translate')" title="Move (G)">&#432;</button>
-  <button class="tool-btn" id="toolRotate" onclick="setTool('rotate')" title="Rotate (R)">&#8635;</button>
-  <button class="tool-btn" id="toolScale" onclick="setTool('scale')" title="Scale (S)">&#8644;</button>
-  <div class="tool-sep"></div>
-  <button class="tool-btn" onclick="addPrimitive('box')" title="Add Cube">C</button>
-  <button class="tool-btn" onclick="addPrimitive('sphere')" title="Add Sphere">S</button>
-  <button class="tool-btn" onclick="addPrimitive('cylinder')" title="Add Cylinder">Y</button>
-  <button class="tool-btn" onclick="addPrimitive('plane')" title="Add Plane">P</button>
-  <button class="tool-btn" onclick="addPrimitive('cone')" title="Add Cone">N</button>
-  <div class="tool-sep"></div>
-  <button class="tool-btn" onclick="duplicateSelected()" title="Duplicate">D+</button>
-  <button class="tool-btn danger" onclick="deleteSelected()" title="Delete">X</button>
-  <div class="tool-sep"></div>
-  <button class="tool-btn" onclick="toggleGrid()" title="Toggle Grid">G</button>
+  <button class="btn" onclick="saveGame(false)">Save</button>
+  <button class="btn primary" onclick="saveGame(true)">Publish</button>
+  <button class="btn play" onclick="enterPlayMode()">&#9654; Play</button>
 </div>
 
 <!-- Main Layout -->
 <div class="main">
-  <!-- Left: Hierarchy -->
+
+  <!-- Left Panel -->
   <div class="panel-left">
-    <div class="panel-header">Scene</div>
-    <div class="hierarchy" id="hierarchy"></div>
-    <div class="add-menu" id="addMenu" style="position:relative">
-      <div class="dropdown" id="addDropdown">
-        <div class="dropdown-item" onclick="addPrimitive('box')">C Cube</div>
-        <div class="dropdown-item" onclick="addPrimitive('sphere')">S Sphere</div>
-        <div class="dropdown-item" onclick="addPrimitive('cylinder')">Y Cylinder</div>
-        <div class="dropdown-item" onclick="addPrimitive('plane')">P Plane</div>
-        <div class="dropdown-item" onclick="addPrimitive('cone')">N Cone</div>
-        <div class="dropdown-item" onclick="addPrimitive('torus')">T Torus</div>
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchLeftTab('hierarchy')">Scene</div>
+      <div class="panel-tab" onclick="switchLeftTab('assets')">Assets</div>
+    </div>
+    <div class="panel-content" id="hierarchyPanel">
+      <div id="hierarchy"></div>
+    </div>
+    <div class="panel-content hidden" id="assetsPanel">
+      <div class="asset-grid">
+        <button class="asset-btn" onclick="addPrimitive('box')"><span class="icon">C</span>Cube</button>
+        <button class="asset-btn" onclick="addPrimitive('sphere')"><span class="icon">S</span>Sphere</button>
+        <button class="asset-btn" onclick="addPrimitive('cylinder')"><span class="icon">Y</span>Cylinder</button>
+        <button class="asset-btn" onclick="addPrimitive('cone')"><span class="icon">N</span>Cone</button>
+        <button class="asset-btn" onclick="addPrimitive('torus')"><span class="icon">T</span>Torus</button>
+        <button class="asset-btn" onclick="addPrimitive('plane')"><span class="icon">P</span>Plane</button>
+        <button class="asset-btn" onclick="addLight()"><span class="icon">&#9728;</span>Light</button>
+        <button class="asset-btn" onclick="addCamera()"><span class="icon">&#128247;</span>Camera</button>
       </div>
-      <button class="add-btn" onclick="toggleAddMenu()">+ Add Object</button>
     </div>
   </div>
 
-  <!-- Center: 3D Viewport -->
-  <div class="viewport" id="viewport"></div>
+  <!-- Center -->
+  <div class="center">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="t-btn active" id="toolMove" onclick="setTool('translate')" title="Move (G)">&#432;</button>
+      <button class="t-btn" id="toolRotate" onclick="setTool('rotate')" title="Rotate (R)">&#8635;</button>
+      <button class="t-btn" id="toolScale" onclick="setTool('scale')" title="Scale (S)">&#8644;</button>
+      <div class="t-sep"></div>
+      <button class="t-btn" onclick="duplicateSelected()" title="Duplicate (Ctrl+D)">D+</button>
+      <button class="t-btn" onclick="deleteSelected()" title="Delete (Del)" style="color:#ff2674">X</button>
+      <div class="t-sep"></div>
+      <button class="t-btn" onclick="toggleGrid()" title="Grid">G</button>
+      <button class="t-btn" onclick="toggleWireframe()" title="Wireframe">W</button>
+    </div>
 
-  <!-- Right: Properties -->
-  <div class="panel-right" id="propsPanel">
-    <div class="panel-header">Properties</div>
-    <div class="empty-state" id="propsEmpty">Select an object to edit its properties</div>
-    <div id="propsContent" style="display:none">
-      <div class="prop-group">
-        <label>Name</label>
-        <input class="prop-input" id="propName" oninput="updateProp('name')">
+    <!-- 3D Viewport -->
+    <div class="viewport" id="viewport"></div>
+
+    <!-- Bottom Panel -->
+    <div class="resize-handle" id="bottomHandle"></div>
+    <div class="bottom" id="bottomPanel">
+      <div class="bottom-tabs">
+        <div class="bottom-tab active" onclick="switchBottomTab('code')">&#9998; Code</div>
+        <div class="bottom-tab" onclick="switchBottomTab('console')">&#9638; Console</div>
+        <div class="bottom-spacer"></div>
+        <button class="t-btn" onclick="toggleBottom()" title="Toggle">&#9660;</button>
       </div>
-      <div class="prop-group">
-        <label>Position</label>
-        <div class="prop-row"><span>X</span><input class="prop-input" id="propPosX" type="number" step="0.1" oninput="updateProp('pos')"></div>
-        <div class="prop-row"><span>Y</span><input class="prop-input" id="propPosY" type="number" step="0.1" oninput="updateProp('pos')"></div>
-        <div class="prop-row"><span>Z</span><input class="prop-input" id="propPosZ" type="number" step="0.1" oninput="updateProp('pos')"></div>
+      <div class="bottom-content" id="codePanel">
+        <div id="monacoEditor" style="width:100%;height:100%"></div>
       </div>
-      <div class="prop-group">
-        <label>Rotation</label>
-        <div class="prop-row"><span>X</span><input class="prop-input" id="propRotX" type="number" step="1" oninput="updateProp('rot')"></div>
-        <div class="prop-row"><span>Y</span><input class="prop-input" id="propRotY" type="number" step="1" oninput="updateProp('rot')"></div>
-        <div class="prop-row"><span>Z</span><input class="prop-input" id="propRotZ" type="number" step="1" oninput="updateProp('rot')"></div>
+      <div class="bottom-content hidden" id="consolePanel">
+        <div id="console"></div>
       </div>
-      <div class="prop-group">
-        <label>Scale</label>
-        <div class="prop-row"><span>X</span><input class="prop-input" id="propScaleX" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
-        <div class="prop-row"><span>Y</span><input class="prop-input" id="propScaleY" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
-        <div class="prop-row"><span>Z</span><input class="prop-input" id="propScaleZ" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
-      </div>
-      <div class="prop-group">
-        <label>Color</label>
-        <div class="color-row">
-          <input class="prop-input" id="propColor" type="color" oninput="updateProp('color')">
-          <input class="prop-input" id="propColorHex" value="#bfff3c" oninput="updateProp('colorHex')">
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="panel-right">
+    <div class="panel-tabs">
+      <div class="panel-tab active" onclick="switchRightTab('props')">Inspector</div>
+      <div class="panel-tab" onclick="switchRightTab('scripts')">Scripts</div>
+    </div>
+    <div class="panel-content" id="propsPanel">
+      <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
+      <div id="propsContent" style="display:none">
+        <div class="prop-group">
+          <label>Name</label>
+          <input class="p-input" id="propName" oninput="updateProp('name')">
         </div>
+        <div class="prop-group">
+          <label>Position</label>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1" oninput="updateProp('pos')"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1" oninput="updateProp('pos')"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1" oninput="updateProp('pos')"></div>
+        </div>
+        <div class="prop-group">
+          <label>Rotation</label>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1" oninput="updateProp('rot')"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1" oninput="updateProp('rot')"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1" oninput="updateProp('rot')"></div>
+        </div>
+        <div class="prop-group">
+          <label>Scale</label>
+          <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+          <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+          <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+        </div>
+        <div class="prop-group">
+          <label>Color</label>
+          <div class="prop-row">
+            <input class="p-input" id="propColor" type="color" oninput="updateProp('color')">
+            <input class="p-input" id="propColorHex" value="#bfff3c" oninput="updateProp('colorHex')">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel-content hidden" id="scriptsPanel">
+      <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
+      <div id="scriptsContent" style="display:none;padding:8px 12px">
+        <div id="scriptList"></div>
+        <button class="add-script-btn" onclick="addScriptComponent()">+ Add Script</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Three.js via CDN -->
+<!-- Play Overlay -->
+<div class="play-overlay" id="playOverlay">
+  <div class="play-bar">
+    <button class="btn" onclick="exitPlayMode()" style="border-color:#ff2674;color:#ff2674">&#9632; Stop</button>
+    <span style="font-size:.76rem;color:#888">Play Mode — press Esc or Stop to exit</span>
+  </div>
+  <iframe id="playFrame" src="/play.html"></iframe>
+</div>
+
+<!-- Three.js -->
 <script type="importmap">
 {
   "imports": {
@@ -179,11 +257,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
-// ── Scene setup ──
+/* ── THREE.JS SETUP ── */
 const container = document.getElementById('viewport');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x252630);
-scene.fog = new THREE.Fog(0x252630, 60, 120);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
 camera.position.set(8, 6, 8);
@@ -195,9 +272,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
 
-// ── Lights ──
-const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambient);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(10, 15, 10);
 dirLight.castShadow = true;
@@ -209,14 +284,11 @@ dirLight.shadow.camera.right = 20;
 dirLight.shadow.camera.top = 20;
 dirLight.shadow.camera.bottom = -20;
 scene.add(dirLight);
-const hemi = new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4);
-scene.add(hemi);
+scene.add(new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4));
 
-// ── Grid ──
 const gridHelper = new THREE.GridHelper(40, 40, 0x555568, 0x3a3a4a);
 scene.add(gridHelper);
 
-// ── Ground plane ──
 const groundGeo = new THREE.PlaneGeometry(40, 40);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e1f26, roughness: 0.9 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -226,32 +298,20 @@ ground.receiveShadow = true;
 ground.name = '__ground';
 scene.add(ground);
 
-// ── Controls ──
 const orbit = new OrbitControls(camera, renderer.domElement);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
-orbit.target.set(0, 0, 0);
 
 const transform = new TransformControls(camera, renderer.domElement);
 transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
 scene.add(transform.getHelper());
 
-// ── State ──
+/* ── STATE ── */
 let sceneObjects = [];
 let selectedObj = null;
 let currentTool = 'translate';
 let playMode = false;
 
-const primitiveMaterials = {
-  box: 0xbfff3c,
-  sphere: 0x68aed4,
-  cylinder: 0xff8426,
-  plane: 0x444455,
-  cone: 0xff2674,
-  torus: 0x94216a,
-};
-
-// ── Object creation ──
 const primitiveGeos = {
   box: () => new THREE.BoxGeometry(1, 1, 1),
   sphere: () => new THREE.SphereGeometry(0.5, 24, 16),
@@ -261,55 +321,96 @@ const primitiveGeos = {
   torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
 };
 
+const primitiveColors = {
+  box: 0xbfff3c, sphere: 0x68aed4, cylinder: 0xff8426,
+  plane: 0x444455, cone: 0xff2674, torus: 0x94216a,
+};
+
+/* ── ADD OBJECTS ── */
 window.addPrimitive = function(type) {
   const geo = primitiveGeos[type]();
-  const color = primitiveMaterials[type] || 0xbfff3c;
+  const color = primitiveColors[type] || 0xbfff3c;
   const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.position.y = type === 'plane' ? 0.01 : 0.5;
-  if (type === 'plane') { mesh.rotation.x = -Math.PI / 2; }
+  if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
   const name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
   mesh.name = name;
-  mesh.userData = { type, color: '#' + new THREE.Color(color).getHexString() };
+  mesh.userData = { type, color: '#' + new THREE.Color(color).getHexString(), scripts: [] };
   scene.add(mesh);
   sceneObjects.push(mesh);
   selectObject(mesh);
   refreshHierarchy();
-  closeAddMenu();
+  logToConsole('Created ' + name, 'info');
 };
 
-// ── Selection ──
+window.addLight = function() {
+  const light = new THREE.PointLight(0xffffff, 1, 20);
+  light.position.set(2, 3, 2);
+  light.castShadow = true;
+  const name = 'Light_' + (sceneObjects.length + 1);
+  light.name = name;
+  light.userData = { type: 'light', color: '#ffffff', scripts: [] };
+  scene.add(light);
+  sceneObjects.push(light);
+  selectObject(light);
+  refreshHierarchy();
+  logToConsole('Created ' + name, 'info');
+};
+
+window.addCamera = function() {
+  const cam = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  cam.position.set(0, 2, 5);
+  const name = 'Camera_' + (sceneObjects.length + 1);
+  cam.name = name;
+  cam.userData = { type: 'camera', scripts: [] };
+  scene.add(cam);
+  sceneObjects.push(cam);
+  selectObject(cam);
+  refreshHierarchy();
+  logToConsole('Created ' + name, 'info');
+};
+
+/* ── SELECTION ── */
 function selectObject(obj) {
   selectedObj = obj;
   if (obj) {
     transform.attach(obj);
     document.getElementById('propsEmpty').style.display = 'none';
     document.getElementById('propsContent').style.display = 'block';
+    document.getElementById('scriptsEmpty').style.display = 'none';
+    document.getElementById('scriptsContent').style.display = 'block';
     updatePropsUI();
+    refreshScriptList();
+    if (editor) editor.setValue(getObjectScript(obj));
   } else {
     transform.detach();
     document.getElementById('propsEmpty').style.display = 'block';
     document.getElementById('propsContent').style.display = 'none';
+    document.getElementById('scriptsEmpty').style.display = 'block';
+    document.getElementById('scriptsContent').style.display = 'none';
+    if (editor) editor.setValue('// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}');
   }
   refreshHierarchy();
 }
 
-// ── Hierarchy ──
+/* ── HIERARCHY ── */
 function refreshHierarchy() {
   const el = document.getElementById('hierarchy');
-  el.innerHTML = sceneObjects.map((o, i) => `
-    <div class="hierarchy-item ${selectedObj === o ? 'selected' : ''}" onclick="window._selectByIndex(${i})">
-      <span class="icon">${o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' : o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' : o.userData.type === 'torus' ? 'T' : 'P'}</span>
-      ${o.name}
-    </div>
-  `).join('');
+  el.innerHTML = sceneObjects.map((o, i) => {
+    const icon = o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' :
+                 o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' :
+                 o.userData.type === 'torus' ? 'T' : o.userData.type === 'light' ? '&#9728;' :
+                 o.userData.type === 'camera' ? '&#128247;' : 'P';
+    return `<div class="h-item ${selectedObj === o ? 'selected' : ''}" onclick="window._sel(${i})">
+      <span class="h-icon">${icon}</span>${o.name}</div>`;
+  }).join('');
 }
+window._sel = function(i) { selectObject(sceneObjects[i]); };
 
-window._selectByIndex = function(i) { selectObject(sceneObjects[i]); };
-
-// ── Properties UI ──
+/* ── PROPERTIES UI ── */
 function updatePropsUI() {
   if (!selectedObj) return;
   document.getElementById('propName').value = selectedObj.name;
@@ -322,10 +423,11 @@ function updatePropsUI() {
   document.getElementById('propScaleX').value = selectedObj.scale.x.toFixed(2);
   document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
   document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
-  const col = '#' + selectedObj.material.color.getHexString();
-  document.getElementById('propColor').value = col;
-  document.getElementById('propColorHex').value = col;
-  selectedObj.userData.color = col;
+  if (selectedObj.material && selectedObj.material.color) {
+    const col = '#' + selectedObj.material.color.getHexString();
+    document.getElementById('propColor').value = col;
+    document.getElementById('propColorHex').value = col;
+  }
 }
 
 window.updateProp = function(type) {
@@ -346,77 +448,163 @@ window.updateProp = function(type) {
     selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
     selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
   }
-  if (type === 'color') {
+  if (type === 'color' && selectedObj.material) {
     const c = document.getElementById('propColor').value;
     selectedObj.material.color.set(c);
     document.getElementById('propColorHex').value = c;
     selectedObj.userData.color = c;
   }
-  if (type === 'colorHex') {
+  if (type === 'colorHex' && selectedObj.material) {
     const c = document.getElementById('propColorHex').value;
-    if (/^#[0-9a-f]{6}$/i.test(c)) { selectedObj.material.color.set(c); document.getElementById('propColor').value = c; selectedObj.userData.color = c; }
+    if (/^#[0-9a-f]{6}$/i.test(c)) {
+      selectedObj.material.color.set(c);
+      document.getElementById('propColor').value = c;
+      selectedObj.userData.color = c;
+    }
   }
 };
 
-// ── Tools ──
+/* ── TOOLS ── */
 window.setTool = function(tool) {
   currentTool = tool;
   transform.setMode(tool);
-  document.querySelectorAll('.toolbar .tool-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.toolbar .t-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(tool === 'translate' ? 'toolMove' : tool === 'rotate' ? 'toolRotate' : 'toolScale').classList.add('active');
 };
 
-// ── Delete / Duplicate ──
 window.deleteSelected = function() {
   if (!selectedObj) return;
+  logToConsole('Deleted ' + selectedObj.name, 'warn');
   scene.remove(selectedObj);
   sceneObjects = sceneObjects.filter(o => o !== selectedObj);
   transform.detach();
   selectedObj = null;
-  document.getElementById('propsEmpty').style.display = 'block';
-  document.getElementById('propsContent').style.display = 'none';
+  selectObject(null);
   refreshHierarchy();
 };
 
 window.duplicateSelected = function() {
   if (!selectedObj) return;
   const clone = selectedObj.clone();
-  clone.material = selectedObj.material.clone();
+  if (selectedObj.material) clone.material = selectedObj.material.clone();
   clone.position.x += 1;
   clone.name = selectedObj.name + '_copy';
+  clone.userData = { ...selectedObj.userData, scripts: [...(selectedObj.userData.scripts || [])] };
   scene.add(clone);
   sceneObjects.push(clone);
   selectObject(clone);
   refreshHierarchy();
 };
 
-// ── Grid toggle ──
 let gridVisible = true;
-window.toggleGrid = function() {
-  gridVisible = !gridVisible;
-  gridHelper.visible = gridVisible;
+window.toggleGrid = function() { gridVisible = !gridVisible; gridHelper.visible = gridVisible; };
+
+let wireframeMode = false;
+window.toggleWireframe = function() {
+  wireframeMode = !wireframeMode;
+  sceneObjects.forEach(o => { if (o.material) o.material.wireframe = wireframeMode; });
 };
 
-// ── Add menu ──
-window.toggleAddMenu = function() {
-  document.getElementById('addDropdown').style.display =
-    document.getElementById('addDropdown').style.display === 'block' ? 'none' : 'block';
+/* ── SCRIPTS ── */
+function getObjectScript(obj) {
+  const scripts = obj.userData.scripts || [];
+  if (scripts.length) return scripts[0].code || '';
+  return '// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}';
+}
+
+function setObjectScript(obj, code) {
+  if (!obj.userData.scripts) obj.userData.scripts = [];
+  if (obj.userData.scripts.length === 0) {
+    obj.userData.scripts.push({ name: 'Script', code });
+  } else {
+    obj.userData.scripts[0].code = code;
+  }
+}
+
+window.addScriptComponent = function() {
+  if (!selectedObj) return;
+  if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
+  if (selectedObj.userData.scripts.length === 0) {
+    selectedObj.userData.scripts.push({ name: 'Script', code: 'function update() {\n  // Runs every frame\n}' });
+  }
+  refreshScriptList();
+  if (editor) editor.setValue(getObjectScript(selectedObj));
+  logToConsole('Added script to ' + selectedObj.name, 'info');
 };
-function closeAddMenu() { document.getElementById('addDropdown').style.display = 'none'; }
-document.addEventListener('click', e => { if (!e.target.closest('.add-menu')) closeAddMenu(); });
 
-// ── Keyboard shortcuts ──
-document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (e.key === 'g' || e.key === 'G') window.setTool('translate');
-  if (e.key === 'r' || e.key === 'R') window.setTool('rotate');
-  if (e.key === 's' && !e.ctrlKey) window.setTool('scale');
-  if (e.key === 'Delete' || e.key === 'Backspace') window.deleteSelected();
-  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); window.duplicateSelected(); }
-  if (e.key === 'Escape') { selectObject(null); }
-});
+function refreshScriptList() {
+  const el = document.getElementById('scriptList');
+  if (!selectedObj) { el.innerHTML = ''; return; }
+  const scripts = selectedObj.userData.scripts || [];
+  el.innerHTML = scripts.map((s, i) =>
+    `<div class="script-tag" onclick="editScript(${i})">&#9998; ${s.name}</div>`
+  ).join('');
+}
 
-// ── Raycasting for selection ──
+window.editScript = function(i) {
+  if (!selectedObj || !selectedObj.userData.scripts[i]) return;
+  if (editor) editor.setValue(selectedObj.userData.scripts[i].code);
+  switchBottomTab('code');
+};
+
+/* ── TAB SWITCHING ── */
+window.switchLeftTab = function(tab) {
+  document.querySelectorAll('.panel-left .panel-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'hierarchy' && i === 0) || (tab === 'assets' && i === 1)));
+  document.getElementById('hierarchyPanel').classList.toggle('hidden', tab !== 'hierarchy');
+  document.getElementById('assetsPanel').classList.toggle('hidden', tab !== 'assets');
+};
+
+window.switchRightTab = function(tab) {
+  document.querySelectorAll('.panel-right .panel-tab').forEach((t, i) => t.classList.toggle('active', (tab === 'props' && i === 0) || (tab === 'scripts' && i === 1)));
+  document.getElementById('propsPanel').classList.toggle('hidden', tab !== 'props');
+  document.getElementById('scriptsPanel').classList.toggle('hidden', tab !== 'scripts');
+};
+
+window.switchBottomTab = function(tab) {
+  document.querySelectorAll('.bottom-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.bottom-tab').forEach(t => { if (t.textContent.includes(tab === 'code' ? 'Code' : 'Console')) t.classList.add('active'); });
+  document.getElementById('codePanel').classList.toggle('hidden', tab !== 'code');
+  document.getElementById('consolePanel').classList.toggle('hidden', tab !== 'console');
+  if (tab === 'code' && editor) editor.layout();
+};
+
+let bottomCollapsed = false;
+window.toggleBottom = function() {
+  bottomCollapsed = !bottomCollapsed;
+  document.getElementById('bottomPanel').classList.toggle('collapsed', bottomCollapsed);
+  if (editor) setTimeout(() => editor.layout(), 50);
+};
+
+/* ── CONSOLE ── */
+window.logToConsole = function(text, level = 'info') {
+  const el = document.getElementById('console');
+  const line = document.createElement('div');
+  line.className = 'log-' + level;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+};
+
+/* ── BOTTOM RESIZE ── */
+{
+  const handle = document.getElementById('bottomHandle');
+  const panel = document.getElementById('bottomPanel');
+  let startY, startH;
+  handle.addEventListener('mousedown', e => {
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    const onMove = ev => {
+      const h = Math.max(100, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY)));
+      panel.style.height = h + 'px';
+      if (editor) editor.layout();
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+/* ── RAYCASTING ── */
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -426,33 +614,43 @@ renderer.domElement.addEventListener('pointerdown', e => {
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(sceneObjects, false);
-  if (hits.length > 0) { selectObject(hits[0].object); }
-  else { selectObject(null); }
+  const hits = raycaster.intersectObjects(sceneObjects.filter(o => o.name !== '__ground'), false);
+  if (hits.length > 0) selectObject(hits[0].object);
+  else selectObject(null);
 });
 
-// ── Transform change → update props ──
 transform.addEventListener('objectChange', () => { if (selectedObj) updatePropsUI(); });
 
-// ── Resize ──
+/* ── RESIZE ── */
 function onResize() {
   const w = container.clientWidth, h = container.clientHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  if (w && h) { camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
 }
 window.addEventListener('resize', onResize);
-onResize();
+setTimeout(onResize, 50);
 
-// ── Save/Load ──
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (typeof monaco !== 'undefined' && document.activeElement?.closest('.monaco-editor')) return;
+  if (e.key === 'g') window.setTool('translate');
+  if (e.key === 'r') window.setTool('rotate');
+  if (e.key === 's' && !e.ctrlKey) window.setTool('scale');
+  if (e.key === 'Delete' || e.key === 'Backspace') window.deleteSelected();
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); window.duplicateSelected(); }
+  if (e.key === 'Escape') { if (playMode) exitPlayMode(); else selectObject(null); }
+});
+
+/* ── SAVE/LOAD ── */
 function serializeScene() {
-  return sceneObjects.map(o => ({
+  return sceneObjects.filter(o => o.name !== '__ground').map(o => ({
     name: o.name,
     type: o.userData.type,
     position: [o.position.x, o.position.y, o.position.z],
     rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
     scale: [o.scale.x, o.scale.y, o.scale.z],
     color: o.userData.color,
+    scripts: o.userData.scripts || [],
   }));
 }
 
@@ -460,14 +658,21 @@ function deserializeScene(data) {
   sceneObjects.forEach(o => scene.remove(o));
   sceneObjects = [];
   (data || []).forEach(d => {
-    const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
-    const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    let mesh;
+    if (d.type === 'light') {
+      mesh = new THREE.PointLight(0xffffff, 1, 20);
+    } else if (d.type === 'camera') {
+      mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    } else {
+      const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+      const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
     mesh.name = d.name || 'Object';
-    mesh.userData = { type: d.type, color: d.color };
+    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
     mesh.position.set(...(d.position || [0, 0.5, 0]));
     mesh.rotation.set(...(d.rotation || [0, 0, 0]));
     mesh.scale.set(...(d.scale || [1, 1, 1]));
@@ -485,37 +690,24 @@ window.saveGame = async function(publish) {
   const title = document.getElementById('gameTitle').value || 'Untitled Game';
   const sceneData = JSON.stringify(serializeScene());
   const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-
   try {
     if (currentGameId) {
-      const res = await fetch(`${apiBase}/api/games/${currentGameId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      await fetch(`${apiBase}/api/games/${currentGameId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ title, scene: sceneData, published: publish }),
       });
-      const d = await res.json();
-      if (d.error) { alert('Error: ' + d.error); return; }
     } else {
       const res = await fetch(`${apiBase}/api/games`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ title, scene: sceneData, published: publish }),
       });
       const d = await res.json();
-      if (d.error) { alert('Error: ' + d.error); return; }
-      currentGameId = d.game.id;
-      window.history.replaceState({}, '', `/editor?id=${currentGameId}`);
+      if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', `/editor?id=${currentGameId}`); }
     }
-    const label = publish ? 'Published!' : 'Saved!';
-    const btn = event.target;
-    btn.textContent = label;
-    setTimeout(() => { btn.textContent = publish ? 'Publish' : 'Save'; }, 2000);
-  } catch (err) {
-    alert('Failed to save: ' + err.message);
-  }
+    logToConsole(publish ? 'Published!' : 'Saved!', 'info');
+  } catch (err) { logToConsole('Save failed: ' + err.message, 'error'); }
 };
 
-// ── Load existing game ──
 async function loadGame() {
   if (!currentGameId) return;
   const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
@@ -530,64 +722,88 @@ async function loadGame() {
   } catch {}
 }
 
-// ── Play Mode ──
-let playCamera, playControls;
-
+/* ── PLAY MODE (SANDBOXED) ── */
 window.enterPlayMode = function() {
   playMode = true;
   transform.detach();
-  document.querySelector('.panel-left').style.display = 'none';
-  document.querySelector('.panel-right').style.display = 'none';
-  document.querySelector('.toolbar').style.display = 'none';
-
-  playCamera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 200);
-  playCamera.position.set(0, 2, 5);
-  playControls = new OrbitControls(playCamera, renderer.domElement);
-  playControls.enableDamping = true;
-  playControls.target.set(0, 1, 0);
-
-  orbit.enabled = false;
+  const overlay = document.getElementById('playOverlay');
+  overlay.classList.add('active');
+  const frame = document.getElementById('playFrame');
+  frame.src = '/play.html';
+  frame.onload = () => {
+    frame.contentWindow.postMessage({
+      type: 'play',
+      scene: serializeScene(),
+      scripts: sceneObjects.flatMap(o => (o.userData.scripts || []).filter(s => s.code)),
+    }, '*');
+  };
 };
 
-function exitPlayMode() {
+window.exitPlayMode = function() {
   playMode = false;
-  document.querySelector('.panel-left').style.display = '';
-  document.querySelector('.panel-right').style.display = '';
-  document.querySelector('.toolbar').style.display = '';
-  orbit.enabled = true;
-  if (playControls) playControls.dispose();
-}
+  document.getElementById('playOverlay').classList.remove('active');
+  const frame = document.getElementById('playFrame');
+  try { frame.contentWindow.postMessage({ type: 'stop', scene: serializeScene() }, '*'); } catch {}
+};
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && playMode) exitPlayMode();
+window.addEventListener('message', e => {
+  if (e.data?.type === 'console') logToConsole(e.data.text, e.data.level);
 });
 
-// ── Get token from parent ──
+/* ── MONACO EDITOR ── */
+let editor = null;
+
+function loadMonaco() {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
+  script.onload = () => {
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+    require(['vs/editor/editor.main'], () => {
+      editor = monaco.editor.create(document.getElementById('monacoEditor'), {
+        value: '// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}',
+        language: 'javascript',
+        theme: 'vs-dark',
+        fontSize: 13,
+        minimap: { enabled: false },
+        automaticLayout: true,
+        scrollBeyondLastLine: false,
+        padding: { top: 8 },
+        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        tabSize: 2,
+      });
+
+      editor.onDidChangeModelContent(() => {
+        if (selectedObj) {
+          if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
+          if (selectedObj.userData.scripts.length === 0) {
+            selectedObj.userData.scripts.push({ name: 'Script', code: editor.getValue() });
+          } else {
+            selectedObj.userData.scripts[0].code = editor.getValue();
+          }
+        }
+      });
+    });
+  };
+  document.head.appendChild(script);
+}
+
+loadMonaco();
+
+/* ── TOKEN ── */
 const params = new URLSearchParams(window.location.search);
 window.currentToken = params.get('token') || null;
 
-// ── Add default cube so scene isn't empty ──
-if (!params.get('id')) {
-  window.addPrimitive('box');
-}
-
-// ── Animate ──
+/* ── RENDER LOOP ── */
 function animate() {
   requestAnimationFrame(animate);
-  if (playMode && playControls) { playControls.update(); }
-  else { orbit.update(); }
+  orbit.update();
   renderer.render(scene, camera);
 }
 animate();
 
-// ── Init ──
 loadGame();
 refreshHierarchy();
-
-// Expose for non-module scripts
 window._scene = scene;
-window._deserializeScene = deserializeScene;
-
 </script>
 
 </body>

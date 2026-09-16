@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>*{margin:0;padding:0;overflow:hidden}body{background:#000}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('c');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x252630);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+camera.position.set(5, 4, 5);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dl = new THREE.DirectionalLight(0xffffff, 1.2);
+dl.position.set(10, 15, 10);
+dl.castShadow = true;
+dl.shadow.mapSize.set(1024, 1024);
+scene.add(dl);
+scene.add(new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4));
+
+scene.add(new THREE.GridHelper(40, 40, 0x555568, 0x3a3a4a));
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+resize();
+
+const primitiveGeos = {
+  box: () => new THREE.BoxGeometry(1, 1, 1),
+  sphere: () => new THREE.SphereGeometry(0.5, 24, 16),
+  cylinder: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 24),
+  plane: () => new THREE.PlaneGeometry(2, 2),
+  cone: () => new THREE.ConeGeometry(0.5, 1, 24),
+  torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
+};
+
+let gameObjects = [];
+let running = false;
+
+function buildScene(sceneData) {
+  gameObjects.forEach(o => scene.remove(o));
+  gameObjects = [];
+  (sceneData || []).forEach(d => {
+    const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+    const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = d.name || 'Object';
+    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
+    mesh.position.set(...(d.position || [0, 0.5, 0]));
+    mesh.rotation.set(...(d.rotation || [0, 0, 0]));
+    mesh.scale.set(...(d.scale || [1, 1, 1]));
+    scene.add(mesh);
+    gameObjects.push(mesh);
+  });
+}
+
+function runScripts(scripts) {
+  if (!scripts || !scripts.length) return;
+  for (const s of scripts) {
+    try {
+      const fn = new Function('scene', 'objects', 'camera', 'self', s.code);
+      fn(scene, gameObjects, camera, null);
+    } catch (e) {
+      parent.postMessage({ type: 'console', level: 'error', text: e.message }, '*');
+    }
+  }
+}
+
+window.addEventListener('message', (e) => {
+  const data = e.data;
+  if (data.type === 'play') {
+    buildScene(data.scene);
+    const scripts = data.scripts || [];
+    running = true;
+    parent.postMessage({ type: 'console', level: 'info', text: 'Game started' }, '*');
+    try {
+      const scriptCode = scripts.map(s => s.code).join('\n');
+      if (scriptCode) {
+        const gameLoop = new Function('scene', 'objects', 'camera', 'update', `
+          ${scriptCode}
+          if (typeof update === 'function') {
+            let _run = true;
+            const _stop = () => { _run = false; };
+            function _loop() {
+              if (!_run) return;
+              try { update(); } catch(e) { console.error(e); }
+              requestAnimationFrame(_loop);
+            }
+            _loop();
+          }
+        `);
+        gameLoop(scene, gameObjects, camera, null);
+      }
+    } catch (err) {
+      parent.postMessage({ type: 'console', level: 'error', text: err.message }, '*');
+    }
+  }
+  if (data.type === 'stop') {
+    running = false;
+    buildScene(data.scene);
+  }
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+parent.postMessage({ type: 'ready' }, '*');
+</script>
+</body>
+</html>
