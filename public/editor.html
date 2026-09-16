@@ -140,9 +140,7 @@
       <button class="t-btn" id="btnGrid" title="Grid">G</button>
       <button class="t-btn" id="btnWire" title="Wireframe">W</button>
     </div>
-    <div class="viewport" id="viewport">
-      <div class="cam-preview" id="camPreview"><div class="cam-preview-label">Camera Preview</div><canvas id="camPreviewCanvas"></canvas></div>
-    </div>
+    <div class="viewport" id="viewport"><div class="cam-preview" id="camPreview"><div class="cam-preview-label">Camera Preview</div><canvas id="camPreviewCanvas"></canvas></div></div>
     <div class="bottom-resize" id="bottomHandle"></div>
     <div class="bottom" id="bottomPanel">
       <div class="bottom-tabs">
@@ -1273,9 +1271,15 @@ function enterPlayMode() {
   playMode = true; transform.detach();
   document.getElementById('playOverlay').classList.add('active');
   var frame = document.getElementById('playFrame');
-  frame.onload = function() {
-    try { frame.contentWindow.postMessage({ type: 'play', scene: serializeScene(), scripts: sceneObjects.reduce(function(a, o) { return a.concat((o.userData.scripts || []).filter(function(s) { return s.code; })); }, []) }, '*'); } catch(e) {}
-  };
+  var sceneData = serializeScene();
+  function onReady() {
+    window.removeEventListener('message', waitForReady);
+    try { frame.contentWindow.postMessage({ type: 'play', scene: sceneData }, '*'); } catch(e) {}
+  }
+  function waitForReady(e) {
+    if (e.data && e.data.type === 'ready') onReady();
+  }
+  window.addEventListener('message', waitForReady);
   frame.src = '/play.html';
 }
 function exitPlayMode() {
