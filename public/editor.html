@@ -701,7 +701,7 @@ renderer.domElement.addEventListener('pointerdown', function(e) {
 });
 
 renderer.domElement.addEventListener('contextmenu', function(e) {
-  e.preventDefault();
+  e.preventDefault(); e.stopPropagation();
   var rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -806,7 +806,7 @@ function showCtxMenu(x, y, items, target) {
 function hideCtxMenu() { ctxMenu.classList.remove('open'); ctxMenuTarget = null; }
 
 document.addEventListener('click', hideCtxMenu);
-document.addEventListener('contextmenu', function(e) { hideCtxMenu(); });
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); hideCtxMenu(); });
 
 ctxMenu.addEventListener('click', function(e) {
   var item = e.target.closest('[data-ctx]');
@@ -913,7 +913,7 @@ document.getElementById('hierarchy').addEventListener('click', function(e) {
 });
 
 document.getElementById('hierarchy').addEventListener('contextmenu', function(e) {
-  e.preventDefault();
+  e.preventDefault(); e.stopPropagation();
   var item = e.target.closest('[data-hidx]');
   if (item) {
     var obj = sceneObjects[parseInt(item.dataset.hidx)];
@@ -956,7 +956,7 @@ document.getElementById('fileTree').addEventListener('click', function(e) {
 });
 
 document.getElementById('fileTree').addEventListener('contextmenu', function(e) {
-  e.preventDefault();
+  e.preventDefault(); e.stopPropagation();
   var sitem = e.target.closest('[data-fsidx]');
   if (sitem) {
     var objIdx = parseInt(sitem.dataset.fsidx);
