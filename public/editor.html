@@ -182,8 +182,8 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 // ── Scene setup ──
 const container = document.getElementById('viewport');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1b1e);
-scene.fog = new THREE.Fog(0x1a1b1e, 60, 120);
+scene.background = new THREE.Color(0x252630);
+scene.fog = new THREE.Fog(0x252630, 60, 120);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
 camera.position.set(8, 6, 8);
@@ -196,9 +196,9 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
 
 // ── Lights ──
-const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+const ambient = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambient);
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(10, 15, 10);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
@@ -209,19 +209,20 @@ dirLight.shadow.camera.right = 20;
 dirLight.shadow.camera.top = 20;
 dirLight.shadow.camera.bottom = -20;
 scene.add(dirLight);
-const hemi = new THREE.HemisphereLight(0x68aed4, 0x430067, 0.3);
+const hemi = new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4);
 scene.add(hemi);
 
 // ── Grid ──
-const gridHelper = new THREE.GridHelper(40, 40, 0x333340, 0x222230);
+const gridHelper = new THREE.GridHelper(40, 40, 0x555568, 0x3a3a4a);
 scene.add(gridHelper);
 
-// ── Ground plane (invisible, for raycasting) ──
-const groundGeo = new THREE.PlaneGeometry(100, 100);
-const groundMat = new THREE.MeshStandardMaterial({ visible: false });
+// ── Ground plane ──
+const groundGeo = new THREE.PlaneGeometry(40, 40);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e1f26, roughness: 0.9 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.01;
+ground.receiveShadow = true;
 ground.name = '__ground';
 scene.add(ground);
 
@@ -564,6 +565,11 @@ document.addEventListener('keydown', e => {
 // ── Get token from parent ──
 const params = new URLSearchParams(window.location.search);
 window.currentToken = params.get('token') || null;
+
+// ── Add default cube so scene isn't empty ──
+if (!params.get('id')) {
+  window.addPrimitive('box');
+}
 
 // ── Animate ──
 function animate() {
