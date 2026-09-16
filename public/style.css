@@ -126,6 +126,22 @@ html, body {
   box-shadow: 0 0 6px rgba(16,210,117,.4);
 }
 
+.editor-btn {
+  display: block;
+  padding: 10px 14px;
+  background: rgba(191,255,60,.06);
+  border: 1px solid rgba(191,255,60,.15);
+  border-radius: 10px;
+  color: #bfff3c;
+  font-size: .82rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: all .15s ease;
+  font-family: inherit;
+}
+.editor-btn:hover { background: rgba(191,255,60,.12); border-color: rgba(191,255,60,.3); }
+
 /* Chat main */
 .chat-main {
   flex: 1;
