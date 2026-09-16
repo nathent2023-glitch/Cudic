@@ -5,3 +5,4 @@ agora.db-wal
 .env
 .env.local
 .env.*.local
+.playwright-mcp/
