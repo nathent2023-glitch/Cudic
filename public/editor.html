@@ -35,7 +35,7 @@
     .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
     .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
     .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
-    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none}
+    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;max-height:70vh;overflow-y:auto}
     .ctx-menu.open{display:block}
     .ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .08s}
     .ctx-item:hover{background:rgba(191,255,60,.08);color:#fafdff}
@@ -580,6 +580,56 @@ function addPrimitive(type) {
   } else if (type === 'light') {
     mesh = new THREE.PointLight(0xffffff, 1, 20);
     mesh.position.set(2, 3, 2); mesh.castShadow = true;
+  } else if (type === 'directional_light') {
+    mesh = new THREE.DirectionalLight(0xfff4e0, 1.5);
+    mesh.position.set(5, 8, 5); mesh.castShadow = true;
+    mesh.shadow.mapSize.width = 2048; mesh.shadow.mapSize.height = 2048;
+    mesh.shadow.camera.left = -10; mesh.shadow.camera.right = 10;
+    mesh.shadow.camera.top = 10; mesh.shadow.camera.bottom = -10;
+  } else if (type === 'spot_light') {
+    mesh = new THREE.SpotLight(0xffffff, 1, 30, Math.PI / 6, 0.3, 1);
+    mesh.position.set(3, 5, 3); mesh.castShadow = true;
+    mesh.target.position.set(0, 0, 0); scene.add(mesh.target);
+  } else if (type === 'ambient_light') {
+    mesh = new THREE.AmbientLight(0x404060, 0.4);
+  } else if (type === 'hemisphere_light') {
+    mesh = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.6);
+  } else if (type === 'gradient_sky') {
+    var skyGeo = new THREE.SphereGeometry(50, 32, 15);
+    var skyCanvas = document.createElement('canvas');
+    skyCanvas.width = 512; skyCanvas.height = 512;
+    var skyCtx = skyCanvas.getContext('2d');
+    var grad = skyCtx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, '#0a0a2e'); grad.addColorStop(0.4, '#1a1a5e');
+    grad.addColorStop(0.6, '#4a6fa5'); grad.addColorStop(1, '#87ceeb');
+    skyCtx.fillStyle = grad; skyCtx.fillRect(0, 0, 512, 512);
+    var skyTex = new THREE.CanvasTexture(skyCanvas);
+    var skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide });
+    mesh = new THREE.Mesh(skyGeo, skyMat);
+    mesh.name = 'GradientSky';
+  } else if (type === 'starfield_sky') {
+    var sfGeo = new THREE.SphereGeometry(50, 32, 15);
+    var sfCanvas = document.createElement('canvas');
+    sfCanvas.width = 512; sfCanvas.height = 512;
+    var sfCtx = sfCanvas.getContext('2d');
+    sfCtx.fillStyle = '#050510'; sfCtx.fillRect(0, 0, 512, 512);
+    for (var si = 0; si < 400; si++) {
+      var sx = Math.random() * 512, sy = Math.random() * 512;
+      var sr = Math.random() * 1.5 + 0.3;
+      var brightness = Math.floor(Math.random() * 155 + 100);
+      sfCtx.beginPath(); sfCtx.arc(sx, sy, sr, 0, Math.PI * 2);
+      sfCtx.fillStyle = 'rgb(' + brightness + ',' + brightness + ',' + (brightness + 30) + ')';
+      sfCtx.fill();
+    }
+    var sfTex = new THREE.CanvasTexture(sfCanvas);
+    var sfMat = new THREE.MeshBasicMaterial({ map: sfTex, side: THREE.BackSide });
+    mesh = new THREE.Mesh(sfGeo, sfMat);
+    mesh.name = 'StarfieldSky';
+  } else if (type === 'solid_sky') {
+    var ssGeo = new THREE.SphereGeometry(50, 32, 15);
+    var ssMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
+    mesh = new THREE.Mesh(ssGeo, ssMat);
+    mesh.name = 'SolidSky';
   } else if (type === 'camera') {
     mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
     mesh.position.set(0, 2, 5);
@@ -592,7 +642,7 @@ function addPrimitive(type) {
     mesh.position.y = type === 'plane' ? 0.01 : 0.5;
     if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
   }
-  mesh.name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
+  mesh.name = mesh.name || (type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1));
   mesh.userData = { type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [], matType: 'standard', matProps: {} };
   scene.add(mesh);
   sceneObjects.push(mesh);
@@ -711,22 +761,15 @@ renderer.domElement.addEventListener('contextmenu', function(e) {
   if (hits.length > 0) {
     var obj = hits[0].object;
     selectObject(obj);
-    showCtxMenu(e.clientX, e.clientY, [
+    var objItems = [
       { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
       { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
       '---',
-      { icon: 'C', label: 'Add Cube', action: 'add_box' },
-      { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
-      { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
-      { icon: 'N', label: 'Add Cone', action: 'add_cone' },
-      { icon: 'T', label: 'Add Torus', action: 'add_torus' },
-      { icon: 'P', label: 'Add Plane', action: 'add_plane' },
-      '---',
-      { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
-      { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+    ].concat(buildAddItems(), [
       '---',
       { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
-    ], obj);
+    ]);
+    showCtxMenu(e.clientX, e.clientY, objItems, obj);
   } else {
     showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
   }
@@ -824,6 +867,13 @@ function handleCtxAction(action, target) {
   else if (action === 'add_torus') addPrimitive('torus');
   else if (action === 'add_plane') addPrimitive('plane');
   else if (action === 'add_light') addPrimitive('light');
+  else if (action === 'add_directional_light') addPrimitive('directional_light');
+  else if (action === 'add_spot_light') addPrimitive('spot_light');
+  else if (action === 'add_ambient_light') addPrimitive('ambient_light');
+  else if (action === 'add_hemisphere_light') addPrimitive('hemisphere_light');
+  else if (action === 'add_gradient_sky') addPrimitive('gradient_sky');
+  else if (action === 'add_starfield_sky') addPrimitive('starfield_sky');
+  else if (action === 'add_solid_sky') addPrimitive('solid_sky');
   else if (action === 'add_camera') addPrimitive('camera');
   else if (action === 'add_empty') addPrimitive('empty');
   else if (action === 'delete_obj') { if (target) { selectedObj = target; deleteSelected(); } }
@@ -849,18 +899,31 @@ function handleCtxAction(action, target) {
   else if (action === 'delete_folder') { if (target && target.type === 'folder') { pushUndo(); target.items.forEach(function(i) { scene.remove(i); }); sceneObjects = sceneObjects.filter(function(o) { return target.items.indexOf(o) === -1; }); selectObject(null); refreshHierarchy(); } }
 }
 
-const sceneCtxItems = [
-  { icon: 'C', label: 'Add Cube', action: 'add_box' },
-  { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
-  { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
-  { icon: 'N', label: 'Add Cone', action: 'add_cone' },
-  { icon: 'T', label: 'Add Torus', action: 'add_torus' },
-  { icon: 'P', label: 'Add Plane', action: 'add_plane' },
-  '---',
-  { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
-  { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
-  { icon: '+', label: 'Add Empty', action: 'add_empty' },
-];
+function buildAddItems() {
+  return [
+    { icon: 'C', label: 'Add Cube', action: 'add_box' },
+    { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
+    { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
+    { icon: 'N', label: 'Add Cone', action: 'add_cone' },
+    { icon: 'T', label: 'Add Torus', action: 'add_torus' },
+    { icon: 'P', label: 'Add Plane', action: 'add_plane' },
+    { icon: '+', label: 'Add Empty', action: 'add_empty' },
+    '---',
+    { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+    '---',
+    { icon: '&#9728;', label: 'Point Light', action: 'add_light' },
+    { icon: '&#9788;', label: 'Directional Light', action: 'add_directional_light' },
+    { icon: '&#128294;', label: 'Spot Light', action: 'add_spot_light' },
+    { icon: '&#9790;', label: 'Ambient Light', action: 'add_ambient_light' },
+    { icon: '&#127748;', label: 'Hemisphere Light', action: 'add_hemisphere_light' },
+    '---',
+    { icon: '&#127747;', label: 'Gradient Sky', action: 'add_gradient_sky' },
+    { icon: '&#11088;', label: 'Starfield Sky', action: 'add_starfield_sky' },
+    { icon: '&#127752;', label: 'Solid Sky', action: 'add_solid_sky' },
+  ];
+}
+
+const sceneCtxItems = buildAddItems();
 
 /* ════════════════════════════════════════════════════
    TOOLBAR
@@ -918,22 +981,15 @@ document.getElementById('hierarchy').addEventListener('contextmenu', function(e)
   if (item) {
     var obj = sceneObjects[parseInt(item.dataset.hidx)];
     selectObject(obj);
-    showCtxMenu(e.clientX, e.clientY, [
+    var hItems = [
       { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
       { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
       '---',
-      { icon: 'C', label: 'Add Cube', action: 'add_box' },
-      { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
-      { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
-      { icon: 'N', label: 'Add Cone', action: 'add_cone' },
-      { icon: 'T', label: 'Add Torus', action: 'add_torus' },
-      { icon: 'P', label: 'Add Plane', action: 'add_plane' },
-      '---',
-      { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
-      { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+    ].concat(buildAddItems(), [
       '---',
       { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
-    ], obj);
+    ]);
+    showCtxMenu(e.clientX, e.clientY, hItems, obj);
   } else {
     showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
   }
@@ -989,7 +1045,8 @@ document.getElementById('fileTree').addEventListener('contextmenu', function(e) 
   showCtxMenu(e.clientX, e.clientY, [
     { icon: '&#128193;', label: 'New Folder', action: 'new_folder' },
     { icon: '&#9998;', label: 'New Script', action: 'new_script_file' },
-  ], null);
+    '---',
+  ].concat(buildAddItems()), null);
 });
 
 /* ════════════════════════════════════════════════════
