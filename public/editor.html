@@ -20,7 +20,6 @@
     .btn{padding:5px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
     .btn:hover{background:rgba(255,255,255,.08)}
     .btn.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
-    .btn.primary:hover{background:#a8e62e}
     .btn.play{background:#10d275;color:#fff;border-color:#10d275}
     .btn.play:hover{background:#0eb868}
     .main-wrap{display:flex;flex:1;overflow:hidden}
@@ -63,7 +62,8 @@
     .log-info::before{content:'[INFO] ';font-weight:600}
     .log-warn::before{content:'[WARN] ';font-weight:600}
     .log-error::before{content:'[ERROR] ';font-weight:600}
-    .panel-right{width:240px;flex-shrink:0;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+    .panel-right{width:260px;flex-shrink:0;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
+    .panel-right .panel-content{overflow-y:auto;padding:0}
     .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
     .prop-group label{display:block;font-size:.68rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
     .prop-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
@@ -72,15 +72,26 @@
     .p-input:focus{border-color:#bfff3c}
     .p-input[type="color"]{padding:2px;height:26px;cursor:pointer}
     .empty-state{padding:20px 12px;text-align:center;color:#52525b;font-size:.76rem;line-height:1.5}
-    .script-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;margin:2px;border-radius:5px;background:rgba(191,255,60,.06);border:1px solid rgba(191,255,60,.12);font-size:.7rem;color:#bfff3c;cursor:pointer}
+    .script-tag{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin:2px;border-radius:5px;background:rgba(191,255,60,.06);border:1px solid rgba(191,255,60,.12);font-size:.7rem;color:#bfff3c;cursor:pointer}
     .script-tag:hover{background:rgba(191,255,60,.12)}
-    .add-script-btn{display:block;width:100%;padding:6px;margin-top:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .12s}
-    .add-script-btn:hover{border-color:#bfff3c;color:#bfff3c}
+    .script-tag .del{color:#ff2674;font-size:.65rem;padding:0 3px;border-radius:3px}
+    .script-tag .del:hover{background:rgba(255,38,116,.15)}
+    .add-btn{display:block;width:100%;padding:6px;margin-top:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .12s}
+    .add-btn:hover{border-color:#bfff3c;color:#bfff3c}
     .play-overlay{position:fixed;inset:0;z-index:100;background:#000;display:none}
     .play-overlay.active{display:flex;flex-direction:column}
     .play-overlay iframe{flex:1;width:100%;border:none}
     .play-bar{height:32px;background:#16171a;display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
     .play-bar .btn{font-size:.72rem;padding:4px 12px}
+    .p-select{flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:5px;color:#fafdff;font-size:.76rem;font-family:inherit;outline:none}
+    .p-select option{background:#131416;color:#fafdff}
+    .file-tree{padding:6px 0}
+    .file-item{display:flex;align-items:center;gap:6px;padding:4px 12px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .1s}
+    .file-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
+    .file-item.active{color:#bfff3c;background:rgba(191,255,60,.06)}
+    .file-item .fi{font-size:.7rem;color:#52525b}
+    .file-item.folder .fi{color:#ffd100}
+    .shader-preview{height:60px;border-radius:6px;border:1px solid rgba(255,255,255,.06);margin:6px 0;background:#1a1b1e;overflow:hidden}
   </style>
 </head>
 <body>
@@ -92,6 +103,7 @@
   <div class="sep"></div>
   <input class="title-input" id="gameTitle" value="Untitled Game" spellcheck="false">
   <div class="spacer"></div>
+  <span style="font-size:.65rem;color:#444;margin-right:4px" id="undoHint"></span>
   <button class="btn" id="btnSave">Save</button>
   <button class="btn primary" id="btnPublish">Publish</button>
   <button class="btn play" id="btnPlay">&#9654; Play</button>
@@ -120,6 +132,9 @@
 
   <div class="center-col">
     <div class="toolbar">
+      <button class="t-btn" id="btnUndo" title="Undo (Ctrl+Z)">&#8617;</button>
+      <button class="t-btn" id="btnRedo" title="Redo (Ctrl+Shift+Z)">&#8618;</button>
+      <div class="t-sep"></div>
       <button class="t-btn active" id="toolMove" data-tool="translate" title="Move (G)">&#432;</button>
       <button class="t-btn" id="toolRotate" data-tool="rotate" title="Rotate (R)">&#8635;</button>
       <button class="t-btn" id="toolScale" data-tool="scale" title="Scale (S)">&#8644;</button>
@@ -136,11 +151,15 @@
       <div class="bottom-tabs">
         <div class="bottom-tab active" data-btab="code">&#9998; Code</div>
         <div class="bottom-tab" data-btab="console">&#9638; Console</div>
+        <div class="bottom-tab" data-btab="files">&#128193; Files</div>
         <div class="bottom-spacer"></div>
         <button class="t-btn" id="btnToggleBottom" title="Toggle">&#9660;</button>
       </div>
       <div class="bottom-content" id="codePanel"><div id="monacoEditor" style="width:100%;height:100%"></div></div>
       <div class="bottom-content hidden" id="consolePanel"><div id="console"></div></div>
+      <div class="bottom-content hidden" id="filesPanel">
+        <div class="file-tree" id="fileTree"></div>
+      </div>
     </div>
   </div>
 
@@ -148,6 +167,7 @@
     <div class="panel-tabs">
       <div class="panel-tab active" data-right="props">Inspector</div>
       <div class="panel-tab" data-right="scripts">Scripts</div>
+      <div class="panel-tab" data-right="material">Material</div>
     </div>
     <div class="panel-content" id="propsPanel">
       <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
@@ -171,17 +191,63 @@
           <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
           <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
         </div>
-        <div class="prop-group">
-          <label>Color</label>
-          <div class="prop-row"><input class="p-input" id="propColor" type="color"><input class="p-input" id="propColorHex" value="#bfff3c"></div>
-        </div>
       </div>
     </div>
     <div class="panel-content hidden" id="scriptsPanel">
       <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
       <div id="scriptsContent" style="display:none;padding:8px 12px">
         <div id="scriptList"></div>
-        <button class="add-script-btn" id="btnAddScript">+ Add Script</button>
+        <button class="add-btn" id="btnAddScript">+ Add Script</button>
+      </div>
+    </div>
+    <div class="panel-content hidden" id="materialPanel">
+      <div class="empty-state" id="matEmpty">Select an object to edit material</div>
+      <div id="matContent" style="display:none">
+        <div class="prop-group">
+          <label>Type</label>
+          <select class="p-select" id="matType">
+            <option value="standard">Standard (PBR)</option>
+            <option value="phong">Phong</option>
+            <option value="lambert">Lambert</option>
+            <option value="toon">Toon</option>
+            <option value="shader">Custom Shader</option>
+          </select>
+        </div>
+        <div class="prop-group" id="matColorGroup">
+          <label>Color</label>
+          <div class="prop-row"><input class="p-input" id="matColor" type="color"><input class="p-input" id="matColorHex" value="#bfff3c"></div>
+        </div>
+        <div class="prop-group" id="matMetalnessGroup">
+          <label>Metalness</label>
+          <div class="prop-row"><input class="p-input" id="matMetalness" type="range" min="0" max="1" step="0.01" value="0.1"></div>
+        </div>
+        <div class="prop-group" id="matRoughnessGroup">
+          <label>Roughness</label>
+          <div class="prop-row"><input class="p-input" id="matRoughness" type="range" min="0" max="1" step="0.01" value="0.6"></div>
+        </div>
+        <div class="prop-group" id="matEmissiveGroup" style="display:none">
+          <label>Emissive</label>
+          <div class="prop-row"><input class="p-input" id="matEmissive" type="color" value="#000000"></div>
+        </div>
+        <div class="prop-group" id="matShininessGroup" style="display:none">
+          <label>Shininess</label>
+          <div class="prop-row"><input class="p-input" id="matShininess" type="range" min="0" max="100" step="1" value="30"></div>
+        </div>
+        <div class="prop-group" id="matShaderGroup" style="display:none">
+          <label>Vertex Shader</label>
+          <textarea class="p-input" id="matVertShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
+void main() {
+  vNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}</textarea>
+          <label style="margin-top:8px">Fragment Shader</label>
+          <textarea class="p-input" id="matFragShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
+void main() {
+  float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;
+}</textarea>
+          <button class="add-btn" id="btnApplyShader" style="margin-top:6px">Apply Shader</button>
+        </div>
       </div>
     </div>
   </div>
@@ -207,9 +273,6 @@
 <script>
 (function(){
   window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
-  window.E = {};
-  var _sel = null;
-  window.__selObj = function(i){ if(window.E.selectObject) window.E.selectObject(window.E.sceneObjects[i]); };
 })();
 </script>
 
@@ -219,7 +282,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 const container = document.getElementById('viewport');
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x252630);
 
@@ -235,33 +297,20 @@ container.appendChild(renderer.domElement);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(10, 15, 10);
-dirLight.castShadow = true;
+dirLight.position.set(10, 15, 10); dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(2048, 2048);
-dirLight.shadow.camera.near = 0.5;
-dirLight.shadow.camera.far = 60;
-dirLight.shadow.camera.left = -20;
-dirLight.shadow.camera.right = 20;
-dirLight.shadow.camera.top = 20;
-dirLight.shadow.camera.bottom = -20;
 scene.add(dirLight);
 scene.add(new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4));
 
 const gridHelper = new THREE.GridHelper(40, 40, 0x555568, 0x3a3a4a);
 scene.add(gridHelper);
-
-const groundGeo = new THREE.PlaneGeometry(40, 40);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e1f26, roughness: 0.9 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.01;
-ground.receiveShadow = true;
-ground.name = '__ground';
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), groundMat);
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; ground.receiveShadow = true; ground.name = '__ground';
 scene.add(ground);
 
 const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.enableDamping = true;
-orbit.dampingFactor = 0.08;
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
 
 const transform = new TransformControls(camera, renderer.domElement);
 transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
@@ -282,11 +331,159 @@ const primitiveGeos = {
   cone: () => new THREE.ConeGeometry(0.5, 1, 24),
   torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
 };
-const primitiveColors = {
-  box: 0xbfff3c, sphere: 0x68aed4, cylinder: 0xff8426,
-  plane: 0x444455, cone: 0xff2674, torus: 0x94216a,
-};
+const primitiveColors = { box: 0xbfff3c, sphere: 0x68aed4, cylinder: 0xff8426, plane: 0x444455, cone: 0xff2674, torus: 0x94216a };
 
+/* ════════════════════════════════════════════════════
+   UNDO / REDO SYSTEM
+   ════════════════════════════════════════════════════ */
+const undoStack = [];
+const redoStack = [];
+const MAX_UNDO = 80;
+
+function snapshot() {
+  return sceneObjects.filter(o => o.name !== '__ground').map(o => ({
+    name: o.name, type: o.userData.type,
+    position: [o.position.x, o.position.y, o.position.z],
+    rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
+    scale: [o.scale.x, o.scale.y, o.scale.z],
+    color: o.userData.color,
+    scripts: JSON.parse(JSON.stringify(o.userData.scripts || [])),
+    matType: o.userData.matType || 'standard',
+    matProps: Object.assign({}, o.userData.matProps || {}),
+  }));
+}
+
+function pushUndo() {
+  undoStack.push(JSON.stringify(snapshot()));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack.length = 0;
+  updateUndoHint();
+}
+
+function undo() {
+  if (undoStack.length === 0) return;
+  redoStack.push(JSON.stringify(snapshot()));
+  const state = JSON.parse(undoStack.pop());
+  restoreFromSnapshot(state);
+  updateUndoHint();
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  undoStack.push(JSON.stringify(snapshot()));
+  const state = JSON.parse(redoStack.pop());
+  restoreFromSnapshot(state);
+  updateUndoHint();
+}
+
+function restoreFromSnapshot(data) {
+  const prev = selectedObj;
+  sceneObjects.forEach(o => scene.remove(o));
+  sceneObjects = [];
+  data.forEach(d => {
+    let mesh;
+    if (d.type === 'light') { mesh = new THREE.PointLight(0xffffff, 1, 20); }
+    else if (d.type === 'camera') { mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100); }
+    else {
+      const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+      const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+      const mat = buildMaterial(d.matType || 'standard', color, d.matProps || {});
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true; mesh.receiveShadow = true;
+    }
+    mesh.name = d.name || 'Object';
+    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [], matType: d.matType || 'standard', matProps: d.matProps || {} };
+    if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
+    if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
+    if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
+    scene.add(mesh);
+    sceneObjects.push(mesh);
+  });
+  selectedObj = null;
+  selectObject(sceneObjects.length > 0 ? sceneObjects[Math.min(sceneObjects.indexOf(prev), sceneObjects.length - 1)] : null);
+  refreshHierarchy();
+}
+
+function updateUndoHint() {
+  document.getElementById('undoHint').textContent = undoStack.length > 0 ? undoStack.length + ' undo' : '';
+}
+
+/* ════════════════════════════════════════════════════
+   MATERIAL SYSTEM
+   ════════════════════════════════════════════════════ */
+function buildMaterial(type, color, props) {
+  props = props || {};
+  switch (type) {
+    case 'phong':
+      return new THREE.MeshPhongMaterial({ color, emissive: props.emissive ? new THREE.Color(props.emissive) : 0x000000, shininess: props.shininess || 30 });
+    case 'lambert':
+      return new THREE.MeshLambertMaterial({ color });
+    case 'toon':
+      return new THREE.MeshToonMaterial({ color });
+    case 'shader':
+      return new THREE.ShaderMaterial({
+        vertexShader: props.vertShader || 'void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+        fragmentShader: props.fragShader || 'void main(){ gl_FragColor=vec4(0.75,1.0,0.24,1.0); }',
+      });
+    default:
+      return new THREE.MeshStandardMaterial({ color, roughness: props.roughness != null ? props.roughness : 0.6, metalness: props.metalness != null ? props.metalness : 0.1 });
+  }
+}
+
+function updateMaterialUI() {
+  if (!selectedObj || !selectedObj.material) return;
+  const type = selectedObj.userData.matType || 'standard';
+  const props = selectedObj.userData.matProps || {};
+  document.getElementById('matType').value = type;
+
+  const isCustomShader = type === 'shader';
+  const isStandard = type === 'standard';
+  const isPhong = type === 'phong';
+
+  document.getElementById('matColorGroup').style.display = isCustomShader ? 'none' : '';
+  document.getElementById('matMetalnessGroup').style.display = isStandard ? '' : 'none';
+  document.getElementById('matRoughnessGroup').style.display = isStandard ? '' : 'none';
+  document.getElementById('matEmissiveGroup').style.display = isPhong ? '' : 'none';
+  document.getElementById('matShininessGroup').style.display = isPhong ? '' : 'none';
+  document.getElementById('matShaderGroup').style.display = isCustomShader ? '' : 'none';
+
+  if (selectedObj.material.color) {
+    const col = '#' + selectedObj.material.color.getHexString();
+    document.getElementById('matColor').value = col;
+    document.getElementById('matColorHex').value = col;
+  }
+  if (selectedObj.material.metalness != null) document.getElementById('matMetalness').value = selectedObj.material.metalness;
+  if (selectedObj.material.roughness != null) document.getElementById('matRoughness').value = selectedObj.material.roughness;
+  if (props.shininess != null) document.getElementById('matShininess').value = props.shininess;
+  if (props.vertShader) document.getElementById('matVertShader').value = props.vertShader;
+  if (props.fragShader) document.getElementById('matFragShader').value = props.fragShader;
+}
+
+/* ════════════════════════════════════════════════════
+   FILE EXPLORER
+   ════════════════════════════════════════════════════ */
+function refreshFileTree() {
+  const el = document.getElementById('fileTree');
+  let html = '<div class="file-item folder"><span class="fi">&#128193;</span> Game Assets</div>';
+  sceneObjects.forEach((o, i) => {
+    if (o.name === '__ground') return;
+    const icon = o.userData.type === 'box' ? '&#9632;' : o.userData.type === 'sphere' ? '&#9679;' :
+                 o.userData.type === 'cylinder' ? '&#9670;' : o.userData.type === 'cone' ? '&#9650;' :
+                 o.userData.type === 'torus' ? '&#9711;' : o.userData.type === 'light' ? '&#9728;' :
+                 o.userData.type === 'camera' ? '&#128247;' : '&#9654;';
+    html += '<div class="file-item' + (selectedObj === o ? ' active' : '') + '" data-fidx="' + i + '"><span class="fi">' + icon + '</span> ' + o.name + '.' + o.userData.type + '</div>';
+    if (o.userData.scripts && o.userData.scripts.length) {
+      o.userData.scripts.forEach((s, si) => {
+        html += '<div class="file-item" style="padding-left:28px" data-fsidx="' + i + '" data-fssi="' + si + '"><span class="fi" style="color:#bfff3c">&#9998;</span> ' + s.name + '.js</div>';
+      });
+    }
+  });
+  el.innerHTML = html;
+}
+
+/* ════════════════════════════════════════════════════
+   CORE FUNCTIONS
+   ════════════════════════════════════════════════════ */
 function logToConsole(text, level) {
   level = level || 'info';
   const el = document.getElementById('console');
@@ -307,6 +504,7 @@ function refreshHierarchy() {
     return '<div class="h-item' + (selectedObj === o ? ' selected' : '') + '" data-hidx="' + i + '">' +
       '<span class="h-icon">' + icon + '</span>' + o.name + '</div>';
   }).join('');
+  refreshFileTree();
 }
 
 function updatePropsUI() {
@@ -321,11 +519,7 @@ function updatePropsUI() {
   document.getElementById('propScaleX').value = selectedObj.scale.x.toFixed(2);
   document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
   document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
-  if (selectedObj.material && selectedObj.material.color) {
-    var col = '#' + selectedObj.material.color.getHexString();
-    document.getElementById('propColor').value = col;
-    document.getElementById('propColorHex').value = col;
-  }
+  updateMaterialUI();
 }
 
 function refreshScriptList() {
@@ -333,7 +527,7 @@ function refreshScriptList() {
   if (!selectedObj) { el.innerHTML = ''; return; }
   var scripts = selectedObj.userData.scripts || [];
   el.innerHTML = scripts.map(function(s, i) {
-    return '<div class="script-tag" data-sidx="' + i + '">&#9998; ' + s.name + '</div>';
+    return '<div class="script-tag" data-sidx="' + i + '"><span>&#9998; ' + s.name + '</span><span class="del" data-delscript="' + i + '">x</span></div>';
   }).join('');
 }
 
@@ -345,6 +539,8 @@ function selectObject(obj) {
     document.getElementById('propsContent').style.display = 'block';
     document.getElementById('scriptsEmpty').style.display = 'none';
     document.getElementById('scriptsContent').style.display = 'block';
+    document.getElementById('matEmpty').style.display = 'none';
+    document.getElementById('matContent').style.display = 'block';
     updatePropsUI();
     refreshScriptList();
   } else {
@@ -353,42 +549,41 @@ function selectObject(obj) {
     document.getElementById('propsContent').style.display = 'none';
     document.getElementById('scriptsEmpty').style.display = 'block';
     document.getElementById('scriptsContent').style.display = 'none';
+    document.getElementById('matEmpty').style.display = 'block';
+    document.getElementById('matContent').style.display = 'none';
   }
   refreshHierarchy();
 }
 
 function addPrimitive(type) {
+  pushUndo();
   var mesh;
   if (type === 'light') {
-    var l = new THREE.PointLight(0xffffff, 1, 20);
-    l.position.set(2, 3, 2);
-    l.castShadow = true;
-    mesh = l;
+    mesh = new THREE.PointLight(0xffffff, 1, 20);
+    mesh.position.set(2, 3, 2); mesh.castShadow = true;
   } else if (type === 'camera') {
-    var c = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-    c.position.set(0, 2, 5);
-    mesh = c;
+    mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    mesh.position.set(0, 2, 5);
   } else {
     var geo = primitiveGeos[type]();
     var color = primitiveColors[type] || 0xbfff3c;
-    var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6, metalness: 0.1 });
+    var mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
     mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.castShadow = true; mesh.receiveShadow = true;
     mesh.position.y = type === 'plane' ? 0.01 : 0.5;
     if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
   }
-  var name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
-  mesh.name = name;
-  mesh.userData = { type: type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [] };
+  mesh.name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
+  mesh.userData = { type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [], matType: 'standard', matProps: {} };
   scene.add(mesh);
   sceneObjects.push(mesh);
   selectObject(mesh);
-  logToConsole('Created ' + name, 'info');
+  logToConsole('Created ' + mesh.name, 'info');
 }
 
 function deleteSelected() {
   if (!selectedObj) return;
+  pushUndo();
   logToConsole('Deleted ' + selectedObj.name, 'warn');
   scene.remove(selectedObj);
   sceneObjects = sceneObjects.filter(function(o) { return o !== selectedObj; });
@@ -399,11 +594,12 @@ function deleteSelected() {
 
 function duplicateSelected() {
   if (!selectedObj) return;
+  pushUndo();
   var clone = selectedObj.clone();
   if (selectedObj.material) clone.material = selectedObj.material.clone();
   clone.position.x += 1;
   clone.name = selectedObj.name + '_copy';
-  clone.userData = { type: selectedObj.userData.type, color: selectedObj.userData.color, scripts: JSON.parse(JSON.stringify(selectedObj.userData.scripts || [])) };
+  clone.userData = { type: selectedObj.userData.type, color: selectedObj.userData.color, scripts: JSON.parse(JSON.stringify(selectedObj.userData.scripts || [])), matType: selectedObj.userData.matType, matProps: Object.assign({}, selectedObj.userData.matProps || {}) };
   scene.add(clone);
   sceneObjects.push(clone);
   selectObject(clone);
@@ -418,6 +614,8 @@ function serializeScene() {
       scale: [o.scale.x, o.scale.y, o.scale.z],
       color: o.userData.color,
       scripts: o.userData.scripts || [],
+      matType: o.userData.matType || 'standard',
+      matProps: o.userData.matProps || {},
     };
   });
 }
@@ -434,13 +632,12 @@ function deserializeScene(data) {
     } else {
       var geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
       var color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-      var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6, metalness: 0.1 });
+      var mat = buildMaterial(d.matType || 'standard', color, d.matProps || {});
       mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.castShadow = true; mesh.receiveShadow = true;
     }
     mesh.name = d.name || 'Object';
-    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [] };
+    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [], matType: d.matType || 'standard', matProps: d.matProps || {} };
     if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
     if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
     if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
@@ -450,37 +647,23 @@ function deserializeScene(data) {
   refreshHierarchy();
 }
 
-/* ── EXPOSE TO NON-MODULE SCRIPT ── */
-window.E = {
-  sceneObjects: sceneObjects,
-  selectObject: selectObject,
-  addPrimitive: addPrimitive,
-  deleteSelected: deleteSelected,
-  duplicateSelected: duplicateSelected,
-  serializeScene: serializeScene,
-  deserializeScene: deserializeScene,
-  logToConsole: logToConsole,
-  scene: scene,
-};
-
-/* ── RESIZE ── */
+/* ════════════════════════════════════════════════════
+   RESIZE
+   ════════════════════════════════════════════════════ */
 function onResize() {
   var w = container.clientWidth, h = container.clientHeight;
-  if (w > 0 && h > 0) {
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-  }
+  if (w > 0 && h > 0) { camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
 }
 window.addEventListener('resize', onResize);
 new ResizeObserver(onResize).observe(container);
 setTimeout(onResize, 0);
 setTimeout(onResize, 200);
 
-/* ── RAYCASTING ── */
+/* ════════════════════════════════════════════════════
+   RAYCASTING
+   ════════════════════════════════════════════════════ */
 var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
-
 renderer.domElement.addEventListener('pointerdown', function(e) {
   if (transform.dragging) return;
   var rect = renderer.domElement.getBoundingClientRect();
@@ -495,15 +678,20 @@ renderer.domElement.addEventListener('pointerdown', function(e) {
 
 transform.addEventListener('objectChange', function() { if (selectedObj) updatePropsUI(); });
 
-/* ── KEYBOARD ── */
+/* ════════════════════════════════════════════════════
+   KEYBOARD
+   ════════════════════════════════════════════════════ */
 document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-  if (window.monaco && document.activeElement && document.activeElement.closest('.monaco-editor')) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (window._monacoEditor && document.activeElement && document.activeElement.closest('.monaco-editor')) return;
   if (e.key === 'g') setTool('translate');
   if (e.key === 'r') setTool('rotate');
   if (e.key === 's' && !e.ctrlKey) setTool('scale');
-  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
   if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
+  if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  if (e.ctrlKey && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
+  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
   if (e.key === 'Escape') { if (playMode) exitPlayMode(); else selectObject(null); }
 });
 
@@ -515,14 +703,15 @@ function setTool(tool) {
   document.getElementById('toolScale').classList.toggle('active', tool === 'scale');
 }
 
-/* ── TABS ── */
+/* ════════════════════════════════════════════════════
+   TABS
+   ════════════════════════════════════════════════════ */
 document.querySelectorAll('[data-left]').forEach(function(tab) {
   tab.addEventListener('click', function() {
     document.querySelectorAll('[data-left]').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');
-    var v = tab.dataset.left;
-    document.getElementById('hierarchyPanel').classList.toggle('hidden', v !== 'hierarchy');
-    document.getElementById('assetsPanel').classList.toggle('hidden', v !== 'assets');
+    document.getElementById('hierarchyPanel').classList.toggle('hidden', tab.dataset.left !== 'hierarchy');
+    document.getElementById('assetsPanel').classList.toggle('hidden', tab.dataset.left !== 'assets');
   });
 });
 
@@ -530,9 +719,9 @@ document.querySelectorAll('[data-right]').forEach(function(tab) {
   tab.addEventListener('click', function() {
     document.querySelectorAll('[data-right]').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');
-    var v = tab.dataset.right;
-    document.getElementById('propsPanel').classList.toggle('hidden', v !== 'props');
-    document.getElementById('scriptsPanel').classList.toggle('hidden', v !== 'scripts');
+    document.getElementById('propsPanel').classList.toggle('hidden', tab.dataset.right !== 'props');
+    document.getElementById('scriptsPanel').classList.toggle('hidden', tab.dataset.right !== 'scripts');
+    document.getElementById('materialPanel').classList.toggle('hidden', tab.dataset.right !== 'material');
   });
 });
 
@@ -540,125 +729,216 @@ document.querySelectorAll('[data-btab]').forEach(function(tab) {
   tab.addEventListener('click', function() {
     document.querySelectorAll('[data-btab]').forEach(function(t) { t.classList.remove('active'); });
     tab.classList.add('active');
-    var v = tab.dataset.btab;
-    document.getElementById('codePanel').classList.toggle('hidden', v !== 'code');
-    document.getElementById('consolePanel').classList.toggle('hidden', v !== 'console');
-    if (v === 'code' && window._monacoEditor) window._monacoEditor.layout();
+    document.getElementById('codePanel').classList.toggle('hidden', tab.dataset.btab !== 'code');
+    document.getElementById('consolePanel').classList.toggle('hidden', tab.dataset.btab !== 'console');
+    document.getElementById('filesPanel').classList.toggle('hidden', tab.dataset.btab !== 'files');
+    if (tab.dataset.btab === 'code' && window._monacoEditor) window._monacoEditor.layout();
   });
 });
 
-/* ── TOOLBAR BUTTONS ── */
+/* ════════════════════════════════════════════════════
+   TOOLBAR
+   ════════════════════════════════════════════════════ */
 document.querySelectorAll('[data-tool]').forEach(function(btn) {
   btn.addEventListener('click', function() { setTool(btn.dataset.tool); });
 });
-
+document.getElementById('btnUndo').addEventListener('click', undo);
+document.getElementById('btnRedo').addEventListener('click', redo);
 document.getElementById('btnDup').addEventListener('click', duplicateSelected);
 document.getElementById('btnDel').addEventListener('click', deleteSelected);
-document.getElementById('btnGrid').addEventListener('click', function() {
-  gridVisible = !gridVisible;
-  gridHelper.visible = gridVisible;
-});
+document.getElementById('btnGrid').addEventListener('click', function() { gridVisible = !gridVisible; gridHelper.visible = gridVisible; });
 document.getElementById('btnWire').addEventListener('click', function() {
   wireframeMode = !wireframeMode;
   sceneObjects.forEach(function(o) { if (o.material) o.material.wireframe = wireframeMode; });
 });
 
-/* ── ASSET BUTTONS ── */
 document.querySelectorAll('[data-add]').forEach(function(btn) {
   btn.addEventListener('click', function() { addPrimitive(btn.dataset.add); });
 });
 
-/* ── HIERARCHY CLICKS ── */
+/* ════════════════════════════════════════════════════
+   HIERARCHY + FILE CLICKS
+   ════════════════════════════════════════════════════ */
 document.getElementById('hierarchy').addEventListener('click', function(e) {
   var item = e.target.closest('[data-hidx]');
   if (item) selectObject(sceneObjects[parseInt(item.dataset.hidx)]);
 });
 
-/* ── SCRIPT CLICKS ── */
+document.getElementById('fileTree').addEventListener('click', function(e) {
+  var item = e.target.closest('[data-fidx]');
+  if (item) { selectObject(sceneObjects[parseInt(item.dataset.fidx)]); document.querySelector('[data-right="props"]').click(); return; }
+  var sitem = e.target.closest('[data-fsidx]');
+  if (sitem) {
+    var obj = sceneObjects[parseInt(sitem.dataset.fsidx)];
+    var si = parseInt(sitem.dataset.fssi);
+    if (obj && obj.userData.scripts && obj.userData.scripts[si]) {
+      selectObject(obj);
+      if (window._monacoEditor) window._monacoEditor.setValue(obj.userData.scripts[si].code);
+      document.querySelector('[data-right="scripts"]').click();
+      document.querySelector('[data-btab="code"]').click();
+    }
+  }
+});
+
+/* ════════════════════════════════════════════════════
+   SCRIPTS
+   ════════════════════════════════════════════════════ */
 document.getElementById('scriptList').addEventListener('click', function(e) {
+  var delBtn = e.target.closest('[data-delscript]');
+  if (delBtn) {
+    if (!selectedObj) return;
+    pushUndo();
+    var idx = parseInt(delBtn.dataset.delscript);
+    selectedObj.userData.scripts.splice(idx, 1);
+    refreshScriptList();
+    if (window._monacoEditor) window._monacoEditor.setValue('// Select an object and attach a script');
+    return;
+  }
   var tag = e.target.closest('[data-sidx]');
   if (tag && selectedObj && selectedObj.userData.scripts) {
     var s = selectedObj.userData.scripts[parseInt(tag.dataset.sidx)];
     if (s && window._monacoEditor) {
       window._monacoEditor.setValue(s.code);
-      document.querySelectorAll('[data-btab]').forEach(function(t) { t.classList.remove('active'); });
-      document.querySelector('[data-btab="code"]').classList.add('active');
-      document.getElementById('codePanel').classList.remove('hidden');
-      document.getElementById('consolePanel').classList.add('hidden');
-      window._monacoEditor.layout();
+      document.querySelector('[data-btab="code"]').click();
     }
   }
 });
 
 document.getElementById('btnAddScript').addEventListener('click', function() {
   if (!selectedObj) return;
+  pushUndo();
   if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
-  if (selectedObj.userData.scripts.length === 0) {
-    selectedObj.userData.scripts.push({ name: 'Script', code: '// Runs every frame\nfunction update() {\n\n}' });
-  }
+  selectedObj.userData.scripts.push({ name: 'Script_' + (selectedObj.userData.scripts.length + 1), code: '// Runs every frame\nfunction update() {\n  self.position.y += 0.01;\n}' });
   refreshScriptList();
-  if (window._monacoEditor) window._monacoEditor.setValue(selectedObj.userData.scripts[0].code);
+  if (window._monacoEditor) window._monacoEditor.setValue(selectedObj.userData.scripts[selectedObj.userData.scripts.length - 1].code);
   logToConsole('Added script to ' + selectedObj.name, 'info');
+  refreshFileTree();
 });
 
-/* ── PROPERTY INPUTS ── */
-['propPosX','propPosY','propPosZ'].forEach(function(id, i) {
-  document.getElementById(id).addEventListener('input', function() {
+/* ════════════════════════════════════════════════════
+   MATERIAL CONTROLS
+   ════════════════════════════════════════════════════ */
+document.getElementById('matType').addEventListener('change', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  pushUndo();
+  const type = this.value;
+  const oldColor = selectedObj.material.color ? selectedObj.material.color.clone() : new THREE.Color(0xbfff3c);
+  const oldProps = selectedObj.userData.matProps || {};
+  const newMat = buildMaterial(type, oldColor, oldProps);
+  selectedObj.material.dispose();
+  selectedObj.material = newMat;
+  selectedObj.userData.matType = type;
+  selectedObj.userData.matProps = oldProps;
+  updateMaterialUI();
+});
+
+document.getElementById('matColor').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  selectedObj.material.color.set(this.value);
+  document.getElementById('matColorHex').value = this.value;
+  selectedObj.userData.color = this.value;
+});
+
+document.getElementById('matColorHex').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  if (/^#[0-9a-f]{6}$/i.test(this.value)) {
+    selectedObj.material.color.set(this.value);
+    document.getElementById('matColor').value = this.value;
+    selectedObj.userData.color = this.value;
+  }
+});
+
+document.getElementById('matMetalness').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material || selectedObj.material.metalness == null) return;
+  selectedObj.material.metalness = parseFloat(this.value);
+  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
+  selectedObj.userData.matProps.metalness = parseFloat(this.value);
+});
+
+document.getElementById('matRoughness').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material || selectedObj.material.roughness == null) return;
+  selectedObj.material.roughness = parseFloat(this.value);
+  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
+  selectedObj.userData.matProps.roughness = parseFloat(this.value);
+});
+
+document.getElementById('matShininess').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material || selectedObj.material.shininess == null) return;
+  selectedObj.material.shininess = parseFloat(this.value);
+  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
+  selectedObj.userData.matProps.shininess = parseFloat(this.value);
+});
+
+document.getElementById('matEmissive').addEventListener('input', function() {
+  if (!selectedObj || !selectedObj.material || !selectedObj.material.emissive) return;
+  selectedObj.material.emissive.set(this.value);
+  if (!selectedObj.userData.matProps) selectedObj.userData.matProps = {};
+  selectedObj.userData.matProps.emissive = this.value;
+});
+
+document.getElementById('btnApplyShader').addEventListener('click', function() {
+  if (!selectedObj || !selectedObj.material) return;
+  pushUndo();
+  const vs = document.getElementById('matVertShader').value;
+  const fs = document.getElementById('matFragShader').value;
+  selectedObj.material.dispose();
+  selectedObj.material = new THREE.ShaderMaterial({ vertexShader: vs, fragmentShader: fs });
+  selectedObj.userData.matType = 'shader';
+  selectedObj.userData.matProps = { vertShader: vs, fragShader: fs };
+  logToConsole('Applied custom shader to ' + selectedObj.name, 'info');
+});
+
+/* ════════════════════════════════════════════════════
+   PROPERTY INPUTS (with undo on change end)
+   ════════════════════════════════════════════════════ */
+['propPosX','propPosY','propPosZ'].forEach(function(id) {
+  var el = document.getElementById(id);
+  el.addEventListener('focus', pushUndo);
+  el.addEventListener('input', function() {
     if (!selectedObj) return;
     selectedObj.position.x = parseFloat(document.getElementById('propPosX').value) || 0;
     selectedObj.position.y = parseFloat(document.getElementById('propPosY').value) || 0;
     selectedObj.position.z = parseFloat(document.getElementById('propPosZ').value) || 0;
   });
 });
-['propRotX','propRotY','propRotZ'].forEach(function(id, i) {
-  document.getElementById(id).addEventListener('input', function() {
+['propRotX','propRotY','propRotZ'].forEach(function(id) {
+  var el = document.getElementById(id);
+  el.addEventListener('focus', pushUndo);
+  el.addEventListener('input', function() {
     if (!selectedObj) return;
     selectedObj.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotX').value) || 0);
     selectedObj.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotY').value) || 0);
     selectedObj.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotZ').value) || 0);
   });
 });
-['propScaleX','propScaleY','propScaleZ'].forEach(function(id, i) {
-  document.getElementById(id).addEventListener('input', function() {
+['propScaleX','propScaleY','propScaleZ'].forEach(function(id) {
+  var el = document.getElementById(id);
+  el.addEventListener('focus', pushUndo);
+  el.addEventListener('input', function() {
     if (!selectedObj) return;
     selectedObj.scale.x = parseFloat(document.getElementById('propScaleX').value) || 1;
     selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
     selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
   });
 });
+document.getElementById('propName').addEventListener('focus', pushUndo);
 document.getElementById('propName').addEventListener('input', function() {
   if (!selectedObj) return;
   selectedObj.name = document.getElementById('propName').value;
   refreshHierarchy();
 });
-document.getElementById('propColor').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  var c = document.getElementById('propColor').value;
-  selectedObj.material.color.set(c);
-  document.getElementById('propColorHex').value = c;
-  selectedObj.userData.color = c;
-});
-document.getElementById('propColorHex').addEventListener('input', function() {
-  if (!selectedObj || !selectedObj.material) return;
-  var c = document.getElementById('propColorHex').value;
-  if (/^#[0-9a-f]{6}$/i.test(c)) {
-    selectedObj.material.color.set(c);
-    document.getElementById('propColor').value = c;
-    selectedObj.userData.color = c;
-  }
-});
 
-/* ── BOTTOM RESIZE ── */
+/* ════════════════════════════════════════════════════
+   BOTTOM RESIZE
+   ════════════════════════════════════════════════════ */
 (function() {
   var handle = document.getElementById('bottomHandle');
   var panel = document.getElementById('bottomPanel');
   var startY, startH;
   handle.addEventListener('mousedown', function(e) {
-    startY = e.clientY;
-    startH = panel.offsetHeight;
+    startY = e.clientY; startH = panel.offsetHeight;
     function onMove(ev) {
-      var h = Math.max(80, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY)));
-      panel.style.height = h + 'px';
+      panel.style.height = Math.max(80, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY))) + 'px';
       if (window._monacoEditor) window._monacoEditor.layout();
     }
     function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
@@ -666,26 +946,19 @@ document.getElementById('propColorHex').addEventListener('input', function() {
     document.addEventListener('mouseup', onUp);
   });
 })();
-
 document.getElementById('btnToggleBottom').addEventListener('click', function() {
-  var p = document.getElementById('bottomPanel');
-  p.classList.toggle('collapsed');
+  document.getElementById('bottomPanel').classList.toggle('collapsed');
   if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
 });
 
-/* ── SAVE / LOAD ── */
+/* ════════════════════════════════════════════════════
+   SAVE / LOAD
+   ════════════════════════════════════════════════════ */
 var currentGameId = new URLSearchParams(window.location.search).get('id');
-
 async function getApiBase() {
-  try {
-    var r = await fetch('/config.js');
-    var t = await r.text();
-    var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/);
-    if (m) return m[1].replace(/^wss?:\/\//, 'https://');
-  } catch(e) {}
+  try { var r = await fetch('/config.js'); var t = await r.text(); var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) return m[1].replace(/^wss?:\/\//, 'https://'); } catch(e) {}
   return '';
 }
-
 document.getElementById('btnSave').addEventListener('click', function() { saveGame(false); });
 document.getElementById('btnPublish').addEventListener('click', function() { saveGame(true); });
 
@@ -697,15 +970,9 @@ async function saveGame(publish) {
   var apiBase = await getApiBase();
   try {
     if (currentGameId) {
-      await fetch(apiBase + '/api/games/' + currentGameId, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ title: title, scene: sceneData, published: publish }),
-      });
+      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData, published: publish }) });
     } else {
-      var res = await fetch(apiBase + '/api/games', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ title: title, scene: sceneData, published: publish }),
-      });
+      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData, published: publish }) });
       var d = await res.json();
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
@@ -716,53 +983,33 @@ async function saveGame(publish) {
 async function loadGame() {
   if (!currentGameId) return;
   var apiBase = await getApiBase();
-  try {
-    var res = await fetch(apiBase + '/api/games/' + currentGameId);
-    var d = await res.json();
-    if (d.game) {
-      document.getElementById('gameTitle').value = d.game.title;
-      var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene;
-      deserializeScene(sd);
-    }
-  } catch(e) {}
+  try { var res = await fetch(apiBase + '/api/games/' + currentGameId); var d = await res.json(); if (d.game) { document.getElementById('gameTitle').value = d.game.title; var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene; deserializeScene(sd); } } catch(e) {}
 }
 
-/* ── PLAY MODE ── */
+/* ════════════════════════════════════════════════════
+   PLAY MODE
+   ════════════════════════════════════════════════════ */
 function enterPlayMode() {
-  playMode = true;
-  transform.detach();
+  playMode = true; transform.detach();
   document.getElementById('playOverlay').classList.add('active');
   var frame = document.getElementById('playFrame');
   frame.onload = function() {
-    try {
-      frame.contentWindow.postMessage({
-        type: 'play',
-        scene: serializeScene(),
-        scripts: sceneObjects.reduce(function(acc, o) {
-          return acc.concat((o.userData.scripts || []).filter(function(s) { return s.code; }));
-        }, []),
-      }, '*');
-    } catch(e) {}
+    try { frame.contentWindow.postMessage({ type: 'play', scene: serializeScene(), scripts: sceneObjects.reduce(function(a, o) { return a.concat((o.userData.scripts || []).filter(function(s) { return s.code; })); }, []) }, '*'); } catch(e) {}
   };
   frame.src = '/play.html';
 }
-
 function exitPlayMode() {
-  playMode = false;
-  document.getElementById('playOverlay').classList.remove('active');
-  try {
-    document.getElementById('playFrame').contentWindow.postMessage({ type: 'stop' }, '*');
-  } catch(e) {}
+  playMode = false; document.getElementById('playOverlay').classList.remove('active');
+  try { document.getElementById('playFrame').contentWindow.postMessage({ type: 'stop' }, '*'); } catch(e) {}
   document.getElementById('playFrame').srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
 }
-
 document.getElementById('btnPlay').addEventListener('click', enterPlayMode);
 document.getElementById('btnStop').addEventListener('click', exitPlayMode);
-window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'console') logToConsole(e.data.text, e.data.level);
-});
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'console') logToConsole(e.data.text, e.data.level); });
 
-/* ── MONACO ── */
+/* ════════════════════════════════════════════════════
+   MONACO
+   ════════════════════════════════════════════════════ */
 function loadMonaco() {
   var s = document.createElement('script');
   s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
@@ -770,7 +1017,7 @@ function loadMonaco() {
     require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
     require(['vs/editor/editor.main'], function() {
       var ed = monaco.editor.create(document.getElementById('monacoEditor'), {
-        value: '// Select an object and attach a script\n// Scripts run when the game starts\n\nfunction update() {\n  // This runs every frame\n}',
+        value: '// Select an object and attach a script\n// Available: scene, objects, camera, self (current object)\n// Function update() runs every frame\n\nfunction update() {\n  self.rotation.y += 0.01;\n}',
         language: 'javascript', theme: 'vs-dark', fontSize: 13,
         minimap: { enabled: false }, automaticLayout: false,
         scrollBeyondLastLine: false, padding: { top: 8 },
@@ -785,6 +1032,7 @@ function loadMonaco() {
           } else {
             selectedObj.userData.scripts[0].code = ed.getValue();
           }
+          refreshFileTree();
         }
       });
       ed.layout();
@@ -794,16 +1042,13 @@ function loadMonaco() {
 }
 loadMonaco();
 
-/* ── RENDER LOOP ── */
-function animate() {
-  requestAnimationFrame(animate);
-  orbit.update();
-  renderer.render(scene, camera);
-}
+/* ════════════════════════════════════════════════════
+   RENDER LOOP
+   ════════════════════════════════════════════════════ */
+function animate() { requestAnimationFrame(animate); orbit.update(); renderer.render(scene, camera); }
 animate();
 loadGame();
 refreshHierarchy();
 </script>
-
 </body>
 </html>
