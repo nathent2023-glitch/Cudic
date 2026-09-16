@@ -465,6 +465,9 @@ wss.on('connection', (ws) => {
     }
   });
 
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+
   ws.on('close', () => {
     allConnections.delete(ws);
     const info = clients.get(ws);
@@ -489,6 +492,37 @@ wss.on('connection', (ws) => {
     }
   });
 });
+
+// ── Heartbeat: kill dead connections every 5s ─────────────────────
+setInterval(() => {
+  for (const ws of allConnections) {
+    if (ws.isAlive === false) {
+      allConnections.delete(ws);
+      const info = clients.get(ws);
+      if (info) {
+        const room = lobbies.get(info.lobby);
+        if (room) {
+          for (const client of room) {
+            if (client.ws === ws) {
+              room.delete(client);
+              break;
+            }
+          }
+          broadcast(info.lobby, { type: 'user_leave', username: info.username });
+          const users = [...room].map(c => c.username);
+          broadcast(info.lobby, { type: 'user_list', users });
+          if (room.size === 0) lobbies.delete(info.lobby);
+        }
+        clients.delete(ws);
+      }
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    try { ws.ping(); } catch {}
+  }
+  sendLobbyListToAll();
+}, 5000);
 
 // ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {
