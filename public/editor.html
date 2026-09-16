@@ -186,6 +186,10 @@
           <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
           <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
         </div>
+        <div class="prop-group" id="cameraAttachGroup" style="display:none">
+          <label>Attach To Object</label>
+          <select class="p-select" id="cameraAttach"><option value="">None (Free Camera)</option></select>
+        </div>
       </div>
     </div>
     <div class="panel-content hidden" id="scriptsPanel">
@@ -347,6 +351,7 @@ function snapshot() {
     scripts: JSON.parse(JSON.stringify(o.userData.scripts || [])),
     matType: o.userData.matType || 'standard',
     matProps: Object.assign({}, o.userData.matProps || {}),
+    attachTo: o.userData.attachTo || null,
   }));
 }
 
@@ -539,6 +544,18 @@ function updatePropsUI() {
   document.getElementById('propScaleX').value = selectedObj.scale.x.toFixed(2);
   document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
   document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
+  var isCam = selectedObj.isCamera;
+  document.getElementById('cameraAttachGroup').style.display = isCam ? 'block' : 'none';
+  if (isCam) {
+    var sel = document.getElementById('cameraAttach');
+    var opts = '<option value="">None (Free Camera)</option>';
+    sceneObjects.forEach(function(o, i) {
+      if (o === selectedObj || o.isCamera) return;
+      var selAttr = (selectedObj.userData.attachTo === o.name) ? ' selected' : '';
+      opts += '<option value="' + o.name + '"' + selAttr + '>' + o.name + '</option>';
+    });
+    sel.innerHTML = opts;
+  }
   updateMaterialUI();
 }
 
@@ -693,6 +710,7 @@ function serializeScene() {
       scripts: o.userData.scripts || [],
       matType: o.userData.matType || 'standard',
       matProps: o.userData.matProps || {},
+      attachTo: o.userData.attachTo || null,
     };
   });
 }
@@ -1204,6 +1222,12 @@ document.getElementById('propName').addEventListener('input', function() {
   if (!selectedObj) return;
   selectedObj.name = document.getElementById('propName').value;
   refreshHierarchy();
+});
+
+document.getElementById('cameraAttach').addEventListener('change', function() {
+  if (!selectedObj || !selectedObj.isCamera) return;
+  selectedObj.userData.attachTo = this.value || null;
+  logToConsole('Camera ' + (this.value ? 'attached to ' + this.value : 'detached'), 'info');
 });
 
 /* ════════════════════════════════════════════════════

@@ -125,13 +125,17 @@ function buildScene(sceneData) {
     if (d.position) obj.position.set(d.position[0], d.position[1], d.position[2]);
     if (d.rotation) obj.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
     if (d.scale) obj.scale.set(d.scale[0], d.scale[1], d.scale[2]);
+    if (d.attachTo) obj.userData.attachTo = d.attachTo;
     scene.add(obj);
     gameObjects.push(obj);
   });
   if (userCamera) {
     camera = userCamera;
-    controls.object = camera;
+    controls.enabled = false;
     resize();
+  } else {
+    controls.enabled = true;
+    controls.object = camera;
   }
 }
 
@@ -183,7 +187,14 @@ window.addEventListener('message', (e) => {
 
 function animate() {
   requestAnimationFrame(animate);
-  controls.update();
+  if (camera.userData && camera.userData.attachTo) {
+    const target = gameObjects.find(o => o.name === camera.userData.attachTo);
+    if (target) {
+      camera.position.copy(target.position);
+      camera.rotation.copy(target.rotation);
+    }
+  }
+  if (controls.enabled) controls.update();
   if (running) {
     updateFns.forEach(({ self, fn }) => {
       try { fn(); } catch(e) { parent.postMessage({ type: 'console', level: 'error', text: self.name + ': ' + e.message }, '*'); }
