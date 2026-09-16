@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Glox — Game Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+
+    /* ── Top Bar ── */
+    .topbar{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);height:44px;z-index:10;flex-shrink:0}
+    .topbar .brand{font-weight:800;font-size:1rem;letter-spacing:-.03em;margin-right:12px}
+    .topbar .brand span{color:#bfff3c}
+    .topbar a{color:#68aed4;text-decoration:none;font-size:.8rem;font-weight:500;padding:6px 10px;border-radius:8px;transition:all .15s}
+    .topbar a:hover{color:#fafdff;background:rgba(255,255,255,.06)}
+    .divider{width:1px;height:20px;background:rgba(255,255,255,.08);margin:0 4px}
+    .topbar .title-input{background:transparent;border:none;color:#fafdff;font-size:.84rem;font-weight:600;font-family:inherit;width:200px;outline:none;padding:4px 8px;border-radius:6px}
+    .topbar .title-input:focus{background:rgba(255,255,255,.06)}
+    .spacer{flex:1}
+    .btn-sm{padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+    .btn-sm:hover{background:rgba(255,255,255,.08)}
+    .btn-sm.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
+    .btn-sm.primary:hover{background:#a8e62e}
+    .btn-sm.danger{border-color:#ff2674;color:#ff2674}
+    .btn-sm.danger:hover{background:rgba(255,38,116,.1)}
+
+    /* ── Toolbar ── */
+    .toolbar{display:flex;align-items:center;gap:4px;padding:4px 12px;background:#131416;border-bottom:1px solid rgba(255,255,255,.04);height:36px;flex-shrink:0}
+    .tool-btn{width:30px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;border:none;background:transparent;color:#888;font-size:.78rem;cursor:pointer;font-family:inherit;font-weight:600;transition:all .12s}
+    .tool-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
+    .tool-btn.active{background:rgba(191,255,60,.12);color:#bfff3c}
+    .tool-sep{width:1px;height:18px;background:rgba(255,255,255,.06);margin:0 4px}
+
+    /* ── Main Layout ── */
+    .main{display:flex;flex:1;overflow:hidden}
+
+    /* ── Left Panel (Hierarchy) ── */
+    .panel-left{width:220px;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0}
+    .panel-header{padding:10px 12px;font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#52525b;border-bottom:1px solid rgba(255,255,255,.04)}
+    .hierarchy{flex:1;overflow-y:auto;padding:4px}
+    .hierarchy-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.82rem;color:#aaa;transition:all .1s}
+    .hierarchy-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
+    .hierarchy-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
+    .hierarchy-item .icon{width:16px;text-align:center;font-size:.72rem}
+    .add-menu{padding:8px;border-top:1px solid rgba(255,255,255,.04)}
+    .add-btn{width:100%;padding:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.76rem;cursor:pointer;font-family:inherit;transition:all .12s}
+    .add-btn:hover{border-color:#bfff3c;color:#bfff3c;background:rgba(191,255,60,.04)}
+    .add-menu.open .dropdown{display:block}
+    .dropdown{display:none;position:absolute;bottom:100%;left:8px;right:8px;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    .dropdown-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#ccc;transition:all .1s}
+    .dropdown-item:hover{background:rgba(191,255,60,.08);color:#bfff3c}
+
+    /* ── Viewport ── */
+    .viewport{flex:1;position:relative;overflow:hidden;background:#0d0e10}
+    .viewport canvas{display:block;width:100%!important;height:100%!important}
+    .viewport-overlay{position:absolute;bottom:8px;left:8px;font-size:.7rem;color:#52525b;pointer-events:none}
+
+    /* ── Right Panel (Properties) ── */
+    .panel-right{width:240px;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+    .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .prop-group label{display:block;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .prop-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+    .prop-row span{font-size:.72rem;color:#888;width:18px;text-align:center;flex-shrink:0}
+    .prop-input{flex:1;padding:5px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:6px;color:#fafdff;font-size:.78rem;font-family:inherit;outline:none}
+    .prop-input:focus{border-color:#bfff3c}
+    .prop-input[type="color"]{padding:2px;height:28px;cursor:pointer}
+    .color-row{display:flex;gap:6px;align-items:center}
+    .color-preview{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .empty-state{padding:20px 12px;text-align:center;color:#52525b;font-size:.78rem}
+  </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="brand">glox<span>.</span></div>
+  <a href="/">&#8592; Home</a>
+  <a href="/games">Gallery</a>
+  <div class="divider"></div>
+  <input class="title-input" id="gameTitle" value="Untitled Game" spellcheck="false">
+  <div class="spacer"></div>
+  <button class="btn-sm" onclick="saveGame(false)">Save</button>
+  <button class="btn-sm primary" onclick="saveGame(true)">Publish</button>
+  <button class="btn-sm" onclick="enterPlayMode()" style="background:#10d275;color:#fff;border-color:#10d275">&#9654; Play</button>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <button class="tool-btn active" id="toolMove" onclick="setTool('translate')" title="Move (G)">&#432;</button>
+  <button class="tool-btn" id="toolRotate" onclick="setTool('rotate')" title="Rotate (R)">&#8635;</button>
+  <button class="tool-btn" id="toolScale" onclick="setTool('scale')" title="Scale (S)">&#8644;</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" onclick="addPrimitive('box')" title="Add Cube">C</button>
+  <button class="tool-btn" onclick="addPrimitive('sphere')" title="Add Sphere">S</button>
+  <button class="tool-btn" onclick="addPrimitive('cylinder')" title="Add Cylinder">Y</button>
+  <button class="tool-btn" onclick="addPrimitive('plane')" title="Add Plane">P</button>
+  <button class="tool-btn" onclick="addPrimitive('cone')" title="Add Cone">N</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" onclick="duplicateSelected()" title="Duplicate">D+</button>
+  <button class="tool-btn danger" onclick="deleteSelected()" title="Delete">X</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" onclick="toggleGrid()" title="Toggle Grid">G</button>
+</div>
+
+<!-- Main Layout -->
+<div class="main">
+  <!-- Left: Hierarchy -->
+  <div class="panel-left">
+    <div class="panel-header">Scene</div>
+    <div class="hierarchy" id="hierarchy"></div>
+    <div class="add-menu" id="addMenu" style="position:relative">
+      <div class="dropdown" id="addDropdown">
+        <div class="dropdown-item" onclick="addPrimitive('box')">C Cube</div>
+        <div class="dropdown-item" onclick="addPrimitive('sphere')">S Sphere</div>
+        <div class="dropdown-item" onclick="addPrimitive('cylinder')">Y Cylinder</div>
+        <div class="dropdown-item" onclick="addPrimitive('plane')">P Plane</div>
+        <div class="dropdown-item" onclick="addPrimitive('cone')">N Cone</div>
+        <div class="dropdown-item" onclick="addPrimitive('torus')">T Torus</div>
+      </div>
+      <button class="add-btn" onclick="toggleAddMenu()">+ Add Object</button>
+    </div>
+  </div>
+
+  <!-- Center: 3D Viewport -->
+  <div class="viewport" id="viewport"></div>
+
+  <!-- Right: Properties -->
+  <div class="panel-right" id="propsPanel">
+    <div class="panel-header">Properties</div>
+    <div class="empty-state" id="propsEmpty">Select an object to edit its properties</div>
+    <div id="propsContent" style="display:none">
+      <div class="prop-group">
+        <label>Name</label>
+        <input class="prop-input" id="propName" oninput="updateProp('name')">
+      </div>
+      <div class="prop-group">
+        <label>Position</label>
+        <div class="prop-row"><span>X</span><input class="prop-input" id="propPosX" type="number" step="0.1" oninput="updateProp('pos')"></div>
+        <div class="prop-row"><span>Y</span><input class="prop-input" id="propPosY" type="number" step="0.1" oninput="updateProp('pos')"></div>
+        <div class="prop-row"><span>Z</span><input class="prop-input" id="propPosZ" type="number" step="0.1" oninput="updateProp('pos')"></div>
+      </div>
+      <div class="prop-group">
+        <label>Rotation</label>
+        <div class="prop-row"><span>X</span><input class="prop-input" id="propRotX" type="number" step="1" oninput="updateProp('rot')"></div>
+        <div class="prop-row"><span>Y</span><input class="prop-input" id="propRotY" type="number" step="1" oninput="updateProp('rot')"></div>
+        <div class="prop-row"><span>Z</span><input class="prop-input" id="propRotZ" type="number" step="1" oninput="updateProp('rot')"></div>
+      </div>
+      <div class="prop-group">
+        <label>Scale</label>
+        <div class="prop-row"><span>X</span><input class="prop-input" id="propScaleX" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+        <div class="prop-row"><span>Y</span><input class="prop-input" id="propScaleY" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+        <div class="prop-row"><span>Z</span><input class="prop-input" id="propScaleZ" type="number" step="0.1" min="0.01" oninput="updateProp('scale')"></div>
+      </div>
+      <div class="prop-group">
+        <label>Color</label>
+        <div class="color-row">
+          <input class="prop-input" id="propColor" type="color" oninput="updateProp('color')">
+          <input class="prop-input" id="propColorHex" value="#bfff3c" oninput="updateProp('colorHex')">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Three.js via CDN -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+// ── Scene setup ──
+const container = document.getElementById('viewport');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1b1e);
+scene.fog = new THREE.Fog(0x1a1b1e, 60, 120);
+
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+camera.position.set(8, 6, 8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+
+// ── Lights ──
+const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(10, 15, 10);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 60;
+dirLight.shadow.camera.left = -20;
+dirLight.shadow.camera.right = 20;
+dirLight.shadow.camera.top = 20;
+dirLight.shadow.camera.bottom = -20;
+scene.add(dirLight);
+const hemi = new THREE.HemisphereLight(0x68aed4, 0x430067, 0.3);
+scene.add(hemi);
+
+// ── Grid ──
+const gridHelper = new THREE.GridHelper(40, 40, 0x333340, 0x222230);
+scene.add(gridHelper);
+
+// ── Ground plane (invisible, for raycasting) ──
+const groundGeo = new THREE.PlaneGeometry(100, 100);
+const groundMat = new THREE.MeshStandardMaterial({ visible: false });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.01;
+ground.name = '__ground';
+scene.add(ground);
+
+// ── Controls ──
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.dampingFactor = 0.08;
+orbit.target.set(0, 0, 0);
+
+const transform = new TransformControls(camera, renderer.domElement);
+transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
+scene.add(transform.getHelper());
+
+// ── State ──
+let sceneObjects = [];
+let selectedObj = null;
+let currentTool = 'translate';
+let playMode = false;
+
+const primitiveMaterials = {
+  box: 0xbfff3c,
+  sphere: 0x68aed4,
+  cylinder: 0xff8426,
+  plane: 0x444455,
+  cone: 0xff2674,
+  torus: 0x94216a,
+};
+
+// ── Object creation ──
+const primitiveGeos = {
+  box: () => new THREE.BoxGeometry(1, 1, 1),
+  sphere: () => new THREE.SphereGeometry(0.5, 24, 16),
+  cylinder: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 24),
+  plane: () => new THREE.PlaneGeometry(2, 2),
+  cone: () => new THREE.ConeGeometry(0.5, 1, 24),
+  torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
+};
+
+window.addPrimitive = function(type) {
+  const geo = primitiveGeos[type]();
+  const color = primitiveMaterials[type] || 0xbfff3c;
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.position.y = type === 'plane' ? 0.01 : 0.5;
+  if (type === 'plane') { mesh.rotation.x = -Math.PI / 2; }
+  const name = type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1);
+  mesh.name = name;
+  mesh.userData = { type, color: '#' + new THREE.Color(color).getHexString() };
+  scene.add(mesh);
+  sceneObjects.push(mesh);
+  selectObject(mesh);
+  refreshHierarchy();
+  closeAddMenu();
+};
+
+// ── Selection ──
+function selectObject(obj) {
+  selectedObj = obj;
+  if (obj) {
+    transform.attach(obj);
+    document.getElementById('propsEmpty').style.display = 'none';
+    document.getElementById('propsContent').style.display = 'block';
+    updatePropsUI();
+  } else {
+    transform.detach();
+    document.getElementById('propsEmpty').style.display = 'block';
+    document.getElementById('propsContent').style.display = 'none';
+  }
+  refreshHierarchy();
+}
+
+// ── Hierarchy ──
+function refreshHierarchy() {
+  const el = document.getElementById('hierarchy');
+  el.innerHTML = sceneObjects.map((o, i) => `
+    <div class="hierarchy-item ${selectedObj === o ? 'selected' : ''}" onclick="window._selectByIndex(${i})">
+      <span class="icon">${o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' : o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' : o.userData.type === 'torus' ? 'T' : 'P'}</span>
+      ${o.name}
+    </div>
+  `).join('');
+}
+
+window._selectByIndex = function(i) { selectObject(sceneObjects[i]); };
+
+// ── Properties UI ──
+function updatePropsUI() {
+  if (!selectedObj) return;
+  document.getElementById('propName').value = selectedObj.name;
+  document.getElementById('propPosX').value = selectedObj.position.x.toFixed(2);
+  document.getElementById('propPosY').value = selectedObj.position.y.toFixed(2);
+  document.getElementById('propPosZ').value = selectedObj.position.z.toFixed(2);
+  document.getElementById('propRotX').value = THREE.MathUtils.radToDeg(selectedObj.rotation.x).toFixed(1);
+  document.getElementById('propRotY').value = THREE.MathUtils.radToDeg(selectedObj.rotation.y).toFixed(1);
+  document.getElementById('propRotZ').value = THREE.MathUtils.radToDeg(selectedObj.rotation.z).toFixed(1);
+  document.getElementById('propScaleX').value = selectedObj.scale.x.toFixed(2);
+  document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
+  document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
+  const col = '#' + selectedObj.material.color.getHexString();
+  document.getElementById('propColor').value = col;
+  document.getElementById('propColorHex').value = col;
+  selectedObj.userData.color = col;
+}
+
+window.updateProp = function(type) {
+  if (!selectedObj) return;
+  if (type === 'name') { selectedObj.name = document.getElementById('propName').value; refreshHierarchy(); }
+  if (type === 'pos') {
+    selectedObj.position.x = parseFloat(document.getElementById('propPosX').value) || 0;
+    selectedObj.position.y = parseFloat(document.getElementById('propPosY').value) || 0;
+    selectedObj.position.z = parseFloat(document.getElementById('propPosZ').value) || 0;
+  }
+  if (type === 'rot') {
+    selectedObj.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotX').value) || 0);
+    selectedObj.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotY').value) || 0);
+    selectedObj.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotZ').value) || 0);
+  }
+  if (type === 'scale') {
+    selectedObj.scale.x = parseFloat(document.getElementById('propScaleX').value) || 1;
+    selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
+    selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
+  }
+  if (type === 'color') {
+    const c = document.getElementById('propColor').value;
+    selectedObj.material.color.set(c);
+    document.getElementById('propColorHex').value = c;
+    selectedObj.userData.color = c;
+  }
+  if (type === 'colorHex') {
+    const c = document.getElementById('propColorHex').value;
+    if (/^#[0-9a-f]{6}$/i.test(c)) { selectedObj.material.color.set(c); document.getElementById('propColor').value = c; selectedObj.userData.color = c; }
+  }
+};
+
+// ── Tools ──
+window.setTool = function(tool) {
+  currentTool = tool;
+  transform.setMode(tool);
+  document.querySelectorAll('.toolbar .tool-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tool === 'translate' ? 'toolMove' : tool === 'rotate' ? 'toolRotate' : 'toolScale').classList.add('active');
+};
+
+// ── Delete / Duplicate ──
+window.deleteSelected = function() {
+  if (!selectedObj) return;
+  scene.remove(selectedObj);
+  sceneObjects = sceneObjects.filter(o => o !== selectedObj);
+  transform.detach();
+  selectedObj = null;
+  document.getElementById('propsEmpty').style.display = 'block';
+  document.getElementById('propsContent').style.display = 'none';
+  refreshHierarchy();
+};
+
+window.duplicateSelected = function() {
+  if (!selectedObj) return;
+  const clone = selectedObj.clone();
+  clone.material = selectedObj.material.clone();
+  clone.position.x += 1;
+  clone.name = selectedObj.name + '_copy';
+  scene.add(clone);
+  sceneObjects.push(clone);
+  selectObject(clone);
+  refreshHierarchy();
+};
+
+// ── Grid toggle ──
+let gridVisible = true;
+window.toggleGrid = function() {
+  gridVisible = !gridVisible;
+  gridHelper.visible = gridVisible;
+};
+
+// ── Add menu ──
+window.toggleAddMenu = function() {
+  document.getElementById('addDropdown').style.display =
+    document.getElementById('addDropdown').style.display === 'block' ? 'none' : 'block';
+};
+function closeAddMenu() { document.getElementById('addDropdown').style.display = 'none'; }
+document.addEventListener('click', e => { if (!e.target.closest('.add-menu')) closeAddMenu(); });
+
+// ── Keyboard shortcuts ──
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'g' || e.key === 'G') window.setTool('translate');
+  if (e.key === 'r' || e.key === 'R') window.setTool('rotate');
+  if (e.key === 's' && !e.ctrlKey) window.setTool('scale');
+  if (e.key === 'Delete' || e.key === 'Backspace') window.deleteSelected();
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); window.duplicateSelected(); }
+  if (e.key === 'Escape') { selectObject(null); }
+});
+
+// ── Raycasting for selection ──
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (transform.dragging) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(sceneObjects, false);
+  if (hits.length > 0) { selectObject(hits[0].object); }
+  else { selectObject(null); }
+});
+
+// ── Transform change → update props ──
+transform.addEventListener('objectChange', () => { if (selectedObj) updatePropsUI(); });
+
+// ── Resize ──
+function onResize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+// ── Save/Load ──
+function serializeScene() {
+  return sceneObjects.map(o => ({
+    name: o.name,
+    type: o.userData.type,
+    position: [o.position.x, o.position.y, o.position.z],
+    rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
+    scale: [o.scale.x, o.scale.y, o.scale.z],
+    color: o.userData.color,
+  }));
+}
+
+function deserializeScene(data) {
+  sceneObjects.forEach(o => scene.remove(o));
+  sceneObjects = [];
+  (data || []).forEach(d => {
+    const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
+    const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = d.name || 'Object';
+    mesh.userData = { type: d.type, color: d.color };
+    mesh.position.set(...(d.position || [0, 0.5, 0]));
+    mesh.rotation.set(...(d.rotation || [0, 0, 0]));
+    mesh.scale.set(...(d.scale || [1, 1, 1]));
+    scene.add(mesh);
+    sceneObjects.push(mesh);
+  });
+  refreshHierarchy();
+}
+
+let currentGameId = new URLSearchParams(window.location.search).get('id');
+
+window.saveGame = async function(publish) {
+  const token = window.currentToken;
+  if (!token) { alert('Sign in to save games'); return; }
+  const title = document.getElementById('gameTitle').value || 'Untitled Game';
+  const sceneData = JSON.stringify(serializeScene());
+  const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+
+  try {
+    if (currentGameId) {
+      const res = await fetch(`${apiBase}/api/games/${currentGameId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ title, scene: sceneData, published: publish }),
+      });
+      const d = await res.json();
+      if (d.error) { alert('Error: ' + d.error); return; }
+    } else {
+      const res = await fetch(`${apiBase}/api/games`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ title, scene: sceneData, published: publish }),
+      });
+      const d = await res.json();
+      if (d.error) { alert('Error: ' + d.error); return; }
+      currentGameId = d.game.id;
+      window.history.replaceState({}, '', `/editor?id=${currentGameId}`);
+    }
+    const label = publish ? 'Published!' : 'Saved!';
+    const btn = event.target;
+    btn.textContent = label;
+    setTimeout(() => { btn.textContent = publish ? 'Publish' : 'Save'; }, 2000);
+  } catch (err) {
+    alert('Failed to save: ' + err.message);
+  }
+};
+
+// ── Load existing game ──
+async function loadGame() {
+  if (!currentGameId) return;
+  const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+  try {
+    const res = await fetch(`${apiBase}/api/games/${currentGameId}`);
+    const d = await res.json();
+    if (d.game) {
+      document.getElementById('gameTitle').value = d.game.title;
+      const sceneData = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene;
+      deserializeScene(sceneData);
+    }
+  } catch {}
+}
+
+// ── Play Mode ──
+let playCamera, playControls;
+
+window.enterPlayMode = function() {
+  playMode = true;
+  transform.detach();
+  document.querySelector('.panel-left').style.display = 'none';
+  document.querySelector('.panel-right').style.display = 'none';
+  document.querySelector('.toolbar').style.display = 'none';
+
+  playCamera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 200);
+  playCamera.position.set(0, 2, 5);
+  playControls = new OrbitControls(playCamera, renderer.domElement);
+  playControls.enableDamping = true;
+  playControls.target.set(0, 1, 0);
+
+  orbit.enabled = false;
+};
+
+function exitPlayMode() {
+  playMode = false;
+  document.querySelector('.panel-left').style.display = '';
+  document.querySelector('.panel-right').style.display = '';
+  document.querySelector('.toolbar').style.display = '';
+  orbit.enabled = true;
+  if (playControls) playControls.dispose();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && playMode) exitPlayMode();
+});
+
+// ── Get token from parent ──
+const params = new URLSearchParams(window.location.search);
+window.currentToken = params.get('token') || null;
+
+// ── Animate ──
+function animate() {
+  requestAnimationFrame(animate);
+  if (playMode && playControls) { playControls.update(); }
+  else { orbit.update(); }
+  renderer.render(scene, camera);
+}
+animate();
+
+// ── Init ──
+loadGame();
+refreshHierarchy();
+
+// Expose for non-module scripts
+window._scene = scene;
+window._deserializeScene = deserializeScene;
+
+</script>
+
+</body>
+</html>

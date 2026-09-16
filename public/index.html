@@ -47,6 +47,12 @@
     .brand { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
     .brand span { color: #bfff3c; }
 
+    /* Nav tabs */
+    .nav-tabs { display: flex; gap: 0; margin: 12px 0 16px; background: rgba(255,255,255,.04); border-radius: 12px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
+    .nav-tab { flex: 1; padding: 9px; text-align: center; text-decoration: none; color: #68aed4; font-size: .82rem; font-weight: 600; border-radius: 10px; transition: all .15s; font-family: inherit; }
+    .nav-tab.active { background: rgba(255,255,255,.08); color: #fafdff; }
+    .nav-tab:not(.active):hover { color: #bfff3c; }
+
     /* ── OAuth ── */
     .oauth-btn {
       width: 100%;
@@ -184,6 +190,12 @@
 
   <div class="card">
     <div class="brand">glox<span>.</span></div>
+
+    <!-- Nav tabs -->
+    <div class="nav-tabs" id="navTabs">
+      <a href="/" class="nav-tab active">Chat</a>
+      <a href="/games" class="nav-tab">Games</a>
+    </div>
 
     <!-- User bar (shown when signed in) -->
     <div id="userBar" class="user-bar">

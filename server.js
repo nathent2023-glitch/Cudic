@@ -370,6 +370,16 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     url.pathname = '/chat.html';
   }
 
+  // ── Redirect /games to /games.html ────────────────────────────
+  if (url.pathname === '/games') {
+    url.pathname = '/games.html';
+  }
+
+  // ── Redirect /editor to /editor.html ──────────────────────────
+  if (url.pathname === '/editor') {
+    url.pathname = '/editor.html';
+  }
+
   let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   const ext = path.extname(filePath);
 
