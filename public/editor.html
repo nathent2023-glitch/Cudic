@@ -24,20 +24,22 @@
     .btn.play:hover{background:#0eb868}
     .main-wrap{display:flex;flex:1;overflow:hidden}
     .panel-left{width:200px;flex-shrink:0;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
-    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
-    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
-    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
-    .panel-tab:hover{color:#fafdff}
+    .panel-header{padding:8px 12px;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between}
     .panel-content{flex:1;overflow-y:auto;padding:4px}
     .panel-content.hidden{display:none}
     .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
     .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
     .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
     .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
-    .asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}
-    .asset-btn{padding:10px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#888;font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;transition:all .12s;font-family:inherit}
-    .asset-btn:hover{border-color:#bfff3c;color:#bfff3c;background:rgba(191,255,60,.04)}
-    .asset-btn .icon{font-size:1.2rem;display:block;margin-bottom:4px}
+    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none}
+    .ctx-menu.open{display:block}
+    .ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .08s}
+    .ctx-item:hover{background:rgba(191,255,60,.08);color:#fafdff}
+    .ctx-item .ctx-icon{width:18px;text-align:center;font-size:.7rem;font-weight:700;color:#52525b}
+    .ctx-sep{height:1px;background:rgba(255,255,255,.06);margin:3px 6px}
+    .ctx-item.danger{color:#ff2674}
+    .ctx-item.danger:hover{background:rgba(255,38,116,.1)}
+    .panel-label{font-size:.65rem;color:#52525b;font-weight:600;padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.04em}
     .center-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
     .toolbar{display:flex;align-items:center;gap:3px;padding:4px 10px;background:#111214;border-bottom:1px solid rgba(255,255,255,.04);height:32px;flex-shrink:0}
     .t-btn{width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:none;background:transparent;color:#666;font-size:.72rem;cursor:pointer;font-weight:700;transition:all .1s}
@@ -111,23 +113,8 @@
 
 <div class="main-wrap">
   <div class="panel-left">
-    <div class="panel-tabs">
-      <div class="panel-tab active" data-left="hierarchy">Scene</div>
-      <div class="panel-tab" data-left="assets">Assets</div>
-    </div>
+    <div class="panel-header">Scene <span style="font-size:.6rem;color:#444" id="objCount">0 objects</span></div>
     <div class="panel-content" id="hierarchyPanel"><div id="hierarchy"></div></div>
-    <div class="panel-content hidden" id="assetsPanel">
-      <div class="asset-grid">
-        <button class="asset-btn" data-add="box"><span class="icon">C</span>Cube</button>
-        <button class="asset-btn" data-add="sphere"><span class="icon">S</span>Sphere</button>
-        <button class="asset-btn" data-add="cylinder"><span class="icon">Y</span>Cylinder</button>
-        <button class="asset-btn" data-add="cone"><span class="icon">N</span>Cone</button>
-        <button class="asset-btn" data-add="torus"><span class="icon">T</span>Torus</button>
-        <button class="asset-btn" data-add="plane"><span class="icon">P</span>Plane</button>
-        <button class="asset-btn" data-add="light"><span class="icon">&#9728;</span>Light</button>
-        <button class="asset-btn" data-add="camera"><span class="icon">&#128247;</span>Camera</button>
-      </div>
-    </div>
   </div>
 
   <div class="center-col">
@@ -252,6 +239,8 @@ void main() {
     </div>
   </div>
 </div>
+
+<div class="ctx-menu" id="ctxMenu"></div>
 
 <div class="play-overlay" id="playOverlay">
   <div class="play-bar">
@@ -464,9 +453,29 @@ function updateMaterialUI() {
    ════════════════════════════════════════════════════ */
 function refreshFileTree() {
   const el = document.getElementById('fileTree');
-  let html = '<div class="file-item folder"><span class="fi">&#128193;</span> Game Assets</div>';
+  let html = '';
+
+  var folderNames = Object.keys(fileFolders);
+  folderNames.forEach(function(fn) {
+    var items = fileFolders[fn].map(function(idx) { return sceneObjects[idx]; }).filter(Boolean);
+    var itemsJson = JSON.stringify(items.map(function(o) { return sceneObjects.indexOf(o); }));
+    html += '<div class="file-item folder" data-ffolder="1" data-ffolder-items=\'' + itemsJson + '\'><span class="fi">&#128193;</span> ' + fn + ' (' + items.length + ')</div>';
+    items.forEach(function(o) {
+      if (o.name === '__ground') return;
+      var icon = o.userData.type === 'box' ? '&#9632;' : o.userData.type === 'sphere' ? '&#9679;' :
+                 o.userData.type === 'cylinder' ? '&#9670;' : o.userData.type === 'cone' ? '&#9650;' :
+                 o.userData.type === 'torus' ? '&#9711;' : o.userData.type === 'light' ? '&#9728;' :
+                 o.userData.type === 'camera' ? '&#128247;' : '&#9654;';
+      html += '<div class="file-item' + (selectedObj === o ? ' active' : '') + '" style="padding-left:24px" data-foidx="' + sceneObjects.indexOf(o) + '"><span class="fi">' + icon + '</span> ' + o.name + '</div>';
+    });
+  });
+
   sceneObjects.forEach((o, i) => {
     if (o.name === '__ground') return;
+    var inFolder = false;
+    folderNames.forEach(function(fn) { if (fileFolders[fn].indexOf(i) !== -1) inFolder = true; });
+    if (inFolder) return;
+
     const icon = o.userData.type === 'box' ? '&#9632;' : o.userData.type === 'sphere' ? '&#9679;' :
                  o.userData.type === 'cylinder' ? '&#9670;' : o.userData.type === 'cone' ? '&#9650;' :
                  o.userData.type === 'torus' ? '&#9711;' : o.userData.type === 'light' ? '&#9728;' :
@@ -478,7 +487,10 @@ function refreshFileTree() {
       });
     }
   });
+
   el.innerHTML = html;
+  var count = sceneObjects.filter(function(o) { return o.name !== '__ground'; }).length;
+  document.getElementById('objCount').textContent = count + ' object' + (count !== 1 ? 's' : '');
 }
 
 /* ════════════════════════════════════════════════════
@@ -558,7 +570,10 @@ function selectObject(obj) {
 function addPrimitive(type) {
   pushUndo();
   var mesh;
-  if (type === 'light') {
+  if (type === 'empty') {
+    mesh = new THREE.Object3D();
+    mesh.position.set(0, 0.5, 0);
+  } else if (type === 'light') {
     mesh = new THREE.PointLight(0xffffff, 1, 20);
     mesh.position.set(2, 3, 2); mesh.castShadow = true;
   } else if (type === 'camera') {
@@ -607,12 +622,14 @@ function duplicateSelected() {
 
 function serializeScene() {
   return sceneObjects.filter(function(o) { return o.name !== '__ground'; }).map(function(o) {
+    var color = o.userData.color;
+    if (!color && o.material && o.material.color) color = '#' + o.material.color.getHexString();
     return {
       name: o.name, type: o.userData.type,
       position: [o.position.x, o.position.y, o.position.z],
       rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
       scale: [o.scale.x, o.scale.y, o.scale.z],
-      color: o.userData.color,
+      color: color,
       scripts: o.userData.scripts || [],
       matType: o.userData.matType || 'standard',
       matProps: o.userData.matProps || {},
@@ -629,6 +646,8 @@ function deserializeScene(data) {
       mesh = new THREE.PointLight(0xffffff, 1, 20);
     } else if (d.type === 'camera') {
       mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+    } else if (d.type === 'empty') {
+      mesh = new THREE.Object3D();
     } else {
       var geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
       var color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
@@ -666,6 +685,7 @@ var raycaster = new THREE.Raycaster();
 var mouse = new THREE.Vector2();
 renderer.domElement.addEventListener('pointerdown', function(e) {
   if (transform.dragging) return;
+  if (e.button === 2) return;
   var rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
@@ -674,6 +694,38 @@ renderer.domElement.addEventListener('pointerdown', function(e) {
   var hits = raycaster.intersectObjects(targets, false);
   if (hits.length > 0) selectObject(hits[0].object);
   else selectObject(null);
+});
+
+renderer.domElement.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  var rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  var targets = sceneObjects.filter(function(o) { return o.name !== '__ground'; });
+  var hits = raycaster.intersectObjects(targets, false);
+  if (hits.length > 0) {
+    var obj = hits[0].object;
+    selectObject(obj);
+    showCtxMenu(e.clientX, e.clientY, [
+      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
+      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
+      '---',
+      { icon: 'C', label: 'Add Cube', action: 'add_box' },
+      { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
+      { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
+      { icon: 'N', label: 'Add Cone', action: 'add_cone' },
+      { icon: 'T', label: 'Add Torus', action: 'add_torus' },
+      { icon: 'P', label: 'Add Plane', action: 'add_plane' },
+      '---',
+      { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
+      { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+      '---',
+      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
+    ], obj);
+  } else {
+    showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
+  }
 });
 
 transform.addEventListener('objectChange', function() { if (selectedObj) updatePropsUI(); });
@@ -706,15 +758,6 @@ function setTool(tool) {
 /* ════════════════════════════════════════════════════
    TABS
    ════════════════════════════════════════════════════ */
-document.querySelectorAll('[data-left]').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('[data-left]').forEach(function(t) { t.classList.remove('active'); });
-    tab.classList.add('active');
-    document.getElementById('hierarchyPanel').classList.toggle('hidden', tab.dataset.left !== 'hierarchy');
-    document.getElementById('assetsPanel').classList.toggle('hidden', tab.dataset.left !== 'assets');
-  });
-});
-
 document.querySelectorAll('[data-right]').forEach(function(tab) {
   tab.addEventListener('click', function() {
     document.querySelectorAll('[data-right]').forEach(function(t) { t.classList.remove('active'); });
@@ -737,6 +780,85 @@ document.querySelectorAll('[data-btab]').forEach(function(tab) {
 });
 
 /* ════════════════════════════════════════════════════
+   CONTEXT MENU SYSTEM
+   ════════════════════════════════════════════════════ */
+const ctxMenu = document.getElementById('ctxMenu');
+let ctxMenuTarget = null;
+
+function showCtxMenu(x, y, items, target) {
+  ctxMenuTarget = target || null;
+  let html = '';
+  items.forEach(function(item) {
+    if (item === '---') { html += '<div class="ctx-sep"></div>'; return; }
+    var cls = item.danger ? ' ctx-item danger' : ' ctx-item';
+    html += '<div class="' + cls + '" data-ctx="' + item.action + '"><span class="ctx-icon">' + (item.icon || '') + '</span>' + item.label + '</div>';
+  });
+  ctxMenu.innerHTML = html;
+  ctxMenu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+  ctxMenu.style.top = Math.min(y, window.innerHeight - items.length * 30) + 'px';
+  ctxMenu.classList.add('open');
+}
+
+function hideCtxMenu() { ctxMenu.classList.remove('open'); ctxMenuTarget = null; }
+
+document.addEventListener('click', hideCtxMenu);
+document.addEventListener('contextmenu', function(e) { hideCtxMenu(); });
+
+ctxMenu.addEventListener('click', function(e) {
+  var item = e.target.closest('[data-ctx]');
+  if (!item) return;
+  var action = item.dataset.ctx;
+  hideCtxMenu();
+  handleCtxAction(action, ctxMenuTarget);
+});
+
+function handleCtxAction(action, target) {
+  if (action === 'add_box') addPrimitive('box');
+  else if (action === 'add_sphere') addPrimitive('sphere');
+  else if (action === 'add_cylinder') addPrimitive('cylinder');
+  else if (action === 'add_cone') addPrimitive('cone');
+  else if (action === 'add_torus') addPrimitive('torus');
+  else if (action === 'add_plane') addPrimitive('plane');
+  else if (action === 'add_light') addPrimitive('light');
+  else if (action === 'add_camera') addPrimitive('camera');
+  else if (action === 'add_empty') addPrimitive('empty');
+  else if (action === 'delete_obj') { if (target) { selectedObj = target; deleteSelected(); } }
+  else if (action === 'duplicate_obj') { if (target) { selectedObj = target; duplicateSelected(); } }
+  else if (action === 'rename_obj') {
+    if (target) {
+      var newName = prompt('Rename:', target.name);
+      if (newName && newName.trim()) { pushUndo(); target.name = newName.trim(); refreshHierarchy(); }
+    }
+  }
+  else if (action === 'new_folder') { addFolder(); }
+  else if (action === 'new_script_file') { addNewScriptFile(target); }
+  else if (action === 'delete_file') { if (target && target.type === 'file') { pushUndo(); var obj = sceneObjects[target.objIdx]; if (obj && obj.userData.scripts) { obj.userData.scripts.splice(target.scriptIdx, 1); refreshFileTree(); refreshScriptList(); } } }
+  else if (action === 'rename_file') {
+    if (target && target.type === 'file') {
+      var obj = sceneObjects[target.objIdx];
+      if (obj && obj.userData.scripts && obj.userData.scripts[target.scriptIdx]) {
+        var nn = prompt('Rename script:', obj.userData.scripts[target.scriptIdx].name);
+        if (nn && nn.trim()) { pushUndo(); obj.userData.scripts[target.scriptIdx].name = nn.trim(); refreshFileTree(); }
+      }
+    }
+  }
+  else if (action === 'delete_folder') { if (target && target.type === 'folder') { pushUndo(); target.items.forEach(function(i) { scene.remove(i); }); sceneObjects = sceneObjects.filter(function(o) { return target.items.indexOf(o) === -1; }); selectObject(null); refreshHierarchy(); } }
+}
+
+const sceneCtxItems = [
+  { icon: 'C', label: 'Add Cube', action: 'add_box' },
+  { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
+  { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
+  { icon: 'N', label: 'Add Cone', action: 'add_cone' },
+  { icon: 'T', label: 'Add Torus', action: 'add_torus' },
+  { icon: 'P', label: 'Add Plane', action: 'add_plane' },
+  '---',
+  { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
+  { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+  { icon: '+', label: 'Add Empty', action: 'add_empty' },
+];
+
+/* ════════════════════════════════════════════════════
    TOOLBAR
    ════════════════════════════════════════════════════ */
 document.querySelectorAll('[data-tool]').forEach(function(btn) {
@@ -752,16 +874,65 @@ document.getElementById('btnWire').addEventListener('click', function() {
   sceneObjects.forEach(function(o) { if (o.material) o.material.wireframe = wireframeMode; });
 });
 
-document.querySelectorAll('[data-add]').forEach(function(btn) {
-  btn.addEventListener('click', function() { addPrimitive(btn.dataset.add); });
-});
+/* ════════════════════════════════════════════════════
+   FOLDERS + NEW FILE HELPERS
+   ════════════════════════════════════════════════════ */
+let fileFolders = {};
+
+function addFolder() {
+  var name = prompt('Folder name:', 'Folder');
+  if (!name || !name.trim()) return;
+  pushUndo();
+  fileFolders[name.trim()] = [];
+  refreshFileTree();
+  logToConsole('Created folder: ' + name.trim(), 'info');
+}
+
+function addNewScriptFile(target) {
+  pushUndo();
+  var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xbfff3c, transparent: true, opacity: 0 }));
+  mesh.position.set(0, 100, 0);
+  mesh.name = 'ScriptHolder_' + (sceneObjects.length + 1);
+  mesh.userData = { type: 'box', color: '#bfff3c', scripts: [{ name: 'Script', code: '// New script\nfunction update() {\n\n}' }], matType: 'standard', matProps: {} };
+  scene.add(mesh);
+  sceneObjects.push(mesh);
+  refreshFileTree();
+  logToConsole('Created script file', 'info');
+}
 
 /* ════════════════════════════════════════════════════
-   HIERARCHY + FILE CLICKS
+   HIERARCHY + FILE CLICKS + CONTEXT MENUS
    ════════════════════════════════════════════════════ */
 document.getElementById('hierarchy').addEventListener('click', function(e) {
   var item = e.target.closest('[data-hidx]');
   if (item) selectObject(sceneObjects[parseInt(item.dataset.hidx)]);
+});
+
+document.getElementById('hierarchy').addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  var item = e.target.closest('[data-hidx]');
+  if (item) {
+    var obj = sceneObjects[parseInt(item.dataset.hidx)];
+    selectObject(obj);
+    showCtxMenu(e.clientX, e.clientY, [
+      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
+      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
+      '---',
+      { icon: 'C', label: 'Add Cube', action: 'add_box' },
+      { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
+      { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
+      { icon: 'N', label: 'Add Cone', action: 'add_cone' },
+      { icon: 'T', label: 'Add Torus', action: 'add_torus' },
+      { icon: 'P', label: 'Add Plane', action: 'add_plane' },
+      '---',
+      { icon: '&#9728;', label: 'Add Light', action: 'add_light' },
+      { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
+      '---',
+      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
+    ], obj);
+  } else {
+    showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
+  }
 });
 
 document.getElementById('fileTree').addEventListener('click', function(e) {
@@ -778,6 +949,43 @@ document.getElementById('fileTree').addEventListener('click', function(e) {
       document.querySelector('[data-btab="code"]').click();
     }
   }
+});
+
+document.getElementById('fileTree').addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  var sitem = e.target.closest('[data-fsidx]');
+  if (sitem) {
+    var objIdx = parseInt(sitem.dataset.fsidx);
+    var si = parseInt(sitem.dataset.fssi);
+    showCtxMenu(e.clientX, e.clientY, [
+      { icon: '&#9998;', label: 'Rename', action: 'rename_file' },
+      { icon: 'X', label: 'Delete', action: 'delete_file', danger: true },
+    ], { type: 'file', objIdx: objIdx, scriptIdx: si });
+    return;
+  }
+  var fitem = e.target.closest('[data-foidx]');
+  if (fitem) {
+    var obj = sceneObjects[parseInt(fitem.dataset.foidx)];
+    selectObject(obj);
+    showCtxMenu(e.clientX, e.clientY, [
+      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
+      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
+      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
+    ], obj);
+    return;
+  }
+  var ffolder = e.target.closest('[data-ffolder]');
+  if (ffolder) {
+    var items = ffolder.dataset.ffolderItems ? JSON.parse(ffolder.dataset.ffolderItems) : [];
+    showCtxMenu(e.clientX, e.clientY, [
+      { icon: 'X', label: 'Delete All', action: 'delete_folder', danger: true },
+    ], { type: 'folder', items: items });
+    return;
+  }
+  showCtxMenu(e.clientX, e.clientY, [
+    { icon: '&#128193;', label: 'New Folder', action: 'new_folder' },
+    { icon: '&#9998;', label: 'New Script', action: 'new_script_file' },
+  ], null);
 });
 
 /* ════════════════════════════════════════════════════
