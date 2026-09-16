@@ -2,7 +2,9 @@
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/login", "destination": "/login.html" },
-    { "source": "/chat", "destination": "/chat.html" }
+    { "source": "/chat", "destination": "/chat.html" },
+    { "source": "/games", "destination": "/games.html" },
+    { "source": "/editor", "destination": "/editor.html" }
   ],
   "buildCommand": null,
   "outputDirectory": "public",
