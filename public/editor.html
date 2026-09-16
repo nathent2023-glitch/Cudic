@@ -121,6 +121,24 @@
     .cam-panel .panel-header{font-size:.65rem;padding:5px 10px}
     .cam-panel canvas{display:block;width:100%;height:100%;flex:1}
     .cam-panel-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#333;font-size:.7rem;font-style:italic}
+
+    .pkg-toolbar{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0}
+    .pkg-filters{display:flex;gap:3px}
+    .pkg-filter{padding:3px 10px;border-radius:5px;border:1px solid rgba(255,255,255,.06);background:transparent;color:#52525b;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s}
+    .pkg-filter:hover{color:#fafdff;background:rgba(255,255,255,.04)}
+    .pkg-filter.active{color:#bfff3c;border-color:rgba(191,255,60,.3);background:rgba(191,255,60,.06)}
+    .pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;padding:8px;overflow-y:auto;flex:1}
+    .pkg-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);cursor:grab;transition:all .12s;text-align:center;user-select:none}
+    .pkg-item:hover{background:rgba(191,255,60,.06);border-color:rgba(191,255,60,.15);transform:translateY(-1px)}
+    .pkg-item:active{cursor:grabbing;transform:scale(.97)}
+    .pkg-item.dragging{opacity:.4;border-color:#bfff3c}
+    .pkg-icon{font-size:1.4rem;line-height:1}
+    .pkg-name{font-size:.66rem;color:#aaa;font-weight:600;line-height:1.2}
+    .pkg-item[data-type="material"] .pkg-icon{color:#68aed4}
+    .pkg-item[data-type="shader"] .pkg-icon{color:#bfff3c}
+    .pkg-item[data-type="script"] .pkg-icon{color:#ff8426}
+    .pkg-item .pkg-type-badge{font-size:.55rem;color:#444;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+    .drop-target{outline:2px solid #bfff3c;outline-offset:-2px;background:rgba(191,255,60,.08)!important}
   </style>
 </head>
 <body>
@@ -275,6 +293,7 @@ void main() {
         <div class="bottom-tab active" data-btab="code">&#9998; Code</div>
         <div class="bottom-tab" data-btab="console">&#9638; Console</div>
         <div class="bottom-tab" data-btab="files">&#128193; Files</div>
+        <div class="bottom-tab" data-btab="packages">&#128230; Packages</div>
         <div class="bottom-spacer"></div>
         <button class="t-btn" id="btnToggleBottom" title="Toggle">&#9660;</button>
       </div>
@@ -282,6 +301,18 @@ void main() {
       <div class="bottom-content hidden" id="consolePanel"><div id="console"></div></div>
       <div class="bottom-content hidden" id="filesPanel">
         <div class="file-tree" id="fileTree"></div>
+      </div>
+      <div class="bottom-content hidden" id="packagesPanel">
+        <div class="pkg-toolbar">
+          <input class="p-input pkg-search" id="pkgSearch" placeholder="Search packages..." style="width:180px">
+          <div class="pkg-filters">
+            <button class="pkg-filter active" data-pfilter="all">All</button>
+            <button class="pkg-filter" data-pfilter="material">&#127912; Materials</button>
+            <button class="pkg-filter" data-pfilter="shader">&#10024; Shaders</button>
+            <button class="pkg-filter" data-pfilter="script">&#9998; Scripts</button>
+          </div>
+        </div>
+        <div class="pkg-grid" id="pkgGrid"></div>
       </div>
     </div>
   </div>
@@ -884,9 +915,173 @@ document.querySelectorAll('[data-btab]').forEach(function(tab) {
     document.getElementById('codePanel').classList.toggle('hidden', tab.dataset.btab !== 'code');
     document.getElementById('consolePanel').classList.toggle('hidden', tab.dataset.btab !== 'console');
     document.getElementById('filesPanel').classList.toggle('hidden', tab.dataset.btab !== 'files');
+    document.getElementById('packagesPanel').classList.toggle('hidden', tab.dataset.btab !== 'packages');
     if (tab.dataset.btab === 'code' && window._monacoEditor) window._monacoEditor.layout();
   });
 });
+
+/* ════════════════════════════════════════════════════
+   PACKAGES SYSTEM
+   ════════════════════════════════════════════════════ */
+var PACKAGES = [
+  { id: 'mat_default', name: 'Default', type: 'material', icon: '&#127912;', category: 'material',
+    props: { color: '#bfff3c', matType: 'standard', matProps: { roughness: 0.6, metalness: 0.1 } } },
+  { id: 'mat_metal', name: 'Metal', type: 'material', icon: '&#9881;', category: 'material',
+    props: { color: '#888899', matType: 'standard', matProps: { roughness: 0.1, metalness: 0.9 } } },
+  { id: 'mat_glass', name: 'Glass', type: 'material', icon: '&#128302;', category: 'material',
+    props: { color: '#aaccee', matType: 'standard', matProps: { roughness: 0.0, metalness: 0.1 } } },
+  { id: 'mat_wood', name: 'Wood', type: 'material', icon: '&#127795;', category: 'material',
+    props: { color: '#8B5E3C', matType: 'standard', matProps: { roughness: 0.8, metalness: 0.0 } } },
+  { id: 'mat_emissive', name: 'Emissive', type: 'material', icon: '&#128161;', category: 'material',
+    props: { color: '#bfff3c', matType: 'phong', matProps: { emissive: '#bfff3c', shininess: 80 } } },
+  { id: 'mat_toon', name: 'Toon', type: 'material', icon: '&#127912;', category: 'material',
+    props: { color: '#ff8426', matType: 'toon', matProps: {} } },
+  { id: 'mat_red', name: 'Red', type: 'material', icon: '&#128308;', category: 'material',
+    props: { color: '#ff2674', matType: 'standard', matProps: { roughness: 0.4, metalness: 0.2 } } },
+  { id: 'mat_blue', name: 'Blue', type: 'material', icon: '&#128309;', category: 'material',
+    props: { color: '#234975', matType: 'standard', matProps: { roughness: 0.5, metalness: 0.1 } } },
+  { id: 'mat_gold', name: 'Gold', type: 'material', icon: '&#128176;', category: 'material',
+    props: { color: '#ffd100', matType: 'standard', matProps: { roughness: 0.15, metalness: 0.95 } } },
+  { id: 'mat_neon', name: 'Neon', type: 'material', icon: '&#128171;', category: 'material',
+    props: { color: '#10d275', matType: 'phong', matProps: { emissive: '#10d275', shininess: 100 } } },
+
+  { id: 'shd_outline', name: 'Outline', type: 'shader', icon: '&#9999;', category: 'shader',
+    props: { vertShader: 'varying vec3 vNormal;\nvoid main() {\n  vNormal = normalize(normalMatrix * normal);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
+             fragShader: 'varying vec3 vNormal;\nvoid main() {\n  float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);\n  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;\n}' } },
+  { id: 'shd_fresnel', name: 'Fresnel', type: 'shader', icon: '&#9999;', category: 'shader',
+    props: { vertShader: 'varying vec3 vNormal;\nvarying vec3 vViewDir;\nvoid main() {\n  vNormal = normalize(normalMatrix * normal);\n  vec4 worldPos = modelMatrix * vec4(position, 1.0);\n  vViewDir = normalize(cameraPosition - worldPos.xyz);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
+             fragShader: 'varying vec3 vNormal;\nvarying vec3 vViewDir;\nvoid main() {\n  float fresnel = 1.0 - max(dot(vViewDir, vNormal), 0.0);\n  fresnel = pow(fresnel, 3.0);\n  gl_FragColor = vec4(0.41, 0.68, 0.83, fresnel);\n}' } },
+  { id: 'shd_hologram', name: 'Hologram', type: 'shader', icon: '&#9999;', category: 'shader',
+    props: { vertShader: 'varying vec2 vUv;\nvarying vec3 vNormal;\nvoid main() {\n  vUv = uv;\n  vNormal = normalize(normalMatrix * normal);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
+             fragShader: 'varying vec2 vUv;\nvarying vec3 vNormal;\nuniform float time;\nvoid main() {\n  float scanline = sin(vUv.y * 80.0 + time * 3.0) * 0.5 + 0.5;\n  float glow = max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);\n  gl_FragColor = vec4(0.41, 0.68, 0.83, glow * 0.6 * scanline);\n}' } },
+  { id: 'shd_wireframe', name: 'Wireframe', type: 'shader', icon: '&#9999;', category: 'shader',
+    props: { vertShader: 'varying vec3 vBary;\nattribute vec3 barycentric;\nvoid main() {\n  vBary = barycentric;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
+             fragShader: 'varying vec3 vBary;\nvoid main() {\n  vec3 d = fwidth(vBary);\n  vec3 a3 = smoothstep(vec3(0.0), d * 1.5, vBary);\n  float minval = min(min(a3.x, a3.y), a3.z);\n  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0 - minval);\n}' } },
+
+  { id: 'scr_rotate', name: 'Rotate', type: 'script', icon: '&#9881;', category: 'script',
+    code: '// Spins the object continuously\nfunction update() {\n  self.rotation.y += 0.02;\n}' },
+  { id: 'scr_bob', name: 'Bob', type: 'script', icon: '&#8597;', category: 'script',
+    code: '// Bobs the object up and down\nvar t = 0;\nfunction update() {\n  t += 0.03;\n  self.position.y += Math.sin(t) * 0.01;\n}' },
+  { id: 'scr_pulse', name: 'Pulse', type: 'script', icon: '&#128165;', category: 'script',
+    code: '// Pulses the object scale\nvar t = 0;\nfunction update() {\n  t += 0.04;\n  var s = 1.0 + Math.sin(t) * 0.15;\n  self.scale.set(s, s, s);\n}' },
+  { id: 'scr_orbit', name: 'Orbit', type: 'script', icon: '&#127759;', category: 'script',
+    code: '// Orbits around the origin\nvar t = 0;\nvar radius = 3.0;\nfunction update() {\n  t += 0.02;\n  self.position.x = Math.cos(t) * radius;\n  self.position.z = Math.sin(t) * radius;\n}' },
+  { id: 'scr_spin_x', name: 'Spin X', type: 'script', icon: '&#8634;', category: 'script',
+    code: 'function update() {\n  self.rotation.x += 0.03;\n}' },
+  { id: 'scr_flicker', name: 'Flicker', type: 'script', icon: '&#128161;', category: 'script',
+    code: '// Flickers material emissive (for lights/neon)\nfunction update() {\n  if (self.material && self.material.emissive) {\n    var b = 0.5 + Math.random() * 0.5;\n    self.material.emissive.setRGB(b * 0.75, b * 1.0, b * 0.24);\n  }\n}' },
+];
+
+var currentPkgFilter = 'all';
+var pkgSearchTerm = '';
+
+function renderPackages() {
+  var grid = document.getElementById('pkgGrid');
+  var html = '';
+  PACKAGES.forEach(function(pkg) {
+    if (currentPkgFilter !== 'all' && pkg.type !== currentPkgFilter) return;
+    if (pkgSearchTerm && pkg.name.toLowerCase().indexOf(pkgSearchTerm) === -1) return;
+    html += '<div class="pkg-item" draggable="true" data-pkg="' + pkg.id + '" data-type="' + pkg.type + '">' +
+      '<span class="pkg-icon">' + pkg.icon + '</span>' +
+      '<span class="pkg-name">' + pkg.name + '</span>' +
+      '<span class="pkg-type-badge">' + pkg.type + '</span>' +
+      '</div>';
+  });
+  if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#444;padding:20px;font-size:.76rem">No packages found</div>';
+  grid.innerHTML = html;
+  attachPkgDragHandlers();
+}
+
+function attachPkgDragHandlers() {
+  document.querySelectorAll('.pkg-item').forEach(function(el) {
+    el.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('text/plain', el.dataset.pkg);
+      e.dataTransfer.effectAllowed = 'copy';
+      el.classList.add('dragging');
+      setTimeout(function() { enableDropTargets(true); }, 0);
+    });
+    el.addEventListener('dragend', function() {
+      el.classList.remove('dragging');
+      enableDropTargets(false);
+    });
+  });
+}
+
+function enableDropTargets(on) {
+  document.querySelectorAll('.h-item, .file-item[data-fidx]').forEach(function(el) {
+    if (on) {
+      el.setAttribute('draggable', 'false');
+      el.addEventListener('dragover', onDragOver);
+      el.addEventListener('dragleave', onDragLeave);
+      el.addEventListener('drop', onPkgDrop);
+    } else {
+      el.removeEventListener('dragover', onDragOver);
+      el.removeEventListener('dragleave', onDragLeave);
+      el.removeEventListener('drop', onPkgDrop);
+      el.classList.remove('drop-target');
+    }
+  });
+  if (!on) document.querySelectorAll('.drop-target').forEach(function(el) { el.classList.remove('drop-target'); });
+}
+
+function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; this.classList.add('drop-target'); }
+function onDragLeave(e) { this.classList.remove('drop-target'); }
+
+function onPkgDrop(e) {
+  e.preventDefault();
+  this.classList.remove('drop-target');
+  var pkgId = e.dataTransfer.getData('text/plain');
+  var pkg = PACKAGES.find(function(p) { return p.id === pkgId; });
+  if (!pkg) return;
+
+  var obj = null;
+  if (this.dataset.hidx !== undefined) obj = sceneObjects[parseInt(this.dataset.hidx)];
+  else if (this.dataset.fidx !== undefined) obj = sceneObjects[parseInt(this.dataset.fidx)];
+  if (!obj) return;
+
+  pushUndo();
+  applyPackage(obj, pkg);
+  selectObject(obj);
+  logToConsole('Applied ' + pkg.type + ' "' + pkg.name + '" to ' + obj.name, 'info');
+}
+
+function applyPackage(obj, pkg) {
+  if (pkg.type === 'material') {
+    var color = new THREE.Color(pkg.props.color);
+    if (obj.material) obj.material.dispose();
+    obj.material = buildMaterial(pkg.props.matType, color, pkg.props.matProps);
+    obj.userData.color = pkg.props.color;
+    obj.userData.matType = pkg.props.matType;
+    obj.userData.matProps = Object.assign({}, pkg.props.matProps);
+  } else if (pkg.type === 'shader') {
+    if (obj.material) obj.material.dispose();
+    obj.material = new THREE.ShaderMaterial({ vertexShader: pkg.props.vertShader, fragmentShader: pkg.props.fragShader });
+    obj.userData.matType = 'shader';
+    obj.userData.matProps = { vertShader: pkg.props.vertShader, fragShader: pkg.props.fragShader };
+  } else if (pkg.type === 'script') {
+    if (!obj.userData.scripts) obj.userData.scripts = [];
+    obj.userData.scripts.push({ name: pkg.name, code: pkg.code });
+    refreshScriptList();
+    refreshFileTree();
+  }
+  if (obj === selectedObj) updateMaterialUI();
+}
+
+document.querySelectorAll('[data-pfilter]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('[data-pfilter]').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    currentPkgFilter = btn.dataset.pfilter;
+    renderPackages();
+  });
+});
+
+document.getElementById('pkgSearch').addEventListener('input', function() {
+  pkgSearchTerm = this.value.toLowerCase();
+  renderPackages();
+});
+
+renderPackages();
 
 /* ════════════════════════════════════════════════════
    CONTEXT MENU SYSTEM
