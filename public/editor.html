@@ -25,6 +25,10 @@
     .main-wrap{display:flex;flex:1;overflow:hidden}
     .panel-left{width:200px;flex-shrink:0;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
     .panel-header{padding:8px 12px;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between}
+    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
+    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
+    .panel-tab:hover{color:#fafdff}
     .panel-content{flex:1;overflow-y:auto;padding:4px}
     .panel-content.hidden{display:none}
     .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
