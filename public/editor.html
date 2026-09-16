@@ -1280,12 +1280,15 @@ function enterPlayMode() {
     if (e.data && e.data.type === 'ready') onReady();
   }
   window.addEventListener('message', waitForReady);
+  frame.removeAttribute('srcdoc');
   frame.src = '/play.html';
 }
 function exitPlayMode() {
   playMode = false; document.getElementById('playOverlay').classList.remove('active');
-  try { document.getElementById('playFrame').contentWindow.postMessage({ type: 'stop' }, '*'); } catch(e) {}
-  document.getElementById('playFrame').srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
+  var frame = document.getElementById('playFrame');
+  try { frame.contentWindow.postMessage({ type: 'stop' }, '*'); } catch(e) {}
+  frame.removeAttribute('src');
+  frame.srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
 }
 document.getElementById('btnPlay').addEventListener('click', enterPlayMode);
 document.getElementById('btnStop').addEventListener('click', exitPlayMode);
