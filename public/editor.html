@@ -265,7 +265,7 @@ orbit.dampingFactor = 0.08;
 
 const transform = new TransformControls(camera, renderer.domElement);
 transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
-scene.add(transform.getHelper());
+scene.add(transform);
 
 let sceneObjects = [];
 let selectedObj = null;

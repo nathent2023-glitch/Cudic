@@ -1,0 +1,3 @@
+[     663ms] TypeError: transform.getHelper is not a function
+    at https://glox-two.vercel.app/editor:268:21
+[     695ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://glox-two.vercel.app/favicon.ico:0
