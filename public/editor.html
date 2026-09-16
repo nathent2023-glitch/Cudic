@@ -22,39 +22,36 @@
     .btn.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
     .btn.play{background:#10d275;color:#fff;border-color:#10d275}
     .btn.play:hover{background:#0eb868}
-    .main-wrap{display:flex;flex:1;overflow:hidden}
-    .panel-left{width:200px;flex-shrink:0;background:#131416;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
-    .panel-header{padding:8px 12px;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between}
-    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
-    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
-    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
-    .panel-tab:hover{color:#fafdff}
-    .panel-content{flex:1;overflow-y:auto;padding:4px}
-    .panel-content.hidden{display:none}
-    .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
-    .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
-    .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
-    .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
-    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;max-height:70vh;overflow-y:auto}
-    .ctx-menu.open{display:block}
-    .ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .08s}
-    .ctx-item:hover{background:rgba(191,255,60,.08);color:#fafdff}
-    .ctx-item .ctx-icon{width:18px;text-align:center;font-size:.7rem;font-weight:700;color:#52525b}
-    .ctx-sep{height:1px;background:rgba(255,255,255,.06);margin:3px 6px}
-    .ctx-item.danger{color:#ff2674}
-    .ctx-item.danger:hover{background:rgba(255,38,116,.1)}
-    .panel-label{font-size:.65rem;color:#52525b;font-weight:600;padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.04em}
+
+    .main-wrap{display:flex;flex:1;overflow:hidden;position:relative}
+
+    .panel-left{width:var(--left-w,220px);min-width:120px;max-width:400px;flex-shrink:0;background:#131416;display:flex;flex-direction:column;overflow:hidden}
+    .panel-right{width:var(--right-w,280px);min-width:160px;max-width:450px;flex-shrink:0;background:#131416;display:flex;flex-direction:column;overflow:hidden}
+    .panel-right .panel-content{overflow-y:auto;padding:0}
+
+    .splitter{flex-shrink:0;z-index:20;transition:background .15s}
+    .splitter-v{width:5px;cursor:col-resize;background:#0e0f11;border-left:1px solid rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.03)}
+    .splitter-v:hover,.splitter-v.active{background:rgba(191,255,60,.35);border-color:rgba(191,255,60,.15)}
+    .splitter-h{height:5px;cursor:row-resize;background:#0e0f11;border-top:1px solid rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.03)}
+    .splitter-h:hover,.splitter-h.active{background:rgba(191,255,60,.35);border-color:rgba(191,255,60,.15)}
+    .resize-overlay{position:fixed;inset:0;z-index:9999;cursor:col-resize}
+    .resize-overlay.row{cursor:row-resize}
+
     .center-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
     .toolbar{display:flex;align-items:center;gap:3px;padding:4px 10px;background:#111214;border-bottom:1px solid rgba(255,255,255,.04);height:32px;flex-shrink:0}
     .t-btn{width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:none;background:transparent;color:#666;font-size:.72rem;cursor:pointer;font-weight:700;transition:all .1s}
     .t-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
     .t-btn.active{background:rgba(191,255,60,.1);color:#bfff3c}
     .t-sep{width:1px;height:16px;background:rgba(255,255,255,.05);margin:0 3px}
-    .viewport{flex:1;position:relative;overflow:hidden;background:#252630;min-height:100px}
+
+    .center-body{display:flex;flex:1;overflow:hidden;min-height:0}
+    .viewport{flex:1;position:relative;overflow:hidden;background:#252630;min-width:200px}
     .viewport canvas{display:block;width:100%!important;height:100%!important}
-    .bottom-resize{height:5px;cursor:ns-resize;background:#131416;border-top:1px solid rgba(255,255,255,.04);flex-shrink:0}
-    .bottom-resize:hover{background:rgba(191,255,60,.3)}
-    .bottom{height:200px;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;background:#131416;flex-shrink:0}
+
+    .right-col{display:flex;flex-direction:column;width:280px;min-width:120px;flex-shrink:0;overflow:hidden}
+
+    .center-bottom-wrap{display:flex;flex-direction:column;width:100%;min-height:80px;max-height:60vh}
+    .bottom{height:220px;flex-shrink:0;display:flex;flex-direction:column;background:#131416;overflow:hidden}
     .bottom.collapsed{height:28px;min-height:28px}
     .bottom-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);height:28px;flex-shrink:0}
     .bottom-tab{padding:4px 14px;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
@@ -68,8 +65,29 @@
     .log-info::before{content:'[INFO] ';font-weight:600}
     .log-warn::before{content:'[WARN] ';font-weight:600}
     .log-error::before{content:'[ERROR] ';font-weight:600}
-    .panel-right{width:260px;flex-shrink:0;background:#131416;border-left:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden}
-    .panel-right .panel-content{overflow-y:auto;padding:0}
+
+    .panel-header{padding:8px 12px;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#131416}
+    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
+    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
+    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
+    .panel-tab:hover{color:#fafdff}
+    .panel-content{flex:1;overflow-y:auto;padding:4px}
+    .panel-content.hidden{display:none}
+    .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
+    .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
+    .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
+    .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
+
+    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;max-height:70vh;overflow-y:auto}
+    .ctx-menu.open{display:block}
+    .ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .08s}
+    .ctx-item:hover{background:rgba(191,255,60,.08);color:#fafdff}
+    .ctx-item .ctx-icon{width:18px;text-align:center;font-size:.7rem;font-weight:700;color:#52525b}
+    .ctx-sep{height:1px;background:rgba(255,255,255,.06);margin:3px 6px}
+    .ctx-item.danger{color:#ff2674}
+    .ctx-item.danger:hover{background:rgba(255,38,116,.1)}
+    .panel-label{font-size:.65rem;color:#52525b;font-weight:600;padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.04em}
+
     .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
     .prop-group label{display:block;font-size:.68rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
     .prop-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
@@ -98,10 +116,11 @@
     .file-item .fi{font-size:.7rem;color:#52525b}
     .file-item.folder .fi{color:#ffd100}
     .shader-preview{height:60px;border-radius:6px;border:1px solid rgba(255,255,255,.06);margin:6px 0;background:#1a1b1e;overflow:hidden}
-    .cam-preview{position:absolute;bottom:0;right:0;width:220px;height:165px;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:6px 0 0 0;overflow:hidden;z-index:5;display:none}
-    .cam-preview.active{display:block}
-    .cam-preview-label{position:absolute;top:4px;left:6px;font-size:.6rem;color:#bfff3c;font-weight:600;text-transform:uppercase;letter-spacing:.04em;z-index:6;pointer-events:none}
-    .cam-preview canvas{display:block;width:100%;height:100%}
+
+    .cam-panel{background:#131416;display:flex;flex-direction:column;overflow:hidden;min-height:80px}
+    .cam-panel .panel-header{font-size:.65rem;padding:5px 10px}
+    .cam-panel canvas{display:block;width:100%;height:100%;flex:1}
+    .cam-panel-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#333;font-size:.7rem;font-style:italic}
   </style>
 </head>
 <body>
@@ -120,12 +139,16 @@
 </div>
 
 <div class="main-wrap">
-  <div class="panel-left">
+  <!-- LEFT: Scene Hierarchy -->
+  <div class="panel-left" id="panelLeft">
     <div class="panel-header">Scene <span style="font-size:.6rem;color:#444" id="objCount">0 objects</span></div>
     <div class="panel-content" id="hierarchyPanel"><div id="hierarchy"></div></div>
   </div>
 
-  <div class="center-col">
+  <div class="splitter splitter-v" id="splitLeft" title="Drag to resize"></div>
+
+  <!-- CENTER: Viewport + Bottom -->
+  <div class="center-col" id="centerCol">
     <div class="toolbar">
       <button class="t-btn" id="btnUndo" title="Undo (Ctrl+Z)">&#8617;</button>
       <button class="t-btn" id="btnRedo" title="Redo (Ctrl+Shift+Z)">&#8618;</button>
@@ -140,8 +163,113 @@
       <button class="t-btn" id="btnGrid" title="Grid">G</button>
       <button class="t-btn" id="btnWire" title="Wireframe">W</button>
     </div>
-    <div class="viewport" id="viewport"><div class="cam-preview" id="camPreview"><div class="cam-preview-label">Camera Preview</div><canvas id="camPreviewCanvas"></canvas></div></div>
-    <div class="bottom-resize" id="bottomHandle"></div>
+    <div class="center-body">
+      <div class="viewport" id="viewport"></div>
+      <div class="splitter splitter-v" id="splitViewportRight" title="Drag to resize"></div>
+      <div class="right-col" id="rightCol">
+        <!-- CAMERA PREVIEW PANEL -->
+        <div class="cam-panel" id="camPreview" style="height:180px;min-height:80px">
+          <div class="panel-header">Camera Preview</div>
+          <canvas id="camPreviewCanvas"></canvas>
+          <div class="cam-panel-empty" id="camEmpty">No camera in scene</div>
+        </div>
+        <div class="splitter splitter-h" id="splitCamInspector"></div>
+        <!-- INSPECTOR/SCRIPTS/MATERIAL -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:100px">
+          <div class="panel-tabs">
+            <div class="panel-tab active" data-right="props">Inspector</div>
+            <div class="panel-tab" data-right="scripts">Scripts</div>
+            <div class="panel-tab" data-right="material">Material</div>
+          </div>
+          <div class="panel-content" id="propsPanel">
+            <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
+            <div id="propsContent" style="display:none">
+              <div class="prop-group"><label>Name</label><input class="p-input" id="propName"></div>
+              <div class="prop-group">
+                <label>Position</label>
+                <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1"></div>
+                <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1"></div>
+                <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1"></div>
+              </div>
+              <div class="prop-group">
+                <label>Rotation</label>
+                <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1"></div>
+                <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1"></div>
+                <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1"></div>
+              </div>
+              <div class="prop-group">
+                <label>Scale</label>
+                <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01"></div>
+                <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
+                <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
+              </div>
+              <div class="prop-group" id="cameraAttachGroup" style="display:none">
+                <label>Attach To Object</label>
+                <select class="p-select" id="cameraAttach"><option value="">None (Free Camera)</option></select>
+              </div>
+            </div>
+          </div>
+          <div class="panel-content hidden" id="scriptsPanel">
+            <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
+            <div id="scriptsContent" style="display:none;padding:8px 12px">
+              <div id="scriptList"></div>
+              <button class="add-btn" id="btnAddScript">+ Add Script</button>
+            </div>
+          </div>
+          <div class="panel-content hidden" id="materialPanel">
+            <div class="empty-state" id="matEmpty">Select an object to edit material</div>
+            <div id="matContent" style="display:none">
+              <div class="prop-group">
+                <label>Type</label>
+                <select class="p-select" id="matType">
+                  <option value="standard">Standard (PBR)</option>
+                  <option value="phong">Phong</option>
+                  <option value="lambert">Lambert</option>
+                  <option value="toon">Toon</option>
+                  <option value="shader">Custom Shader</option>
+                </select>
+              </div>
+              <div class="prop-group" id="matColorGroup">
+                <label>Color</label>
+                <div class="prop-row"><input class="p-input" id="matColor" type="color"><input class="p-input" id="matColorHex" value="#bfff3c"></div>
+              </div>
+              <div class="prop-group" id="matMetalnessGroup">
+                <label>Metalness</label>
+                <div class="prop-row"><input class="p-input" id="matMetalness" type="range" min="0" max="1" step="0.01" value="0.1"></div>
+              </div>
+              <div class="prop-group" id="matRoughnessGroup">
+                <label>Roughness</label>
+                <div class="prop-row"><input class="p-input" id="matRoughness" type="range" min="0" max="1" step="0.01" value="0.6"></div>
+              </div>
+              <div class="prop-group" id="matEmissiveGroup" style="display:none">
+                <label>Emissive</label>
+                <div class="prop-row"><input class="p-input" id="matEmissive" type="color" value="#000000"></div>
+              </div>
+              <div class="prop-group" id="matShininessGroup" style="display:none">
+                <label>Shininess</label>
+                <div class="prop-row"><input class="p-input" id="matShininess" type="range" min="0" max="100" step="1" value="30"></div>
+              </div>
+              <div class="prop-group" id="matShaderGroup" style="display:none">
+                <label>Vertex Shader</label>
+                <textarea class="p-input" id="matVertShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
+void main() {
+  vNormal = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}</textarea>
+                <label style="margin-top:8px">Fragment Shader</label>
+                <textarea class="p-input" id="matFragShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
+void main() {
+  float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;
+}</textarea>
+                <button class="add-btn" id="btnApplyShader" style="margin-top:6px">Apply Shader</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="splitter splitter-h" id="splitBottom" title="Drag to resize"></div>
     <div class="bottom" id="bottomPanel">
       <div class="bottom-tabs">
         <div class="bottom-tab active" data-btab="code">&#9998; Code</div>
@@ -154,99 +282,6 @@
       <div class="bottom-content hidden" id="consolePanel"><div id="console"></div></div>
       <div class="bottom-content hidden" id="filesPanel">
         <div class="file-tree" id="fileTree"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel-right">
-    <div class="panel-tabs">
-      <div class="panel-tab active" data-right="props">Inspector</div>
-      <div class="panel-tab" data-right="scripts">Scripts</div>
-      <div class="panel-tab" data-right="material">Material</div>
-    </div>
-    <div class="panel-content" id="propsPanel">
-      <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
-      <div id="propsContent" style="display:none">
-        <div class="prop-group"><label>Name</label><input class="p-input" id="propName"></div>
-        <div class="prop-group">
-          <label>Position</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1"></div>
-        </div>
-        <div class="prop-group">
-          <label>Rotation</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1"></div>
-        </div>
-        <div class="prop-group">
-          <label>Scale</label>
-          <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01"></div>
-          <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
-          <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
-        </div>
-        <div class="prop-group" id="cameraAttachGroup" style="display:none">
-          <label>Attach To Object</label>
-          <select class="p-select" id="cameraAttach"><option value="">None (Free Camera)</option></select>
-        </div>
-      </div>
-    </div>
-    <div class="panel-content hidden" id="scriptsPanel">
-      <div class="empty-state" id="scriptsEmpty">Select an object to manage scripts</div>
-      <div id="scriptsContent" style="display:none;padding:8px 12px">
-        <div id="scriptList"></div>
-        <button class="add-btn" id="btnAddScript">+ Add Script</button>
-      </div>
-    </div>
-    <div class="panel-content hidden" id="materialPanel">
-      <div class="empty-state" id="matEmpty">Select an object to edit material</div>
-      <div id="matContent" style="display:none">
-        <div class="prop-group">
-          <label>Type</label>
-          <select class="p-select" id="matType">
-            <option value="standard">Standard (PBR)</option>
-            <option value="phong">Phong</option>
-            <option value="lambert">Lambert</option>
-            <option value="toon">Toon</option>
-            <option value="shader">Custom Shader</option>
-          </select>
-        </div>
-        <div class="prop-group" id="matColorGroup">
-          <label>Color</label>
-          <div class="prop-row"><input class="p-input" id="matColor" type="color"><input class="p-input" id="matColorHex" value="#bfff3c"></div>
-        </div>
-        <div class="prop-group" id="matMetalnessGroup">
-          <label>Metalness</label>
-          <div class="prop-row"><input class="p-input" id="matMetalness" type="range" min="0" max="1" step="0.01" value="0.1"></div>
-        </div>
-        <div class="prop-group" id="matRoughnessGroup">
-          <label>Roughness</label>
-          <div class="prop-row"><input class="p-input" id="matRoughness" type="range" min="0" max="1" step="0.01" value="0.6"></div>
-        </div>
-        <div class="prop-group" id="matEmissiveGroup" style="display:none">
-          <label>Emissive</label>
-          <div class="prop-row"><input class="p-input" id="matEmissive" type="color" value="#000000"></div>
-        </div>
-        <div class="prop-group" id="matShininessGroup" style="display:none">
-          <label>Shininess</label>
-          <div class="prop-row"><input class="p-input" id="matShininess" type="range" min="0" max="100" step="1" value="30"></div>
-        </div>
-        <div class="prop-group" id="matShaderGroup" style="display:none">
-          <label>Vertex Shader</label>
-          <textarea class="p-input" id="matVertShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-}</textarea>
-          <label style="margin-top:8px">Fragment Shader</label>
-          <textarea class="p-input" id="matFragShader" rows="4" style="width:100%;font-family:monospace;font-size:.7rem;resize:vertical;background:rgba(255,255,255,.04);color:#fafdff;border:1px solid rgba(255,255,255,.06);border-radius:5px;padding:6px">varying vec3 vNormal;
-void main() {
-  float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;
-}</textarea>
-          <button class="add-btn" id="btnApplyShader" style="margin-top:6px">Apply Shader</button>
-        </div>
       </div>
     </div>
   </div>
@@ -1231,22 +1266,97 @@ document.getElementById('cameraAttach').addEventListener('change', function() {
 });
 
 /* ════════════════════════════════════════════════════
-   BOTTOM RESIZE
+   SPLITTER RESIZE SYSTEM
    ════════════════════════════════════════════════════ */
 (function() {
-  var handle = document.getElementById('bottomHandle');
-  var panel = document.getElementById('bottomPanel');
-  var startY, startH;
-  handle.addEventListener('mousedown', function(e) {
-    startY = e.clientY; startH = panel.offsetHeight;
-    function onMove(ev) {
-      panel.style.height = Math.max(80, Math.min(window.innerHeight * 0.5, startH - (ev.clientY - startY))) + 'px';
-      if (window._monacoEditor) window._monacoEditor.layout();
-    }
-    function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  });
+  function initSplitV(splitter, leftEl, rightEl, opt) {
+    opt = opt || {};
+    var resizeRight = opt.resizeRight || false;
+    var minL = opt.minLeft || 120, maxL = opt.maxLeft || 0.4;
+    var startX, startLW, startRW;
+    splitter.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      startX = e.clientX;
+      startLW = leftEl.offsetWidth;
+      startRW = rightEl ? rightEl.offsetWidth : 0;
+      splitter.classList.add('active');
+      var overlay = document.createElement('div');
+      overlay.className = 'resize-overlay';
+      document.body.appendChild(overlay);
+      function onMove(ev) {
+        var dx = ev.clientX - startX;
+        if (resizeRight) {
+          var newRW = Math.max(120, Math.min(window.innerWidth * 0.5, startRW - dx));
+          rightEl.style.width = newRW + 'px';
+          rightEl.style.flex = 'none';
+          rightEl.style.minWidth = '0';
+        } else {
+          var newW = Math.max(minL, Math.min(window.innerWidth * maxL, startLW + dx));
+          leftEl.style.width = newW + 'px';
+          leftEl.style.flex = 'none';
+          leftEl.style.minWidth = '0';
+        }
+        onResize();
+        if (window._monacoEditor) window._monacoEditor.layout();
+      }
+      function onUp() {
+        splitter.classList.remove('active');
+        overlay.remove();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        onResize();
+        if (window._monacoEditor) window._monacoEditor.layout();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  function initSplitH(splitter, topEl, bottomEl, opt) {
+    opt = opt || {};
+    var minT = opt.minTop || 80, minB = opt.minBottom || 80;
+    var startY, startTH;
+    splitter.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      startY = e.clientY;
+      startTH = topEl.offsetHeight;
+      splitter.classList.add('active');
+      var overlay = document.createElement('div');
+      overlay.className = 'resize-overlay row';
+      document.body.appendChild(overlay);
+      function onMove(ev) {
+        var dy = ev.clientY - startY;
+        var newH = Math.max(minT, startTH + dy);
+        topEl.style.height = newH + 'px';
+        topEl.style.flex = 'none';
+        topEl.style.minHeight = '0';
+        onResize();
+        if (window._monacoEditor) window._monacoEditor.layout();
+      }
+      function onUp() {
+        splitter.classList.remove('active');
+        overlay.remove();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        onResize();
+        if (window._monacoEditor) window._monacoEditor.layout();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  }
+
+  var panelLeft = document.getElementById('panelLeft');
+  var centerCol = document.getElementById('centerCol');
+  var rightCol = document.getElementById('rightCol');
+  var viewport = document.getElementById('viewport');
+  var bottomPanel = document.getElementById('bottomPanel');
+  var camPanel = document.getElementById('camPreview');
+
+  initSplitV(document.getElementById('splitLeft'), panelLeft, centerCol, { minLeft: 120, maxLeft: 0.35 });
+  initSplitV(document.getElementById('splitViewportRight'), viewport, rightCol, { resizeRight: true });
+  initSplitH(document.getElementById('splitBottom'), document.querySelector('.center-body'), bottomPanel, { minTop: 150, minBottom: 80 });
+  initSplitH(document.getElementById('splitCamInspector'), camPanel, camPanel.parentElement, { minTop: 80, minBottom: 100 });
 })();
 document.getElementById('btnToggleBottom').addEventListener('click', function() {
   document.getElementById('bottomPanel').classList.toggle('collapsed');
@@ -1359,6 +1469,7 @@ loadMonaco();
 const camHelpers = {};
 const camPreviewEl = document.getElementById('camPreview');
 const camPreviewCanvas = document.getElementById('camPreviewCanvas');
+const camEmptyEl = document.getElementById('camEmpty');
 const camPreviewRenderer = new THREE.WebGLRenderer({ canvas: camPreviewCanvas, antialias: true });
 camPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 camPreviewRenderer.setSize(220, 165);
@@ -1391,9 +1502,12 @@ function refreshCameraPreview() {
     }
   }
   if (cam) {
-    camPreviewEl.classList.add('active');
+    camEmptyEl.style.display = 'none';
+    camPreviewCanvas.style.display = 'block';
     var w = camPreviewCanvas.parentElement.clientWidth || 220;
-    var h = camPreviewCanvas.parentElement.clientHeight || 165;
+    var headerH = camPreviewEl.querySelector('.panel-header').offsetHeight || 24;
+    var h = camPreviewEl.clientHeight - headerH;
+    if (h < 10) h = 100;
     cam.aspect = w / h;
     cam.updateProjectionMatrix();
     camPreviewRenderer.setSize(w, h);
@@ -1401,7 +1515,8 @@ function refreshCameraPreview() {
     camPreviewRenderer.setViewport(0, 0, w, h);
     camPreviewRenderer.render(scene, cam);
   } else {
-    camPreviewEl.classList.remove('active');
+    camEmptyEl.style.display = '';
+    camPreviewCanvas.style.display = 'none';
   }
 }
 
