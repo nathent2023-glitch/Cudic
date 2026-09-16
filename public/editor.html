@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox — Game Editor</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/sidebar.css">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
@@ -141,7 +142,7 @@
     .drop-target{outline:2px solid #bfff3c;outline-offset:-2px;background:rgba(191,255,60,.08)!important}
   </style>
 </head>
-<body>
+<body data-page="editor">
 
 <div class="topbar">
   <div class="brand">glox<span>.</span></div>
@@ -277,6 +278,8 @@
   }
 }
 </script>
+
+<script src="/sidebar.js"></script>
 
 <script>
 (function(){

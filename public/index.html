@@ -5,612 +5,304 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/sidebar.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* Override sidebar body rule for index */
+    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;user-select:none}
 
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #16171a;
-      color: #fafdff;
-      min-height: 100vh;
-      overflow: hidden;
-      -webkit-font-smoothing: antialiased;
+    canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+    .center-stage{display:flex;align-items:center;justify-content:center;flex:1;position:relative;z-index:1}
+
+    .card{
+      width:420px;max-width:92vw;max-height:90vh;overflow-y:auto;
+      background:rgba(17,18,20,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-radius:20px;border:1px solid rgba(255,255,255,.07);padding:36px 32px 32px;
+      box-shadow:0 24px 80px rgba(0,0,0,.6);
     }
+    .brand{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+    .brand span{color:#bfff3c}
 
-    canvas#bg {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
+    .oauth-btn{
+      width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;
+      border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
+      color:#fafdff;font-size:.87rem;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit;margin-bottom:16px;
     }
+    .oauth-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14)}
+    .oauth-btn svg{width:18px;height:18px;flex-shrink:0}
 
-    .card {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1;
-      width: 420px;
-      max-width: 94vw;
-      max-height: 90vh;
-      overflow-y: auto;
-      background: rgba(22, 23, 26, 0.88);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.07);
-      padding: 36px 32px 32px;
-      box-shadow: 0 24px 80px rgba(0,0,0,.6);
-    }
+    .tabs{display:flex;gap:0;margin-bottom:16px;background:rgba(255,255,255,.04);border-radius:12px;padding:3px;border:1px solid rgba(255,255,255,.06)}
+    .tab{flex:1;padding:10px;background:transparent;border:none;color:#68aed4;cursor:pointer;font-size:.84rem;font-weight:600;border-radius:10px;transition:all .15s;font-family:inherit}
+    .tab.active{background:rgba(255,255,255,.08);color:#fafdff}
+    .tab:not(.active):hover{color:#bfff3c}
 
-    .brand { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: 4px; }
-    .brand span { color: #bfff3c; }
+    .form{display:none;flex-direction:column;gap:12px}
+    .form.active{display:flex}
 
-    /* Nav tabs */
-    .nav-tabs { display: flex; gap: 0; margin: 12px 0 16px; background: rgba(255,255,255,.04); border-radius: 12px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
-    .nav-tab { flex: 1; padding: 9px; text-align: center; text-decoration: none; color: #68aed4; font-size: .82rem; font-weight: 600; border-radius: 10px; transition: all .15s; font-family: inherit; }
-    .nav-tab.active { background: rgba(255,255,255,.08); color: #fafdff; }
-    .nav-tab:not(.active):hover { color: #bfff3c; }
+    .field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#fafdff;font-size:.87rem;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+    .field input::placeholder{color:#52525b}
+    .field input:focus{border-color:#bfff3c;box-shadow:0 0 0 3px rgba(191,255,60,.1)}
 
-    /* ── OAuth ── */
-    .oauth-btn {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.04);
-      color: #fafdff;
-      font-size: .87rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all .15s ease;
-      font-family: inherit;
-      margin-bottom: 16px;
-    }
-    .oauth-btn:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.14); }
-    .oauth-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .btn{width:100%;padding:12px;background:#bfff3c;border:none;border-radius:12px;color:#0d0e10;font-size:.87rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,transform .1s;margin-top:2px}
+    .btn:hover{background:#a8e62e}
+    .btn:active{transform:scale(.98)}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
 
-    /* ── Tabs ── */
-    .tabs { display: flex; gap: 0; margin-bottom: 16px; background: rgba(255,255,255,.04); border-radius: 12px; padding: 3px; border: 1px solid rgba(255,255,255,.06); }
-    .tab {
-      flex: 1; padding: 10px; background: transparent; border: none; color: #68aed4;
-      cursor: pointer; font-size: .84rem; font-weight: 600; border-radius: 10px;
-      transition: all .15s ease; font-family: inherit;
-    }
-    .tab.active { background: rgba(255,255,255,.08); color: #fafdff; }
-    .tab:not(.active):hover { color: #bfff3c; }
+    .error{color:#ff2674;font-size:.8rem;text-align:center;display:none;padding:8px 12px;background:rgba(255,38,116,.08);border-radius:10px;border:1px solid rgba(255,38,116,.12)}
 
-    /* ── Forms ── */
-    .form { display: none; flex-direction: column; gap: 12px; }
-    .form.active { display: flex; }
+    .or-divider{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
+    .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
+    .or-divider span{color:#52525b;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
 
-    .field input {
-      width: 100%;
-      padding: 12px 14px;
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 12px;
-      color: #fafdff;
-      font-size: .87rem;
-      font-family: inherit;
-      outline: none;
-      transition: border-color .15s ease, box-shadow .15s ease;
-    }
-    .field input::placeholder { color: #52525b; }
-    .field input:focus { border-color: #bfff3c; box-shadow: 0 0 0 3px rgba(191,255,60,.1); }
+    .lobbies-label{color:#52525b;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;font-weight:500;margin-top:8px;margin-bottom:4px}
+    .lobby-list{display:flex;flex-direction:column;gap:5px;max-height:110px;overflow-y:auto}
+    .lobby-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;cursor:pointer;transition:all .15s;font-family:inherit;color:#fafdff;font-size:.84rem}
+    .lobby-item:hover{border-color:rgba(191,255,60,.3);background:rgba(191,255,60,.04)}
+    .lobby-item .name{font-weight:600}
+    .lobby-item .count{color:#68aed4;font-size:.78rem}
 
-    .btn {
-      width: 100%;
-      padding: 12px;
-      background: #bfff3c;
-      border: none;
-      border-radius: 12px;
-      color: #16171a;
-      font-size: .87rem;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background .15s ease, transform .1s ease;
-      margin-top: 2px;
-    }
-    .btn:hover { background: #a8e62e; }
-    .btn:active { transform: scale(.98); }
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .user-bar{display:none;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;margin-bottom:14px}
+    .user-bar span{color:#bfff3c;font-size:.83rem;font-weight:600}
+    .btn-sm{padding:5px 12px;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:8px;color:#68aed4;font-size:.78rem;cursor:pointer;font-family:inherit;transition:all .15s}
+    .btn-sm:hover{border-color:#ff2674;color:#ff2674}
 
-    .error {
-      color: #ff2674;
-      font-size: .8rem;
-      text-align: center;
-      display: none;
-      padding: 8px 12px;
-      background: rgba(255,38,116,.08);
-      border-radius: 10px;
-      border: 1px solid rgba(255,38,116,.12);
-    }
-
-    .or-divider { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
-    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.06); }
-    .or-divider span { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; }
-
-    /* ── Active lobbies ── */
-    .lobbies-label { color: #52525b; font-size: .73rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 500; margin-top: 8px; margin-bottom: 4px; }
-    .lobby-list { display: flex; flex-direction: column; gap: 5px; max-height: 110px; overflow-y: auto; }
-    .lobby-item {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
-      border-radius: 12px; cursor: pointer; transition: all .15s ease; font-family: inherit;
-      color: #fafdff; font-size: .84rem;
-    }
-    .lobby-item:hover { border-color: rgba(191,255,60,.3); background: rgba(191,255,60,.04); }
-    .lobby-item .name { font-weight: 600; }
-    .lobby-item .count { color: #68aed4; font-size: .78rem; }
-
-    /* ── User bar ── */
-    .user-bar {
-      display: none; align-items: center; justify-content: space-between;
-      padding: 10px 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
-      border-radius: 12px; margin-bottom: 14px;
-    }
-    .user-bar span { color: #bfff3c; font-size: .83rem; font-weight: 600; }
-    .btn-sm {
-      padding: 5px 12px; background: transparent; border: 1px solid rgba(255,255,255,.08);
-      border-radius: 8px; color: #68aed4; font-size: .78rem; cursor: pointer;
-      font-family: inherit; transition: all .15s ease;
-    }
-    .btn-sm:hover { border-color: #ff2674; color: #ff2674; }
-
-    /* ── Verify notice ── */
-    .verify-notice {
-      display: none; text-align: center; padding: 16px;
-      background: rgba(255,209,0,.06); border: 1px solid rgba(255,209,0,.15);
-      border-radius: 12px; margin-bottom: 14px;
-    }
-    .verify-notice .icon { font-size: 2rem; margin-bottom: 8px; }
-    .verify-notice p { color: #ccc; font-size: .84rem; line-height: 1.5; margin-bottom: 12px; }
-    .verify-notice .btn-resend {
-      padding: 8px 20px; background: transparent; border: 1px solid #bfff3c;
-      border-radius: 8px; color: #bfff3c; font-size: .82rem; cursor: pointer;
-      font-family: inherit; transition: all .15s ease;
-    }
-    .verify-notice .btn-resend:hover { background: rgba(191,255,60,.08); }
-    .verify-notice .btn-resend:disabled { opacity: .4; cursor: not-allowed; }
-
-    @media (max-width: 480px) {
-      .card { padding: 28px 20px 24px; }
-    }
+    .verify-notice{display:none;text-align:center;padding:16px;background:rgba(255,209,0,.06);border:1px solid rgba(255,209,0,.15);border-radius:12px;margin-bottom:14px}
+    .verify-notice .icon{font-size:2rem;margin-bottom:8px}
+    .verify-notice p{color:#ccc;font-size:.84rem;line-height:1.5;margin-bottom:12px}
+    .verify-notice .btn-resend{padding:8px 20px;background:transparent;border:1px solid #bfff3c;border-radius:8px;color:#bfff3c;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .15s}
+    .verify-notice .btn-resend:hover{background:rgba(191,255,60,.08)}
+    .verify-notice .btn-resend:disabled{opacity:.4;cursor:not-allowed}
   </style>
 </head>
-<body>
+<body data-page="home">
   <canvas id="bg"></canvas>
 
-  <div class="card">
-    <div class="brand">glox<span>.</span></div>
+  <div class="center-stage">
+    <div class="card">
+      <div class="brand">glox<span>.</span></div>
 
-    <!-- Nav tabs -->
-    <div class="nav-tabs" id="navTabs">
-      <a href="/" class="nav-tab active">Chat</a>
-      <a href="/games" class="nav-tab">Games</a>
+      <div id="userBar" class="user-bar">
+        <span id="userDisplay"></span>
+        <button class="btn-sm" id="signOutBtn">sign out</button>
+      </div>
+
+      <div id="verifyNotice" class="verify-notice">
+        <div class="icon">&#9993;</div>
+        <p><strong>Check your email</strong><br>We sent a verification link to <span id="verifyEmail"></span>. Click it to verify your account.</p>
+        <button class="btn-resend" id="resendBtn">Resend email</button>
+      </div>
+
+      <button class="oauth-btn" id="githubBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        Continue with GitHub
+      </button>
+
+      <div class="tabs" id="authTabs">
+        <button class="tab active" data-tab="login">Sign in</button>
+        <button class="tab" data-tab="signup">Create account</button>
+      </div>
+
+      <form id="loginForm" class="form active">
+        <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
+        <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
+        <button type="submit" class="btn" id="loginBtn">Sign in</button>
+        <div id="loginError" class="error"></div>
+      </form>
+
+      <form id="signupForm" class="form">
+        <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
+        <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
+        <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
+        <button type="submit" class="btn" id="signupBtn">Create account</button>
+        <div id="signupError" class="error"></div>
+      </form>
+
+      <div class="or-divider" id="orDivider"><span>or join without an account</span></div>
+
+      <form id="guestForm" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
+        <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
+        <button type="submit" class="btn">Join lobby</button>
+      </form>
+
+      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
+      <div id="lobbyList" class="lobby-list"></div>
     </div>
-
-    <!-- User bar (shown when signed in) -->
-    <div id="userBar" class="user-bar">
-      <span id="userDisplay"></span>
-      <button class="btn-sm" onclick="handleSignOut()">sign out</button>
-    </div>
-
-    <!-- Email verification notice -->
-    <div id="verifyNotice" class="verify-notice">
-      <div class="icon">&#9993;</div>
-      <p><strong>Check your email</strong><br>We sent a verification link to <span id="verifyEmail"></span>. Click it to verify your account.</p>
-      <button class="btn-resend" id="resendBtn" onclick="resendVerification()">Resend email</button>
-    </div>
-
-    <!-- OAuth -->
-    <button class="oauth-btn" onclick="signInWithGitHub()">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-      Continue with GitHub
-    </button>
-
-    <!-- Tabs: Sign In / Sign Up -->
-    <div class="tabs" id="authTabs">
-      <button class="tab active" onclick="showTab('login')">Sign in</button>
-      <button class="tab" onclick="showTab('signup')">Create account</button>
-    </div>
-
-    <!-- Sign In -->
-    <form id="loginForm" class="form active" onsubmit="handleLogin(event)">
-      <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
-      <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
-      <button type="submit" class="btn" id="loginBtn">Sign in</button>
-      <div id="loginError" class="error"></div>
-    </form>
-
-    <!-- Sign Up -->
-    <form id="signupForm" class="form" onsubmit="handleSignup(event)">
-      <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
-      <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
-      <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
-      <button type="submit" class="btn" id="signupBtn">Create account</button>
-      <div id="signupError" class="error"></div>
-    </form>
-
-    <!-- Guest join -->
-    <div class="or-divider"><span>or join without an account</span></div>
-
-    <form id="guestForm" onsubmit="handleGuest(event)" autocomplete="off" style="display:flex;flex-direction:column;gap:12px;">
-      <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
-      <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
-      <button type="submit" class="btn">Join lobby</button>
-    </form>
-
-    <!-- Active lobbies -->
-    <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
-    <div id="lobbyList" class="lobby-list"></div>
   </div>
 
-  <script src="config.js"></script>
-  <script src="auth.js"></script>
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/sidebar.js"></script>
   <script>
-    // ── Canvas Background ─────────────────────────────────────────
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    let W, H, mouse = { x: -1000, y: -1000 };
+  (function(){
+    // ── Canvas Background ─────────────────────────────────────
+    var canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
+    var W,H,mouse={x:-1000,y:-1000};
+    var PALETTE=['#7f0622','#d62411','#ff8426','#ffd100','#ff80a4','#ff2674','#94216a','#430067','#234975','#68aed4','#007899','#002859','#bfff3c','#10d275'];
 
-    const PALETTE = [
-      '#7f0622', '#d62411', '#ff8426', '#ffd100',
-      '#ff80a4', '#ff2674', '#94216a', '#430067',
-      '#234975', '#68aed4', '#007899', '#002859',
-      '#bfff3c', '#10d275'
-    ];
+    function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
+    addEventListener('resize',resize);resize();
+    document.addEventListener('mousemove',function(e){mouse.x=e.clientX;mouse.y=e.clientY});
 
-    function resize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-
-    // 3D floating cubes
-    class Cube {
-      constructor() { this.reset(true); }
-
-      reset(init) {
-        this.x = Math.random() * W;
-        this.y = init ? Math.random() * H : H + 60;
-        this.z = Math.random() * 400 + 200;
-        this.size = Math.random() * 18 + 8;
-        this.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-        this.rotX = Math.random() * Math.PI;
-        this.rotY = Math.random() * Math.PI;
-        this.rotZ = Math.random() * Math.PI;
-        this.speedX = (Math.random() - 0.5) * 0.012;
-        this.speedY = (Math.random() - 0.5) * 0.012;
-        this.speedZ = (Math.random() - 0.5) * 0.008;
-        this.vy = -(Math.random() * 0.3 + 0.15);
-        this.vx = (Math.random() - 0.5) * 0.4;
-        this.opacity = Math.random() * 0.4 + 0.15;
-        this.glow = Math.random() > 0.7;
+    class Cube{
+      constructor(){this.reset(true)}
+      reset(init){
+        this.x=Math.random()*W;this.y=init?Math.random()*H:H+60;
+        this.z=Math.random()*400+200;this.size=Math.random()*18+8;
+        this.color=PALETTE[Math.floor(Math.random()*PALETTE.length)];
+        this.rotX=Math.random()*Math.PI;this.rotY=Math.random()*Math.PI;this.rotZ=Math.random()*Math.PI;
+        this.speedX=(Math.random()-.5)*.012;this.speedY=(Math.random()-.5)*.012;this.speedZ=(Math.random()-.5)*.008;
+        this.vy=-(Math.random()*.3+.15);this.vx=(Math.random()-.5)*.4;
+        this.opacity=Math.random()*.4+.15;this.glow=Math.random()>.7;
       }
-
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.rotX += this.speedX;
-        this.rotY += this.speedY;
-        this.rotZ += this.speedZ;
-
-        // Mouse repel
-        const dx = this.x - mouse.x;
-        const dy = this.y - mouse.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
-          const force = (150 - dist) / 150 * 0.8;
-          this.x += (dx / dist) * force;
-          this.y += (dy / dist) * force;
-        }
-
-        if (this.y < -60 || this.x < -60 || this.x > W + 60) this.reset(false);
+      update(){
+        this.x+=this.vx;this.y+=this.vy;this.rotX+=this.speedX;this.rotY+=this.speedY;this.rotZ+=this.speedZ;
+        var dx=this.x-mouse.x,dy=this.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<150){var f=(150-dist)/150*.8;this.x+=dx/dist*f;this.y+=dy/dist*f}
+        if(this.y<-60||this.x<-60||this.x>W+60)this.reset(false);
       }
-
-      draw() {
-        const s = this.size * (300 / this.z);
-        const cos = Math.cos, sin = Math.sin;
-        const rx = this.rotX, ry = this.rotY, rz = this.rotZ;
-
-        // 3D cube vertices
-        const verts = [
-          [-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],
-          [-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]
-        ].map(([vx,vy,vz]) => {
-          // Rotate X
-          let y1 = vy * cos(rx) - vz * sin(rx);
-          let z1 = vy * sin(rx) + vz * cos(rx);
-          // Rotate Y
-          let x1 = vx * cos(ry) + z1 * sin(ry);
-          let z2 = -vx * sin(ry) + z1 * cos(ry);
-          // Rotate Z
-          let x2 = x1 * cos(rz) - y1 * sin(rz);
-          let y2 = x1 * sin(rz) + y1 * cos(rz);
-          // Project
-          const scale = 300 / (300 + z2);
-          return [this.x + x2 * s * scale, this.y + y2 * s * scale, z2];
-        });
-
-        // 12 edges
-        const edges = [
-          [0,1],[1,2],[2,3],[3,0],
-          [4,5],[5,6],[6,7],[7,4],
-          [0,4],[1,5],[2,6],[3,7]
-        ];
-
-        ctx.strokeStyle = this.color;
-        ctx.globalAlpha = this.opacity * (0.6 + 0.4 * (300 / this.z));
-        ctx.lineWidth = Math.max(1, s * 0.12);
-
-        if (this.glow) {
-          ctx.shadowColor = this.color;
-          ctx.shadowBlur = s * 0.8;
-        }
-
+      draw(){
+        var s=this.size*(300/this.z),cos=Math.cos,sin=Math.sin,rx=this.rotX,ry=this.rotY,rz=this.rotZ;
+        var verts=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(function(v){
+          var y1=v[1]*cos(rx)-v[2]*sin(rx),z1=v[1]*sin(rx)+v[2]*cos(rx);
+          var x1=v[0]*cos(ry)+z1*sin(ry),z2=-v[0]*sin(ry)+z1*cos(ry);
+          var x2=x1*cos(rz)-y1*sin(rz),y2=x1*sin(rz)+y1*cos(rz);
+          var sc=300/(300+z2);return[ctx.canvas.width?0:0+x2*s*sc+this.x,this.y,s*sc];
+        }.bind(this));
+        var edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+        ctx.strokeStyle=this.color;ctx.globalAlpha=this.opacity*(.6+.4*(300/this.z));ctx.lineWidth=Math.max(1,s*.12);
+        if(this.glow){ctx.shadowColor=this.color;ctx.shadowBlur=s*.8}
         ctx.beginPath();
-        for (const [a, b] of edges) {
-          ctx.moveTo(verts[a][0], verts[a][1]);
-          ctx.lineTo(verts[b][0], verts[b][1]);
-        }
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.globalAlpha = 1;
+        var self=this;
+        edges.forEach(function(e){ctx.moveTo(verts[e[0]][0],verts[e[0]][1]);ctx.lineTo(verts[e[1]][0],verts[e[1]][1])});
+        ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;
       }
     }
 
-    // Particles
-    class Particle {
-      constructor() { this.reset(true); }
-
-      reset(init) {
-        this.x = Math.random() * W;
-        this.y = init ? Math.random() * H : H + 10;
-        this.size = Math.random() * 3 + 1;
-        this.color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-        this.vy = -(Math.random() * 0.5 + 0.2);
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.opacity = Math.random() * 0.5 + 0.2;
-        this.pulse = Math.random() * Math.PI * 2;
-        this.pulseSpeed = Math.random() * 0.03 + 0.01;
+    class Particle{
+      constructor(){this.reset(true)}
+      reset(init){
+        this.x=Math.random()*W;this.y=init?Math.random()*H:H+10;
+        this.size=Math.random()*3+1;this.color=PALETTE[Math.floor(Math.random()*PALETTE.length)];
+        this.vy=-(Math.random()*.5+.2);this.vx=(Math.random()-.5)*.3;
+        this.opacity=Math.random()*.5+.2;this.pulse=Math.random()*Math.PI*2;this.pulseSpeed=Math.random()*.03+.01;
       }
-
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        this.pulse += this.pulseSpeed;
-        if (this.y < -10) this.reset(false);
-      }
-
-      draw() {
-        const glow = Math.sin(this.pulse) * 0.3 + 0.7;
-        ctx.globalAlpha = this.opacity * glow;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
+      update(){this.x+=this.vx;this.y+=this.vy;this.pulse+=this.pulseSpeed;if(this.y<-10)this.reset(false)}
+      draw(){var g=Math.sin(this.pulse)*.3+.7;ctx.globalAlpha=this.opacity*g;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
     }
 
-    const cubes = Array.from({ length: 18 }, () => new Cube());
-    const particles = Array.from({ length: 60 }, () => new Particle());
+    var cubes=Array.from({length:18},function(){return new Cube()});
+    var particles=Array.from({length:60},function(){return new Particle()});
 
-    function animate() {
-      ctx.clearRect(0, 0, W, H);
-
-      // Subtle grid
-      ctx.strokeStyle = 'rgba(255,255,255,0.015)';
-      ctx.lineWidth = 1;
-      const gridSize = 60;
-      for (let x = 0; x < W; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-      }
-      for (let y = 0; y < H; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-      }
-
-      for (const p of particles) { p.update(); p.draw(); }
-      for (const c of cubes) { c.update(); c.draw(); }
-
+    function animate(){
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='rgba(255,255,255,0.015)';ctx.lineWidth=1;var gs=60;
+      for(var x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+      for(var y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+      particles.forEach(function(p){p.update();p.draw()});
+      cubes.forEach(function(c){c.update();c.draw()});
       requestAnimationFrame(animate);
     }
     animate();
 
-    // ── Auth Logic ────────────────────────────────────────────────
-    const loginForm = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
-    const guestForm = document.getElementById('guestForm');
-    const userBar = document.getElementById('userBar');
-    const userDisplay = document.getElementById('userDisplay');
-    const heading = document.getElementById('heading');
-    const lobbyList = document.getElementById('lobbyList');
-    const lobbiesLabel = document.getElementById('lobbiesLabel');
-    const verifyNotice = document.getElementById('verifyNotice');
-    const verifyEmail = document.getElementById('verifyEmail');
+    // ── Auth Logic ──────────────────────────────────────────
+    var loginForm=document.getElementById('loginForm'),signupForm=document.getElementById('signupForm');
+    var guestForm=document.getElementById('guestForm'),userBar=document.getElementById('userBar');
+    var userDisplay=document.getElementById('userDisplay'),lobbyList=document.getElementById('lobbyList');
+    var lobbiesLabel=document.getElementById('lobbiesLabel'),verifyNotice=document.getElementById('verifyNotice');
+    var verifyEmail=document.getElementById('verifyEmail');
 
-    let currentUser = null;
-    let currentToken = null;
-    let isVerified = false;
+    var currentUser=null,currentToken=null,isVerified=false;
 
-    handleAuthCallback().then(() => initPage());
+    handleAuthCallback().then(function(){initPage()});
 
-    // Re-check verification when user returns to this tab (e.g. after clicking verify link)
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && currentUser && !isVerified) initPage();
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&currentUser&&!isVerified)initPage()});
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(function(t){
+      t.addEventListener('click',function(){
+        var tab=t.getAttribute('data-tab');
+        document.querySelectorAll('.tab').forEach(function(t2,i){t2.classList.toggle('active',(tab==='login'&&i===0)||(tab==='signup'&&i===1))});
+        loginForm.classList.toggle('active',tab==='login');
+        signupForm.classList.toggle('active',tab==='signup');
+      });
     });
 
-    function showTab(tab) {
-      document.querySelectorAll('.tab').forEach((t, i) => {
-        t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'signup' && i === 1));
-      });
-      loginForm.classList.toggle('active', tab === 'login');
-      signupForm.classList.toggle('active', tab === 'signup');
+    async function initPage(){
+      try{
+        var session=await getSession();
+        if(session&&session.user){
+          currentUser=session.user;currentToken=session.access_token;
+          var name=currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||currentUser.email;
+          document.getElementById('guestName').value=name;document.getElementById('guestName').readOnly=true;
+          userDisplay.textContent=name;userBar.style.display='flex';
+          document.getElementById('authTabs').style.display='none';
+          loginForm.style.display='none';signupForm.style.display='none';
+          document.getElementById('orDivider').querySelector('span').textContent='pick a lobby';
+          try{
+            var sb=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+            var res=await fetch(sb+'/auth/check-verified',{headers:{'Authorization':'Bearer '+session.access_token}});
+            var data=await res.json();isVerified=data.verified;
+            if(!isVerified){verifyNotice.style.display='block';verifyEmail.textContent=currentUser.email;guestForm.style.display='none';document.getElementById('orDivider').style.display='none';lobbiesLabel.style.display='none';lobbyList.innerHTML=''}
+          }catch(e){}
+        }else{var saved=localStorage.getItem('glox_username');if(saved)document.getElementById('guestName').value=saved}
+      }catch(e){var saved2=localStorage.getItem('glox_username');if(saved2)document.getElementById('guestName').value=saved2}
     }
 
-    async function initPage() {
-      try {
-        const session = await getSession();
-        if (session && session.user) {
-          currentUser = session.user;
-          currentToken = session.access_token;
-          const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email;
-          document.getElementById('guestName').value = name;
-          document.getElementById('guestName').readOnly = true;
-          userDisplay.textContent = name;
-          userBar.style.display = 'flex';
-          document.getElementById('authTabs').style.display = 'none';
-          loginForm.style.display = 'none';
-          signupForm.style.display = 'none';
-          document.querySelector('.or-divider span').textContent = 'pick a lobby';
+    document.getElementById('signOutBtn').addEventListener('click',async function(){await signOut();localStorage.removeItem('glox_username');window.location.href='/'});
+    document.getElementById('resendBtn').addEventListener('click',async function(){
+      if(!currentUser)return;var btn=document.getElementById('resendBtn');btn.disabled=true;btn.textContent='Sending...';
+      try{var sb=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+        await fetch(sb+'/auth/send-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:currentUser.email,userId:currentUser.id,displayName:currentUser.user_metadata?.full_name||currentUser.email})});
+        btn.textContent='Sent!';setTimeout(function(){btn.textContent='Resend email';btn.disabled=false},3000);
+      }catch(e){btn.textContent='Failed';btn.disabled=false}
+    });
 
-          // Check email verification status
-          try {
-            const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-            const res = await fetch(serverBase + '/auth/check-verified', {
-              headers: { 'Authorization': 'Bearer ' + session.access_token }
-            });
-            const data = await res.json();
-            isVerified = data.verified;
+    document.getElementById('loginForm').addEventListener('submit',async function(e){
+      e.preventDefault();var btn=document.getElementById('loginBtn'),errEl=document.getElementById('loginError');
+      btn.disabled=true;btn.textContent='Signing in...';errEl.style.display='none';
+      try{await signInWithEmail(document.getElementById('loginEmail').value,document.getElementById('loginPass').value);window.location.href='/'}
+      catch(err){errEl.textContent=err.message;errEl.style.display='block'}
+      finally{btn.disabled=false;btn.textContent='Sign in'}
+    });
 
-            if (!isVerified) {
-              // Show verify notice, hide lobby join
-              verifyNotice.style.display = 'block';
-              verifyEmail.textContent = currentUser.email;
-              guestForm.style.display = 'none';
-              document.querySelector('.or-divider').style.display = 'none';
-              lobbiesLabel.style.display = 'none';
-              lobbyList.innerHTML = '';
-            }
-          } catch {
-            // If check fails, still allow (don't block on server errors)
-          }
-        } else {
-          const saved = localStorage.getItem('glox_username');
-          if (saved) document.getElementById('guestName').value = saved;
-        }
-      } catch {
-        const saved = localStorage.getItem('glox_username');
-        if (saved) document.getElementById('guestName').value = saved;
-      }
-    }
+    document.getElementById('signupForm').addEventListener('submit',async function(e){
+      e.preventDefault();var btn=document.getElementById('signupBtn'),errEl=document.getElementById('signupError');
+      btn.disabled=true;btn.textContent='Creating...';errEl.style.display='none';
+      try{await signUpWithEmail(document.getElementById('signupEmail').value,document.getElementById('signupPass').value,document.getElementById('signupName').value);
+        errEl.textContent='Account created! Check your email.';errEl.style.color='#bfff3c';errEl.style.display='block';
+        setTimeout(function(){document.querySelector('.tab[data-tab="login"]').click()},2500);
+      }catch(err){errEl.textContent=err.message;errEl.style.display='block';errEl.style.color='#ff2674'}
+      finally{btn.disabled=false;btn.textContent='Create account'}
+    });
 
-    async function handleSignOut() {
-      await signOut();
-      localStorage.removeItem('glox_username');
-      window.location.href = '/';
-    }
-
-    async function resendVerification() {
-      if (!currentUser) return;
-      const btn = document.getElementById('resendBtn');
-      btn.disabled = true;
-      btn.textContent = 'Sending...';
-      try {
-        const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-        await fetch(serverBase + '/auth/send-verification', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: currentUser.email,
-            userId: currentUser.id,
-            displayName: currentUser.user_metadata?.full_name || currentUser.email,
-          }),
-        });
-        btn.textContent = 'Sent!';
-        setTimeout(() => { btn.textContent = 'Resend email'; btn.disabled = false; }, 3000);
-      } catch {
-        btn.textContent = 'Failed — try again';
-        btn.disabled = false;
-      }
-    }
-
-    async function handleLogin(e) {
+    document.getElementById('guestForm').addEventListener('submit',function(e){
       e.preventDefault();
-      const btn = document.getElementById('loginBtn');
-      const errEl = document.getElementById('loginError');
-      btn.disabled = true; btn.textContent = 'Signing in...'; errEl.style.display = 'none';
-      try {
-        await signInWithEmail(document.getElementById('loginEmail').value, document.getElementById('loginPass').value);
-        window.location.href = '/';
-      } catch (err) {
-        errEl.textContent = err.message; errEl.style.display = 'block';
-      } finally { btn.disabled = false; btn.textContent = 'Sign in'; }
-    }
+      var name=document.getElementById('guestName').value.trim(),lobby=document.getElementById('lobbyName').value.trim();
+      if(!name||!lobby)return;localStorage.setItem('glox_username',name);listWs.close();
+      var url='/chat?lobby='+encodeURIComponent(lobby)+'&username='+encodeURIComponent(name);
+      if(currentToken)url+='&token='+currentToken;window.location.href=url;
+    });
 
-    async function handleSignup(e) {
-      e.preventDefault();
-      const btn = document.getElementById('signupBtn');
-      const errEl = document.getElementById('signupError');
-      btn.disabled = true; btn.textContent = 'Creating account...'; errEl.style.display = 'none';
-      try {
-        const data = await signUpWithEmail(
-          document.getElementById('signupEmail').value,
-          document.getElementById('signupPass').value,
-          document.getElementById('signupName').value
-        );
-        // Show "check your email" message
-        errEl.textContent = 'Account created! Check your email for a verification link.';
-        errEl.style.color = '#bfff3c';
-        errEl.style.display = 'block';
-        // Switch to login tab after a moment
-        setTimeout(() => { showTab('login'); }, 2500);
-      } catch (err) {
-        errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = '#ff2674';
-      } finally { btn.disabled = false; btn.textContent = 'Create account'; }
-    }
+    document.getElementById('githubBtn').addEventListener('click',function(){signInWithGitHub()});
 
-    function handleGuest(e) {
-      e.preventDefault();
-      const name = document.getElementById('guestName').value.trim();
-      const lobby = document.getElementById('lobbyName').value.trim();
-      if (!name || !lobby) return;
-      localStorage.setItem('glox_username', name);
-      listWs.close();
-      let url = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(name)}`;
-      if (currentToken) url += `&token=${currentToken}`;
-      window.location.href = url;
-    }
-
-    // Lobby list via WebSocket
-    const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
-    const proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws';
-    const listWs = new WebSocket(`${proto}://${wsHost}`);
-
-    listWs.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      if (msg.type === 'lobby_list') {
-        if (msg.lobbies.length) {
-          lobbiesLabel.style.display = 'block';
-          lobbyList.innerHTML = msg.lobbies.map(l => `
-            <button class="lobby-item" data-name="${l.name}">
-              <span class="name">#${l.name}</span>
-              <span class="count">${l.count} ${l.count === 1 ? 'person' : 'people'}</span>
-            </button>
-          `).join('');
-          lobbyList.querySelectorAll('.lobby-item').forEach(btn => {
-            btn.addEventListener('click', () => {
-              document.getElementById('lobbyName').value = btn.dataset.name;
-              guestForm.dispatchEvent(new Event('submit'));
-            });
+    // Lobby list WebSocket
+    var wsHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,''):location.host;
+    var proto=(typeof WS_URL!=='undefined'&&WS_URL&&WS_URL.startsWith('wss'))?'wss':location.protocol==='https:'?'wss':'ws';
+    var listWs=new WebSocket(proto+'://'+wsHost);
+    listWs.onmessage=function(e){
+      var msg=JSON.parse(e.data);
+      if(msg.type==='lobby_list'){
+        if(msg.lobbies.length){
+          lobbiesLabel.style.display='block';
+          lobbyList.innerHTML=msg.lobbies.map(function(l){return'<button class="lobby-item" data-name="'+l.name+'"><span class="name">#'+l.name+'</span><span class="count">'+l.count+(l.count===1?' person':' people')+'</span></button>'}).join('');
+          lobbyList.querySelectorAll('.lobby-item').forEach(function(btn){
+            btn.addEventListener('click',function(){document.getElementById('lobbyName').value=btn.dataset.name;guestForm.dispatchEvent(new Event('submit'))});
           });
-        } else {
-          lobbiesLabel.style.display = 'none';
-          lobbyList.innerHTML = '';
-        }
+        }else{lobbiesLabel.style.display='none';lobbyList.innerHTML=''}
       }
     };
+  })();
   </script>
 </body>
 </html>

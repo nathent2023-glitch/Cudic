@@ -49,8 +49,8 @@ html, body {
   height: 100vh;
 }
 
-/* Sidebar */
-.sidebar {
+/* Chat sidebar (user list) */
+.chat-sidebar {
   width: 240px;
   background: rgba(22, 23, 26, 0.95);
   backdrop-filter: blur(12px);
@@ -272,7 +272,7 @@ html, body {
 
 /* ── Mobile ────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
-  .sidebar {
+  .chat-sidebar {
     position: fixed;
     top: 0;
     left: -260px;
@@ -282,7 +282,7 @@ html, body {
     box-shadow: 4px 0 20px rgba(0,0,0,.5);
   }
 
-  .sidebar.open { left: 0; }
+  .chat-sidebar.open { left: 0; }
   .menu-btn { display: block; }
 }
 

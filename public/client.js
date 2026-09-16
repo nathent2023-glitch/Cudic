@@ -4,10 +4,6 @@ const lobby = params.get('lobby');
 const username = params.get('username');
 const token = params.get('token');
 
-if (!lobby || !username) {
-  window.location.href = '/';
-}
-
 // ── DOM refs ─────────────────────────────────────────────────────
 const lobbyTitle = document.getElementById('lobbyTitle');
 const chatTitle = document.getElementById('chatTitle');
@@ -18,7 +14,22 @@ const userListEl = document.getElementById('userList');
 const userCountEl = document.getElementById('userCount');
 const typingEl = document.getElementById('typingIndicator');
 const menuBtn = document.getElementById('menuBtn');
-const sidebar = document.querySelector('.sidebar');
+const sidebar = document.querySelector('.chat-sidebar');
+
+// If no lobby, show lobby picker and stop
+if (!lobby || !username) {
+  chatForm.style.display = 'none';
+  typingEl.style.display = 'none';
+  lobbyTitle.textContent = 'Pick a lobby';
+  chatTitle.textContent = 'Chat';
+  messagesEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:#888">'
+    + '<div style="font-size:2rem">💬</div>'
+    + '<div style="font-size:.95rem;font-weight:600;color:#ccc">No lobby selected</div>'
+    + '<div style="font-size:.82rem;color:#666">Join a lobby from the home page</div>'
+    + '<a href="/" style="margin-top:8px;padding:10px 24px;background:#bfff3c;color:#0d0e10;border-radius:12px;font-weight:700;font-size:.85rem;text-decoration:none;transition:background .15s">Go to Home</a>'
+    + '</div>';
+  throw new Error('No lobby');
+}
 
 lobbyTitle.textContent = `#${lobby}`;
 chatTitle.textContent = `#${lobby}`;

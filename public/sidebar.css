@@ -1,0 +1,35 @@
+/* ── Glox Sidebar ──────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;user-select:none}
+
+.sidebar{width:54px;background:#111214;border-right:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:50;height:100vh}
+.sidebar:hover{width:200px}
+.sidebar-logo{padding:14px 16px;font-weight:800;font-size:1rem;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;cursor:pointer;height:48px;display:flex;align-items:center}
+.sidebar-logo span{color:#bfff3c}
+.sidebar-section{padding:6px 0}
+.sidebar-label-text{font-size:.6rem;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:.06em;padding:10px 18px 4px;white-space:nowrap;overflow:hidden;opacity:0;transition:opacity .15s}
+.sidebar:hover .sidebar-label-text{opacity:1}
+.sidebar-item{display:flex;align-items:center;gap:12px;padding:9px 16px;color:#777;text-decoration:none;font-size:.8rem;font-weight:500;transition:all .1s;white-space:nowrap;overflow:hidden;cursor:pointer;border-radius:0;border-left:2px solid transparent}
+.sidebar-item:hover{background:rgba(255,255,255,.04);color:#ccc}
+.sidebar-item.active{color:#bfff3c;background:rgba(191,255,60,.05);border-left-color:#bfff3c}
+.sidebar-item svg,.sidebar-item .si-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+.sidebar-item .si-text{opacity:0;transition:opacity .15s;pointer-events:none}
+.sidebar:hover .sidebar-item .si-text{opacity:1}
+.sidebar-spacer{flex:1}
+.sidebar-divider{height:1px;background:rgba(255,255,255,.05);margin:4px 12px}
+.sidebar-user{padding:10px 14px;display:flex;align-items:center;gap:10px;white-space:nowrap;overflow:hidden}
+.sidebar-avatar{width:28px;height:28px;border-radius:50%;background:#234975;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fafdff;flex-shrink:0}
+.sidebar-user-info{opacity:0;transition:opacity .15s;overflow:hidden}
+.sidebar:hover .sidebar-user-info{opacity:1}
+.sidebar-user-name{font-size:.75rem;font-weight:600;color:#ccc}
+.sidebar-user-status{font-size:.6rem;color:#555}
+.sidebar-theme{display:flex;align-items:center;gap:8px;padding:8px 14px;white-space:nowrap;overflow:hidden}
+.sidebar-theme-label{font-size:.7rem;color:#666;opacity:0;transition:opacity .15s}
+.sidebar:hover .sidebar-theme-label{opacity:1}
+.theme-toggle{width:36px;height:20px;border-radius:10px;background:#2a2b30;border:1px solid rgba(255,255,255,.08);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s}
+.theme-toggle.on{background:#234975}
+.theme-toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fafdff;top:2px;left:2px;transition:transform .2s}
+.theme-toggle.on::after{transform:translateX(16px)}
+
+.app-layout{display:flex;flex:1;overflow:hidden;height:100vh}
+.app-main{flex:1;display:flex;flex-direction:column;overflow:hidden}

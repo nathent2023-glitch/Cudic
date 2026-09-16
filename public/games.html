@@ -5,26 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox — Game Gallery</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/sidebar.css">
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;min-height:100vh}
-    canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
-    .page{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:32px 24px}
-
+    body{background:#0d0e10;overflow:auto}
+    .games-page{padding:32px 32px;max-width:1000px;overflow-y:auto;height:100vh}
     .topbar{display:flex;align-items:center;gap:12px;padding:0 0 24px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:32px}
-    .brand{font-size:1.4rem;font-weight:800;letter-spacing:-.03em}
-    .brand span{color:#bfff3c}
-    .nav-link{color:#68aed4;text-decoration:none;font-size:.84rem;font-weight:500;padding:6px 12px;border-radius:8px;transition:all .15s}
-    .nav-link:hover{color:#fafdff;background:rgba(255,255,255,.06)}
     .spacer{flex:1}
     .btn{padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
     .btn:hover{background:rgba(255,255,255,.08)}
-    .btn.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
+    .btn.primary{background:#bfff3c;color:#0d0e10;border-color:#bfff3c}
     .btn.primary:hover{background:#a8e62e}
-
     h1{font-size:1.4rem;font-weight:800;margin-bottom:4px}
     .subtitle{color:#52525b;font-size:.84rem;margin-bottom:24px}
-
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
     .game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .15s}
     .game-card:hover{border-color:rgba(191,255,60,.2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
@@ -32,25 +24,20 @@
     .game-info{padding:12px 14px}
     .game-title{font-size:.88rem;font-weight:700;margin-bottom:2px}
     .game-meta{font-size:.72rem;color:#52525b}
-
     .empty{text-align:center;padding:60px 20px;color:#52525b}
     .empty p{font-size:.9rem;margin-bottom:16px}
+    canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
   </style>
 </head>
-<body>
+<body data-page="games">
   <canvas id="bg"></canvas>
-  <div class="page">
+  <div class="games-page">
     <div class="topbar">
-      <div class="brand">glox<span>.</span></div>
-      <a href="/" class="nav-link">Chat</a>
-      <a href="/games" class="nav-link" style="color:#bfff3c">Games</a>
+      <h1 style="margin:0">Game Gallery</h1>
       <div class="spacer"></div>
       <a href="/editor" class="btn primary">+ New Game</a>
     </div>
-
-    <h1>Game Gallery</h1>
     <p class="subtitle">Play games made by the Glox community</p>
-
     <div class="grid" id="gameGrid"></div>
     <div class="empty" id="emptyState" style="display:none">
       <p>No published games yet. Be the first to create one!</p>
@@ -58,64 +45,39 @@
     </div>
   </div>
 
-  <script src="config.js"></script>
+  <script src="/config.js"></script>
+  <script src="/sidebar.js"></script>
   <script>
-    const grid = document.getElementById('gameGrid');
-    const empty = document.getElementById('emptyState');
-
-    async function loadGames() {
-      const apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-      try {
-        const res = await fetch(`${apiBase}/api/games`);
-        const data = await res.json();
-        if (data.games && data.games.length) {
-          grid.innerHTML = data.games.map(g => `
-            <div class="game-card" onclick="window.location.href='/editor?id=${g.id}'">
-              <div class="game-thumb">${g.thumbnail || '&#127918;'}</div>
-              <div class="game-info">
-                <div class="game-title">${escapeHtml(g.title)}</div>
-                <div class="game-meta">${g.description || 'No description'} &middot; ${new Date(g.updated_at).toLocaleDateString()}</div>
-              </div>
-            </div>
-          `).join('');
-          grid.style.display = '';
-          empty.style.display = 'none';
-        } else {
-          grid.style.display = 'none';
-          empty.style.display = 'block';
-        }
-      } catch {
-        grid.style.display = 'none';
-        empty.style.display = 'block';
-      }
+    var grid=document.getElementById('gameGrid'),empty=document.getElementById('emptyState');
+    async function loadGames(){
+      var apiBase=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+      try{
+        var res=await fetch(apiBase+'/api/games');var data=await res.json();
+        if(data.games&&data.games.length){
+          grid.innerHTML=data.games.map(function(g){
+            return '<div class="game-card" onclick="window.location.href=\'/editor?id='+g.id+'\'">'
+              +'<div class="game-thumb">'+(g.thumbnail||'&#127918;')+'</div>'
+              +'<div class="game-info"><div class="game-title">'+escapeHtml(g.title)+'</div>'
+              +'<div class="game-meta">'+(g.description||'No description')+' &middot; '+new Date(g.updated_at).toLocaleDateString()+'</div></div></div>';
+          }).join('');
+          grid.style.display='';empty.style.display='none';
+        }else{grid.style.display='none';empty.style.display='block'}
+      }catch(e){grid.style.display='none';empty.style.display='block'}
     }
-
-    function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
+    function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
     loadGames();
 
-    // Canvas bg
-    const canvas = document.getElementById('bg');
-    const ctx = canvas.getContext('2d');
-    let W, H;
-    function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize); resize();
-    const PALETTE = ['#7f0622','#d62411','#ff8426','#ffd100','#ff80a4','#ff2674','#94216a','#430067','#234975','#68aed4','#007899','#002859','#bfff3c','#10d275'];
-    const particles = Array.from({length:40}, () => ({
-      x: Math.random()*2000, y: Math.random()*2000, s: Math.random()*3+1,
-      c: PALETTE[Math.floor(Math.random()*PALETTE.length)],
-      vy: -(Math.random()*0.3+0.1), vx: (Math.random()-0.5)*0.2, o: Math.random()*0.4+0.1
-    }));
-    function animate() {
+    // Canvas bg particles
+    var canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
+    var W,H;
+    function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
+    addEventListener('resize',resize);resize();
+    var PALETTE=['#7f0622','#d62411','#ff8426','#ffd100','#ff80a4','#ff2674','#94216a','#430067','#234975','#68aed4','#007899','#002859','#bfff3c','#10d275'];
+    var particles=Array.from({length:40},function(){return{x:Math.random()*2000,y:Math.random()*2000,s:Math.random()*3+1,c:PALETTE[Math.floor(Math.random()*PALETTE.length)],vy:-(Math.random()*.3+.1),vx:(Math.random()-.5)*.2,o:Math.random()*.4+.1}});
+    function animate(){
       ctx.clearRect(0,0,W,H);
-      for (const p of particles) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.y < -10) { p.y = H+10; p.x = Math.random()*W; }
-        ctx.globalAlpha = p.o; ctx.fillStyle = p.c;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI*2); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      requestAnimationFrame(animate);
+      particles.forEach(function(p){p.x+=p.vx;p.y+=p.vy;if(p.y<-10){p.y=H+10;p.x=Math.random()*W}ctx.globalAlpha=p.o;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.s,0,Math.PI*2);ctx.fill()});
+      ctx.globalAlpha=1;requestAnimationFrame(animate);
     }
     animate();
   </script>
