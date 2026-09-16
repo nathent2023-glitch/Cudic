@@ -406,12 +406,19 @@ wss.on('connection', (ws) => {
         }
       }
 
-      // Join new lobby
+      // Join new lobby — remove any existing entries with same username first
       if (!lobbies.has(lobby)) {
         lobbies.set(lobby, new Set());
       }
+      const room = lobbies.get(lobby);
+      for (const existing of room) {
+        if (existing.username.toLowerCase() === username.toLowerCase()) {
+          room.delete(existing);
+          try { existing.ws.close(); } catch {}
+        }
+      }
       const entry = { username, ws, userId };
-      lobbies.get(lobby).add(entry);
+      room.add(entry);
       clients.set(ws, { username, lobby, userId });
 
       // Confirm join to this client

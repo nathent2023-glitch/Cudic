@@ -429,6 +429,7 @@
     const verifyEmail = document.getElementById('verifyEmail');
 
     let currentUser = null;
+    let currentToken = null;
     let isVerified = false;
 
     handleAuthCallback().then(() => initPage());
@@ -451,6 +452,7 @@
         const session = await getSession();
         if (session && session.user) {
           currentUser = session.user;
+          currentToken = session.access_token;
           const name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email;
           document.getElementById('guestName').value = name;
           document.getElementById('guestName').readOnly = true;
@@ -565,7 +567,7 @@
       localStorage.setItem('glox_username', name);
       listWs.close();
       let url = `/chat?lobby=${encodeURIComponent(lobby)}&username=${encodeURIComponent(name)}`;
-      if (currentUser) url += `&token=${currentUser.access_token}`;
+      if (currentToken) url += `&token=${currentToken}`;
       window.location.href = url;
     }
 
