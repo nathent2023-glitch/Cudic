@@ -1,6 +1,4 @@
 // ── Glox Sidebar Component ──────────────────────────────
-// Usage: <link rel="stylesheet" href="/sidebar.css"> then <script src="/sidebar.js"></script>
-// Set data-page="home|chat|games|editor" on <body> to highlight current page
 (function(){
   if(window._gloxSidebar) return; window._gloxSidebar=true;
 
@@ -35,20 +33,8 @@
       +'</div>'
     +'</div>';
 
-  var layout=document.createElement('div');
-  layout.className='app-layout';
-
-  // Insert sidebar + wrapper before body children
-  var firstChild=document.body.firstChild;
-  document.body.insertBefore(nav,firstChild);
-  var wrapper=document.createElement('div');
-  wrapper.className='app-main';
-  // Move all existing children (except the scripts we just added) into wrapper
-  while(document.body.firstChild!==nav){
-    if(document.body.firstChild===wrapper) break;
-    wrapper.appendChild(document.body.firstChild);
-  }
-  document.body.appendChild(wrapper);
+  // Insert nav as first child of body
+  document.body.insertBefore(nav,document.body.firstChild);
 
   // Highlight active page
   nav.querySelectorAll('.sidebar-item').forEach(function(el){
@@ -86,7 +72,6 @@
       if(!raw) return;
       var s=JSON.parse(raw);
       if(!s||!s.access_token) return;
-      // Decode JWT payload
       var parts=s.access_token.split('.');
       if(parts.length<2) return;
       var payload=JSON.parse(atob(parts[1]));
