@@ -4,51 +4,91 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox — Game Gallery</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/sidebar.css">
   <style>
-    body{background:#0d0e10;overflow:auto}
-    .games-page{padding:32px 48px;overflow-y:auto;height:100%;width:100%}
-    .topbar{display:flex;align-items:center;gap:12px;padding:0 0 24px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:32px}
-    .spacer{flex:1}
-    .btn{padding:8px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
-    .btn:hover{background:rgba(255,255,255,.08)}
-    .btn.primary{background:#bfff3c;color:#0d0e10;border-color:#bfff3c}
-    .btn.primary:hover{background:#a8e62e}
-    h1{font-size:1.4rem;font-weight:800;margin-bottom:4px}
-    .subtitle{color:#52525b;font-size:.84rem;margin-bottom:24px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .game-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:14px;overflow:hidden;cursor:pointer;transition:all .15s}
-    .game-card:hover{border-color:rgba(191,255,60,.2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3)}
-    .game-thumb{width:100%;aspect-ratio:16/9;background:#1a1b1e;display:flex;align-items:center;justify-content:center;color:#333;font-size:2rem}
-    .game-info{padding:12px 14px}
-    .game-title{font-size:.88rem;font-weight:700;margin-bottom:2px}
-    .game-meta{font-size:.72rem;color:#52525b}
-    .empty{text-align:center;padding:60px 20px;color:#52525b}
-    .empty p{font-size:.9rem;margin-bottom:16px}
-    canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+    body { display: flex; overflow: hidden; }
+
+    .games-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+      background: var(--panel);
+    }
+
+    .games-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .game-card {
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .game-card:hover { border-color: var(--signal); }
+
+    .game-thumb {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-tertiary);
+      font-size: 2rem;
+    }
+
+    .game-thumb svg { width: 32px; height: 32px; stroke: currentColor; stroke-width: 1.5; fill: none; }
+
+    .game-info { padding: 12px 14px; }
+    .game-title { font-family: var(--font-head); font-size: 0.875rem; font-weight: 600; margin-bottom: 2px; }
+    .game-meta { font-size: 0.75rem; color: var(--text-tertiary); }
   </style>
 </head>
 <body data-page="games">
-  <canvas id="bg"></canvas>
-  <div class="games-page">
+  <div class="games-layout">
     <div class="topbar">
-      <h1 style="margin:0">Game Gallery</h1>
-      <div class="spacer"></div>
-      <a href="/editor" class="btn primary">+ New Game</a>
+      <h1>Game gallery</h1>
+      <a href="/editor" class="btn btn-ember" style="width:auto;padding:9px 16px;text-decoration:none">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        New game
+      </a>
     </div>
-    <p class="subtitle">Play games made by the Glox community</p>
-    <div class="grid" id="gameGrid"></div>
-    <div class="empty" id="emptyState" style="display:none">
-      <p>No published games yet. Be the first to create one!</p>
-      <a href="/editor" class="btn primary">Create a Game</a>
+    <div class="games-content" id="gamesContent">
+      <div class="grid" id="gameGrid"></div>
+      <div class="empty-wrap dotgrid" id="emptyState" style="display:none;min-height:400px">
+        <div class="empty-card">
+          <div class="empty-icon-circle">
+            <svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="3"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 14h.01"/></svg>
+          </div>
+          <h2>No games published yet</h2>
+          <p>Publish your first game from the editor to see it here.</p>
+          <a href="/editor" class="btn btn-primary" style="width:auto;padding:10px 20px;text-decoration:none">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Create a game
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="/config.js"></script>
   <script src="/sidebar.js"></script>
   <script>
-    var grid=document.getElementById('gameGrid'),empty=document.getElementById('emptyState');
+    var grid=document.getElementById('gameGrid'),empty=document.getElementById('emptyState'),content=document.getElementById('gamesContent');
     async function loadGames(){
       var apiBase=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
       try{
@@ -56,30 +96,16 @@
         if(data.games&&data.games.length){
           grid.innerHTML=data.games.map(function(g){
             return '<div class="game-card" onclick="window.location.href=\'/editor?id='+g.id+'\'">'
-              +'<div class="game-thumb">'+(g.thumbnail||'&#127918;')+'</div>'
+              +'<div class="game-thumb"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></div>'
               +'<div class="game-info"><div class="game-title">'+escapeHtml(g.title)+'</div>'
               +'<div class="game-meta">'+(g.description||'No description')+' &middot; '+new Date(g.updated_at).toLocaleDateString()+'</div></div></div>';
           }).join('');
-          grid.style.display='';empty.style.display='none';
-        }else{grid.style.display='none';empty.style.display='block'}
-      }catch(e){grid.style.display='none';empty.style.display='block'}
+          grid.style.display='';empty.style.display='none';content.style.overflowY='auto';
+        }else{grid.style.display='none';empty.style.display='flex';content.style.overflowY='hidden'}
+      }catch(e){grid.style.display='none';empty.style.display='flex';content.style.overflowY='hidden'}
     }
     function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
     loadGames();
-
-    // Canvas bg particles
-    var canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
-    var W,H;
-    function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
-    addEventListener('resize',resize);resize();
-    var PALETTE=['#7f0622','#d62411','#ff8426','#ffd100','#ff80a4','#ff2674','#94216a','#430067','#234975','#68aed4','#007899','#002859','#bfff3c','#10d275'];
-    var particles=Array.from({length:40},function(){return{x:Math.random()*2000,y:Math.random()*2000,s:Math.random()*3+1,c:PALETTE[Math.floor(Math.random()*PALETTE.length)],vy:-(Math.random()*.3+.1),vx:(Math.random()-.5)*.2,o:Math.random()*.4+.1}});
-    function animate(){
-      ctx.clearRect(0,0,W,H);
-      particles.forEach(function(p){p.x+=p.vx;p.y+=p.vy;if(p.y<-10){p.y=H+10;p.x=Math.random()*W}ctx.globalAlpha=p.o;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.s,0,Math.PI*2);ctx.fill()});
-      ctx.globalAlpha=1;requestAnimationFrame(animate);
-    }
-    animate();
   </script>
 </body>
 </html>

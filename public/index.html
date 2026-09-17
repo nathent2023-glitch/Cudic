@@ -4,208 +4,371 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Glox</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/sidebar.css">
   <style>
-    /* Override sidebar body rule for index */
-    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100%;display:flex;user-select:none}
+    /* ── Auth layout (no sidebar, full screen) ──────────────── */
+    body { display: block; overflow: auto; }
 
-    canvas#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-
-    .center-stage{display:flex;align-items:center;justify-content:center;flex:1;position:relative;z-index:1;width:100%}
-
-    .card{
-      width:420px;max-width:92vw;max-height:90vh;overflow-y:auto;
-      background:rgba(17,18,20,.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-      border-radius:20px;border:1px solid rgba(255,255,255,.07);padding:36px 32px 32px;
-      box-shadow:0 24px 80px rgba(0,0,0,.6);
+    .auth-layout {
+      display: flex;
+      min-height: 100vh;
     }
-    .brand{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
-    .brand span{color:#bfff3c}
 
-    .oauth-btn{
-      width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;
-      border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
-      color:#fafdff;font-size:.87rem;font-weight:500;cursor:pointer;transition:all .15s;font-family:inherit;margin-bottom:16px;
+    /* Left: brand panel */
+    .auth-brand {
+      flex: 1.3;
+      background: var(--ink);
+      padding: 56px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
     }
-    .oauth-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14)}
-    .oauth-btn svg{width:18px;height:18px;flex-shrink:0}
 
-    .tabs{display:flex;gap:0;margin-bottom:16px;background:rgba(255,255,255,.04);border-radius:12px;padding:3px;border:1px solid rgba(255,255,255,.06)}
-    .tab{flex:1;padding:10px;background:transparent;border:none;color:#68aed4;cursor:pointer;font-size:.84rem;font-weight:600;border-radius:10px;transition:all .15s;font-family:inherit}
-    .tab.active{background:rgba(255,255,255,.08);color:#fafdff}
-    .tab:not(.active):hover{color:#bfff3c}
+    .dotgrid-bg {
+      background-image: radial-gradient(circle, rgba(236,238,245,0.10) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
 
-    .form{display:none;flex-direction:column;gap:12px}
-    .form.active{display:flex}
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-    .field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#fafdff;font-size:.87rem;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
-    .field input::placeholder{color:#52525b}
-    .field input:focus{border-color:#bfff3c;box-shadow:0 0 0 3px rgba(191,255,60,.1)}
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--signal);
+      stroke-width: 1.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
-    .btn{width:100%;padding:12px;background:#bfff3c;border:none;border-radius:12px;color:#0d0e10;font-size:.87rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s,transform .1s;margin-top:2px}
-    .btn:hover{background:#a8e62e}
-    .btn:active{transform:scale(.98)}
-    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .brand-word {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 1.375rem;
+      color: var(--text-primary);
+    }
 
-    .error{color:#ff2674;font-size:.8rem;text-align:center;display:none;padding:8px 12px;background:rgba(255,38,116,.08);border-radius:10px;border:1px solid rgba(255,38,116,.12)}
+    .brand-word .dot { color: var(--signal); }
 
-    .or-divider{display:flex;align-items:center;gap:12px;margin:4px 0 14px}
-    .or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06)}
-    .or-divider span{color:#52525b;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+    .brand-tagline {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 2rem;
+      line-height: 1.25;
+      max-width: 340px;
+      color: var(--text-primary);
+    }
 
-    .lobbies-label{color:#52525b;font-size:.73rem;text-transform:uppercase;letter-spacing:.06em;font-weight:500;margin-top:8px;margin-bottom:4px}
-    .lobby-list{display:flex;flex-direction:column;gap:5px;max-height:110px;overflow-y:auto}
-    .lobby-item{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;cursor:pointer;transition:all .15s;font-family:inherit;color:#fafdff;font-size:.84rem}
-    .lobby-item:hover{border-color:rgba(191,255,60,.3);background:rgba(191,255,60,.04)}
-    .lobby-item .name{font-weight:600}
-    .lobby-item .count{color:#68aed4;font-size:.78rem}
+    .brand-caption {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      max-width: 320px;
+      line-height: 1.5;
+    }
 
-    .user-bar{display:none;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;margin-bottom:14px}
-    .user-bar span{color:#bfff3c;font-size:.83rem;font-weight:600}
-    .btn-sm{padding:5px 12px;background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:8px;color:#68aed4;font-size:.78rem;cursor:pointer;font-family:inherit;transition:all .15s}
-    .btn-sm:hover{border-color:#ff2674;color:#ff2674}
+    /* Right: form panel */
+    .auth-form-panel {
+      flex: 1;
+      background: var(--panel);
+      padding: 56px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
 
-    .verify-notice{display:none;text-align:center;padding:16px;background:rgba(255,209,0,.06);border:1px solid rgba(255,209,0,.15);border-radius:12px;margin-bottom:14px}
-    .verify-notice .icon{font-size:2rem;margin-bottom:8px}
-    .verify-notice p{color:#ccc;font-size:.84rem;line-height:1.5;margin-bottom:12px}
-    .verify-notice .btn-resend{padding:8px 20px;background:transparent;border:1px solid #bfff3c;border-radius:8px;color:#bfff3c;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .15s}
-    .verify-notice .btn-resend:hover{background:rgba(191,255,60,.08)}
-    .verify-notice .btn-resend:disabled{opacity:.4;cursor:not-allowed}
+    .form-inner {
+      max-width: 340px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 28px;
+    }
+
+    .auth-tab {
+      font-family: var(--font-body);
+      font-weight: 500;
+      font-size: 0.9375rem;
+      padding-bottom: 10px;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+
+    .auth-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--signal);
+    }
+
+    .field { margin-bottom: 14px; }
+
+    .field label {
+      display: block;
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .field input {
+      width: 100%;
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .field input::placeholder { color: var(--text-tertiary); }
+    .field input:focus { outline: 2px solid var(--signal); outline-offset: 1px; }
+
+    .auth-btn {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 0.9375rem;
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      transition: background 0.15s;
+    }
+
+    .auth-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      fill: none;
+    }
+
+    .auth-btn-primary { background: var(--signal); color: #fff; }
+    .auth-btn-primary:hover { background: var(--signal-hover); }
+    .auth-btn-secondary { background: transparent; border-color: var(--line); color: var(--text-primary); }
+    .auth-btn-secondary:hover { background: var(--panel-raised); }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-tertiary);
+      font-size: 0.8125rem;
+      margin: 22px 0;
+    }
+
+    .divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.8rem;
+      text-align: center;
+      display: none;
+      padding: 8px 12px;
+      background: rgba(240,101,92,.08);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(240,101,92,.15);
+      margin-top: 8px;
+    }
+
+    .success-msg {
+      color: var(--success);
+      font-size: 0.8rem;
+      text-align: center;
+      display: none;
+      padding: 8px 12px;
+      background: rgba(79,216,151,.08);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(79,216,151,.15);
+      margin-top: 8px;
+    }
+
+    .lobbies-label {
+      color: var(--text-tertiary);
+      font-size: 0.75rem;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .lobby-list { display: flex; flex-direction: column; gap: 5px; max-height: 110px; overflow-y: auto; }
+
+    .lobby-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: border-color 0.15s;
+      font-family: inherit;
+      color: var(--text-primary);
+      font-size: 0.84rem;
+    }
+
+    .lobby-item:hover { border-color: var(--signal); }
+
+    .lobby-item .name { font-weight: 600; }
+    .lobby-item .count { color: var(--text-secondary); font-size: 0.78rem; }
+
+    /* ── Verify notice ──────────────────────────────────────── */
+    .verify-notice {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      background: rgba(242,166,90,.06);
+      border: 1px solid rgba(242,166,90,.15);
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+    }
+
+    .verify-notice p { color: var(--text-secondary); font-size: 0.84rem; line-height: 1.5; margin-bottom: 12px; }
+
+    .verify-notice .btn-resend {
+      padding: 8px 20px;
+      background: transparent;
+      border: 1px solid var(--signal);
+      border-radius: var(--radius-sm);
+      color: var(--signal);
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+
+    .verify-notice .btn-resend:hover { background: var(--signal-tint); }
+
+    /* ── User bar ───────────────────────────────────────────── */
+    .user-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      margin-bottom: 14px;
+    }
+
+    .user-bar span { color: var(--signal); font-size: 0.83rem; font-weight: 600; }
+
+    .btn-sm {
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+
+    .btn-sm:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      .auth-layout { flex-direction: column; }
+      .auth-brand { padding: 32px 24px; min-height: auto; }
+      .brand-tagline { font-size: 1.5rem; }
+      .auth-form-panel { padding: 32px 24px; }
+    }
   </style>
 </head>
-<body data-page="home">
-  <canvas id="bg"></canvas>
-
-  <div class="center-stage">
-    <div class="card">
-      <div class="brand">glox<span>.</span></div>
-
-      <div id="userBar" class="user-bar">
-        <span id="userDisplay"></span>
-        <button class="btn-sm" id="signOutBtn">sign out</button>
+<body>
+  <div class="auth-layout">
+    <div class="auth-brand dotgrid-bg">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>
+        <span class="brand-word">glox<span class="dot">.</span></span>
       </div>
-
-      <div id="verifyNotice" class="verify-notice">
-        <div class="icon">&#9993;</div>
-        <p><strong>Check your email</strong><br>We sent a verification link to <span id="verifyEmail"></span>. Click it to verify your account.</p>
-        <button class="btn-resend" id="resendBtn">Resend email</button>
+      <div>
+        <div class="brand-tagline">Build small 3D games, together.</div>
+        <p class="brand-caption" style="margin-top:14px;">Script a scene, invite friends into a lobby, and publish to the gallery — all from the browser.</p>
       </div>
+      <div class="brand-caption">No install. No build step. Just a scene and a script.</div>
+    </div>
 
-      <button class="oauth-btn" id="githubBtn">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-        Continue with GitHub
-      </button>
+    <div class="auth-form-panel">
+      <div class="form-inner">
+        <div class="user-bar" id="userBar">
+          <span id="userDisplay"></span>
+          <button class="btn-sm" id="signOutBtn">Sign out</button>
+        </div>
 
-      <div class="tabs" id="authTabs">
-        <button class="tab active" data-tab="login">Sign in</button>
-        <button class="tab" data-tab="signup">Create account</button>
+        <div id="verifyNotice" class="verify-notice">
+          <p><strong>Check your email</strong><br>We sent a verification link to <span id="verifyEmail"></span>. Click it to verify your account.</p>
+          <button class="btn-resend" id="resendBtn">Resend email</button>
+        </div>
+
+        <div class="auth-tabs" id="authTabs">
+          <button class="auth-tab active" data-tab="login">Sign in</button>
+          <button class="auth-tab" data-tab="signup">Create account</button>
+        </div>
+
+        <button class="auth-btn auth-btn-secondary" id="githubBtn" style="margin-bottom:20px;">
+          <svg viewBox="0 0 24 24" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M9 16v-2c-1.4 0-2-1-2-1.7 0-.6-.3-1.1-.7-1.4M9 16c-2 0-3-1-3-3.3 0-.8.3-1.5.8-2.1-.2-.6-.4-1.5.1-2.6 0 0 .7-.2 2.4.9a8 8 0 0 1 4.4 0c1.7-1.1 2.4-.9 2.4-.9.5 1.1.3 2 .1 2.6.5.6.8 1.3.8 2.1 0 2.3-1 3.3-3 3.3M9 16v2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Continue with GitHub
+        </button>
+
+        <form id="loginForm" style="display:flex;flex-direction:column;">
+          <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com" required></div>
+          <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" required minlength="6"></div>
+          <button type="submit" class="auth-btn auth-btn-primary" id="loginBtn">Sign in</button>
+          <div id="loginError" class="error-msg"></div>
+        </form>
+
+        <form id="signupForm" style="display:none;flex-direction:column;">
+          <div class="field"><label>Display name</label><input type="text" id="signupName" placeholder="Nathen" maxlength="20" required></div>
+          <div class="field"><label>Email</label><input type="email" id="signupEmail" placeholder="you@example.com" required></div>
+          <div class="field"><label>Password</label><input type="password" id="signupPass" placeholder="••••••••" required minlength="6"></div>
+          <button type="submit" class="auth-btn auth-btn-primary" id="signupBtn">Create account</button>
+          <div id="signupError" class="error-msg"></div>
+        </form>
+
+        <div class="divider" id="orDivider">or join without an account</div>
+
+        <form id="guestForm" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="field"><label>Your name</label><input type="text" id="guestName" placeholder="Nathen" maxlength="20" required></div>
+          <div class="field"><label>Lobby name</label><input type="text" id="lobbyName" placeholder="e.g. friday-jam" maxlength="30" required></div>
+          <button type="submit" class="auth-btn auth-btn-secondary">Join lobby</button>
+        </form>
+
+        <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
+        <div id="lobbyList" class="lobby-list"></div>
       </div>
-
-      <form id="loginForm" class="form active">
-        <div class="field"><input type="email" id="loginEmail" placeholder="Email" required></div>
-        <div class="field"><input type="password" id="loginPass" placeholder="Password" required minlength="6"></div>
-        <button type="submit" class="btn" id="loginBtn">Sign in</button>
-        <div id="loginError" class="error"></div>
-      </form>
-
-      <form id="signupForm" class="form">
-        <div class="field"><input type="text" id="signupName" placeholder="Display name" maxlength="20" required></div>
-        <div class="field"><input type="email" id="signupEmail" placeholder="Email" required></div>
-        <div class="field"><input type="password" id="signupPass" placeholder="Password" required minlength="6"></div>
-        <button type="submit" class="btn" id="signupBtn">Create account</button>
-        <div id="signupError" class="error"></div>
-      </form>
-
-      <div class="or-divider" id="orDivider"><span>or join without an account</span></div>
-
-      <form id="guestForm" style="display:flex;flex-direction:column;gap:12px;">
-        <div class="field"><input type="text" id="guestName" placeholder="Your name" maxlength="20" required></div>
-        <div class="field"><input type="text" id="lobbyName" placeholder="Lobby name" maxlength="30" required></div>
-        <button type="submit" class="btn">Join lobby</button>
-      </form>
-
-      <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
-      <div id="lobbyList" class="lobby-list"></div>
     </div>
   </div>
 
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js"></script>
   <script>
   (function(){
-    // ── Canvas Background ─────────────────────────────────────
-    var canvas=document.getElementById('bg'),ctx=canvas.getContext('2d');
-    var W,H,mouse={x:-1000,y:-1000};
-    var PALETTE=['#7f0622','#d62411','#ff8426','#ffd100','#ff80a4','#ff2674','#94216a','#430067','#234975','#68aed4','#007899','#002859','#bfff3c','#10d275'];
-
-    function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
-    addEventListener('resize',resize);resize();
-    document.addEventListener('mousemove',function(e){mouse.x=e.clientX;mouse.y=e.clientY});
-
-    class Cube{
-      constructor(){this.reset(true)}
-      reset(init){
-        this.x=Math.random()*W;this.y=init?Math.random()*H:H+60;
-        this.z=Math.random()*400+200;this.size=Math.random()*18+8;
-        this.color=PALETTE[Math.floor(Math.random()*PALETTE.length)];
-        this.rotX=Math.random()*Math.PI;this.rotY=Math.random()*Math.PI;this.rotZ=Math.random()*Math.PI;
-        this.speedX=(Math.random()-.5)*.012;this.speedY=(Math.random()-.5)*.012;this.speedZ=(Math.random()-.5)*.008;
-        this.vy=-(Math.random()*.3+.15);this.vx=(Math.random()-.5)*.4;
-        this.opacity=Math.random()*.4+.15;this.glow=Math.random()>.7;
-      }
-      update(){
-        this.x+=this.vx;this.y+=this.vy;this.rotX+=this.speedX;this.rotY+=this.speedY;this.rotZ+=this.speedZ;
-        var dx=this.x-mouse.x,dy=this.y-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<150){var f=(150-dist)/150*.8;this.x+=dx/dist*f;this.y+=dy/dist*f}
-        if(this.y<-60||this.x<-60||this.x>W+60)this.reset(false);
-      }
-      draw(){
-        var s=this.size*(300/this.z),cos=Math.cos,sin=Math.sin,rx=this.rotX,ry=this.rotY,rz=this.rotZ;
-        var verts=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].map(function(v){
-          var y1=v[1]*cos(rx)-v[2]*sin(rx),z1=v[1]*sin(rx)+v[2]*cos(rx);
-          var x1=v[0]*cos(ry)+z1*sin(ry),z2=-v[0]*sin(ry)+z1*cos(ry);
-          var x2=x1*cos(rz)-y1*sin(rz),y2=x1*sin(rz)+y1*cos(rz);
-          var sc=300/(300+z2);return[ctx.canvas.width?0:0+x2*s*sc+this.x,this.y,s*sc];
-        }.bind(this));
-        var edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
-        ctx.strokeStyle=this.color;ctx.globalAlpha=this.opacity*(.6+.4*(300/this.z));ctx.lineWidth=Math.max(1,s*.12);
-        if(this.glow){ctx.shadowColor=this.color;ctx.shadowBlur=s*.8}
-        ctx.beginPath();
-        var self=this;
-        edges.forEach(function(e){ctx.moveTo(verts[e[0]][0],verts[e[0]][1]);ctx.lineTo(verts[e[1]][0],verts[e[1]][1])});
-        ctx.stroke();ctx.shadowBlur=0;ctx.globalAlpha=1;
-      }
-    }
-
-    class Particle{
-      constructor(){this.reset(true)}
-      reset(init){
-        this.x=Math.random()*W;this.y=init?Math.random()*H:H+10;
-        this.size=Math.random()*3+1;this.color=PALETTE[Math.floor(Math.random()*PALETTE.length)];
-        this.vy=-(Math.random()*.5+.2);this.vx=(Math.random()-.5)*.3;
-        this.opacity=Math.random()*.5+.2;this.pulse=Math.random()*Math.PI*2;this.pulseSpeed=Math.random()*.03+.01;
-      }
-      update(){this.x+=this.vx;this.y+=this.vy;this.pulse+=this.pulseSpeed;if(this.y<-10)this.reset(false)}
-      draw(){var g=Math.sin(this.pulse)*.3+.7;ctx.globalAlpha=this.opacity*g;ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
-    }
-
-    var cubes=Array.from({length:18},function(){return new Cube()});
-    var particles=Array.from({length:60},function(){return new Particle()});
-
-    function animate(){
-      ctx.clearRect(0,0,W,H);
-      ctx.strokeStyle='rgba(255,255,255,0.015)';ctx.lineWidth=1;var gs=60;
-      for(var x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
-      for(var y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-      particles.forEach(function(p){p.update();p.draw()});
-      cubes.forEach(function(c){c.update();c.draw()});
-      requestAnimationFrame(animate);
-    }
-    animate();
-
-    // ── Auth Logic ──────────────────────────────────────────
     var loginForm=document.getElementById('loginForm'),signupForm=document.getElementById('signupForm');
     var guestForm=document.getElementById('guestForm'),userBar=document.getElementById('userBar');
     var userDisplay=document.getElementById('userDisplay'),lobbyList=document.getElementById('lobbyList');
@@ -219,12 +382,14 @@
     document.addEventListener('visibilitychange',function(){if(!document.hidden&&currentUser&&!isVerified)initPage()});
 
     // Tab switching
-    document.querySelectorAll('.tab').forEach(function(t){
+    document.querySelectorAll('.auth-tab').forEach(function(t){
       t.addEventListener('click',function(){
         var tab=t.getAttribute('data-tab');
-        document.querySelectorAll('.tab').forEach(function(t2,i){t2.classList.toggle('active',(tab==='login'&&i===0)||(tab==='signup'&&i===1))});
-        loginForm.classList.toggle('active',tab==='login');
-        signupForm.classList.toggle('active',tab==='signup');
+        document.querySelectorAll('.auth-tab').forEach(function(t2){
+          t2.classList.toggle('active',t2.getAttribute('data-tab')===tab);
+        });
+        loginForm.style.display=tab==='login'?'flex':'none';
+        signupForm.style.display=tab==='signup'?'flex':'none';
       });
     });
 
@@ -238,7 +403,7 @@
           userDisplay.textContent=name;userBar.style.display='flex';
           document.getElementById('authTabs').style.display='none';
           loginForm.style.display='none';signupForm.style.display='none';
-          document.getElementById('orDivider').querySelector('span').textContent='pick a lobby';
+          document.getElementById('orDivider').querySelector('span')||(document.getElementById('orDivider').textContent='pick a lobby');
           try{
             var sb=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
             var res=await fetch(sb+'/auth/check-verified',{headers:{'Authorization':'Bearer '+session.access_token}});
@@ -270,9 +435,9 @@
       e.preventDefault();var btn=document.getElementById('signupBtn'),errEl=document.getElementById('signupError');
       btn.disabled=true;btn.textContent='Creating...';errEl.style.display='none';
       try{await signUpWithEmail(document.getElementById('signupEmail').value,document.getElementById('signupPass').value,document.getElementById('signupName').value);
-        errEl.textContent='Account created! Check your email.';errEl.style.color='#bfff3c';errEl.style.display='block';
-        setTimeout(function(){document.querySelector('.tab[data-tab="login"]').click()},2500);
-      }catch(err){errEl.textContent=err.message;errEl.style.display='block';errEl.style.color='#ff2674'}
+        errEl.textContent='Account created! Check your email.';errEl.style.color='var(--success)';errEl.style.display='block';
+        setTimeout(function(){document.querySelector('.auth-tab[data-tab="login"]').click()},2500);
+      }catch(err){errEl.textContent=err.message;errEl.style.display='block';errEl.style.color='var(--danger)'}
       finally{btn.disabled=false;btn.textContent='Create account'}
     });
 
