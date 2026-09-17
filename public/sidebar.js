@@ -38,12 +38,13 @@
         +'<span id="themeLabel">Light mode</span>'
         +'<div class="switch" id="themeToggleBtn"></div>'
       +'</div>'
-      +'<div class="account-row">'
+      +'<div class="account-row" id="accountRow" style="position:relative;cursor:pointer">'
         +'<div class="avatar" id="sbAvatar">?</div>'
         +'<div>'
           +'<div class="account-name" id="sbName">Guest</div>'
           +'<div class="account-status" id="sbStatus">Not signed in</div>'
         +'</div>'
+        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;top:-8px;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
       +'</div>'
     +'</div>';
 
@@ -92,4 +93,17 @@
   }
 
   window._reloadSidebarUser=loadSidebarUser;
+
+  // Show/hide logout on hover
+  var accountRow=document.getElementById('accountRow');
+  var logoutBtn=document.getElementById('logoutBtn');
+  if(accountRow&&logoutBtn){
+    accountRow.addEventListener('mouseenter',function(){logoutBtn.style.display='block'});
+    accountRow.addEventListener('mouseleave',function(){logoutBtn.style.display='none'});
+    logoutBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      localStorage.removeItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      window.location.href='/';
+    });
+  }
 })();

@@ -399,10 +399,13 @@
         if(session&&session.user){
           currentUser=session.user;currentToken=session.access_token;
           var name=currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||currentUser.email;
-          // Logged in → auto-join the Welcome lobby
-          var url='/chat?lobby=welcome&username='+encodeURIComponent(name);
-          if(currentToken)url+='&token='+currentToken;
-          window.location.href=url;
+          document.getElementById('guestName').value=name;
+          document.getElementById('guestName').disabled=true;
+          document.getElementById('userBar').style.display='flex';
+          document.getElementById('authTabs').style.display='none';
+          document.getElementById('loginForm').style.display='none';
+          document.getElementById('signupForm').style.display='none';
+          document.getElementById('guestForm').style.display='flex';
           return;
         }else{var saved=localStorage.getItem('glox_username');if(saved)document.getElementById('guestName').value=saved}
       }catch(e){var saved2=localStorage.getItem('glox_username');if(saved2)document.getElementById('guestName').value=saved2}
