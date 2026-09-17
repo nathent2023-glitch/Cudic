@@ -1421,6 +1421,11 @@ function openPublishModal() {
   document.getElementById('thumbPlaceholder').style.display = '';
 }
 
+document.getElementById('modalCancelBtn').addEventListener('click', closePublishModal);
+document.getElementById('modalPublishBtn2').addEventListener('click', confirmSave);
+document.getElementById('thumbUpload').addEventListener('click', function() { document.getElementById('thumbInput').click(); });
+document.getElementById('publishModal').addEventListener('click', function(e) { if (e.target === this) closePublishModal(); });
+
 function closePublishModal() {
   document.getElementById('publishModal').classList.remove('open');
 }
@@ -1460,6 +1465,7 @@ async function confirmSave() {
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
     logToConsole('Published!', 'info');
+    setTimeout(function() { window.location.href = '/games'; }, 800);
   } catch (err) { logToConsole('Publish failed: ' + err.message, 'error'); }
 }
 
@@ -1611,7 +1617,7 @@ refreshHierarchy();
   <div class="modal">
     <h2>Publish Game</h2>
     <label>Thumbnail</label>
-    <div class="thumb-upload" id="thumbUpload" onclick="document.getElementById('thumbInput').click()">
+    <div class="thumb-upload" id="thumbUpload">
       <div class="placeholder" id="thumbPlaceholder">
         <svg viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Click to upload thumbnail
@@ -1626,8 +1632,8 @@ refreshHierarchy();
     <label>Credits</label>
     <input type="text" id="modalCredits" placeholder="Made by You" maxlength="100">
     <div class="modal-actions">
-      <button class="modal-cancel" onclick="closePublishModal()">Cancel</button>
-      <button class="modal-publish" onclick="confirmSave()">Publish</button>
+      <button class="modal-cancel" id="modalCancelBtn">Cancel</button>
+      <button class="modal-publish" id="modalPublishBtn2">Publish</button>
     </div>
   </div>
 </div>
