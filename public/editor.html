@@ -1390,17 +1390,32 @@ async function getApiBase() {
   try { var r = await fetch('/config.js'); var t = await r.text(); var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) return m[1].replace(/^wss?:\/\//, 'https://'); } catch(e) {}
   return '';
 }
-document.getElementById('btnSave').addEventListener('click', function() { openPublishModal(false); });
-document.getElementById('btnPublish').addEventListener('click', function() { openPublishModal(true); });
+document.getElementById('btnSave').addEventListener('click', function() { quickSave(); });
+document.getElementById('btnPublish').addEventListener('click', function() { openPublishModal(); });
 
 var pendingThumbData = null;
 
-function openPublishModal(publish) {
+async function quickSave() {
+  var token = window.currentToken;
+  if (!token) { alert('Sign in to save games'); return; }
+  var title = document.getElementById('gameTitle').value || 'Untitled Game';
+  var sceneData = JSON.stringify(serializeScene());
+  var apiBase = await getApiBase();
+  try {
+    if (currentGameId) {
+      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData }) });
+    } else {
+      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData }) });
+      var d = await res.json();
+      if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
+    }
+    logToConsole('Saved!', 'info');
+  } catch (err) { logToConsole('Save failed: ' + err.message, 'error'); }
+}
+
+function openPublishModal() {
   document.getElementById('publishModal').classList.add('open');
-  document.getElementById('modalTitle').textContent = publish ? 'Publish Game' : 'Save Game';
-  document.getElementById('modalPublishBtn').style.display = publish ? '' : 'none';
   document.getElementById('modalGameTitle').value = document.getElementById('gameTitle').value || '';
-  document.getElementById('modalSaveBtn').textContent = publish ? 'Save Draft' : 'Save';
   pendingThumbData = null;
   document.getElementById('thumbPreview').style.display = 'none';
   document.getElementById('thumbPlaceholder').style.display = '';
@@ -1423,7 +1438,7 @@ document.getElementById('thumbInput').addEventListener('change', function(e) {
   reader.readAsDataURL(file);
 });
 
-async function confirmSave(publish) {
+async function confirmSave() {
   var title = document.getElementById('modalGameTitle').value.trim() || 'Untitled Game';
   document.getElementById('gameTitle').value = title;
   var description = document.getElementById('modalDescription').value.trim();
@@ -1431,11 +1446,11 @@ async function confirmSave(publish) {
   closePublishModal();
 
   var token = window.currentToken;
-  if (!token) { alert('Sign in to save games'); return; }
+  if (!token) { alert('Sign in to publish games'); return; }
   var sceneData = JSON.stringify(serializeScene());
   var apiBase = await getApiBase();
   try {
-    var body = { title, scene: sceneData, published: publish, description: description, credits: credits };
+    var body = { title, scene: sceneData, published: true, description: description, credits: credits };
     if (pendingThumbData) body.thumbnail = pendingThumbData;
     if (currentGameId) {
       await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
@@ -1444,8 +1459,8 @@ async function confirmSave(publish) {
       var d = await res.json();
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
-    logToConsole(publish ? 'Published!' : 'Saved!', 'info');
-  } catch (err) { logToConsole('Save failed: ' + err.message, 'error'); }
+    logToConsole('Published!', 'info');
+  } catch (err) { logToConsole('Publish failed: ' + err.message, 'error'); }
 }
 
 async function loadGame() {
@@ -1594,7 +1609,7 @@ refreshHierarchy();
 <!-- Publish/Save Modal -->
 <div class="modal-overlay" id="publishModal">
   <div class="modal">
-    <h2 id="modalTitle">Publish Game</h2>
+    <h2>Publish Game</h2>
     <label>Thumbnail</label>
     <div class="thumb-upload" id="thumbUpload" onclick="document.getElementById('thumbInput').click()">
       <div class="placeholder" id="thumbPlaceholder">
@@ -1612,8 +1627,7 @@ refreshHierarchy();
     <input type="text" id="modalCredits" placeholder="Made by You" maxlength="100">
     <div class="modal-actions">
       <button class="modal-cancel" onclick="closePublishModal()">Cancel</button>
-      <button class="modal-save" id="modalSaveBtn" onclick="confirmSave(false)">Save</button>
-      <button class="modal-publish" id="modalPublishBtn" onclick="confirmSave(true)">Publish</button>
+      <button class="modal-publish" onclick="confirmSave()">Publish</button>
     </div>
   </div>
 </div>
