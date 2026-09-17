@@ -354,7 +354,7 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     cors(res);
     const { data, error } = await supabase
       .from('games')
-      .select('id, title, description, thumbnail, owner_id, created_at, updated_at')
+      .select('id, title, description, credits, thumbnail, owner_id, created_at, updated_at, users!owner_id(display_name, user_id)')
       .eq('published', true)
       .order('updated_at', { ascending: false })
       .limit(50);

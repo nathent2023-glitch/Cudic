@@ -55,8 +55,11 @@
     .game-thumb svg { width: 32px; height: 32px; stroke: currentColor; stroke-width: 1.5; fill: none; }
 
     .game-info { padding: 12px 14px; }
-    .game-title { font-family: var(--font-head); font-size: 0.875rem; font-weight: 600; margin-bottom: 2px; }
-    .game-meta { font-size: 0.75rem; color: var(--text-tertiary); }
+    .game-title { font-family: var(--font-head); font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; }
+    .game-creator { display: flex; align-items: center; gap: 8px; }
+    .game-creator-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 600; font-size: 0.7rem; flex-shrink: 0; }
+    .game-creator-name { font-size: 0.8rem; font-weight: 500; color: var(--text-primary); }
+    .game-creator-id { font-size: 0.7rem; color: var(--text-tertiary); }
   </style>
 </head>
 <body data-page="games">
@@ -98,11 +101,15 @@
           grid.innerHTML=data.games.map(function(g){
             var thumb=g.thumbnail?'<img src="'+g.thumbnail+'" style="width:100%;height:100%;object-fit:cover">'
               :'<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>';
+            var owner=g.users||{};
+            var ownerName=owner.display_name||'Unknown';
+            var ownerInit=ownerName.split(' ').map(function(w){return w[0]}).join('').substring(0,2).toUpperCase();
+            var ownerId=owner.user_id?'#'+owner.user_id:'';
             return '<div class="game-card" onclick="window.location.href=\'/editor?id='+g.id+'\'">'
               +'<div class="game-thumb">'+thumb+'</div>'
-              +'<div class="game-info"><div class="game-title">'+escapeHtml(g.title)+'</div>'
-              +'<div class="game-meta">'+(g.description||'No description')+'</div>'
-              +(g.credits?'<div class="game-meta" style="margin-top:2px">'+escapeHtml(g.credits)+'</div>':'')
+              +'<div class="game-info">'
+              +'<div class="game-title">'+escapeHtml(g.title)+'</div>'
+              +'<div class="game-creator"><div class="game-creator-avatar">'+ownerInit+'</div><div><div class="game-creator-name">'+escapeHtml(ownerName)+'</div><div class="game-creator-id">'+ownerId+'</div></div></div>'
               +'</div></div>';
           }).join('');
           grid.style.display='';empty.style.display='none';content.style.overflowY='auto';
