@@ -387,7 +387,9 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
       owner_id: user.id,
       title: body.title || 'Untitled Game',
       description: body.description || '',
+      credits: body.credits || '',
       scene: body.scene || '[]',
+      thumbnail: body.thumbnail || null,
       published: body.published || false,
     }).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -408,6 +410,7 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     const updates = {};
     if (body.title !== undefined) updates.title = body.title;
     if (body.description !== undefined) updates.description = body.description;
+    if (body.credits !== undefined) updates.credits = body.credits;
     if (body.scene !== undefined) updates.scene = body.scene;
     if (body.published !== undefined) updates.published = body.published;
     if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;

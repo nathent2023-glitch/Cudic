@@ -96,10 +96,14 @@
         var res=await fetch(apiBase+'/api/games');var data=await res.json();
         if(data.games&&data.games.length){
           grid.innerHTML=data.games.map(function(g){
+            var thumb=g.thumbnail?'<img src="'+g.thumbnail+'" style="width:100%;height:100%;object-fit:cover">'
+              :'<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>';
             return '<div class="game-card" onclick="window.location.href=\'/editor?id='+g.id+'\'">'
-              +'<div class="game-thumb"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></div>'
+              +'<div class="game-thumb">'+thumb+'</div>'
               +'<div class="game-info"><div class="game-title">'+escapeHtml(g.title)+'</div>'
-              +'<div class="game-meta">'+(g.description||'No description')+' &middot; '+new Date(g.updated_at).toLocaleDateString()+'</div></div></div>';
+              +'<div class="game-meta">'+(g.description||'No description')+'</div>'
+              +(g.credits?'<div class="game-meta" style="margin-top:2px">'+escapeHtml(g.credits)+'</div>':'')
+              +'</div></div>';
           }).join('');
           grid.style.display='';empty.style.display='none';content.style.overflowY='auto';
         }else{grid.style.display='none';empty.style.display='flex';content.style.overflowY='hidden'}

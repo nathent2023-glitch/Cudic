@@ -140,6 +140,29 @@
     .pkg-item[data-type="script"] .pkg-icon{color:#ff8426}
     .pkg-item .pkg-type-badge{font-size:.55rem;color:#444;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
     .drop-target{outline:2px solid #bfff3c;outline-offset:-2px;background:rgba(191,255,60,.08)!important}
+
+    /* Publish Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal{background:#1a1d26;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:28px;width:420px;max-width:90vw;max-height:85vh;overflow-y:auto;color:#fafdff;font-family:'Inter',sans-serif}
+    .modal h2{font-family:'Inter',sans-serif;font-weight:700;font-size:1.1rem;margin:0 0 20px;color:#fafdff}
+    .modal label{display:block;font-size:.75rem;font-weight:600;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    .modal input[type="text"],.modal textarea{width:100%;background:#12141b;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:10px 12px;color:#fafdff;font-size:.84rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;margin-bottom:14px}
+    .modal input[type="text"]:focus,.modal textarea:focus{border-color:#bfff3c}
+    .modal textarea{resize:vertical;min-height:70px}
+    .modal .thumb-upload{width:100%;height:140px;border:2px dashed rgba(255,255,255,.12);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .15s;margin-bottom:14px;overflow:hidden;position:relative}
+    .modal .thumb-upload:hover{border-color:#bfff3c;background:rgba(191,255,60,.04)}
+    .modal .thumb-upload img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+    .modal .thumb-upload .placeholder{color:#555;font-size:.78rem;text-align:center}
+    .modal .thumb-upload .placeholder svg{width:28px;height:28px;stroke:#555;fill:none;stroke-width:1.5;margin-bottom:4px}
+    .modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+    .modal .modal-actions button{padding:8px 18px;border-radius:7px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .12s}
+    .modal .modal-cancel{background:rgba(255,255,255,.06);color:#aaa}
+    .modal .modal-cancel:hover{background:rgba(255,255,255,.1);color:#fafdff}
+    .modal .modal-save{background:#bfff3c;color:#16171a}
+    .modal .modal-save:hover{background:#aee635}
+    .modal .modal-publish{background:#10d275;color:#fff}
+    .modal .modal-publish:hover{background:#0eb868}
   </style>
 </head>
 <body data-page="editor">
@@ -1367,20 +1390,57 @@ async function getApiBase() {
   try { var r = await fetch('/config.js'); var t = await r.text(); var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) return m[1].replace(/^wss?:\/\//, 'https://'); } catch(e) {}
   return '';
 }
-document.getElementById('btnSave').addEventListener('click', function() { saveGame(false); });
-document.getElementById('btnPublish').addEventListener('click', function() { saveGame(true); });
+document.getElementById('btnSave').addEventListener('click', function() { openPublishModal(false); });
+document.getElementById('btnPublish').addEventListener('click', function() { openPublishModal(true); });
 
-async function saveGame(publish) {
+var pendingThumbData = null;
+
+function openPublishModal(publish) {
+  document.getElementById('publishModal').classList.add('open');
+  document.getElementById('modalTitle').textContent = publish ? 'Publish Game' : 'Save Game';
+  document.getElementById('modalPublishBtn').style.display = publish ? '' : 'none';
+  document.getElementById('modalGameTitle').value = document.getElementById('gameTitle').value || '';
+  document.getElementById('modalSaveBtn').textContent = publish ? 'Save Draft' : 'Save';
+  pendingThumbData = null;
+  document.getElementById('thumbPreview').style.display = 'none';
+  document.getElementById('thumbPlaceholder').style.display = '';
+}
+
+function closePublishModal() {
+  document.getElementById('publishModal').classList.remove('open');
+}
+
+document.getElementById('thumbInput').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    pendingThumbData = ev.target.result;
+    document.getElementById('thumbPreview').src = pendingThumbData;
+    document.getElementById('thumbPreview').style.display = 'block';
+    document.getElementById('thumbPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
+
+async function confirmSave(publish) {
+  var title = document.getElementById('modalGameTitle').value.trim() || 'Untitled Game';
+  document.getElementById('gameTitle').value = title;
+  var description = document.getElementById('modalDescription').value.trim();
+  var credits = document.getElementById('modalCredits').value.trim();
+  closePublishModal();
+
   var token = window.currentToken;
   if (!token) { alert('Sign in to save games'); return; }
-  var title = document.getElementById('gameTitle').value || 'Untitled Game';
   var sceneData = JSON.stringify(serializeScene());
   var apiBase = await getApiBase();
   try {
+    var body = { title, scene: sceneData, published: publish, description: description, credits: credits };
+    if (pendingThumbData) body.thumbnail = pendingThumbData;
     if (currentGameId) {
-      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData, published: publish }) });
+      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
     } else {
-      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData, published: publish }) });
+      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
       var d = await res.json();
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
@@ -1391,7 +1451,7 @@ async function saveGame(publish) {
 async function loadGame() {
   if (!currentGameId) return;
   var apiBase = await getApiBase();
-  try { var res = await fetch(apiBase + '/api/games/' + currentGameId); var d = await res.json(); if (d.game) { document.getElementById('gameTitle').value = d.game.title; var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene; deserializeScene(sd); } } catch(e) {}
+  try { var res = await fetch(apiBase + '/api/games/' + currentGameId); var d = await res.json(); if (d.game) { document.getElementById('gameTitle').value = d.game.title; document.getElementById('modalDescription').value = d.game.description || ''; document.getElementById('modalCredits').value = d.game.credits || ''; if (d.game.thumbnail) { document.getElementById('thumbPreview').src = d.game.thumbnail; document.getElementById('thumbPreview').style.display = 'block'; document.getElementById('thumbPlaceholder').style.display = 'none'; pendingThumbData = d.game.thumbnail; } var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene; deserializeScene(sd); } } catch(e) {}
 }
 
 /* ════════════════════════════════════════════════════
@@ -1530,6 +1590,34 @@ animate();
 loadGame();
 refreshHierarchy();
 </script>
+
+<!-- Publish/Save Modal -->
+<div class="modal-overlay" id="publishModal">
+  <div class="modal">
+    <h2 id="modalTitle">Publish Game</h2>
+    <label>Thumbnail</label>
+    <div class="thumb-upload" id="thumbUpload" onclick="document.getElementById('thumbInput').click()">
+      <div class="placeholder" id="thumbPlaceholder">
+        <svg viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Click to upload thumbnail
+      </div>
+      <img id="thumbPreview" style="display:none">
+      <input type="file" id="thumbInput" accept="image/*" style="display:none">
+    </div>
+    <label>Project Name</label>
+    <input type="text" id="modalGameTitle" placeholder="My awesome game" maxlength="60">
+    <label>Description</label>
+    <textarea id="modalDescription" placeholder="What's your game about?" maxlength="300"></textarea>
+    <label>Credits</label>
+    <input type="text" id="modalCredits" placeholder="Made by You" maxlength="100">
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closePublishModal()">Cancel</button>
+      <button class="modal-save" id="modalSaveBtn" onclick="confirmSave(false)">Save</button>
+      <button class="modal-publish" id="modalPublishBtn" onclick="confirmSave(true)">Publish</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- .editor-shell -->
 </body>
 </html>

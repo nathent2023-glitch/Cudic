@@ -72,6 +72,7 @@ create table if not exists public.games (
   owner_id uuid not null references public.users(id) on delete cascade,
   title text not null,
   description text default '',
+  credits text default '',
   scene jsonb not null default '[]'::jsonb,
   thumbnail text,
   published boolean default false,
