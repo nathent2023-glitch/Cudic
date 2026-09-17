@@ -12,8 +12,10 @@
     cube:'<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>'
   };
 
+  var qs=window.location.search;
   function sbItem(href,key,icon,label){
-    return '<a class="sidebar-item" data-p="'+key+'" href="'+href+'">'
+    var dest=href+(key!=='home'?qs:'');
+    return '<a class="sidebar-item" data-p="'+key+'" href="'+dest+'">'
       +icons[icon]+'<span>'+label+'</span></a>';
   }
 
