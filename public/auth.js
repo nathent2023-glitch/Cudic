@@ -19,26 +19,32 @@ function getSupabase() {
 }
 
 // ── Handle OAuth callback (runs on every page load) ──────────────
-// Supabase redirects back with ?code=... in the URL.
-// We exchange it for a session client-side.
+// Supabase redirects back with ?code=... (PKCE) or #access_token=... (implicit).
 async function handleAuthCallback() {
   const url = new URL(window.location.href);
+
+  // PKCE flow: ?code=...
   const code = url.searchParams.get('code');
-  if (!code) return;
-
-  const db = await getSupabase();
-  if (!db) return;
-
-  // Exchange the code for a session
-  const { error } = await db.auth.exchangeCodeForSession(code);
-  if (error) {
-    console.error('Auth callback error:', error.message);
+  if (code) {
+    const db = await getSupabase();
+    if (!db) return;
+    const { error } = await db.auth.exchangeCodeForSession(code);
+    if (error) console.error('Auth callback error:', error.message);
+    url.searchParams.delete('code');
+    url.searchParams.delete('state');
+    window.history.replaceState({}, '', url.pathname + url.search);
+    return;
   }
 
-  // Clean the URL — remove ?code=... so it doesn't re-trigger
-  url.searchParams.delete('code');
-  url.searchParams.delete('state');
-  window.history.replaceState({}, '', url.pathname + url.search);
+  // Implicit flow: #access_token=...
+  const hash = window.location.hash;
+  if (hash && hash.includes('access_token')) {
+    const db = await getSupabase();
+    if (!db) return;
+    // Supabase JS auto-parses the hash fragment and stores the session
+    // Just need to clean the URL
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }
 }
 
 // ── GitHub OAuth ─────────────────────────────────────────────────
