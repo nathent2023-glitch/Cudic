@@ -48,6 +48,7 @@ body {
   color: var(--text-primary);
   overflow: hidden;
   display: flex;
+  height: 100%;
   -webkit-font-smoothing: antialiased;
 }
 
