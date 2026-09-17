@@ -399,17 +399,11 @@
         if(session&&session.user){
           currentUser=session.user;currentToken=session.access_token;
           var name=currentUser.user_metadata?.full_name||currentUser.user_metadata?.name||currentUser.email;
-          document.getElementById('guestName').value=name;document.getElementById('guestName').readOnly=true;
-          userDisplay.textContent=name;userBar.style.display='flex';
-          document.getElementById('authTabs').style.display='none';
-          loginForm.style.display='none';signupForm.style.display='none';
-          document.getElementById('orDivider').querySelector('span')||(document.getElementById('orDivider').textContent='pick a lobby');
-          try{
-            var sb=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
-            var res=await fetch(sb+'/auth/check-verified',{headers:{'Authorization':'Bearer '+session.access_token}});
-            var data=await res.json();isVerified=data.verified;
-            if(!isVerified){verifyNotice.style.display='block';verifyEmail.textContent=currentUser.email;guestForm.style.display='none';document.getElementById('orDivider').style.display='none';lobbiesLabel.style.display='none';lobbyList.innerHTML=''}
-          }catch(e){}
+          // Logged in → auto-join the Welcome lobby
+          var url='/chat?lobby=welcome&username='+encodeURIComponent(name);
+          if(currentToken)url+='&token='+currentToken;
+          window.location.href=url;
+          return;
         }else{var saved=localStorage.getItem('glox_username');if(saved)document.getElementById('guestName').value=saved}
       }catch(e){var saved2=localStorage.getItem('glox_username');if(saved2)document.getElementById('guestName').value=saved2}
     }
