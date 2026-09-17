@@ -1,9 +1,10 @@
 /* ── Glox Sidebar ──────────────────────────────────────── */
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
-body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;display:flex}
+body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;display:flex;flex-direction:column;margin-left:54px;transition:margin-left .2s}
+body:has(.sidebar:hover){margin-left:200px}
 
-.sidebar{width:54px;background:#111214;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:50;height:100%;position:relative}
+.sidebar{width:54px;background:#111214;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:50;height:100%;position:fixed;left:0;top:0}
 .sidebar:hover{width:200px}
 .sidebar-logo{padding:14px 16px;font-weight:800;font-size:1rem;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;cursor:pointer;height:48px;display:flex;align-items:center}
 .sidebar-logo span{color:#bfff3c}
