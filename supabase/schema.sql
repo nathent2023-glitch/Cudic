@@ -3,18 +3,23 @@
 -- Users table (auto-populated by Supabase Auth)
 create table if not exists public.users (
   id uuid primary key references auth.users(id) on delete cascade,
+  user_id bigint unique,  -- unique numeric ID, immutable
   display_name text not null,
   avatar_url text,
   created_at timestamptz default now()
 );
 
+-- Sequence for unique numeric user IDs
+create sequence if not exists public.user_id_seq start 1000;
+
 -- Auto-create user profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.users (id, display_name, avatar_url)
+  insert into public.users (id, user_id, display_name, avatar_url)
   values (
     new.id,
+    nextval('public.user_id_seq'),
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),
     coalesce(new.raw_user_meta_data ->> 'avatar_url', null)
   );
@@ -83,3 +88,8 @@ create policy "Owners can read own games" on public.games for select using (auth
 create policy "Owners can update own games" on public.games for update using (auth.uid() = owner_id);
 create policy "Owners can delete own games" on public.games for delete using (auth.uid() = owner_id);
 create policy "Authenticated users can create games" on public.games for insert with check (auth.uid() = owner_id);
+
+-- ── Add user_id to existing users (run if table already exists) ──
+-- ALTER TABLE public.users ADD COLUMN IF NOT EXISTS user_id bigint unique;
+-- CREATE SEQUENCE IF NOT EXISTS public.user_id_seq START 1000;
+-- UPDATE public.users SET user_id = nextval('public.user_id_seq') WHERE user_id IS NULL;

@@ -89,6 +89,61 @@
       document.getElementById('sbStatus').textContent='Signed in';
       window.currentToken=s.access_token;
       window.currentUser={id:payload.sub,email:payload.email,name:name};
+
+      // Fetch profile for user_id
+      fetchProfile(s.access_token);
+    }catch(e){}
+  }
+
+  async function fetchProfile(token){
+    try{
+      var apiHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+      var res=await fetch(apiHost+'/api/profile',{headers:{'Authorization':'Bearer '+token}});
+      var data=await res.json();
+      if(data.profile){
+        window.userProfile=data.profile;
+        var nameEl=document.getElementById('sbName');
+        var statusEl=document.getElementById('sbStatus');
+        nameEl.textContent=data.profile.display_name;
+        statusEl.textContent='#'+data.profile.user_id;
+        nameEl.style.cursor='pointer';
+        nameEl.title='Click to change display name';
+        nameEl.addEventListener('click',function(){showNameEditor(data.profile.display_name)});
+      }
+    }catch(e){}
+  }
+
+  function showNameEditor(currentName){
+    var nameEl=document.getElementById('sbName');
+    var input=document.createElement('input');
+    input.type='text';input.value=currentName;input.maxLength=24;
+    input.style.cssText='background:var(--panel-raised);border:1px solid var(--signal);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.875rem;padding:2px 6px;width:100%;outline:none;font-family:inherit';
+    var orig=nameEl.textContent;
+    nameEl.textContent='';nameEl.appendChild(input);nameEl.style.cursor='default';input.focus();input.select();
+    function done(){
+      var val=input.value.trim();
+      if(val&&val!==orig){
+        nameEl.textContent=val;
+        updateProfile(val);
+      }else{
+        nameEl.textContent=orig;nameEl.style.cursor='pointer';
+      }
+    }
+    input.addEventListener('blur',done);
+    input.addEventListener('keydown',function(e){if(e.key==='Enter')input.blur();if(e.key==='Escape'){input.value=orig;input.blur()}});
+  }
+
+  async function updateProfile(displayName){
+    try{
+      var apiHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      if(!raw) return;
+      var s=JSON.parse(raw);
+      await fetch(apiHost+'/api/profile',{
+        method:'PUT',
+        headers:{'Authorization':'Bearer '+s.access_token,'Content-Type':'application/json'},
+        body:JSON.stringify({display_name:displayName})
+      });
     }catch(e){}
   }
 

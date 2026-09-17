@@ -233,6 +233,69 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     return;
   }
 
+  // ── API: get profile (user_id + display_name) ──────────────────
+  if (url.pathname === '/api/profile' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401); res.end(); return; }
+
+    const { data: profile, error: profErr } = await supabase
+      .from('users')
+      .select('user_id, display_name, avatar_url, created_at')
+      .eq('id', user.id)
+      .single();
+
+    if (profErr || !profile) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ profile: null }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ profile }));
+    return;
+  }
+
+  // ── API: update display name ───────────────────────────────────
+  if (url.pathname === '/api/profile' && req.method === 'PUT') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401); res.end(); return; }
+
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      try {
+        const { display_name } = JSON.parse(body);
+        if (!display_name || display_name.trim().length < 1) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Display name required' }));
+          return;
+        }
+        const trimmed = display_name.trim().substring(0, 24);
+        const { error: updErr } = await supabase
+          .from('users')
+          .update({ display_name: trimmed })
+          .eq('id', user.id);
+        if (updErr) throw updErr;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ display_name: trimmed }));
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
+  }
+
   // ── API: get message history ───────────────────────────────────
   if (url.pathname === '/api/messages') {
     cors(res);
