@@ -103,15 +103,15 @@
         var data=await res.json();
         var servers=data.servers||[];
         var mine=[],pub=[];
+        // All public servers (including owned) go to pub list
         servers.forEach(function(s){
-          var isOwner=token&&s.owner_id&&window.currentUser&&s.owner_id===window.currentUser.id;
-          if(isOwner) mine.push(s); else if(s.visibility==='public') pub.push(s);
+          if(s.visibility==='public') pub.push(s);
         });
         // Also fetch mine separately to get accurate count
         if(token){
           var r2=await fetch(apiHost+'/api/servers/mine',{headers:headers});
           var d2=await r2.json();
-          mine=d2.servers||mine;
+          mine=d2.servers||[];
         }
         document.getElementById('ownCount').textContent='('+mine.length+'/3)';
         renderGrid('ownGrid',mine,true);
@@ -132,10 +132,11 @@
         var actions=isOwn
           ? '<div class="card-actions"><button onclick="openEdit(\''+s.id+'\')">Edit</button><button onclick="copyInvite(\''+s.invite_code+'\')">Copy invite</button><button onclick="deleteServer(\''+s.id+'\')" style="color:var(--danger)">Delete</button></div><a href="'+chatHref+'" class="btn btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;padding:8px">Open chat</a>'
           : '<div class="card-actions"><button class="btn-join" onclick="joinServer(\''+s.id+'\',\''+s.visibility+'\')">Join</button><a href="'+chatHref+'" style="flex:1;text-align:center;padding:7px;border:1px solid var(--line);border-radius:6px;text-decoration:none;color:var(--text-secondary);font-size:0.78rem">Open chat</a></div>';
+        var inviteRow=isOwn?'<div class="invite-row"><input class="invite-code" value="'+s.invite_code+'" readonly onclick="this.select()"><button class="btn-copy" onclick="copyInvite(\''+s.invite_code+'\')">Copy</button></div>':'';
         return '<div class="server-card">'
           +'<div class="server-card-head"><div class="server-icon">'+icon+'</div><div><div class="server-name">'+escapeHtml(s.name)+'</div><div style="font-size:0.7rem;color:var(--text-tertiary)">'+badge+'</div></div></div>'
           +'<div class="server-desc">'+escapeHtml(s.description||'No description')+'</div>'
-          +'<div class="invite-row"><input class="invite-code" value="'+s.invite_code+'" readonly onclick="this.select()"><button class="btn-copy" onclick="copyInvite(\''+s.invite_code+'\')">Copy</button></div>'
+          +inviteRow
           +actions
           +'</div>';
       }).join('');

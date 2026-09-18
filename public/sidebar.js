@@ -29,7 +29,6 @@
       +'<div class="sidebar-brand">'
         +icons.cube
         +'<span class="sidebar-brand-text">glox<span class="dot">.</span></span>'
-        +'<button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>'
       +'</div>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/','home','home','Home')
@@ -192,15 +191,6 @@
   }
 
   window._reloadSidebarUser=loadSidebarUser;
-
-  // Collapsible sidebar (sandwich sideways)
-  var sidebarEl=document.querySelector('.sidebar');
-  var toggleBtn=document.getElementById('sidebarToggle');
-  if(localStorage.getItem('glox-sidebar-collapsed')==='1') sidebarEl.classList.add('collapsed');
-  if(toggleBtn) toggleBtn.addEventListener('click',function(){
-    sidebarEl.classList.toggle('collapsed');
-    localStorage.setItem('glox-sidebar-collapsed',sidebarEl.classList.contains('collapsed')?'1':'0');
-  });
 
   // Show/hide logout on hover
   var accountRow=document.getElementById('accountRow');
