@@ -19,6 +19,9 @@
       +icons[icon]+'<span>'+label+'</span></a>';
   }
 
+  // Servers icon
+  icons.server='<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h4M7 12h10"/><circle cx="17" cy="8" r="1"/><circle cx="17" cy="12" r="1"/></svg>';
+
   var nav=document.createElement('nav');
   nav.className='sidebar';
   nav.innerHTML=''
@@ -30,8 +33,14 @@
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/','home','home','Home')
       +sbItem('/chat','chat','chat','Chat')
+      +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
       +sbItem('/editor','editor','editor','Editor')
+      +'<div id="serversSection" style="margin-top:16px">'
+        +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
+        +'<div id="serverList"></div>'
+        +'<button id="createServerBtn" style="width:100%;margin-top:6px;padding:7px;border:1px dashed var(--line);border-radius:6px;background:transparent;color:var(--text-secondary);font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M12 5v14M5 12h14"/></svg> New server</button>'
+      +'</div>'
     +'</div>'
     +'<div class="sidebar-bottom">'
       +'<div class="mode-row">'
@@ -144,6 +153,53 @@
         headers:{'Authorization':'Bearer '+s.access_token,'Content-Type':'application/json'},
         body:JSON.stringify({display_name:displayName})
       });
+    }catch(e){}
+  }
+
+  // Load servers
+  loadServers();
+  async function loadServers(){
+    try{
+      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      var token=raw?JSON.parse(raw).access_token:null;
+      var apiHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+      var headers=token?{'Authorization':'Bearer '+token}:{};
+      // My servers
+      if(token){
+        var res=await fetch(apiHost+'/api/servers/mine',{headers:headers});
+        var data=await res.json();
+        var myServers=data.servers||[];
+        document.getElementById('serverCount').textContent=myServers.length+'/3';
+        var list=document.getElementById('serverList');
+        if(myServers.length){
+          // Need username for lobby join
+          var qs2=window.location.search;
+          var up=new URLSearchParams(qs2);
+          var uname=up.get('username')||(window.currentUser&&window.currentUser.name)||'';
+          list.innerHTML=myServers.map(function(s){
+            var lobby='server:'+s.id;
+            var href='/chat?lobby='+encodeURIComponent(lobby)+(uname?'&username='+encodeURIComponent(uname):'');
+            var active=(window.location.search.includes(lobby))?' active':'';
+            return '<a class="sidebar-item'+active+'" href="'+href+'" style="font-size:0.85rem"><span style="width:20px;height:20px;border-radius:4px;background:var(--signal-tint);color:var(--signal);display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0">'+s.name.substring(0,2).toUpperCase()+'</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.name+'</span></a>';
+          }).join('');
+        } else {
+          list.innerHTML='<div style="font-size:0.75rem;color:var(--text-tertiary);padding:6px 20px">No servers yet</div>';
+        }
+        var btn=document.getElementById('createServerBtn');
+        if(myServers.length>=3) btn.style.display='none'; else btn.style.display='flex';
+        btn.onclick=function(){
+          if(myServers.length>=3){alert('You can own at most 3 servers.');return;}
+          var name=prompt('Server name (2-20 chars, letters/numbers/-/_):');
+          if(!name||name.trim().length<2) return;
+          var desc=prompt('Description (optional):')||'';
+          var vis=confirm('Make this server public? OK=public, Cancel=private (invite only)')?'public':'private';
+          fetch(apiHost+'/api/servers',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:name.trim(),description:desc,visibility:vis})}).then(function(r){return r.json()}).then(function(d){
+            if(d.error) alert(d.error); else window.location.reload();
+          });
+        };
+      } else {
+        document.getElementById('serversSection').style.display='none';
+      }
     }catch(e){}
   }
 

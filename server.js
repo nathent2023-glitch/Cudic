@@ -390,6 +390,176 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     return;
   }
 
+  // ── Servers API ──────────────────────────────────────────────
+
+  // List servers: public + owned/private where member
+  if (url.pathname === '/api/servers' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    let userId = null;
+    if (token) {
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) userId = user.id;
+    }
+    let query = supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, owner_id, created_at, users!owner_id(display_name)').order('created_at', { ascending: false });
+    const { data, error } = await query.limit(50);
+    // Filter: show public or owned/member
+    let filtered = data || [];
+    if (userId) {
+      // For logged in, also include private servers where user is member (fetch separately)
+      const { data: memberServers } = await supabase.from('server_members').select('server_id').eq('user_id', userId);
+      const memberIds = new Set((memberServers || []).map(m => m.server_id));
+      filtered = filtered.filter(s => s.visibility === 'public' || s.owner_id === userId || memberIds.has(s.id));
+    } else {
+      filtered = filtered.filter(s => s.visibility === 'public');
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ servers: filtered }));
+    return;
+  }
+
+  // Get my servers (owned)
+  if (url.pathname === '/api/servers/mine' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    const { data } = await supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, created_at').eq('owner_id', user.id).order('created_at', { ascending: true });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ servers: data || [] }));
+    return;
+  }
+
+  // Create server (max 3 per user)
+  if (url.pathname === '/api/servers' && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    // Check limit
+    const { count } = await supabase.from('servers').select('id', { count: 'exact', head: true }).eq('owner_id', user.id);
+    if (count !== null && count >= 3) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You can own at most 3 servers.' })); return; }
+    const body = await readBody(req);
+    const name = (body.name || '').trim().replace(/[^a-zA-Z0-9-_]/g, '').substring(0, 20);
+    if (!name || name.length < 2) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Server name 2-20 chars (letters, numbers, -,_)' })); return; }
+    const invite = crypto.randomBytes(4).toString('hex');
+    const { data, error } = await supabase.from('servers').insert({
+      name,
+      description: (body.description || '').substring(0, 200),
+      icon_url: (body.icon_url || '').substring(0, 500),
+      visibility: body.visibility === 'private' ? 'private' : 'public',
+      invite_code: invite,
+      owner_id: user.id,
+    }).select().single();
+    if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
+    // Add owner as member
+    await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id });
+    // Also ensure a lobby exists for chat
+    await supabase.from('lobbies').insert({ name: 'server:' + data.id, created_by: user.id, persistent: true }).select();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ server: data }));
+    return;
+  }
+
+  // Update server (owner only)
+  if (url.pathname.startsWith('/api/servers/') && req.method === 'PUT') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    const body = await readBody(req);
+    const updates = {};
+    if (body.name !== undefined) {
+      const n = body.name.trim().replace(/[^a-zA-Z0-9-_]/g, '').substring(0, 20);
+      if (n.length >= 2) updates.name = n;
+    }
+    if (body.description !== undefined) updates.description = body.description.substring(0, 200);
+    if (body.icon_url !== undefined) updates.icon_url = body.icon_url.substring(0, 500);
+    if (body.visibility !== undefined && ['public','private'].includes(body.visibility)) updates.visibility = body.visibility;
+    if (Object.keys(updates).length === 0) { res.writeHead(400); res.end(); return; }
+    const { data, error } = await supabase.from('servers').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
+    if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ server: data }));
+    return;
+  }
+
+  // Delete server
+  if (url.pathname.startsWith('/api/servers/') && req.method === 'DELETE') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    await supabase.from('servers').delete().eq('id', id).eq('owner_id', user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // Join server (by invite code or public)
+  if (url.pathname.endsWith('/join') && req.method === 'POST') {
+    cors(res);
+    const parts = url.pathname.split('/');
+    const id = parts[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const { data: server } = await supabase.from('servers').select('id, visibility, invite_code').eq('id', id).single();
+    if (!server) { res.writeHead(404); res.end(); return; }
+    if (server.visibility === 'private' && body.invite_code !== server.invite_code) {
+      res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid invite code' })); return;
+    }
+    await supabase.from('server_members').upsert({ server_id: server.id, user_id: user.id }, { onConflict: 'server_id,user_id' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // Leave server
+  if (url.pathname.endsWith('/leave') && req.method === 'POST') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    await supabase.from('server_members').delete().eq('server_id', id).eq('user_id', user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // Regenerate invite code
+  if (url.pathname.endsWith('/regenerate-invite') && req.method === 'POST') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    const newCode = crypto.randomBytes(4).toString('hex');
+    const { data } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', id).eq('owner_id', user.id).select().single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ server: data }));
+    return;
+  }
+
   // ── Helper: parse JSON body ───────────────────────────────────
   function readBody(req) {
     return new Promise((resolve, reject) => {

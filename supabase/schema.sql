@@ -95,3 +95,63 @@ create policy "Authenticated users can create games" on public.games for insert 
 -- ALTER TABLE public.users ADD COLUMN IF NOT EXISTS user_id bigint unique;
 -- CREATE SEQUENCE IF NOT EXISTS public.user_id_seq START 1000;
 -- UPDATE public.users SET user_id = nextval('public.user_id_seq') WHERE user_id IS NULL;
+
+-- ── Servers (group chats) ───────────────────────────────────────────
+-- Servers are owned lobbies with extra metadata. Max 3 per user.
+create table if not exists public.servers (
+  id uuid primary key default gen_random_uuid(),
+  name text unique not null,
+  description text default '',
+  icon_url text,
+  visibility text default 'public' check (visibility in ('public','private')),
+  invite_code text unique not null default substr(md5(random()::text),1,8),
+  owner_id uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.server_members (
+  id uuid primary key default gen_random_uuid(),
+  server_id uuid not null references public.servers(id) on delete cascade,
+  user_id uuid not null references public.users(id) on delete cascade,
+  joined_at timestamptz default now(),
+  unique(server_id, user_id)
+);
+
+alter table public.servers enable row level security;
+alter table public.server_members enable row level security;
+
+create policy "Anyone can read public servers" on public.servers for select using (visibility = 'public' or auth.uid() = owner_id);
+create policy "Members can read private servers" on public.servers for select using (
+  exists (select 1 from public.server_members where server_members.server_id = servers.id and server_members.user_id = auth.uid())
+);
+create policy "Authenticated can create servers" on public.servers for insert with check (auth.uid() = owner_id);
+create policy "Owners can update own servers" on public.servers for update using (auth.uid() = owner_id);
+create policy "Owners can delete own servers" on public.servers for delete using (auth.uid() = owner_id);
+
+create policy "Members can read server_members" on public.server_members for select using (true);
+create policy "Authenticated can join servers" on public.server_members for insert with check (auth.uid() = user_id);
+
+-- Fix handle_new_user to be safe
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, user_id, display_name, avatar_url)
+  values (
+    new.id,
+    nextval('public.user_id_seq'),
+    coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', null)
+  );
+  return new;
+end;
+$$;
+
+-- Ensure trigger exists
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
