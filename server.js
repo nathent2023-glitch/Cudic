@@ -309,7 +309,7 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     // Get or create lobby
     let { data: lobby } = await supabase
       .from('lobbies')
-      .select('id')
+      .select('id, persistent')
       .eq('name', lobbyName)
       .single();
 
@@ -317,26 +317,76 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
       const { data: newLobby } = await supabase
         .from('lobbies')
         .insert({ name: lobbyName })
-        .select('id')
+        .select('id, persistent')
         .single();
       lobby = newLobby;
     }
 
     if (!lobby) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ messages: [] }));
+      res.end(JSON.stringify({ messages: [], persistent: false }));
       return;
     }
 
-    const { data: messages } = await supabase
+    let query = supabase
       .from('messages')
       .select('display_name, text, created_at')
       .eq('lobby_id', lobby.id)
       .order('created_at', { ascending: true })
       .limit(100);
 
+    // Non-persistent lobbies: only show last 24h of messages
+    if (!lobby.persistent) {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte('created_at', yesterday);
+    }
+
+    const { data: messages } = await query;
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages: messages || [] }));
+    res.end(JSON.stringify({ messages: messages || [], persistent: lobby.persistent }));
+    return;
+  }
+
+  // ── API: set lobby persistence ─────────────────────────────────
+  if (url.pathname === '/api/lobby/persistent' && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    const body = await readBody(req);
+    const { lobbyName, persistent } = body;
+    if (!lobbyName) { res.writeHead(400); res.end(); return; }
+
+    const { data: lobby } = await supabase
+      .from('lobbies')
+      .select('id')
+      .eq('name', lobbyName)
+      .single();
+
+    if (!lobby) { res.writeHead(404); res.end(); return; }
+
+    await supabase
+      .from('lobbies')
+      .update({ persistent: !!persistent })
+      .eq('id', lobby.id);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, persistent: !!persistent }));
+    return;
+  }
+
+  // ── API: get lobby info ────────────────────────────────────────
+  if (url.pathname === '/api/lobby') {
+    cors(res);
+    const lobbyName = url.searchParams.get('name');
+    if (!lobbyName) { res.writeHead(400); res.end(); return; }
+    const { data: lobby } = await supabase
+      .from('lobbies')
+      .select('name, persistent, created_by, created_at')
+      .eq('name', lobbyName)
+      .single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ lobby: lobby || null }));
     return;
   }
 

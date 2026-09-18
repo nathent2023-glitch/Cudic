@@ -37,6 +37,7 @@ create table if not exists public.lobbies (
   id uuid primary key default gen_random_uuid(),
   name text unique not null,
   created_by uuid references public.users(id),
+  persistent boolean default false,
   created_at timestamptz default now()
 );
 

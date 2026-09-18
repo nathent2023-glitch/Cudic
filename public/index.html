@@ -356,6 +356,10 @@
         <form id="guestForm" style="display:flex;flex-direction:column;gap:14px;">
           <div class="field"><label>Your name</label><input type="text" id="guestName" placeholder="Nathen" maxlength="20" required></div>
           <div class="field"><label>Lobby name</label><input type="text" id="lobbyName" placeholder="e.g. friday-jam" maxlength="30" required></div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:0.8125rem;color:var(--text-secondary);cursor:pointer">
+            <input type="checkbox" id="persistentLobby" style="accent-color:var(--signal);width:16px;height:16px">
+            Save chat history (persistent)
+          </label>
           <button type="submit" class="auth-btn auth-btn-secondary">Join lobby</button>
         </form>
 
@@ -441,8 +445,10 @@
     document.getElementById('guestForm').addEventListener('submit',function(e){
       e.preventDefault();
       var name=document.getElementById('guestName').value.trim(),lobby=document.getElementById('lobbyName').value.trim();
+      var persistent=document.getElementById('persistentLobby').checked;
       if(!name||!lobby)return;localStorage.setItem('glox_username',name);listWs.close();
       var url='/chat?lobby='+encodeURIComponent(lobby)+'&username='+encodeURIComponent(name);
+      if(persistent)url+='&persistent=1';
       if(currentToken)url+='&token='+currentToken;window.location.href=url;
     });
 

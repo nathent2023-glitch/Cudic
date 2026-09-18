@@ -3,6 +3,7 @@ const params = new URLSearchParams(window.location.search);
 const lobby = params.get('lobby');
 const username = params.get('username');
 const token = params.get('token');
+const isPersistent = params.get('persistent') === '1';
 
 // ── DOM refs ─────────────────────────────────────────────────────
 const lobbyTitle = document.getElementById('lobbyTitle');
@@ -34,6 +35,23 @@ if (!lobby || !username) {
 
 lobbyTitle.textContent = `#${lobby}`;
 chatTitle.textContent = `#${lobby}`;
+
+// ── Fetch lobby info (persistent status) ────────────────────────
+async function fetchLobbyInfo() {
+  try {
+    const apiHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+    const res = await fetch(`${apiHost}/api/lobby?name=${encodeURIComponent(lobby)}`);
+    const data = await res.json();
+    if (data.lobby && data.lobby.persistent) {
+      chatTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(79,216,151,0.15);color:#4FD897;padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px;vertical-align:middle">Persistent</span>`;
+      lobbyTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(79,216,151,0.15);color:#4FD897;padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px">Persistent</span>`;
+    } else {
+      chatTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(255,255,255,0.06);color:var(--text-tertiary);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px;vertical-align:middle">24h</span>`;
+      lobbyTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(255,255,255,0.06);color:var(--text-tertiary);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px">24h</span>`;
+    }
+  } catch (e) {}
+}
+fetchLobbyInfo();
 
 // ── Mobile sidebar toggle ────────────────────────────────────────
 menuBtn.addEventListener('click', () => {
@@ -84,6 +102,13 @@ let isTyping = false;
 
 ws.onopen = async () => {
   await resolveUser();
+  // Set lobby persistence if flagged
+  if (isPersistent) {
+    try {
+      const apiHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+      await fetch(`${apiHost}/api/lobby/persistent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyName: lobby, persistent: true }) });
+    } catch (e) {}
+  }
   ws.send(JSON.stringify({ type: 'join', lobby, username, userId }));
   await loadHistory();
 };
