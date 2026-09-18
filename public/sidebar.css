@@ -72,6 +72,7 @@ body {
 .sidebar:not(:hover) .nav-section-label,
 .sidebar:not(:hover) .mode-row span,
 .sidebar:not(:hover) #accountRow > div:nth-child(2) { display: none; }
+.sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; }
 
 /* Keep servers + avatar visible when collapsed */
 .sidebar #serversSection { opacity: 1; pointer-events: auto; }
