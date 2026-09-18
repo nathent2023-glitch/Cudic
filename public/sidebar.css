@@ -146,18 +146,21 @@ body {
 .sidebar-spacer { flex: 1; }
 
 .sidebar-bottom {
-  padding: 16px 20px 0;
+  padding: 16px 20px 12px;
   border-top: 1px solid var(--line);
   margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .mode-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
   font-size: 0.875rem;
   color: var(--text-secondary);
+  min-height: 20px;
 }
 
 .switch {
@@ -197,6 +200,8 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
+  min-height: 36px;
 }
 
 .avatar {

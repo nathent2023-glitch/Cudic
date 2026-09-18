@@ -50,7 +50,7 @@
           +'<div class="account-name" id="sbName">Guest</div>'
           +'<div class="account-status" id="sbStatus">Not signed in</div>'
         +'</div>'
-        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;top:-8px;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:4px 10px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
+        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:calc(100% + 8px);background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 12px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
       +'</div>'
     +'</div>';
 
