@@ -5,7 +5,8 @@
     { "source": "/chat", "destination": "/chat.html" },
     { "source": "/games", "destination": "/games.html" },
     { "source": "/editor", "destination": "/editor.html" },
-    { "source": "/servers", "destination": "/servers.html" }
+    { "source": "/servers", "destination": "/servers.html" },
+    { "source": "/lobbies", "destination": "/lobbies.html" }
   ],
   "headers": [
     {
