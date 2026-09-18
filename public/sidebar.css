@@ -1,5 +1,7 @@
 /* ── Glox Design System ─────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@font-face { font-family: 'NineCircles'; src: url('/fonts/NineCirclesReg.otf') format('opentype'), url('/fonts/NineCirclesReg.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'NineCirclesBook'; src: url('/fonts/nine-circles.book.otf') format('opentype'), url('/fonts/nine-circles.book.ttf') format('truetype'); font-display: swap; }
 
 :root {
   /* Dark mode (default) */
@@ -18,9 +20,10 @@
   --danger: #F0655C;
   --radius-sm: 6px;
   --radius-lg: 12px;
-  --font-head: 'Space Grotesk', sans-serif;
+  --font-head: 'NineCircles', 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'NineCircles', sans-serif;
 }
 
 .light-theme {

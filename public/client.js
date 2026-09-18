@@ -17,19 +17,9 @@ const typingEl = document.getElementById('typingIndicator');
 const menuBtn = document.getElementById('menuBtn');
 const sidebar = document.querySelector('.chat-sidebar');
 
-// If no lobby, show lobby picker and stop
+// If no lobby, redirect to dedicated lobbies panel
 if (!lobby || !username) {
-  chatForm.style.display = 'none';
-  typingEl.style.display = 'none';
-  lobbyTitle.textContent = 'Pick a lobby';
-  chatTitle.textContent = 'Chat';
-  messagesEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:0">'
-    + '<div class="empty-card" style="padding:0 20px">'
-    + '<div class="empty-icon-circle"><svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4V5Z"/></svg></div>'
-    + '<h2>No lobby yet</h2>'
-    + '<p>Join or create a lobby from Home to start chatting.</p>'
-    + '<a href="/" class="btn btn-primary" style="width:auto;padding:10px 20px;text-decoration:none">Go to Home</a>'
-    + '</div></div>';
+  window.location.href = '/lobbies';
   throw new Error('No lobby');
 }
 
