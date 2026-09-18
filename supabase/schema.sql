@@ -45,7 +45,7 @@ create table if not exists public.lobbies (
 create table if not exists public.messages (
   id uuid primary key default gen_random_uuid(),
   lobby_id uuid not null references public.lobbies(id) on delete cascade,
-  user_id uuid not null references public.users(id),
+  user_id uuid references public.users(id) on delete set null,
   display_name text not null,
   text text not null,
   created_at timestamptz default now()

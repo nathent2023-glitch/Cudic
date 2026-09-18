@@ -314,9 +314,10 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
       .single();
 
     if (!lobby) {
+      const isDefault = ['welcome','hello'].includes(lobbyName);
       const { data: newLobby } = await supabase
         .from('lobbies')
-        .insert({ name: lobbyName })
+        .insert({ name: lobbyName, persistent: isDefault })
         .select('id, persistent')
         .single();
       lobby = newLobby;
@@ -737,9 +738,10 @@ async function saveMessage(lobbyName, userId, displayName, text) {
       .single();
 
     if (!lobby) {
+      const isDefault2 = ['welcome','hello'].includes(lobbyName);
       const { data: newLobby } = await supabase
         .from('lobbies')
-        .insert({ name: lobbyName })
+        .insert({ name: lobbyName, persistent: isDefault2 })
         .select('id')
         .single();
       lobby = newLobby;
@@ -748,7 +750,7 @@ async function saveMessage(lobbyName, userId, displayName, text) {
     if (lobby) {
       await supabase.from('messages').insert({
         lobby_id: lobby.id,
-        user_id: userId || '00000000-0000-0000-0000-000000000000',
+        user_id: userId || null,
         display_name: displayName,
         text,
       });
