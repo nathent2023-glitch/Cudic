@@ -31,11 +31,9 @@
         +'<span class="sidebar-brand-text">glox<span class="dot">.</span></span>'
       +'</div>'
       +'<div class="nav-section-label">Navigate</div>'
-      +sbItem('/','home','home','Home')
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
-      +sbItem('/editor','editor','editor','Editor')
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'
