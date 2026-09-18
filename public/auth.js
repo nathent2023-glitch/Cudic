@@ -4,18 +4,25 @@
 
 function getSupabase() {
   if (window._supabase) return window._supabase;
+  if (window._supabasePromise) return window._supabasePromise;
   if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_')) return null;
-
+  if (window.supabase && window.supabase.createClient) {
+    window._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return window._supabase;
+  }
   const script = document.createElement('script');
   script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
   document.head.appendChild(script);
-
-  return new Promise((resolve) => {
+  window._supabasePromise = new Promise((resolve, reject) => {
     script.onload = () => {
-      window._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      resolve(window._supabase);
+      try {
+        window._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        resolve(window._supabase);
+      } catch(e) { reject(e); }
     };
+    script.onerror = () => reject(new Error('Failed to load Supabase'));
   });
+  return window._supabasePromise;
 }
 
 // ── Handle OAuth callback (runs on every page load) ──────────────
