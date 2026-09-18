@@ -728,6 +728,10 @@ function broadcast(lobbyName, msg, excludeWs = null) {
 function getLobbyList() {
   const list = [];
   for (const [name, users] of lobbies) {
+    // Hide server lobbies from public Active lobbies (they're private group chats)
+    if (name.startsWith('server:')) continue;
+    // Hide empty and ghost lobbies
+    if (!users || users.size === 0) { lobbies.delete(name); continue; }
     list.push({ name, count: users.size });
   }
   return list.filter(l => l.count > 0);

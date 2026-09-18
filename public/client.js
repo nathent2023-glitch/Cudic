@@ -106,12 +106,15 @@ ws.onopen = async () => {
   if (isPersistent) {
     try {
       const apiHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-      await fetch(`${apiHost}/api/lobby/persistent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyName: lobby, persistent: true }) });
+      await fetch(`${apiHost}/api/lobby/persistent`, { method: 'POST', headers: { 'Authorization': token ? 'Bearer '+token : '', 'Content-Type': 'application/json' }, body: JSON.stringify({ lobbyName: lobby, persistent: true }) });
     } catch (e) {}
   }
   ws.send(JSON.stringify({ type: 'join', lobby, username, userId }));
   await loadHistory();
 };
+// Ensure server knows we left when navigating away
+window.addEventListener('pagehide', function(){ try{ ws.close(); }catch(e){} });
+window.addEventListener('beforeunload', function(){ try{ ws.close(); }catch(e){} });
 
 ws.onmessage = (e) => {
   const msg = JSON.parse(e.data);
