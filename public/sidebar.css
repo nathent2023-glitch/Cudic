@@ -97,7 +97,7 @@ body {
   border-radius: 12px;
 }
 
-.sidebar-brand svg { width: 28px; height: 28px; stroke: var(--text-primary); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sidebar-brand svg { width: 28px; height: 28px; stroke: #0B0D12; fill: #FFFFFF; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; paint-order: stroke fill; }
 
 .sidebar-brand-text {
   font-family: var(--font-head);
