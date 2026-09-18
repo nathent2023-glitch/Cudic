@@ -66,14 +66,12 @@ body {
   height: 100%;
   padding: 20px 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
   transition: width 0.22s ease;
 }
 .sidebar:hover { width: 220px; }
-.sidebar:not(:hover) .sidebar-brand-text,
 .sidebar:not(:hover) .mode-row span,
 .sidebar:not(:hover) #accountRow > div:nth-child(2) { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; white-space: nowrap; }
-.sidebar:hover .sidebar-brand-text { opacity: 1; max-width: 200px; }
 .sidebar:not(:hover) .nav-section-label { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; max-width: none; opacity: 1; }
 
@@ -374,5 +372,20 @@ body {
   line-height: 1.5;
   margin: 0 0 22px;
 }
+
+/* FORCE BRAND ALWAYS VISIBLE - nothing else affects it */
+.sidebar-brand,
+.sidebar-brand-text,
+.sidebar-brand svg {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  max-width: none !important;
+  pointer-events: auto !important;
+  overflow: visible !important;
+}
+.sidebar-brand { background: #12141B !important; }
+.sidebar-brand-text { display: block !important; color: #FFFFFF !important; }
+.sidebar-brand svg { display: block !important; stroke: #FFFFFF !important; fill: none !important; }
 
 .empty-card .btn { width: auto; padding: 10px 20px; }
