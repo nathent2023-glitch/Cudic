@@ -64,7 +64,27 @@ body {
   height: 100%;
   padding: 20px 0;
   overflow-y: auto;
+  transition: width 0.2s;
 }
+.sidebar.collapsed { width: 60px; }
+.sidebar.collapsed .sidebar-brand-text,
+.sidebar.collapsed .nav-section-label,
+.sidebar.collapsed .sidebar-item span,
+.sidebar.collapsed #serversSection,
+.sidebar.collapsed .mode-row span,
+.sidebar.collapsed #accountRow > div:nth-child(2),
+.sidebar.collapsed #logoutBtn { display: none !important; }
+.sidebar.collapsed .sidebar-brand { justify-content: center; padding: 0 0 24px; }
+.sidebar.collapsed .sidebar-item { justify-content: center; padding: 10px 0; border-left-width: 3px; }
+.sidebar.collapsed .sidebar-bottom { padding: 16px 8px 0; }
+.sidebar.collapsed .account-row { justify-content: center; }
+.sidebar-toggle {
+  background: none; border: 1px solid var(--line); border-radius: 6px;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-secondary); flex-shrink: 0; margin-left: auto;
+}
+.sidebar-toggle:hover { background: var(--panel-raised); color: var(--text-primary); }
+.sidebar-toggle svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.6; fill: none; }
 
 .sidebar-brand {
   display: flex;

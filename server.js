@@ -349,28 +349,44 @@ body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:
     return;
   }
 
-  // ── API: set lobby persistence ─────────────────────────────────
+  // ── API: set lobby persistence (only for owned servers/lobbies) ─
   if (url.pathname === '/api/lobby/persistent' && req.method === 'POST') {
     cors(res);
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
     const body = await readBody(req);
     const { lobbyName, persistent } = body;
     if (!lobbyName) { res.writeHead(400); res.end(); return; }
 
-    const { data: lobby } = await supabase
-      .from('lobbies')
-      .select('id')
-      .eq('name', lobbyName)
-      .single();
+    // If it's a server lobby (server:<id>), check server owner
+    if (lobbyName.startsWith('server:')) {
+      const serverId = lobbyName.slice(7);
+      const { data: server } = await supabase.from('servers').select('owner_id').eq('id', serverId).single();
+      if (!server || server.owner_id !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only server owner can change persistence' })); return; }
+      // For servers, persistence is always true — but allow toggle for lobby part
+    } else {
+      // Regular lobby: check if it's welcome/hello (always persistent) or owned
+      if (['welcome','hello'].includes(lobbyName)) {
+        // Keep persistent true for defaults
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, persistent: true }));
+        return;
+      }
+      const { data: lobby } = await supabase.from('lobbies').select('id, created_by').eq('name', lobbyName).single();
+      if (!lobby) { res.writeHead(404); res.end(); return; }
+      // For random public lobbies with no owner, allow cleanup but not persist toggle
+      if (!lobby.created_by) {
+        res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the lobby owner can make it persistent' })); return;
+      }
+      if (lobby.created_by !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only lobby owner can change persistence' })); return; }
+    }
 
+    const { data: lobby } = await supabase.from('lobbies').select('id').eq('name', lobbyName).single();
     if (!lobby) { res.writeHead(404); res.end(); return; }
-
-    await supabase
-      .from('lobbies')
-      .update({ persistent: !!persistent })
-      .eq('id', lobby.id);
-
+    await supabase.from('lobbies').update({ persistent: !!persistent }).eq('id', lobby.id);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, persistent: !!persistent }));
     return;
@@ -926,6 +942,21 @@ setInterval(() => {
   }
   sendLobbyListToAll();
 }, 5000);
+
+// ── Cleanup: delete messages in non-persistent lobbies older than 2h ─
+async function cleanupNonPersistent(){
+  try{
+    const twoHoursAgo = new Date(Date.now() - 2*60*60*1000).toISOString();
+    // Get non-persistent lobby ids
+    const { data: lobbies } = await supabase.from('lobbies').select('id').eq('persistent', false);
+    if(!lobbies || !lobbies.length) return;
+    const ids = lobbies.map(l=>l.id);
+    const { error } = await supabase.from('messages').delete().in('lobby_id', ids).lt('created_at', twoHoursAgo);
+    if(!error) console.log('[cleanup] removed old messages from', ids.length, 'non-persistent lobbies');
+  }catch(e){ console.error('[cleanup] error:', e.message); }
+}
+setInterval(cleanupNonPersistent, 2*60*60*1000); // every 2 hours
+setTimeout(cleanupNonPersistent, 60*1000); // run 1 min after start
 
 // ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {

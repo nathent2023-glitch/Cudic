@@ -29,6 +29,7 @@
       +'<div class="sidebar-brand">'
         +icons.cube
         +'<span class="sidebar-brand-text">glox<span class="dot">.</span></span>'
+        +'<button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg></button>'
       +'</div>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/','home','home','Home')
@@ -39,7 +40,6 @@
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'
-        +'<button id="createServerBtn" style="width:100%;margin-top:6px;padding:7px;border:1px dashed var(--line);border-radius:6px;background:transparent;color:var(--text-secondary);font-size:0.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="1.5" fill="none"><path d="M12 5v14M5 12h14"/></svg> New server</button>'
       +'</div>'
     +'</div>'
     +'<div class="sidebar-bottom">'
@@ -185,18 +185,6 @@
         } else {
           list.innerHTML='<div style="font-size:0.75rem;color:var(--text-tertiary);padding:6px 20px">No servers yet</div>';
         }
-        var btn=document.getElementById('createServerBtn');
-        if(myServers.length>=3) btn.style.display='none'; else btn.style.display='flex';
-        btn.onclick=function(){
-          if(myServers.length>=3){alert('You can own at most 3 servers.');return;}
-          var name=prompt('Server name (2-20 chars, letters/numbers/-/_):');
-          if(!name||name.trim().length<2) return;
-          var desc=prompt('Description (optional):')||'';
-          var vis=confirm('Make this server public? OK=public, Cancel=private (invite only)')?'public':'private';
-          fetch(apiHost+'/api/servers',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({name:name.trim(),description:desc,visibility:vis})}).then(function(r){return r.json()}).then(function(d){
-            if(d.error) alert(d.error); else window.location.reload();
-          });
-        };
       } else {
         document.getElementById('serversSection').style.display='none';
       }
@@ -204,6 +192,15 @@
   }
 
   window._reloadSidebarUser=loadSidebarUser;
+
+  // Collapsible sidebar (sandwich sideways)
+  var sidebarEl=document.querySelector('.sidebar');
+  var toggleBtn=document.getElementById('sidebarToggle');
+  if(localStorage.getItem('glox-sidebar-collapsed')==='1') sidebarEl.classList.add('collapsed');
+  if(toggleBtn) toggleBtn.addEventListener('click',function(){
+    sidebarEl.classList.toggle('collapsed');
+    localStorage.setItem('glox-sidebar-collapsed',sidebarEl.classList.contains('collapsed')?'1':'0');
+  });
 
   // Show/hide logout on hover
   var accountRow=document.getElementById('accountRow');

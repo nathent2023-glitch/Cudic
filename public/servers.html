@@ -131,7 +131,7 @@
         var chatHref='/chat?lobby='+encodeURIComponent(lobby)+'&username='+encodeURIComponent(uname);
         var actions=isOwn
           ? '<div class="card-actions"><button onclick="openEdit(\''+s.id+'\')">Edit</button><button onclick="copyInvite(\''+s.invite_code+'\')">Copy invite</button><button onclick="deleteServer(\''+s.id+'\')" style="color:var(--danger)">Delete</button></div><a href="'+chatHref+'" class="btn btn-primary" style="display:block;text-align:center;margin-top:8px;text-decoration:none;padding:8px">Open chat</a>'
-          : '<div class="card-actions"><button class="btn-join" onclick="joinServer(\''+s.id+'\')">Join</button><a href="'+chatHref+'" style="flex:1;text-align:center;padding:7px;border:1px solid var(--line);border-radius:6px;text-decoration:none;color:var(--text-secondary);font-size:0.78rem">Open chat</a></div>';
+          : '<div class="card-actions"><button class="btn-join" onclick="joinServer(\''+s.id+'\',\''+s.visibility+'\')">Join</button><a href="'+chatHref+'" style="flex:1;text-align:center;padding:7px;border:1px solid var(--line);border-radius:6px;text-decoration:none;color:var(--text-secondary);font-size:0.78rem">Open chat</a></div>';
         return '<div class="server-card">'
           +'<div class="server-card-head"><div class="server-icon">'+icon+'</div><div><div class="server-name">'+escapeHtml(s.name)+'</div><div style="font-size:0.7rem;color:var(--text-tertiary)">'+badge+'</div></div></div>'
           +'<div class="server-desc">'+escapeHtml(s.description||'No description')+'</div>'
@@ -144,9 +144,13 @@
     function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
     function copyInvite(code){ navigator.clipboard.writeText(window.location.origin+'/servers?invite='+code).then(function(){ alert('Invite link copied!'); }); }
 
-    async function joinServer(id){
+    async function joinServer(id, visibility){
       var token=getToken(); if(!token){alert('Sign in to join servers');return;}
-      var code=prompt('Invite code (leave blank for public servers):')||'';
+      var code='';
+      if(visibility==='private'){
+        code=prompt('Invite code:')||'';
+        if(!code){alert('Invite code required for private servers');return;}
+      }
       var res=await fetch(apiHost+'/api/servers/'+id+'/join',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({invite_code:code})});
       var d=await res.json();
       if(d.error) alert(d.error); else { alert('Joined!'); location.reload(); }
