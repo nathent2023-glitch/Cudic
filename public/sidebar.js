@@ -190,9 +190,6 @@
 
   window._reloadSidebarUser=loadSidebarUser;
 
-  // Load fluid animations (GSAP)
-  var fluidS=document.createElement('script'); fluidS.src='/fluid.js'; document.head.appendChild(fluidS);
-
   // Show/hide logout on hover
   var accountRow=document.getElementById('accountRow');
   var logoutBtn=document.getElementById('logoutBtn');
