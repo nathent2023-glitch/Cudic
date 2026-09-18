@@ -25,11 +25,8 @@
   var nav=document.createElement('nav');
   nav.className='sidebar';
   nav.innerHTML=''
-    +'<div class="sidebar-top">'
-      +'<div class="sidebar-brand">'
-        +icons.cube
-        +'<span class="sidebar-brand-text">glox<span class="dot">.</span></span>'
-      +'</div>'
+    +'<div class="sidebar-brand-card"><div class="sidebar-brand"><img src="/brand.svg" alt="glox." style="width:100%;height:28px;object-fit:contain;display:block"></div></div>'
+    +'<div class="sidebar-nav-card">'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
@@ -38,8 +35,8 @@
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'
       +'</div>'
-    +'</div>'
-    +'<div class="sidebar-bottom">'
+      +'<div style="flex:1"></div>'
+      +'<div class="sidebar-bottom">'
       +'<div class="mode-row">'
         +'<span id="themeLabel">Light mode</span>'
         +'<div class="switch" id="themeToggleBtn"></div>'
@@ -52,7 +49,7 @@
         +'</div>'
         +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:calc(100% + 8px);background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 12px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
       +'</div>'
-    +'</div>';
+    +'</div></div>';
 
   document.body.insertBefore(nav,document.body.firstChild);
 
