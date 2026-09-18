@@ -71,17 +71,17 @@ body {
 }
 .sidebar:hover { width: 220px; }
 .sidebar:not(:hover) .sidebar-brand-text,
-.sidebar:not(:hover) .nav-section-label,
 .sidebar:not(:hover) .mode-row span,
-.sidebar:not(:hover) #accountRow > div:nth-child(2) { display: none; }
-.sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; }
+.sidebar:not(:hover) #accountRow > div:nth-child(2) { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; transition: opacity 0.15s, max-width 0.2s; white-space: nowrap; }
+.sidebar:not(:hover) .nav-section-label { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
+.sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; max-width: none; opacity: 1; }
 
 /* Keep servers + avatar visible when collapsed */
 .sidebar #serversSection { opacity: 1; pointer-events: auto; }
 .sidebar:not(:hover) .sidebar-brand { justify-content: center; padding: 8px 0 18px; gap: 0; }
 .sidebar:not(:hover) .sidebar-brand svg { width: 24px; height: 24px; }
 .sidebar:not(:hover) .sidebar-item { justify-content: center; align-items: center; padding: 10px 0; border-left-width: 2px; gap: 0; width: 100%; }
-.sidebar:not(:hover) .sidebar-item span { display: none; }
+.sidebar:not(:hover) .sidebar-item span { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) .sidebar-bottom { padding: 16px 8px 0; }
 .sidebar:not(:hover) .account-row { justify-content: center; }
 .sidebar:not(:hover) #logoutBtn { display: none !important; }
@@ -99,10 +99,10 @@ body {
 .sidebar-brand svg { width: 28px; height: 28px; stroke: #0B0D12; fill: #FFFFFF; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; paint-order: stroke fill; }
 
 .sidebar-brand-text {
-  font-family: 'NineCircles', 'Space Grotesk', sans-serif;
-  font-weight: 400;
-  font-size: 1.3rem;
-  letter-spacing: -0.02em;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
   color: var(--text-primary);
   line-height: 1;
 }

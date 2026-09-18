@@ -62,13 +62,7 @@
       fluidHover(".btn-primary");
     }, 500);
 
-    // Sidebar smooth expand (override CSS width transition with GSAP for extra fluid)
-    var sidebar=document.querySelector('.sidebar');
-    if(sidebar){
-      sidebar.style.transition='none';
-      sidebar.addEventListener('mouseenter', function(){ gsap.to(sidebar, { width: 220, duration: 0.45, ease: "power3.inOut", overwrite: true }); });
-      sidebar.addEventListener('mouseleave', function(){ gsap.to(sidebar, { width: 72, duration: 0.45, ease: "power3.inOut", overwrite: true }); });
-    }
+    // Sidebar uses CSS width transition (0.22s ease) for continuity — no GSAP override
 
     // Modal fluid open
     var modals=document.querySelectorAll('.modal-overlay');
