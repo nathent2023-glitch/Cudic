@@ -72,7 +72,10 @@ body {
 .sidebar:hover { width: 220px; }
 .sidebar:not(:hover) .sidebar-brand-text,
 .sidebar:not(:hover) .mode-row span,
-.sidebar:not(:hover) #accountRow > div:nth-child(2) { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; transition: opacity 0.15s, max-width 0.2s; white-space: nowrap; }
+.sidebar:not(:hover) #accountRow > div:nth-child(2) { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; white-space: nowrap; }
+.sidebar:hover .sidebar-brand-text,
+.sidebar:hover .mode-row span,
+.sidebar:hover #accountRow > div:nth-child(2) { opacity: 1; max-width: 200px; }
 .sidebar:not(:hover) .nav-section-label { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; max-width: none; opacity: 1; }
 
@@ -100,11 +103,13 @@ body {
 .sidebar-brand svg {
   width: 28px;
   height: 28px;
-  stroke: #FFFFFF;
-  fill: none;
-  stroke-width: 1.8;
+  stroke: #FFFFFF !important;
+  fill: none !important;
+  stroke-width: 2 !important;
   stroke-linecap: round;
   stroke-linejoin: round;
+  opacity: 1 !important;
+  display: block !important;
 }
 
 .sidebar-brand-text {
@@ -112,8 +117,10 @@ body {
   font-weight: 700;
   font-size: 1.4rem;
   letter-spacing: -0.04em;
-  color: #FFFFFF;
+  color: #FFFFFF !important;
   line-height: 1;
+  opacity: 1 !important;
+  display: block !important;
 }
 
 .sidebar-brand-text .dot { color: var(--signal); }
