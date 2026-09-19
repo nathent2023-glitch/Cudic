@@ -32,26 +32,27 @@ them so we don't drift back into them:
 
 ## 2. Color
 
-Base is a warm, sunny paper tone — friendly and playful, not a stark
-clinical white — with **one grape signal color** reserved for primary
-actions and active state, and **one tangerine accent** reserved for
-"live" / play-related moments only. There is no dark theme and no theme
-toggle; the app is light-only.
+Base is a light ice-blue "playground" tone — friendly and Scratch-like,
+not a stark clinical white — with **one purple signal color** reserved
+for primary actions and active state, and **one orange accent** reserved
+for "live" / play-related moments only. There is no dark theme and no
+theme toggle; the app is light-only.
 
 | Token | Hex | Use |
 |---|---|---|
-| `--ink` | `#FAF4E8` | App background (warm cream) |
-| `--panel` | `#FFFDF7` | Sidebar, cards, inputs |
-| `--panel-raised` | `#F4ECDB` | Hover / active surface, popovers |
-| `--line` | `#E8DBBF` | Hairline borders, dividers |
-| `--text-primary` | `#28242F` | Headings, primary text |
-| `--text-secondary` | `#6E6880` | Supporting text, labels |
-| `--text-tertiary` | `#ABA2BE` | Disabled, placeholder |
-| `--signal` | `#5B3DF0` | Primary buttons, links, active nav, focus ring |
-| `--signal-hover` | `#4A2ED4` | Signal hover/pressed |
-| `--ember` | `#FF7A29` | "Play", "Publish", live/online indicators only |
-| `--success` | `#189A63` | Success states |
-| `--danger` | `#DC4740` | Destructive actions, errors |
+| `--ink` | `#E8EEFA` | App background (ice blue) |
+| `--panel` | `#FFFFFF` | Sidebar, cards, inputs |
+| `--panel-raised` | `#E2E9FA` | Hover / active surface, popovers |
+| `--line` | `#C9D5F0` | Hairline borders, dividers |
+| `--text-primary` | `#2E2A4B` | Headings, primary text |
+| `--text-secondary` | `#5C5878` | Supporting text, labels |
+| `--text-tertiary` | `#9C97B8` | Disabled, placeholder |
+| `--signal` | `#774DCB` | Primary buttons, links, active nav, focus ring |
+| `--signal-hover` | `#643BAD` | Signal hover/pressed |
+| `--ember` | `#FF8C1A` | "Play", "Publish", live/online indicators only (solid fills, dark text) |
+| `--ember-deep` | `#B25E00` | Small ember-colored text on light backgrounds (badges) |
+| `--success` | `#14965F` | Success states |
+| `--danger` | `#E0442E` | Destructive actions, errors |
 
 **Rule:** `--signal` is the only saturated color allowed on interactive
 chrome (buttons, active states, focus, links). `--ember` never appears on

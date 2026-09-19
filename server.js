@@ -91,13 +91,13 @@ const server = http.createServer(async (req, res) => {
         to: email,
         subject: 'Verify your Glox account',
         html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFDF7;color:#28242F;border-radius:16px;border:1px solid #E8DBBF;">
-            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#5B3DF0;">.</span></h1>
-            <p style="color:#6E6880;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
-            <p style="font-size:15px;line-height:1.6;color:#6E6880;">Hi ${displayName || email},</p>
-            <p style="font-size:15px;line-height:1.6;color:#6E6880;">Click the button below to verify your email and start using Glox:</p>
-            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#5B3DF0;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
-            <p style="font-size:13px;color:#ABA2BE;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFFFF;color:#2E2A4B;border-radius:16px;border:1px solid #C9D5F0;">
+            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#774DCB;">.</span></h1>
+            <p style="color:#5C5878;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
+            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Hi ${displayName || email},</p>
+            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Click the button below to verify your email and start using Glox:</p>
+            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#774DCB;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
+            <p style="font-size:13px;color:#9C97B8;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
           </div>
         `,
       });
@@ -177,14 +177,14 @@ const server = http.createServer(async (req, res) => {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#FAF4E8;color:#28242F;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.card{max-width:420px;width:94vw;background:#FFFDF7;border-radius:20px;border:1px solid #E8DBBF;padding:36px 32px;text-align:center;box-shadow:0 24px 60px rgba(90,70,30,.16)}
+body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{max-width:420px;width:94vw;background:#FFFFFF;border-radius:20px;border:1px solid #C9D5F0;padding:36px 32px;text-align:center;box-shadow:0 24px 60px rgba(80,90,180,.20)}
 .brand{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
-.brand span{color:#5B3DF0}
+.brand span{color:#774DCB}
 .status{font-size:3rem;margin-bottom:16px}
-.msg{font-size:1rem;color:#6E6880;line-height:1.6;margin-bottom:24px}
-.btn{display:inline-block;padding:12px 32px;background:#5B3DF0;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
-.btn:hover{background:#4A2ED4}
+.msg{font-size:1rem;color:#5C5878;line-height:1.6;margin-bottom:24px}
+.btn{display:inline-block;padding:12px 32px;background:#774DCB;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
+.btn:hover{background:#643BAD}
 </style></head>
 <body>
 <div class="card">
@@ -681,6 +681,21 @@ body{font-family:'Inter',sans-serif;background:#FAF4E8;color:#28242F;min-height:
   // ── Redirect /chat to /chat.html ───────────────────────────────
   if (url.pathname === '/chat') {
     url.pathname = '/chat.html';
+  }
+
+  // ── Redirect /login to /login.html ─────────────────────────────
+  if (url.pathname === '/login') {
+    url.pathname = '/login.html';
+  }
+
+  // ── Redirect /servers to /servers.html ─────────────────────────
+  if (url.pathname === '/servers') {
+    url.pathname = '/servers.html';
+  }
+
+  // ── Redirect /lobbies to /lobbies.html ─────────────────────────
+  if (url.pathname === '/lobbies') {
+    url.pathname = '/lobbies.html';
   }
 
   // ── Redirect /games to /games.html ────────────────────────────
