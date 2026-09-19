@@ -14,7 +14,6 @@ const msgInput = document.getElementById('msgInput');
 const userListEl = document.getElementById('userList');
 const userCountEl = document.getElementById('userCount');
 const typingEl = document.getElementById('typingIndicator');
-const menuBtn = document.getElementById('menuBtn');
 const sidebar = document.querySelector('.chat-sidebar');
 
 // If no lobby, redirect to dedicated lobbies panel
@@ -33,8 +32,8 @@ async function fetchLobbyInfo() {
     const res = await fetch(`${apiHost}/api/lobby?name=${encodeURIComponent(lobby)}`);
     const data = await res.json();
     if (data.lobby && data.lobby.persistent) {
-      chatTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(79,216,151,0.15);color:#4FD897;padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px;vertical-align:middle">Persistent</span>`;
-      lobbyTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(79,216,151,0.15);color:#4FD897;padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px">Persistent</span>`;
+      chatTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(24,154,99,0.15);color:var(--success);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px;vertical-align:middle">Persistent</span>`;
+      lobbyTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(24,154,99,0.15);color:var(--success);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px">Persistent</span>`;
     } else {
       chatTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(255,255,255,0.06);color:var(--text-tertiary);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px;vertical-align:middle">24h</span>`;
       lobbyTitle.innerHTML = `#${lobby} <span style="font-size:0.65rem;background:rgba(255,255,255,0.06);color:var(--text-tertiary);padding:2px 7px;border-radius:4px;font-weight:500;margin-left:6px">24h</span>`;
@@ -43,11 +42,7 @@ async function fetchLobbyInfo() {
 }
 fetchLobbyInfo();
 
-// ── Mobile sidebar toggle ────────────────────────────────────────
-menuBtn.addEventListener('click', () => {
-  sidebar.classList.toggle('open');
-});
-
+// ── Tapping the chat area dismisses the floating user list (narrow screens) ──
 document.querySelector('.chat-main').addEventListener('click', () => {
   sidebar.classList.remove('open');
 });

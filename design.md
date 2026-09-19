@@ -15,12 +15,13 @@ this doc before shipping. **The `/editor` route is exempt** — see
 
 ## 1. What we're moving away from
 
-The current UI hits three of the most common "AI-generated" tells. Naming
+The old UI hit three of the most common "AI-generated" tells. Naming
 them so we don't drift back into them:
 
 - **Near-black background + one bright acid-green accent on everything** —
   buttons, active nav state, toggles, links all share the same lime,
-  so nothing is actually emphasized.
+  so nothing is actually emphasized. (Retired with the dark theme —
+  the palette below is light-only.)
 - **Emoji as icons** (🏠💬🎮🔧) — inconsistent weight, size, and style
   against each other.
 - **ALL-CAPS micro-labels** ("NAVIGATE", "ACCOUNT", "OR JOIN WITHOUT AN
@@ -31,36 +32,26 @@ them so we don't drift back into them:
 
 ## 2. Color
 
-Base is a dark, slightly blue-black "workshop" tone — not pure black —
-with **one signal color** reserved for primary actions and active state,
-and **one warm accent** reserved for "live" / play-related moments only.
+Base is a warm, sunny paper tone — friendly and playful, not a stark
+clinical white — with **one grape signal color** reserved for primary
+actions and active state, and **one tangerine accent** reserved for
+"live" / play-related moments only. There is no dark theme and no theme
+toggle; the app is light-only.
 
 | Token | Hex | Use |
 |---|---|---|
-| `--ink` | `#12141B` | App background |
-| `--panel` | `#1A1D26` | Sidebar, cards, inputs |
-| `--panel-raised` | `#21242F` | Hover / active surface, popovers |
-| `--line` | `#2A2E3A` | Hairline borders, dividers |
-| `--text-primary` | `#ECEEF5` | Headings, primary text |
-| `--text-secondary` | `#8D93A6` | Supporting text, labels |
-| `--text-tertiary` | `#5B6070` | Disabled, placeholder |
-| `--signal` | `#6E6BFF` | Primary buttons, links, active nav, focus ring |
-| `--signal-hover` | `#5A57E0` | Signal hover/pressed |
-| `--ember` | `#F2A65A` | "Play", "Publish", live/online indicators only |
-| `--success` | `#4FD897` | Success states |
-| `--danger` | `#F0655C` | Destructive actions, errors |
-
-Light mode (toggle exists — keep it functional, don't remove it):
-
-| Token | Hex |
-|---|---|
-| `--ink` | `#F6F6F9` |
-| `--panel` | `#FFFFFF` |
-| `--panel-raised` | `#EFEFF5` |
-| `--line` | `#DFDFE8` |
-| `--text-primary` | `#191B22` |
-| `--text-secondary` | `#5B5F6E` |
-| `--signal` | `#5451E0` |
+| `--ink` | `#FAF4E8` | App background (warm cream) |
+| `--panel` | `#FFFDF7` | Sidebar, cards, inputs |
+| `--panel-raised` | `#F4ECDB` | Hover / active surface, popovers |
+| `--line` | `#E8DBBF` | Hairline borders, dividers |
+| `--text-primary` | `#28242F` | Headings, primary text |
+| `--text-secondary` | `#6E6880` | Supporting text, labels |
+| `--text-tertiary` | `#ABA2BE` | Disabled, placeholder |
+| `--signal` | `#5B3DF0` | Primary buttons, links, active nav, focus ring |
+| `--signal-hover` | `#4A2ED4` | Signal hover/pressed |
+| `--ember` | `#FF7A29` | "Play", "Publish", live/online indicators only |
+| `--success` | `#189A63` | Success states |
+| `--danger` | `#DC4740` | Destructive actions, errors |
 
 **Rule:** `--signal` is the only saturated color allowed on interactive
 chrome (buttons, active states, focus, links). `--ember` never appears on
