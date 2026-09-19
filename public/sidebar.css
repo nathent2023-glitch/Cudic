@@ -4,20 +4,21 @@
 @font-face { font-family: 'NineCirclesBook'; src: url('/fonts/nine-circles.book.otf') format('opentype'), url('/fonts/nine-circles.book.ttf') format('truetype'); font-display: swap; }
 
 :root {
-  /* Sunny side — light only, no dark theme */
-  --ink: #FAF4E8;
-  --panel: #FFFDF7;
-  --panel-raised: #F4ECDB;
-  --line: #E8DBBF;
-  --text-primary: #28242F;
-  --text-secondary: #6E6880;
-  --text-tertiary: #ABA2BE;
-  --signal: #5B3DF0;
-  --signal-hover: #4A2ED4;
-  --signal-tint: rgba(91, 61, 240, 0.12);
-  --ember: #FF7A29;
-  --success: #189A63;
-  --danger: #DC4740;
+  /* Scratch day — playful light, Scratch purple + orange on ice blue */
+  --ink: #E8EEFA;
+  --panel: #FFFFFF;
+  --panel-raised: #E2E9FA;
+  --line: #C9D5F0;
+  --text-primary: #2E2A4B;
+  --text-secondary: #5C5878;
+  --text-tertiary: #9C97B8;
+  --signal: #774DCB;
+  --signal-hover: #643BAD;
+  --signal-tint: rgba(119, 77, 203, 0.12);
+  --ember: #FF8C1A;
+  --ember-deep: #B25E00;
+  --success: #14965F;
+  --danger: #E0442E;
   --radius-sm: 6px;
   --radius-lg: 12px;
   --font-head: 'Space Grotesk', sans-serif;
@@ -269,7 +270,7 @@ body {
 
 .btn-ember {
   background: var(--ember);
-  color: #FFFDF7;
+  color: #2E2A4B;
 }
 
 .btn-ember:hover { filter: brightness(1.06); }
@@ -284,7 +285,7 @@ body {
 }
 
 .dotgrid {
-  background-image: radial-gradient(circle, rgba(40, 36, 47, 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(46, 42, 75, 0.12) 1px, transparent 1px);
   background-size: 22px 22px;
 }
 
