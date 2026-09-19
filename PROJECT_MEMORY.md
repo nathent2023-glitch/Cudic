@@ -12,19 +12,16 @@
 ## Supabase
 - Project: `opimjwmgmzwapkzgxvhk`
 - URL: `https://opimjwmgmzwapkzgxvhk.supabase.co`
-- Anon key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9waW1qd21nbXp3YXBremd4dmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0ODk2NjYsImV4cCI6MjEwNTA2NTY2Nn0.fU0WlDVrxnRR5veEk4kI6K4HklQoVtxkzPWMH5SSo7A`
-- Service role key: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9waW1qd21nbXp3YXBremd4dmhrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTQ4OTY2NiwiZXhwIjoyMTA1MDY1NjY2fQ.701-ayH7xrBZ6rEXXDd1lyVFQXg0AQjKiQul63paJxU`
-- DB password: `Lbccx14660!`
+- Anon key / Service role key / DB password: MOVED to local `.env` (gitignored) — never commit secrets
+- CLI access: `SUPABASE_ACCESS_TOKEN` user env var (read-only token, revoke at supabase.com/dashboard/account/tokens)
 
 ## GitHub OAuth App (for Supabase GitHub login)
-- Client ID: `Ov23IioZd8mBTSsE5VAq`
-- Client Secret: `6c7f04e7723f9a03616e87ed34f44efe6b272b4f`
+- Client ID: `Ov23IioZd8mBTSsE5VAq` (public identifier, safe to keep)
+- Client Secret: MOVED to local `.env` — never commit
 - Callback URL: `https://opimjwmgmzwapkzgxvhk.supabase.co/auth/v1/callback`
 
-## Render Environment Variables
-- `SUPABASE_URL` = `https://opimjwmgmzwapkzgxvhk.supabase.co`
-- `SUPABASE_ANON_KEY` = (same as above anon key)
-- `SUPABASE_SERVICE_KEY` = (same as above service role key)
+## Render Environment Variables (set in Render dashboard, not in files)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY` (values in local `.env`)
 
 ## Database Schema
 - Tables: `users`, `lobbies`, `messages`
