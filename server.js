@@ -7,7 +7,7 @@ const { WebSocketServer } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY || '');
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // ── Email verification tokens ───────────────────────────────────
 // token → { email, userId, displayName, expires }
@@ -60,6 +60,11 @@ const server = http.createServer(async (req, res) => {
   // ── API: send verification email ──────────────────────────────
   if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
     cors(res);
+    if (!resend) {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY missing)' }));
+      return;
+    }
     let body = '';
     for await (const chunk of req) body += chunk;
     try {
@@ -86,13 +91,13 @@ const server = http.createServer(async (req, res) => {
         to: email,
         subject: 'Verify your Glox account',
         html: `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#16171a;color:#fafdff;border-radius:16px;">
-            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#bfff3c;">.</span></h1>
-            <p style="color:#888;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
-            <p style="font-size:15px;line-height:1.6;color:#ccc;">Hi ${displayName || email},</p>
-            <p style="font-size:15px;line-height:1.6;color:#ccc;">Click the button below to verify your email and start using Glox:</p>
-            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#bfff3c;color:#16171a;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
-            <p style="font-size:13px;color:#555;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFDF7;color:#28242F;border-radius:16px;border:1px solid #E8DBBF;">
+            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#5B3DF0;">.</span></h1>
+            <p style="color:#6E6880;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
+            <p style="font-size:15px;line-height:1.6;color:#6E6880;">Hi ${displayName || email},</p>
+            <p style="font-size:15px;line-height:1.6;color:#6E6880;">Click the button below to verify your email and start using Glox:</p>
+            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#5B3DF0;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
+            <p style="font-size:13px;color:#ABA2BE;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
           </div>
         `,
       });
@@ -172,14 +177,14 @@ const server = http.createServer(async (req, res) => {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#16171a;color:#fafdff;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.card{max-width:420px;width:94vw;background:rgba(22,23,26,.88);backdrop-filter:blur(24px);border-radius:20px;border:1px solid rgba(255,255,255,.07);padding:36px 32px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+body{font-family:'Inter',sans-serif;background:#FAF4E8;color:#28242F;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{max-width:420px;width:94vw;background:#FFFDF7;border-radius:20px;border:1px solid #E8DBBF;padding:36px 32px;text-align:center;box-shadow:0 24px 60px rgba(90,70,30,.16)}
 .brand{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
-.brand span{color:#bfff3c}
+.brand span{color:#5B3DF0}
 .status{font-size:3rem;margin-bottom:16px}
-.msg{font-size:1rem;color:#ccc;line-height:1.6;margin-bottom:24px}
-.btn{display:inline-block;padding:12px 32px;background:#bfff3c;color:#16171a;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
-.btn:hover{background:#a8e62e}
+.msg{font-size:1rem;color:#6E6880;line-height:1.6;margin-bottom:24px}
+.btn{display:inline-block;padding:12px 32px;background:#5B3DF0;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
+.btn:hover{background:#4A2ED4}
 </style></head>
 <body>
 <div class="card">

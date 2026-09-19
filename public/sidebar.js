@@ -25,7 +25,6 @@
   var nav=document.createElement('nav');
   nav.className='sidebar';
   nav.innerHTML=''
-    +'<div class="sidebar-brand-card"><div class="sidebar-brand"><img src="/brand.svg" alt="glox." style="width:100%;height:28px;object-fit:contain;display:block"></div></div>'
     +'<div class="sidebar-nav-card">'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
@@ -37,17 +36,13 @@
       +'</div>'
       +'<div style="flex:1"></div>'
       +'<div class="sidebar-bottom">'
-      +'<div class="mode-row">'
-        +'<span id="themeLabel">Light mode</span>'
-        +'<div class="switch" id="themeToggleBtn"></div>'
-      +'</div>'
       +'<div class="account-row" id="accountRow" style="position:relative;cursor:pointer">'
         +'<div class="avatar" id="sbAvatar">?</div>'
         +'<div>'
           +'<div class="account-name" id="sbName">Guest</div>'
           +'<div class="account-status" id="sbStatus">Not signed in</div>'
         +'</div>'
-        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:calc(100% + 8px);background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:6px 12px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
+        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 14px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
       +'</div>'
     +'</div></div>';
 
@@ -57,21 +52,9 @@
     if(el.getAttribute('data-p')===page) el.classList.add('active');
   });
 
-  // Theme toggle
-  var toggle=document.getElementById('themeToggleBtn');
-  var label=document.getElementById('themeLabel');
-  var saved=localStorage.getItem('glox-theme');
-  if(saved==='light'){
-    document.documentElement.classList.add('light-theme');
-    toggle.classList.add('on');
-    if(label) label.textContent='Dark mode';
-  }
-  toggle.addEventListener('click',function(){
-    var isLight=document.documentElement.classList.toggle('light-theme');
-    toggle.classList.toggle('on',isLight);
-    if(label) label.textContent=isLight?'Dark mode':'Light mode';
-    localStorage.setItem('glox-theme',isLight?'light':'dark');
-  });
+  // Light-only theme: drop any legacy dark/light override
+  document.documentElement.classList.remove('light-theme');
+  try { localStorage.removeItem('glox-theme'); } catch (e) {}
 
   // Load user info
   loadSidebarUser();

@@ -4,41 +4,25 @@
 @font-face { font-family: 'NineCirclesBook'; src: url('/fonts/nine-circles.book.otf') format('opentype'), url('/fonts/nine-circles.book.ttf') format('truetype'); font-display: swap; }
 
 :root {
-  /* Dark mode (default) */
-  --ink: #12141B;
-  --panel: #1A1D26;
-  --panel-raised: #21242F;
-  --line: #2A2E3A;
-  --text-primary: #ECEEF5;
-  --text-secondary: #8D93A6;
-  --text-tertiary: #5B6070;
-  --signal: #6E6BFF;
-  --signal-hover: #5A57E0;
-  --signal-tint: rgba(110, 107, 255, 0.14);
-  --ember: #F2A65A;
-  --success: #4FD897;
-  --danger: #F0655C;
+  /* Sunny side — light only, no dark theme */
+  --ink: #FAF4E8;
+  --panel: #FFFDF7;
+  --panel-raised: #F4ECDB;
+  --line: #E8DBBF;
+  --text-primary: #28242F;
+  --text-secondary: #6E6880;
+  --text-tertiary: #ABA2BE;
+  --signal: #5B3DF0;
+  --signal-hover: #4A2ED4;
+  --signal-tint: rgba(91, 61, 240, 0.12);
+  --ember: #FF7A29;
+  --success: #189A63;
+  --danger: #DC4740;
   --radius-sm: 6px;
   --radius-lg: 12px;
   --font-head: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-}
-
-.light-theme {
-  --ink: #F6F6F9;
-  --panel: #FFFFFF;
-  --panel-raised: #EFEFF5;
-  --line: #DFDFE8;
-  --text-primary: #191B22;
-  --text-secondary: #5B5F6E;
-  --text-tertiary: #9A9DAA;
-  --signal: #5451E0;
-  --signal-hover: #4340C0;
-  --signal-tint: rgba(84, 81, 224, 0.10);
-  --ember: #D48A3A;
-  --success: #2BAA6A;
-  --danger: #D94A42;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,25 +54,10 @@ body {
 }
 .sidebar:hover { width: 220px; }
 
-/* Top bar - brand only, single SVG, theme-proof, never changes */
-.sidebar-brand-card {
-  background: #1A1D26;
-  border: 1px solid #2A2E3A;
-  border-radius: 16px;
-  padding: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  min-height: 56px;
-}
-.sidebar-brand-card img,
-.sidebar-brand-card svg { width: 100%; height: 28px; display: block; }
-
-/* Bottom bar - nav + servers + profile */
+/* Single sidebar card - nav + servers + profile, fills full height */
 .sidebar-nav-card {
-  background: #1A1D26;
-  border: 1px solid #2A2E3A;
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -98,56 +67,17 @@ body {
   min-height: 0;
   padding: 16px 0;
 }
-.sidebar:not(:hover) .mode-row span,
-.sidebar:not(:hover) #accountRow > div:nth-child(2) { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; white-space: nowrap; }
+.sidebar:not(:hover) .account-row { justify-content: center; gap: 0; }
+.sidebar:not(:hover) #accountRow > div:nth-child(2) { display: none; }
 .sidebar:not(:hover) .nav-section-label { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) #serversSection .nav-section-label { display: block !important; height: 1px; background: var(--line); margin: 12px 18px 10px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; max-width: none; opacity: 1; }
 
 /* Keep servers + avatar visible when collapsed */
 .sidebar #serversSection { opacity: 1; pointer-events: auto; }
-.sidebar:not(:hover) .sidebar-brand { justify-content: center; padding: 8px 0 18px; gap: 0; }
-.sidebar:not(:hover) .sidebar-brand svg { width: 24px; height: 24px; }
 .sidebar:not(:hover) .sidebar-item { justify-content: center; align-items: center; padding: 10px 0; border-left-width: 2px; gap: 0; width: 100%; }
 .sidebar:not(:hover) .sidebar-item span { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) .sidebar-bottom { padding: 16px 8px 0; }
-.sidebar:not(:hover) .account-row { justify-content: center; }
 .sidebar:not(:hover) #logoutBtn { display: none !important; }
-
-.sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 56px;
-  padding: 10px 18px 16px;
-  border-radius: 0;
-  background: transparent;
-}
-
-.sidebar-brand svg {
-  width: 28px;
-  height: 28px;
-  stroke: #FFFFFF !important;
-  fill: none !important;
-  stroke-width: 2 !important;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 1 !important;
-  display: block !important;
-}
-
-.sidebar-brand-text {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 1.4rem;
-  letter-spacing: -0.04em;
-  color: #FFFFFF !important;
-  line-height: 1;
-  opacity: 1 !important;
-  display: block !important;
-}
-
-.sidebar-brand-text .dot { color: var(--signal); }
 
 .nav-section-label {
   font-size: 0.75rem;
@@ -339,7 +269,7 @@ body {
 
 .btn-ember {
   background: var(--ember);
-  color: #1A1200;
+  color: #FFFDF7;
 }
 
 .btn-ember:hover { filter: brightness(1.06); }
@@ -354,7 +284,7 @@ body {
 }
 
 .dotgrid {
-  background-image: radial-gradient(circle, rgba(236,238,245,0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(40, 36, 47, 0.12) 1px, transparent 1px);
   background-size: 22px 22px;
 }
 
@@ -400,20 +330,5 @@ body {
   line-height: 1.5;
   margin: 0 0 22px;
 }
-
-/* FORCE BRAND ALWAYS VISIBLE - nothing else affects it */
-.sidebar-brand,
-.sidebar-brand-text,
-.sidebar-brand svg {
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-  max-width: none !important;
-  pointer-events: auto !important;
-  overflow: visible !important;
-}
-.sidebar-brand { background: #12141B !important; }
-.sidebar-brand-text { display: block !important; color: #FFFFFF !important; }
-.sidebar-brand svg { display: block !important; stroke: #FFFFFF !important; fill: none !important; }
 
 .empty-card .btn { width: auto; padding: 10px 20px; }
