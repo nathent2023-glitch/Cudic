@@ -59,8 +59,8 @@ async function signInWithGitHub() {
   const db = await getSupabase();
   if (!db) { alert('Supabase not configured'); return; }
 
-  // Redirect back to the Vercel frontend after auth
-  const redirectTo = window.location.origin + '/';
+  // Redirect back to the app hub after auth
+  const redirectTo = window.location.origin + '/lobbies';
 
   const { error } = await db.auth.signInWithOAuth({
     provider: 'github',

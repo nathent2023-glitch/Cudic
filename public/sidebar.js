@@ -4,6 +4,24 @@
 
   var page=document.body.getAttribute('data-page')||'home';
 
+  // Apply saved prefs (personalization + performance) on every page
+  try{
+    var _acc=localStorage.getItem('glox_accent');
+    if(_acc&&/^#[0-9a-fA-F]{6}$/.test(_acc)){
+      var _c=[parseInt(_acc.slice(1,3),16),parseInt(_acc.slice(3,5),16),parseInt(_acc.slice(5,7),16)];
+      var _hovers={'#774DCB':'#643BAD','#FF8C1A':'#E67A00','#2E9EDB':'#1F7FB8','#14A468':'#0E7A4E'};
+      document.documentElement.style.setProperty('--signal',_acc);
+      document.documentElement.style.setProperty('--signal-hover',_hovers[_acc]||_acc);
+      document.documentElement.style.setProperty('--signal-tint','rgba('+_c[0]+','+_c[1]+','+_c[2]+',0.12)');
+    }
+    if(localStorage.getItem('glox_reduce_motion')==='1'){
+      document.documentElement.classList.add('reduce-motion');
+      var _st=document.createElement('style');
+      _st.textContent='html.reduce-motion *,html.reduce-motion *::before,html.reduce-motion *::after{animation-duration:.001s!important;transition-duration:.001s!important}';
+      document.head.appendChild(_st);
+    }
+  }catch(e){}
+
   var icons={
     home:'<svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>',
     chat:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4V5Z"/></svg>',
@@ -92,44 +110,7 @@
         var statusEl=document.getElementById('sbStatus');
         nameEl.textContent=data.profile.display_name;
         statusEl.textContent='#'+data.profile.user_id;
-        nameEl.style.cursor='pointer';
-        nameEl.title='Click to change display name';
-        nameEl.addEventListener('click',function(){showNameEditor(data.profile.display_name)});
       }
-    }catch(e){}
-  }
-
-  function showNameEditor(currentName){
-    var nameEl=document.getElementById('sbName');
-    var input=document.createElement('input');
-    input.type='text';input.value=currentName;input.maxLength=24;
-    input.style.cssText='background:var(--panel-raised);border:1px solid var(--signal);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.875rem;padding:2px 6px;width:100%;outline:none;font-family:inherit';
-    var orig=nameEl.textContent;
-    nameEl.textContent='';nameEl.appendChild(input);nameEl.style.cursor='default';input.focus();input.select();
-    function done(){
-      var val=input.value.trim();
-      if(val&&val!==orig){
-        nameEl.textContent=val;
-        updateProfile(val);
-      }else{
-        nameEl.textContent=orig;nameEl.style.cursor='pointer';
-      }
-    }
-    input.addEventListener('blur',done);
-    input.addEventListener('keydown',function(e){if(e.key==='Enter')input.blur();if(e.key==='Escape'){input.value=orig;input.blur()}});
-  }
-
-  async function updateProfile(displayName){
-    try{
-      var apiHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
-      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-      if(!raw) return;
-      var s=JSON.parse(raw);
-      await fetch(apiHost+'/api/profile',{
-        method:'PUT',
-        headers:{'Authorization':'Bearer '+s.access_token,'Content-Type':'application/json'},
-        body:JSON.stringify({display_name:displayName})
-      });
     }catch(e){}
   }
 
@@ -170,12 +151,14 @@
 
   window._reloadSidebarUser=loadSidebarUser;
 
-  // Show/hide logout on hover
+  // Show/hide logout on hover; click account row opens profile
   var accountRow=document.getElementById('accountRow');
   var logoutBtn=document.getElementById('logoutBtn');
   if(accountRow&&logoutBtn){
     accountRow.addEventListener('mouseenter',function(){logoutBtn.style.display='block'});
     accountRow.addEventListener('mouseleave',function(){logoutBtn.style.display='none'});
+    accountRow.style.cursor='pointer';
+    accountRow.addEventListener('click',function(){window.location.href='/profile'});
     logoutBtn.addEventListener('click',function(e){
       e.stopPropagation();
       localStorage.removeItem('sb-opimjwmgmzwapkzgxvhk-auth-token');

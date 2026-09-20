@@ -183,10 +183,9 @@ One deliberate motion moment per screen, nothing more:
 
 ## Scope note
 
-**`/editor` and everything inside it (scene view, code panel, inspector,
-camera preview, toolbar) is out of scope for now** and should not be
-touched by a redesign pass — it works and shouldn't be put at risk. New
-editor work going forward should still adopt the color tokens and type
-scale above where it's a low-risk change (e.g. panel backgrounds, text
-color), but structural changes to the editor are a separate, deliberate
-task.
+**`/editor` is now Glox Studio** — a dark, code-first IDE (Monaco, file
+explorer, live preview, console, publish flow) for building websites and
+Three.js games as plain `index.html` / `style.css` / `main.js` projects.
+It stays **dark-only** (exempt from the light palette) like a real IDE.
+New editor work adopts the product voice and radius scale, but keeps its
+dark chrome: `#0d0e10` surfaces, `#855CD6` accents, `#FF8C1A` publish.

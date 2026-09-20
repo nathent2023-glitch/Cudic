@@ -1,1418 +1,532 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Glox — Game Editor</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/sidebar.css">
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',sans-serif;background:#0d0e10;color:#fafdff;overflow:hidden;height:100vh;display:flex;user-select:none}
-    .topbar{display:flex;align-items:center;gap:6px;padding:0 12px;background:#16171a;border-bottom:1px solid rgba(255,255,255,.06);z-index:10;height:42px;flex-shrink:0}
-    .brand{font-weight:800;font-size:1rem;letter-spacing:-.03em;margin-right:8px}
-    .brand span{color:#bfff3c}
-    .nav-btn{color:#68aed4;text-decoration:none;font-size:.78rem;font-weight:500;padding:5px 10px;border-radius:7px;transition:all .12s}
-    .nav-btn:hover{color:#fafdff;background:rgba(255,255,255,.06)}
-    .sep{width:1px;height:18px;background:rgba(255,255,255,.07);margin:0 2px}
-    .title-input{background:transparent;border:none;color:#fafdff;font-size:.84rem;font-weight:600;font-family:inherit;width:180px;outline:none;padding:4px 8px;border-radius:6px}
-    .title-input:focus{background:rgba(255,255,255,.06)}
-    .spacer{flex:1}
-    .btn{padding:5px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fafdff;font-size:.76rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
-    .btn:hover{background:rgba(255,255,255,.08)}
-    .btn.primary{background:#bfff3c;color:#16171a;border-color:#bfff3c}
-    .btn.play{background:#10d275;color:#fff;border-color:#10d275}
-    .btn.play:hover{background:#0eb868}
-
-    .main-wrap{display:flex;flex:1;overflow:hidden;position:relative}
-
-    .panel-left{width:var(--left-w,220px);min-width:120px;max-width:400px;flex-shrink:0;background:#131416;display:flex;flex-direction:column;overflow:hidden}
-    .panel-right{width:var(--right-w,280px);min-width:160px;max-width:450px;flex-shrink:0;background:#131416;display:flex;flex-direction:column;overflow:hidden}
-    .panel-right .panel-content{overflow-y:auto;padding:0}
-
-    .splitter{flex-shrink:0;z-index:20;transition:background .15s}
-    .splitter-v{width:5px;cursor:col-resize;background:#0e0f11;border-left:1px solid rgba(255,255,255,.03);border-right:1px solid rgba(255,255,255,.03)}
-    .splitter-v:hover,.splitter-v.active{background:rgba(191,255,60,.35);border-color:rgba(191,255,60,.15)}
-    .splitter-h{height:5px;cursor:row-resize;background:#0e0f11;border-top:1px solid rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.03)}
-    .splitter-h:hover,.splitter-h.active{background:rgba(191,255,60,.35);border-color:rgba(191,255,60,.15)}
-    .resize-overlay{position:fixed;inset:0;z-index:9999;cursor:col-resize}
-    .resize-overlay.row{cursor:row-resize}
-
-    .center-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-    .toolbar{display:flex;align-items:center;gap:3px;padding:4px 10px;background:#111214;border-bottom:1px solid rgba(255,255,255,.04);height:32px;flex-shrink:0}
-    .t-btn{width:28px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:5px;border:none;background:transparent;color:#666;font-size:.72rem;cursor:pointer;font-weight:700;transition:all .1s}
-    .t-btn:hover{background:rgba(255,255,255,.06);color:#fafdff}
-    .t-btn.active{background:rgba(191,255,60,.1);color:#bfff3c}
-    .t-sep{width:1px;height:16px;background:rgba(255,255,255,.05);margin:0 3px}
-
-    .center-body{display:flex;flex:1;overflow:hidden;min-height:0}
-    .viewport{flex:1;position:relative;overflow:hidden;background:#252630;min-width:200px}
-    .viewport canvas{display:block;width:100%!important;height:100%!important}
-
-    .right-col{display:flex;flex-direction:column;width:280px;min-width:120px;flex-shrink:0;overflow:hidden}
-
-    .center-bottom-wrap{display:flex;flex-direction:column;width:100%;min-height:80px;max-height:60vh}
-    .bottom{height:220px;flex-shrink:0;display:flex;flex-direction:column;background:#131416;overflow:hidden}
-    .bottom.collapsed{height:28px;min-height:28px}
-    .bottom-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);height:28px;flex-shrink:0}
-    .bottom-tab{padding:4px 14px;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
-    .bottom-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
-    .bottom-tab:hover{color:#fafdff}
-    .bottom-spacer{flex:1}
-    .bottom-content{flex:1;overflow:hidden;position:relative}
-    .bottom-content.hidden{display:none}
-    #console{padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:.72rem;overflow-y:auto;height:100%;color:#aaa}
-    .log-info{color:#68aed4}.log-warn{color:#ffd100}.log-error{color:#ff2674}
-    .log-info::before{content:'[INFO] ';font-weight:600}
-    .log-warn::before{content:'[WARN] ';font-weight:600}
-    .log-error::before{content:'[ERROR] ';font-weight:600}
-
-    .panel-header{padding:8px 12px;font-size:.7rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#131416}
-    .panel-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.04)}
-    .panel-tab{flex:1;padding:8px;text-align:center;font-size:.7rem;font-weight:600;color:#52525b;cursor:pointer;border-bottom:2px solid transparent;transition:all .12s}
-    .panel-tab.active{color:#bfff3c;border-bottom-color:#bfff3c}
-    .panel-tab:hover{color:#fafdff}
-    .panel-content{flex:1;overflow-y:auto;padding:4px}
-    .panel-content.hidden{display:none}
-    .h-item{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:.78rem;color:#aaa;transition:all .1s}
-    .h-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
-    .h-item.selected{background:rgba(191,255,60,.08);color:#bfff3c}
-    .h-icon{width:14px;text-align:center;font-size:.68rem;font-weight:700}
-
-    .ctx-menu{position:fixed;z-index:200;background:#1a1b1e;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:4px;min-width:180px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;max-height:70vh;overflow-y:auto}
-    .ctx-menu.open{display:block}
-    .ctx-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .08s}
-    .ctx-item:hover{background:rgba(191,255,60,.08);color:#fafdff}
-    .ctx-item .ctx-icon{width:18px;text-align:center;font-size:.7rem;font-weight:700;color:#52525b}
-    .ctx-sep{height:1px;background:rgba(255,255,255,.06);margin:3px 6px}
-    .ctx-item.danger{color:#ff2674}
-    .ctx-item.danger:hover{background:rgba(255,38,116,.1)}
-    .panel-label{font-size:.65rem;color:#52525b;font-weight:600;padding:8px 12px 4px;text-transform:uppercase;letter-spacing:.04em}
-
-    .prop-group{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
-    .prop-group label{display:block;font-size:.68rem;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
-    .prop-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
-    .prop-row span{font-size:.7rem;color:#666;width:16px;text-align:center;flex-shrink:0}
-    .p-input{flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:5px;color:#fafdff;font-size:.76rem;font-family:inherit;outline:none}
-    .p-input:focus{border-color:#bfff3c}
-    .p-input[type="color"]{padding:2px;height:26px;cursor:pointer}
-    .empty-state{padding:20px 12px;text-align:center;color:#52525b;font-size:.76rem;line-height:1.5}
-    .script-tag{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;margin:2px;border-radius:5px;background:rgba(191,255,60,.06);border:1px solid rgba(191,255,60,.12);font-size:.7rem;color:#bfff3c;cursor:pointer}
-    .script-tag:hover{background:rgba(191,255,60,.12)}
-    .script-tag .del{color:#ff2674;font-size:.65rem;padding:0 3px;border-radius:3px}
-    .script-tag .del:hover{background:rgba(255,38,116,.15)}
-    .add-btn{display:block;width:100%;padding:6px;margin-top:6px;border-radius:6px;border:1px dashed rgba(255,255,255,.08);background:transparent;color:#52525b;font-size:.72rem;cursor:pointer;font-family:inherit;transition:all .12s}
-    .add-btn:hover{border-color:#bfff3c;color:#bfff3c}
-    .play-overlay{position:fixed;inset:0;z-index:100;background:#000;display:none}
-    .play-overlay.active{display:flex;flex-direction:column}
-    .play-overlay iframe{flex:1;width:100%;border:none}
-    .play-bar{height:32px;background:#16171a;display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0}
-    .play-bar .btn{font-size:.72rem;padding:4px 12px}
-    .p-select{flex:1;padding:4px 7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:5px;color:#fafdff;font-size:.76rem;font-family:inherit;outline:none}
-    .p-select option{background:#131416;color:#fafdff}
-    .file-tree{padding:6px 0}
-    .file-item{display:flex;align-items:center;gap:6px;padding:4px 12px;font-size:.76rem;color:#aaa;cursor:pointer;transition:all .1s}
-    .file-item:hover{background:rgba(255,255,255,.04);color:#fafdff}
-    .file-item.active{color:#bfff3c;background:rgba(191,255,60,.06)}
-    .file-item .fi{font-size:.7rem;color:#52525b}
-    .file-item.folder .fi{color:#ffd100}
-    .shader-preview{height:60px;border-radius:6px;border:1px solid rgba(255,255,255,.06);margin:6px 0;background:#1a1b1e;overflow:hidden}
-
-    .cam-panel{background:#131416;display:flex;flex-direction:column;overflow:hidden;min-height:80px}
-    .cam-panel .panel-header{font-size:.65rem;padding:5px 10px}
-    .cam-panel canvas{display:block;width:100%;height:100%;flex:1}
-    .cam-panel-empty{flex:1;display:flex;align-items:center;justify-content:center;color:#333;font-size:.7rem;font-style:italic}
-
-    .pkg-toolbar{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0}
-    .pkg-filters{display:flex;gap:3px}
-    .pkg-filter{padding:3px 10px;border-radius:5px;border:1px solid rgba(255,255,255,.06);background:transparent;color:#52525b;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .1s}
-    .pkg-filter:hover{color:#fafdff;background:rgba(255,255,255,.04)}
-    .pkg-filter.active{color:#bfff3c;border-color:rgba(191,255,60,.3);background:rgba(191,255,60,.06)}
-    .pkg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;padding:8px;overflow-y:auto;flex:1}
-    .pkg-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);cursor:grab;transition:all .12s;text-align:center;user-select:none}
-    .pkg-item:hover{background:rgba(191,255,60,.06);border-color:rgba(191,255,60,.15);transform:translateY(-1px)}
-    .pkg-item:active{cursor:grabbing;transform:scale(.97)}
-    .pkg-item.dragging{opacity:.4;border-color:#bfff3c}
-    .pkg-icon{font-size:1.4rem;line-height:1}
-    .pkg-name{font-size:.66rem;color:#aaa;font-weight:600;line-height:1.2}
-    .pkg-item[data-type="material"] .pkg-icon{color:#68aed4}
-    .pkg-item[data-type="shader"] .pkg-icon{color:#bfff3c}
-    .pkg-item[data-type="script"] .pkg-icon{color:#ff8426}
-    .pkg-item .pkg-type-badge{font-size:.55rem;color:#444;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-    .drop-target{outline:2px solid #bfff3c;outline-offset:-2px;background:rgba(191,255,60,.08)!important}
-
-    /* Publish Modal */
-    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center}
-    .modal-overlay.open{display:flex}
-    .modal{background:#1a1d26;border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:28px;width:420px;max-width:90vw;max-height:85vh;overflow-y:auto;color:#fafdff;font-family:'Inter',sans-serif}
-    .modal h2{font-family:'Inter',sans-serif;font-weight:700;font-size:1.1rem;margin:0 0 20px;color:#fafdff}
-    .modal label{display:block;font-size:.75rem;font-weight:600;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
-    .modal input[type="text"],.modal textarea{width:100%;background:#12141b;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:10px 12px;color:#fafdff;font-size:.84rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;margin-bottom:14px}
-    .modal input[type="text"]:focus,.modal textarea:focus{border-color:#bfff3c}
-    .modal textarea{resize:vertical;min-height:70px}
-    .modal .thumb-upload{width:100%;height:140px;border:2px dashed rgba(255,255,255,.12);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:all .15s;margin-bottom:14px;overflow:hidden;position:relative}
-    .modal .thumb-upload:hover{border-color:#bfff3c;background:rgba(191,255,60,.04)}
-    .modal .thumb-upload img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
-    .modal .thumb-upload .placeholder{color:#555;font-size:.78rem;text-align:center}
-    .modal .thumb-upload .placeholder svg{width:28px;height:28px;stroke:#555;fill:none;stroke-width:1.5;margin-bottom:4px}
-    .modal .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
-    .modal .modal-actions button{padding:8px 18px;border-radius:7px;border:none;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .12s}
-    .modal .modal-cancel{background:rgba(255,255,255,.06);color:#aaa}
-    .modal .modal-cancel:hover{background:rgba(255,255,255,.1);color:#fafdff}
-    .modal .modal-save{background:#bfff3c;color:#16171a}
-    .modal .modal-save:hover{background:#aee635}
-    .modal .modal-publish{background:#10d275;color:#fff}
-    .modal .modal-publish:hover{background:#0eb868}
-  </style>
-</head>
-<body data-page="editor">
-
-<div class="editor-shell" style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0">
-<div class="topbar">
-  <div class="brand">glox<span>.</span></div>
-  <a href="/" class="nav-btn">&#8592; Home</a>
-  <a href="/games" class="nav-btn">Gallery</a>
-  <div class="sep"></div>
-  <input class="title-input" id="gameTitle" value="Untitled Game" spellcheck="false">
-  <div class="spacer"></div>
-  <span style="font-size:.65rem;color:#444;margin-right:4px" id="undoHint"></span>
-  <button class="btn" id="btnSave">Save</button>
-  <button class="btn primary" id="btnPublish">Publish</button>
-  <button class="btn play" id="btnPlay">&#9654; Play</button>
-</div>
-
-<div class="main-wrap">
-  <!-- LEFT: Scene Hierarchy -->
-  <div class="panel-left" id="panelLeft">
-    <div class="panel-header">Scene <span style="font-size:.6rem;color:#444" id="objCount">0 objects</span></div>
-    <div class="panel-content" id="hierarchyPanel"><div id="hierarchy"></div></div>
-  </div>
-
-  <div class="splitter splitter-v" id="splitLeft" title="Drag to resize"></div>
-
-  <!-- CENTER: Viewport + Bottom -->
-  <div class="center-col" id="centerCol">
-    <div class="toolbar">
-      <button class="t-btn" id="btnUndo" title="Undo (Ctrl+Z)">&#8617;</button>
-      <button class="t-btn" id="btnRedo" title="Redo (Ctrl+Shift+Z)">&#8618;</button>
-      <div class="t-sep"></div>
-      <button class="t-btn active" id="toolMove" data-tool="translate" title="Move (G)">&#432;</button>
-      <button class="t-btn" id="toolRotate" data-tool="rotate" title="Rotate (R)">&#8635;</button>
-      <button class="t-btn" id="toolScale" data-tool="scale" title="Scale (S)">&#8644;</button>
-      <div class="t-sep"></div>
-      <button class="t-btn" id="btnDup" title="Duplicate (Ctrl+D)">D+</button>
-      <button class="t-btn" id="btnDel" title="Delete (Del)" style="color:#ff2674">X</button>
-      <div class="t-sep"></div>
-      <button class="t-btn" id="btnGrid" title="Grid">G</button>
-      <button class="t-btn" id="btnWire" title="Wireframe">W</button>
-    </div>
-    <div class="center-body">
-      <div class="viewport" id="viewport"></div>
-      <div class="splitter splitter-v" id="splitViewportRight" title="Drag to resize"></div>
-      <div class="right-col" id="rightCol">
-        <!-- CAMERA PREVIEW PANEL -->
-        <div class="cam-panel" id="camPreview" style="height:180px;min-height:80px">
-          <div class="panel-header">Camera Preview</div>
-          <canvas id="camPreviewCanvas"></canvas>
-          <div class="cam-panel-empty" id="camEmpty">No camera in scene</div>
-        </div>
-        <div class="splitter splitter-h" id="splitCamInspector"></div>
-        <!-- INSPECTOR/SCRIPTS/MATERIAL -->
-        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:100px">
-          <div class="panel-tabs">
-            <div class="panel-tab active" data-right="props">Inspector</div>
-          </div>
-          <div class="panel-content" id="propsPanel">
-            <div class="empty-state" id="propsEmpty">Select an object to inspect its properties</div>
-            <div id="propsContent" style="display:none">
-              <div class="prop-group"><label>Name</label><input class="p-input" id="propName"></div>
-              <div class="prop-group">
-                <label>Position</label>
-                <div class="prop-row"><span>X</span><input class="p-input" id="propPosX" type="number" step="0.1"></div>
-                <div class="prop-row"><span>Y</span><input class="p-input" id="propPosY" type="number" step="0.1"></div>
-                <div class="prop-row"><span>Z</span><input class="p-input" id="propPosZ" type="number" step="0.1"></div>
-              </div>
-              <div class="prop-group">
-                <label>Rotation</label>
-                <div class="prop-row"><span>X</span><input class="p-input" id="propRotX" type="number" step="1"></div>
-                <div class="prop-row"><span>Y</span><input class="p-input" id="propRotY" type="number" step="1"></div>
-                <div class="prop-row"><span>Z</span><input class="p-input" id="propRotZ" type="number" step="1"></div>
-              </div>
-              <div class="prop-group">
-                <label>Scale</label>
-                <div class="prop-row"><span>X</span><input class="p-input" id="propScaleX" type="number" step="0.1" min="0.01"></div>
-                <div class="prop-row"><span>Y</span><input class="p-input" id="propScaleY" type="number" step="0.1" min="0.01"></div>
-                <div class="prop-row"><span>Z</span><input class="p-input" id="propScaleZ" type="number" step="0.1" min="0.01"></div>
-              </div>
-              <div class="prop-group" id="cameraAttachGroup" style="display:none">
-                <label>Attach To Object</label>
-                <select class="p-select" id="cameraAttach"><option value="">None (Free Camera)</option></select>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="splitter splitter-h" id="splitBottom" title="Drag to resize"></div>
-    <div class="bottom" id="bottomPanel">
-      <div class="bottom-tabs">
-        <div class="bottom-tab active" data-btab="code">&#9998; Code</div>
-        <div class="bottom-tab" data-btab="console">&#9638; Console</div>
-        <div class="bottom-tab" data-btab="files">&#128193; Files</div>
-        <div class="bottom-tab" data-btab="packages">&#128230; Packages</div>
-        <div class="bottom-spacer"></div>
-        <button class="t-btn" id="btnToggleBottom" title="Toggle">&#9660;</button>
-      </div>
-      <div class="bottom-content" id="codePanel"><div id="monacoEditor" style="width:100%;height:100%"></div></div>
-      <div class="bottom-content hidden" id="consolePanel"><div id="console"></div></div>
-      <div class="bottom-content hidden" id="filesPanel">
-        <div class="file-tree" id="fileTree"></div>
-      </div>
-      <div class="bottom-content hidden" id="packagesPanel">
-        <div class="pkg-toolbar">
-          <input class="p-input pkg-search" id="pkgSearch" placeholder="Search packages..." style="width:180px">
-          <div class="pkg-filters">
-            <button class="pkg-filter active" data-pfilter="all">All</button>
-            <button class="pkg-filter" data-pfilter="material">&#127912; Materials</button>
-            <button class="pkg-filter" data-pfilter="shader">&#10024; Shaders</button>
-            <button class="pkg-filter" data-pfilter="script">&#9998; Scripts</button>
-          </div>
-        </div>
-        <div class="pkg-grid" id="pkgGrid"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="ctx-menu" id="ctxMenu"></div>
-
-<div class="play-overlay" id="playOverlay">
-  <div class="play-bar">
-    <button class="btn" id="btnStop" style="border-color:#ff2674;color:#ff2674">&#9632; Stop</button>
-    <span style="font-size:.76rem;color:#888">Play Mode — press Esc or Stop to exit</span>
-  </div>
-  <iframe id="playFrame" srcdoc="<html><body style='margin:0;background:#000'></body></html>"></iframe>
-</div>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glox — Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flexlayout-react@0.11.0/style/dark.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "flexlayout-react": "https://esm.sh/flexlayout-react@0.11.0?deps=react@18.3.1,react-dom@18.3.1"
   }
 }
 </script>
-
-<script src="/sidebar.js"></script>
-
+<style>
+/* ── Glox Studio theme engine: every chrome value lives in --ed-* ── */
+:root{
+  --ed-accent:#855CD6; --ed-accent-strong:#774DCB; --ed-accent-soft:#c9b8f5; --ed-publish:#FF8C1A;
+  --ed-bg:#1e1e1e; --ed-panel:#181818; --ed-modal:#252526; --ed-border:#2d2d2d;
+  --ed-text:#cccccc; --ed-text-dim:#8b8b96; --ed-text-faint:#5b5b66; --ed-bright:#ffffff;
+  --ed-error:#ff6b6b; --ed-success:#4fd897;
+  --ed-radius:4px; --ed-radius-lg:6px;
+  --ed-topbar-h:35px; --ed-activity-w:48px; --ed-act-btn:44px; --ed-status-h:22px;
+  --ed-code-size:13px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text);overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
+/* ── Titlebar ── */
+.topbar{display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--ed-panel);border-bottom:1px solid var(--ed-border);height:var(--ed-topbar-h);flex-shrink:0}
+.brand{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:.85rem;letter-spacing:-.02em;color:var(--ed-text)}
+.brand span{color:var(--ed-accent)}
+.nav-btn{color:var(--ed-text-dim);text-decoration:none;font-size:.75rem;font-weight:500;padding:4px 8px;border-radius:var(--ed-radius)}
+.nav-btn:hover{color:var(--ed-bright);background:color-mix(in srgb, var(--ed-text) 8%, transparent)}
+.sep{width:1px;height:16px;background:var(--ed-border);margin:0 2px}
+.title-input{background:transparent;border:none;color:var(--ed-text);font-size:.78rem;font-weight:500;font-family:inherit;width:200px;outline:none;padding:3px 8px;border-radius:var(--ed-radius);text-align:center}
+.title-input:focus{background:color-mix(in srgb, var(--ed-text) 8%, transparent)}
+.spacer{flex:1}
+.btn{padding:4px 12px;border-radius:var(--ed-radius);border:1px solid var(--ed-border);background:color-mix(in srgb, var(--ed-text) 6%, transparent);color:var(--ed-text);font-size:.72rem;font-weight:500;cursor:pointer;font-family:inherit}
+.btn:hover{background:color-mix(in srgb, var(--ed-text) 12%, transparent)}
+.btn.run{background:var(--ed-accent-strong);border-color:var(--ed-accent-strong);color:#fff}
+.btn.run:hover{filter:brightness(1.12)}
+.btn.publish{background:var(--ed-publish);border-color:var(--ed-publish);color:#2E2A4B}
+.btn.publish:hover{filter:brightness(1.07)}
+/* ── Workbench (FlexLayout host) ── */
+.main{flex:1;display:flex;min-height:0}
+#workbench{flex:1;min-height:0;min-width:0;display:flex;position:relative;background:var(--ed-bg)}
+.pane-host{width:100%;height:100%;overflow:auto;position:relative;background:var(--ed-bg)}
+#paneStore{display:none}
+/* FlexLayout dark overrides to match */
+.flexlayout__layout{background-color:var(--ed-bg);color:var(--ed-text);font-family:'Inter',sans-serif}
+.flexlayout__tabset{background-color:var(--ed-panel)}
+.flexlayout__tab{--font-size:12px}
+.flexlayout__tab_button{color:var(--ed-text-dim)}
+.flexlayout__tab_button--selected{color:var(--ed-bright);background-color:var(--ed-bg)}
+.flexlayout__tab_button:hover{color:var(--ed-bright)}
+.flexlayout__border{--color-background:var(--ed-panel)}
+.flexlayout__splitter{background-color:var(--ed-bg)}
+.flexlayout__splitter:hover{background-color:var(--ed-accent)}
+.flexlayout__tabset_tabbar_outer{background-color:var(--ed-panel)}
+.flexlayout__tabset-selected{background-color:var(--ed-bg)}
+.activity{width:var(--ed-activity-w);flex-shrink:0;background:var(--ed-panel);border-right:1px solid var(--ed-border);display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:2px}
+.act-btn{width:calc(var(--ed-act-btn) - 4px);height:var(--ed-act-btn);display:flex;align-items:center;justify-content:center;background:none;border:none;border-left:2px solid transparent;color:var(--ed-text-dim);cursor:pointer}
+.act-btn:hover{color:var(--ed-bright)}
+.act-btn.active{color:var(--ed-bright);border-left-color:var(--ed-accent)}
+.act-btn svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.act-sp{flex:1}
+.files{width:100%;height:100%;background:var(--ed-panel);display:flex;flex-direction:column;overflow:hidden}
+.files-head{padding:8px 14px;font-size:.66rem;font-weight:600;color:var(--ed-text-dim);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center}
+.files-head button{background:none;border:none;color:var(--ed-text-dim);font-size:.9rem;cursor:pointer;padding:0 4px}
+.files-head button:hover{color:var(--ed-bright)}
+#fileList{flex:1;overflow-y:auto;padding:0 6px 8px}
+.f-item{display:flex;align-items:center;gap:7px;padding:4px 8px;border-radius:var(--ed-radius);cursor:pointer;font-size:.78rem;color:#aaa}
+.f-item:hover{background:color-mix(in srgb, var(--ed-text) 7%, transparent);color:var(--ed-bright)}
+.f-item.active{background:color-mix(in srgb, var(--ed-text) 10%, transparent);color:var(--ed-bright)}
+.f-item .del{margin-left:auto;display:none;color:var(--ed-text-faint);font-size:.8rem;padding:0 2px}
+.f-item:hover .del{display:block}
+.f-item .del:hover{color:var(--ed-error)}
+.f-item .dot{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--ed-accent);display:none}
+.f-item.dirty .dot{display:block}
+.f-item.dirty:hover .del{display:none}
+.help{padding:8px 12px;border-top:1px solid var(--ed-border);font-size:.7rem;color:var(--ed-text-faint)}
+.help details{margin-top:4px}
+.help summary{cursor:pointer;color:var(--ed-text-dim)}
+.help summary:hover{color:var(--ed-bright)}
+.help pre{background:var(--ed-bg);border:1px solid var(--ed-border);border-radius:var(--ed-radius);padding:8px;margin-top:6px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--ed-accent-soft);white-space:pre-wrap}
+.help button{background:color-mix(in srgb, var(--ed-accent) 16%, transparent);border:1px solid color-mix(in srgb, var(--ed-accent) 35%, transparent);color:var(--ed-accent-soft);border-radius:var(--ed-radius);padding:3px 8px;font-size:.68rem;cursor:pointer;margin:4px 4px 0 0;font-family:inherit}
+.help button:hover{background:color-mix(in srgb, var(--ed-accent) 30%, transparent)}
+#editorContainer{width:100%;height:100%;min-height:0}
+.bottom{width:100%;height:100%;display:flex;flex-direction:column;background:var(--ed-bg)}
+#paneEditorHost{width:100%;height:100%}
+.bottom.min #consoleEl{display:none}
+.bottom-tabs{display:flex;align-items:center;height:29px;flex-shrink:0;padding:0 8px;gap:4px}
+.bottom-tab{padding:4px 12px;font-size:.66rem;font-weight:600;color:var(--ed-text-dim);cursor:pointer;text-transform:uppercase;letter-spacing:.05em}
+.bottom-tab:hover{color:var(--ed-bright)}
+#consoleEl{flex:1;overflow-y:auto;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:var(--ed-code-size);color:#aaa}
+.log-info{color:var(--ed-text-dim)}.log-error{color:var(--ed-error)}.log-success{color:var(--ed-success)}
+/* ── Preview ── */
+.preview-wrap{width:100%;height:100%;display:flex;flex-direction:column;background:#000;min-width:0}
+.preview-head{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--ed-panel);font-size:.66rem;font-weight:600;color:var(--ed-text-dim);text-transform:uppercase;letter-spacing:.05em}
+#previewFrame{flex:1;border:none;background:#000;width:100%}
+/* ── AI panel ── */
+.ai-panel{width:320px;flex-shrink:0;display:none;flex-direction:column;background:var(--ed-panel);border-left:1px solid var(--ed-border);min-height:0}
+.ai-panel.open{display:flex}
+.ai-head{padding:8px 12px;font-size:.66rem;font-weight:600;color:var(--ed-text-dim);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--ed-border)}
+.ai-settings{padding:8px 12px;border-bottom:1px solid var(--ed-border);font-size:.7rem;color:var(--ed-text-dim)}
+.ai-settings summary{cursor:pointer}
+.ai-settings input{width:100%;background:var(--ed-bg);border:1px solid var(--ed-border);border-radius:var(--ed-radius);color:var(--ed-text);font-size:.72rem;font-family:inherit;padding:5px 8px;margin:4px 0;outline:none}
+.ai-settings label{display:block;margin-top:6px}
+#aiMsgs{flex:1;overflow-y:auto;padding:10px 12px;font-size:.76rem;line-height:1.5}
+.ai-msg{margin-bottom:10px;white-space:pre-wrap;word-break:break-word}
+.ai-msg.user{color:var(--ed-accent-soft)}
+.ai-msg.asst{color:#ddd}
+.ai-msg.tool{color:var(--ed-text-faint);font-size:.68rem}
+.ai-row{display:flex;gap:6px;padding:8px;border-top:1px solid var(--ed-border)}
+#aiInput{flex:1;background:var(--ed-bg);border:1px solid var(--ed-border);border-radius:var(--ed-radius);color:var(--ed-text);font-size:.76rem;font-family:inherit;padding:7px 9px;outline:none}
+#aiInput:focus{border-color:var(--ed-accent)}
+/* ── Studio settings panel ── */
+.settings-panel{width:300px;flex-shrink:0;display:none;flex-direction:column;background:var(--ed-panel);border-left:1px solid var(--ed-border);min-height:0}
+.settings-panel.open{display:flex}
+.settings-head{padding:8px 12px;font-size:.66rem;font-weight:600;color:var(--ed-text-dim);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--ed-border);display:flex;justify-content:space-between;align-items:center}
+.settings-head button{background:none;border:none;color:var(--ed-text-dim);cursor:pointer;font-size:.72rem}
+.settings-head button:hover{color:var(--ed-bright)}
+#settingsBody{flex:1;overflow-y:auto;padding:10px 12px}
+.settings-group{font-size:.66rem;font-weight:600;color:var(--ed-text-faint);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px}
+.settings-group:first-child{margin-top:0}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:.74rem;color:var(--ed-text)}
+.settings-row input[type="color"]{width:36px;height:22px;border:1px solid var(--ed-border);border-radius:var(--ed-radius);background:none;padding:0;cursor:pointer}
+.settings-row input[type="range"]{width:110px;accent-color:var(--ed-accent)}
+.settings-row select{background:var(--ed-bg);border:1px solid var(--ed-border);border-radius:var(--ed-radius);color:var(--ed-text);font-size:.72rem;font-family:inherit;padding:3px 6px}
+.settings-row .val{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--ed-text-dim);min-width:44px;text-align:right}
+/* ── Status bar ── */
+.statusbar{height:var(--ed-status-h);flex-shrink:0;background:var(--ed-accent-strong);color:#fff;display:flex;align-items:center;font-size:.7rem;padding:0 10px;gap:14px}
+.statusbar .st-right{margin-left:auto;display:flex;gap:14px}
+/* ── Publish modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100}
+.modal-bg.open{display:flex}
+.modal{width:380px;max-width:92vw;background:var(--ed-modal);border:1px solid var(--ed-border);border-radius:var(--ed-radius-lg);padding:20px}
+.modal h3{font-size:.9rem;margin-bottom:14px;color:var(--ed-bright)}
+.modal label{display:block;font-size:.72rem;font-weight:600;color:var(--ed-text-dim);margin-bottom:5px}
+.modal input[type="text"],.modal textarea{width:100%;background:var(--ed-bg);border:1px solid var(--ed-border);border-radius:var(--ed-radius);color:var(--ed-text);font-size:.8rem;font-family:inherit;padding:8px 10px;margin-bottom:12px;outline:none}
+.modal input[type="text"]:focus,.modal textarea:focus{border-color:var(--ed-accent)}
+.thumb-upload{border:1px dashed var(--ed-border);border-radius:var(--ed-radius);padding:16px;text-align:center;cursor:pointer;color:var(--ed-text-dim);font-size:.76rem;margin-bottom:14px}
+.thumb-upload:hover{border-color:var(--ed-accent)}
+.thumb-upload img{max-width:100%;border-radius:var(--ed-radius);display:none}
+.modal-row{display:flex;gap:8px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="brand">glox<span>.</span></span>
+  <a class="nav-btn" href="/games">Gallery</a>
+  <div class="sep"></div>
+  <input class="title-input" id="gameTitle" value="Untitled Game" maxlength="60">
+  <div class="spacer"></div>
+  <button class="btn run" id="btnRun">Run</button>
+  <button class="btn" id="btnStop">Stop</button>
+  <button class="btn" id="btnSave">Save</button>
+  <button class="btn publish" id="btnPublish">Publish</button>
+  <button class="btn" id="btnExport">Export</button>
+  <button class="btn" id="btnImport">Import</button>
+  <input type="file" id="importInput" multiple style="display:none">
+</div>
+<div class="main">
+  <div class="activity">
+    <button class="act-btn active" data-pane="files" title="Explorer"><svg viewBox="0 0 24 24"><path d="M4 4h7l2 2h7v12H4V4Z"/><path d="M4 9h16"/></svg></button>
+    <button class="act-btn active" data-pane="preview" title="Preview"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M10 9l4 3-4 3V9Z"/></svg></button>
+    <button class="act-btn" data-pane="ai" title="AI assistant"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <div class="act-sp"></div>
+    <button class="act-btn" id="actSettings" title="Studio settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.06-.4.1-.8.1-1.2Z"/></svg></button>
+    <button class="act-btn" id="actPublish" title="Publish"><svg viewBox="0 0 24 24"><path d="M12 15V4M7 8l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg></button>
+  </div>
+  <div id="paneStore">
+    <div class="files" id="paneFiles">
+      <div class="files-head"><span>Files</span><span style="display:flex;gap:2px"><button id="btnFolder" title="Open local folder"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;stroke-width:1.5;fill:none"><path d="M4 4h7l2 2h7v12H4V4Z"/></svg></button><button id="btnDiskSave" title="Save all to disk" style="display:none"><svg viewBox="0 0 24 24" width="14" height="14" style="stroke:currentColor;stroke-width:1.5;fill:none"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></svg></button><button id="btnAddFile" title="New file">+</button></span></div>
+      <div id="fileList"></div>
+      <div class="help">
+        <details>
+          <summary>Connections + packages</summary>
+          <div style="margin-top:6px;color:#8b8b96;line-height:1.5">fetch() and WebSocket just work. Their server must allow CORS. https pages need https/wss URLs. Add npm packages via the importmap in index.html, e.g.</div>
+          <pre>"three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js"</pre>
+          <div>
+            <button data-snippet="fetch">+ fetch</button>
+            <button data-snippet="ws">+ websocket</button>
+            <button data-snippet="loop">+ game loop</button>
+          </div>
+        </details>
+      </div>
+    </div>
+    <div id="paneEditorHost"><div id="editorContainer"></div></div>
+    <div class="preview-wrap" id="panePreview">
+      <div class="preview-head"><span>Preview</span></div>
+      <iframe id="previewFrame" sandbox="allow-scripts" srcdoc="<html><body style='margin:0;background:#000'></body></html>"></iframe>
+    </div>
+    <div class="bottom" id="paneConsole">
+      <div class="bottom-tabs">
+        <span class="bottom-tab" id="btnToggleBottom">Console</span>
+        <span style="flex:1"></span>
+        <span class="bottom-tab" id="btnClearConsole">Clear</span>
+      </div>
+      <div id="consoleEl"></div>
+    </div>
+  </div>
+  <div id="workbench"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-head"><span>Studio settings</span><button id="settingsReset" title="Reset all to defaults">Reset</button></div>
+    <div id="settingsBody"></div>
+  </div>
+  <div class="ai-panel" id="aiPanel">
+    <div class="ai-head"><span>AI assistant</span></div>
+    <div class="ai-settings">
+      <details>
+        <summary>Settings (keys stay in this browser)</summary>
+        <label>Endpoint (OpenAI-compatible)</label>
+        <input id="aiEndpoint" value="https://api.openai.com/v1">
+        <label>Model</label>
+        <input id="aiModel" value="gpt-4o-mini">
+        <label>API key</label>
+        <input id="aiKey" type="password" placeholder="sk-...">
+        <label>MCP server URL (optional, header-token auth)</label>
+        <input id="aiMcpUrl" placeholder="https://mcp.render.com/mcp">
+        <label>MCP bearer token</label>
+        <input id="aiMcpToken" type="password" placeholder="e.g. Render API key">
+      </details>
+    </div>
+    <div id="aiMsgs"></div>
+    <div class="ai-row">
+      <input id="aiInput" placeholder="Ask about your code...">
+      <button class="btn run" id="aiSend">Send</button>
+    </div>
+    <div class="ai-row" style="border-top:none;padding-top:0">
+      <button class="btn" id="aiInsert" style="flex:1">Insert first code block into current file</button>
+    </div>
+  </div>
+</div>
+<div class="statusbar">
+  <span>glox studio</span>
+  <span id="stFile">index.html</span>
+  <div class="st-right">
+    <span id="stPos">Ln 1, Col 1</span>
+    <span id="stLang">HTML</span>
+    <span id="stSave">Saved</span>
+  </div>
+</div>
+<div class="modal-bg" id="publishModal">
+  <div class="modal">
+    <h3>Publish to gallery</h3>
+    <label>Title</label>
+    <input type="text" id="modalGameTitle" maxlength="60">
+    <label>Description</label>
+    <textarea id="modalDescription" rows="2" maxlength="200"></textarea>
+    <label>Credits</label>
+    <input type="text" id="modalCredits" maxlength="100">
+    <label>Thumbnail</label>
+    <div class="thumb-upload" id="thumbUpload">
+      <span id="thumbPlaceholder">Click to upload cover image</span>
+      <img id="thumbPreview" alt="">
+    </div>
+    <input type="file" id="thumbInput" accept="image/*" style="display:none">
+    <div class="modal-row">
+      <button class="btn" id="modalCancelBtn">Cancel</button>
+      <button class="btn publish" id="modalPublishBtn2">Publish</button>
+    </div>
+  </div>
+</div>
+<script src="/config.js"></script>
 <script>
-(function(){
-  window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
-  if (!window.currentToken) {
-    try {
-      var raw = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-      if (raw) { var s = JSON.parse(raw); if (s && s.access_token) window.currentToken = s.access_token; }
-    } catch(e) {}
-  }
-})();
-</script>
+/* ═══ Glox Studio — code-first websites & games ═══ */
+window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
+var currentGameId = new URLSearchParams(window.location.search).get('id');
+var cfg = null;
+async function getCfg() {
+  if (cfg) return cfg;
+  cfg = { api: '', url: '', anon: '' };
+  try {
+    var t = await (await fetch('/config.js')).text();
+    var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) cfg.api = m[1].replace(/^wss?:\/\//, 'https://');
+    var u = t.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)/); if (u) cfg.url = u[1];
+    var a = t.match(/SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)/); if (a) cfg.anon = a[1];
+  } catch (e) {}
+  return cfg;
+}
+function authHeaders(json) {
+  var h = {};
+  if (json) h['Content-Type'] = 'application/json';
+  if (window.currentToken) h['Authorization'] = 'Bearer ' + window.currentToken;
+  return h;
+}
 
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TransformControls } from 'three/addons/controls/TransformControls.js';
-
-const container = document.getElementById('viewport');
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x252630);
-
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-camera.position.set(8, 6, 8);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-container.appendChild(renderer.domElement);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(10, 15, 10); dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(2048, 2048);
-scene.add(dirLight);
-scene.add(new THREE.HemisphereLight(0x68aed4, 0x430067, 0.4));
-
-const gridHelper = new THREE.GridHelper(40, 40, 0x555568, 0x3a3a4a);
-scene.add(gridHelper);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x1e1f26, roughness: 0.9 });
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), groundMat);
-ground.rotation.x = -Math.PI / 2; ground.position.y = -0.01; ground.receiveShadow = true; ground.name = '__ground';
-scene.add(ground);
-
-const orbit = new OrbitControls(camera, renderer.domElement);
-orbit.enableDamping = true; orbit.dampingFactor = 0.08;
-
-const transform = new TransformControls(camera, renderer.domElement);
-transform.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; });
-scene.add(transform);
-
-let sceneObjects = [];
-let selectedObj = null;
-let currentTool = 'translate';
-let playMode = false;
-let gridVisible = true;
-let wireframeMode = false;
-
-const primitiveGeos = {
-  box: () => new THREE.BoxGeometry(1, 1, 1),
-  sphere: () => new THREE.SphereGeometry(0.5, 24, 16),
-  cylinder: () => new THREE.CylinderGeometry(0.5, 0.5, 1, 24),
-  plane: () => new THREE.PlaneGeometry(2, 2),
-  cone: () => new THREE.ConeGeometry(0.5, 1, 24),
-  torus: () => new THREE.TorusGeometry(0.4, 0.15, 16, 32),
+/* ── Project files ── */
+var TEMPLATE = {
+'index.html': '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>My Game</title>\n<link rel="stylesheet" href="style.css">\n<script type="importmap">\n{\n  "imports": {\n    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",\n    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"\n  }\n}<\/script>\n</head>\n<body>\n<script type="module" src="main.js"><\/script>\n</body>\n</html>\n',
+'style.css': 'html,body{margin:0;height:100%;overflow:hidden;background:#000}\ncanvas{display:block}\n',
+'main.js': 'import * as THREE from "three";\n\nconst scene = new THREE.Scene();\nscene.background = new THREE.Color(0x1a1033);\nconst camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);\ncamera.position.set(3, 2, 4);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(innerWidth, innerHeight);\ndocument.body.appendChild(renderer.domElement);\nscene.add(new THREE.AmbientLight(0xffffff, 0.7));\nconst cube = new THREE.Mesh(\n  new THREE.BoxGeometry(1, 1, 1),\n  new THREE.MeshStandardMaterial({ color: 0x855cd6 })\n);\nscene.add(cube);\naddEventListener("resize", () => {\n  camera.aspect = innerWidth / innerHeight;\n  camera.updateProjectionMatrix();\n  renderer.setSize(innerWidth, innerHeight);\n});\n(function loop() {\n  requestAnimationFrame(loop);\n  cube.rotation.x += 0.01;\n  cube.rotation.y += 0.015;\n  renderer.render(scene, camera);\n})();\n'
 };
-const primitiveColors = { box: 0xbfff3c, sphere: 0x68aed4, cylinder: 0xff8426, plane: 0x444455, cone: 0xff2674, torus: 0x94216a };
+var files = Object.assign({}, TEMPLATE);
+var currentFile = 'index.html';
+var models = {};
+var dirtyFlags = {};
 
-/* ════════════════════════════════════════════════════
-   UNDO / REDO SYSTEM
-   ════════════════════════════════════════════════════ */
-const undoStack = [];
-const redoStack = [];
-const MAX_UNDO = 80;
-
-function snapshot() {
-  return sceneObjects.filter(o => o.name !== '__ground').map(o => ({
-    name: o.name, type: o.userData.type,
-    position: [o.position.x, o.position.y, o.position.z],
-    rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
-    scale: [o.scale.x, o.scale.y, o.scale.z],
-    color: o.userData.color,
-    scripts: JSON.parse(JSON.stringify(o.userData.scripts || [])),
-    matType: o.userData.matType || 'standard',
-    matProps: Object.assign({}, o.userData.matProps || {}),
-    attachTo: o.userData.attachTo || null,
-  }));
+function setDirty(p, d) {
+  dirtyFlags[p] = d;
+  var any = Object.keys(dirtyFlags).some(function(k) { return dirtyFlags[k]; });
+  document.getElementById('stSave').textContent = any ? '● Unsaved' : 'Saved';
+  renderFiles();
+}
+function markClean() {
+  dirtyFlags = {};
+  document.getElementById('stSave').textContent = 'Saved';
+  renderFiles();
+}
+function deleteFile(p) {
+  if (Object.keys(files).length <= 1) { logToConsole('A project needs at least one file', 'error'); return; }
+  if (!confirm('Delete ' + p + '?')) return;
+  delete files[p]; delete models[p]; delete dirtyFlags[p];
+  flexDeleteTab(p);
+  if (currentFile === p) openFile(Object.keys(files)[0]);
+  else { renderFiles(); }
 }
 
-function pushUndo() {
-  undoStack.push(JSON.stringify(snapshot()));
-  if (undoStack.length > MAX_UNDO) undoStack.shift();
-  redoStack.length = 0;
-  updateUndoHint();
+function langOf(p) {
+  if (p.endsWith('.html')) return 'html';
+  if (p.endsWith('.css')) return 'css';
+  if (p.endsWith('.json')) return 'json';
+  return 'javascript';
 }
-
-function undo() {
-  if (undoStack.length === 0) return;
-  redoStack.push(JSON.stringify(snapshot()));
-  const state = JSON.parse(undoStack.pop());
-  restoreFromSnapshot(state);
-  updateUndoHint();
-}
-
-function redo() {
-  if (redoStack.length === 0) return;
-  undoStack.push(JSON.stringify(snapshot()));
-  const state = JSON.parse(redoStack.pop());
-  restoreFromSnapshot(state);
-  updateUndoHint();
-}
-
-function restoreFromSnapshot(data) {
-  const prev = selectedObj;
-  sceneObjects.forEach(o => scene.remove(o));
-  sceneObjects = [];
-  data.forEach(d => {
-    let mesh;
-    if (d.type === 'light') { mesh = new THREE.PointLight(0xffffff, 1, 20); }
-    else if (d.type === 'camera') { mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100); }
-    else {
-      const geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
-      const color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-      const mat = buildMaterial(d.matType || 'standard', color, d.matProps || {});
-      mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true; mesh.receiveShadow = true;
-    }
-    mesh.name = d.name || 'Object';
-    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [], matType: d.matType || 'standard', matProps: d.matProps || {} };
-    if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
-    if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
-    if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
-    scene.add(mesh);
-    sceneObjects.push(mesh);
-  });
-  selectedObj = null;
-  selectObject(sceneObjects.length > 0 ? sceneObjects[Math.min(sceneObjects.indexOf(prev), sceneObjects.length - 1)] : null);
-  refreshHierarchy();
-}
-
-function updateUndoHint() {
-  document.getElementById('undoHint').textContent = undoStack.length > 0 ? undoStack.length + ' undo' : '';
-}
-
-/* ════════════════════════════════════════════════════
-   MATERIAL SYSTEM
-   ════════════════════════════════════════════════════ */
-function buildMaterial(type, color, props) {
-  props = props || {};
-  switch (type) {
-    case 'phong':
-      return new THREE.MeshPhongMaterial({ color, emissive: props.emissive ? new THREE.Color(props.emissive) : 0x000000, shininess: props.shininess || 30 });
-    case 'lambert':
-      return new THREE.MeshLambertMaterial({ color });
-    case 'toon':
-      return new THREE.MeshToonMaterial({ color });
-    case 'shader':
-      return new THREE.ShaderMaterial({
-        vertexShader: props.vertShader || 'void main(){ gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-        fragmentShader: props.fragShader || 'void main(){ gl_FragColor=vec4(0.75,1.0,0.24,1.0); }',
-      });
-    default:
-      return new THREE.MeshStandardMaterial({ color, roughness: props.roughness != null ? props.roughness : 0.6, metalness: props.metalness != null ? props.metalness : 0.1 });
-  }
-}
-
-function updateMaterialUI() {
-  // Materials are now managed through the Packages panel
-}
-
-/* ════════════════════════════════════════════════════
-   FILE EXPLORER
-   ════════════════════════════════════════════════════ */
-function refreshFileTree() {
-  const el = document.getElementById('fileTree');
-  let html = '';
-
-  var folderNames = Object.keys(fileFolders);
-  folderNames.forEach(function(fn) {
-    var items = fileFolders[fn].map(function(idx) { return sceneObjects[idx]; }).filter(Boolean);
-    var itemsJson = JSON.stringify(items.map(function(o) { return sceneObjects.indexOf(o); }));
-    html += '<div class="file-item folder" data-ffolder="1" data-ffolder-items=\'' + itemsJson + '\'><span class="fi">&#128193;</span> ' + fn + ' (' + items.length + ')</div>';
-    items.forEach(function(o) {
-      if (o.name === '__ground') return;
-      var icon = o.userData.type === 'box' ? '&#9632;' : o.userData.type === 'sphere' ? '&#9679;' :
-                 o.userData.type === 'cylinder' ? '&#9670;' : o.userData.type === 'cone' ? '&#9650;' :
-                 o.userData.type === 'torus' ? '&#9711;' : o.userData.type === 'light' ? '&#9728;' :
-                 o.userData.type === 'camera' ? '&#128247;' : '&#9654;';
-      html += '<div class="file-item' + (selectedObj === o ? ' active' : '') + '" style="padding-left:24px" data-foidx="' + sceneObjects.indexOf(o) + '"><span class="fi">' + icon + '</span> ' + o.name + '</div>';
+function renderFiles() {
+  var list = document.getElementById('fileList');
+  list.innerHTML = '';
+  Object.keys(files).forEach(function(p) {
+    var div = document.createElement('div');
+    div.className = 'f-item' + (p === currentFile ? ' active' : '') + (dirtyFlags[p] ? ' dirty' : '');
+    div.textContent = p;
+    var dot = document.createElement('span');
+    dot.className = 'dot';
+    div.appendChild(dot);
+    var del = document.createElement('span');
+    del.className = 'del'; del.textContent = '×'; del.title = 'Delete file';
+    del.addEventListener('click', function(e) {
+      e.stopPropagation();
+      deleteFile(p);
     });
+    div.appendChild(del);
+    div.addEventListener('click', function() { openFile(p); });
+    list.appendChild(div);
   });
-
-  sceneObjects.forEach((o, i) => {
-    if (o.name === '__ground') return;
-    var inFolder = false;
-    folderNames.forEach(function(fn) { if (fileFolders[fn].indexOf(i) !== -1) inFolder = true; });
-    if (inFolder) return;
-
-    const icon = o.userData.type === 'box' ? '&#9632;' : o.userData.type === 'sphere' ? '&#9679;' :
-                 o.userData.type === 'cylinder' ? '&#9670;' : o.userData.type === 'cone' ? '&#9650;' :
-                 o.userData.type === 'torus' ? '&#9711;' : o.userData.type === 'light' ? '&#9728;' :
-                 o.userData.type === 'camera' ? '&#128247;' : '&#9654;';
-    html += '<div class="file-item' + (selectedObj === o ? ' active' : '') + '" data-fidx="' + i + '"><span class="fi">' + icon + '</span> ' + o.name + '.' + o.userData.type + '</div>';
-    if (o.userData.scripts && o.userData.scripts.length) {
-      o.userData.scripts.forEach((s, si) => {
-        html += '<div class="file-item" style="padding-left:28px" data-fsidx="' + i + '" data-fssi="' + si + '"><span class="fi" style="color:#bfff3c">&#9998;</span> ' + s.name + '.js</div>';
-      });
-    }
-  });
-
-  el.innerHTML = html;
-  var count = sceneObjects.filter(function(o) { return o.name !== '__ground'; }).length;
-  document.getElementById('objCount').textContent = count + ' object' + (count !== 1 ? 's' : '');
 }
+/* ── FlexLayout bridges (tabs live in the dock; explorer keeps dots) ── */
+var tabDivs = {};
+function moveEditorTo(p) {
+  var host = tabDivs[p];
+  var ec = document.getElementById('editorContainer');
+  if (host && ec && ec.parentNode !== host) host.appendChild(ec);
+}
+function flexSelect(p) {
+  try {
+    var m = window._flexModel;
+    if (!m) return;
+    var n = m.getNodeById(p);
+    if (n && !n.isSelected()) m.doAction(FlexLayout.Actions.selectTab(p));
+  } catch (e) {}
+}
+function flexAddTab(p) {
+  try {
+    var m = window._flexModel;
+    if (!m) return;
+    if (m.getNodeById(p)) return;
+    m.doAction(FlexLayout.Actions.addNode(
+      { type: 'tab', id: p, name: p, component: 'editor', config: { file: p }, enableClose: false, enableDrag: true },
+      'editor-set', FlexLayout.DockLocation.CENTER, -1));
+  } catch (e) {}
+}
+function flexDeleteTab(p) {
+  try {
+    var m = window._flexModel;
+    if (!m || !m.getNodeById(p)) return;
+    delete tabDivs[p];
+    m.doAction(FlexLayout.Actions.deleteTab(p));
+  } catch (e) {}
+}
+function syncEditorTabs() {
+  try {
+    var m = window._flexModel;
+    if (!m || typeof FlexLayout === 'undefined') return;
+    var set = m.getNodeById('editor-set');
+    if (!set) return;
+    var have = {};
+    set.getChildren().forEach(function(t) { have[t.getId()] = true; });
+    Object.keys(have).forEach(function(id) { if (!(id in files)) flexDeleteTab(id); });
+    Object.keys(files).forEach(function(p) { if (!have[p]) flexAddTab(p); });
+  } catch (e) {}
+}
+function openFile(p) {
+  if (window._monacoEditor && models[currentFile]) models[currentFile] = window._monacoEditor.getValue();
+  currentFile = p;
+  document.getElementById('stFile').textContent = p;
+  document.getElementById('stLang').textContent = langOf(p).toUpperCase();
+  if (!window._monacoEditor) { renderFiles(); return; }
+  if (!models[p]) models[p] = true;
+  var model = monaco.editor.getModel(monaco.Uri.parse('inmemory://' + p));
+  if (!model) model = monaco.editor.createModel(files[p] || '', langOf(p), monaco.Uri.parse('inmemory://' + p));
+  window._monacoEditor.setModel(model);
+  moveEditorTo(p);
+  flexSelect(p);
+  renderFiles();
+}
+/* ── Activity bar (FlexLayout panes + vanilla AI rail) ── */
+var removedPanes = {};
+function setPane(btn, show) {
+  var key = btn.getAttribute('data-pane');
+  if (key === 'ai') {
+    var p = document.getElementById('aiPanel');
+    if (show === undefined) show = !p.classList.contains('open');
+    p.classList.toggle('open', show);
+    btn.classList.toggle('active', show);
+  } else {
+    try {
+      var m = window._flexModel;
+      if (!m || typeof FlexLayout === 'undefined') return;
+      var id = key === 'files' ? 'files-set' : 'preview-set';
+      var node = m.getNodeById(id);
+      if (show === undefined) show = !node;
+      if (show && !node && removedPanes[id]) {
+        m.doAction(FlexLayout.Actions.addNode(removedPanes[id], 'editor-set', key === 'files' ? FlexLayout.DockLocation.LEFT : FlexLayout.DockLocation.RIGHT, 0));
+        delete removedPanes[id];
+        btn.classList.add('active');
+      } else if (!show && node) {
+        removedPanes[id] = node.toJson();
+        m.doAction(FlexLayout.Actions.deleteTabset(id));
+        btn.classList.remove('active');
+      }
+    } catch (e) {}
+  }
+  if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
+}
+document.querySelectorAll('.act-btn[data-pane]').forEach(function(b) {
+  b.addEventListener('click', function() { setPane(b); });
+});
+document.getElementById('actPublish').addEventListener('click', function() { openPublishModal(); });
+document.getElementById('btnAddFile').addEventListener('click', function() {
+  var n = prompt('File name (e.g. game.js, style.css):');
+  if (!n) return;
+  n = n.trim().replace(/[^a-zA-Z0-9._-]/g, '');
+  if (!n || files[n]) return;
+  files[n] = '';
+  flexAddTab(n);
+  openFile(n);
+});
 
-/* ════════════════════════════════════════════════════
-   CORE FUNCTIONS
-   ════════════════════════════════════════════════════ */
+/* ── Console ── */
 function logToConsole(text, level) {
-  level = level || 'info';
-  const el = document.getElementById('console');
-  const line = document.createElement('div');
-  line.className = 'log-' + level;
-  line.textContent = text;
-  el.appendChild(line);
+  var el = document.getElementById('consoleEl');
+  var div = document.createElement('div');
+  div.className = 'log-' + (level || 'info');
+  div.textContent = (level === 'error' ? '✕ ' : '') + text;
+  el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }
-
-function refreshHierarchy() {
-  const el = document.getElementById('hierarchy');
-  el.innerHTML = sceneObjects.map(function(o, i) {
-    var icon = o.userData.type === 'box' ? 'C' : o.userData.type === 'sphere' ? 'S' :
-               o.userData.type === 'cylinder' ? 'Y' : o.userData.type === 'cone' ? 'N' :
-               o.userData.type === 'torus' ? 'T' : o.userData.type === 'light' ? '&#9728;' :
-               o.userData.type === 'camera' ? '&#128247;' : 'P';
-    return '<div class="h-item' + (selectedObj === o ? ' selected' : '') + '" data-hidx="' + i + '">' +
-      '<span class="h-icon">' + icon + '</span>' + o.name + '</div>';
-  }).join('');
-  refreshFileTree();
-}
-
-function updatePropsUI() {
-  if (!selectedObj) return;
-  document.getElementById('propName').value = selectedObj.name;
-  document.getElementById('propPosX').value = selectedObj.position.x.toFixed(2);
-  document.getElementById('propPosY').value = selectedObj.position.y.toFixed(2);
-  document.getElementById('propPosZ').value = selectedObj.position.z.toFixed(2);
-  document.getElementById('propRotX').value = THREE.MathUtils.radToDeg(selectedObj.rotation.x).toFixed(1);
-  document.getElementById('propRotY').value = THREE.MathUtils.radToDeg(selectedObj.rotation.y).toFixed(1);
-  document.getElementById('propRotZ').value = THREE.MathUtils.radToDeg(selectedObj.rotation.z).toFixed(1);
-  document.getElementById('propScaleX').value = selectedObj.scale.x.toFixed(2);
-  document.getElementById('propScaleY').value = selectedObj.scale.y.toFixed(2);
-  document.getElementById('propScaleZ').value = selectedObj.scale.z.toFixed(2);
-  var isCam = selectedObj.isCamera;
-  document.getElementById('cameraAttachGroup').style.display = isCam ? 'block' : 'none';
-  if (isCam) {
-    var sel = document.getElementById('cameraAttach');
-    var opts = '<option value="">None (Free Camera)</option>';
-    sceneObjects.forEach(function(o, i) {
-      if (o === selectedObj || o.isCamera) return;
-      var selAttr = (selectedObj.userData.attachTo === o.name) ? ' selected' : '';
-      opts += '<option value="' + o.name + '"' + selAttr + '>' + o.name + '</option>';
-    });
-    sel.innerHTML = opts;
-  }
-  updateMaterialUI();
-}
-
-function refreshScriptList() {
-  // Scripts are now managed through the Packages panel
-}
-
-function selectObject(obj) {
-  selectedObj = obj;
-  if (obj) {
-    transform.attach(obj);
-    document.getElementById('propsEmpty').style.display = 'none';
-    document.getElementById('propsContent').style.display = 'block';
-    updatePropsUI();
-  } else {
-    transform.detach();
-    document.getElementById('propsEmpty').style.display = 'block';
-    document.getElementById('propsContent').style.display = 'none';
-  }
-  refreshHierarchy();
-}
-
-function addPrimitive(type) {
-  pushUndo();
-  var mesh;
-  if (type === 'empty') {
-    mesh = new THREE.Object3D();
-    mesh.position.set(0, 0.5, 0);
-  } else if (type === 'light') {
-    mesh = new THREE.PointLight(0xffffff, 1, 20);
-    mesh.position.set(2, 3, 2); mesh.castShadow = true;
-  } else if (type === 'directional_light') {
-    mesh = new THREE.DirectionalLight(0xfff4e0, 1.5);
-    mesh.position.set(5, 8, 5); mesh.castShadow = true;
-    mesh.shadow.mapSize.width = 2048; mesh.shadow.mapSize.height = 2048;
-    mesh.shadow.camera.left = -10; mesh.shadow.camera.right = 10;
-    mesh.shadow.camera.top = 10; mesh.shadow.camera.bottom = -10;
-  } else if (type === 'spot_light') {
-    mesh = new THREE.SpotLight(0xffffff, 1, 30, Math.PI / 6, 0.3, 1);
-    mesh.position.set(3, 5, 3); mesh.castShadow = true;
-    mesh.target.position.set(0, 0, 0); scene.add(mesh.target);
-  } else if (type === 'ambient_light') {
-    mesh = new THREE.AmbientLight(0x404060, 0.4);
-  } else if (type === 'hemisphere_light') {
-    mesh = new THREE.HemisphereLight(0x87ceeb, 0x362907, 0.6);
-  } else if (type === 'gradient_sky') {
-    var skyGeo = new THREE.SphereGeometry(50, 32, 15);
-    var skyCanvas = document.createElement('canvas');
-    skyCanvas.width = 512; skyCanvas.height = 512;
-    var skyCtx = skyCanvas.getContext('2d');
-    var grad = skyCtx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#0a0a2e'); grad.addColorStop(0.4, '#1a1a5e');
-    grad.addColorStop(0.6, '#4a6fa5'); grad.addColorStop(1, '#87ceeb');
-    skyCtx.fillStyle = grad; skyCtx.fillRect(0, 0, 512, 512);
-    var skyTex = new THREE.CanvasTexture(skyCanvas);
-    var skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide });
-    mesh = new THREE.Mesh(skyGeo, skyMat);
-    mesh.name = 'GradientSky';
-  } else if (type === 'starfield_sky') {
-    var sfGeo = new THREE.SphereGeometry(50, 32, 15);
-    var sfCanvas = document.createElement('canvas');
-    sfCanvas.width = 512; sfCanvas.height = 512;
-    var sfCtx = sfCanvas.getContext('2d');
-    sfCtx.fillStyle = '#050510'; sfCtx.fillRect(0, 0, 512, 512);
-    for (var si = 0; si < 400; si++) {
-      var sx = Math.random() * 512, sy = Math.random() * 512;
-      var sr = Math.random() * 1.5 + 0.3;
-      var brightness = Math.floor(Math.random() * 155 + 100);
-      sfCtx.beginPath(); sfCtx.arc(sx, sy, sr, 0, Math.PI * 2);
-      sfCtx.fillStyle = 'rgb(' + brightness + ',' + brightness + ',' + (brightness + 30) + ')';
-      sfCtx.fill();
-    }
-    var sfTex = new THREE.CanvasTexture(sfCanvas);
-    var sfMat = new THREE.MeshBasicMaterial({ map: sfTex, side: THREE.BackSide });
-    mesh = new THREE.Mesh(sfGeo, sfMat);
-    mesh.name = 'StarfieldSky';
-  } else if (type === 'solid_sky') {
-    var ssGeo = new THREE.SphereGeometry(50, 32, 15);
-    var ssMat = new THREE.MeshBasicMaterial({ color: 0x87ceeb, side: THREE.BackSide });
-    mesh = new THREE.Mesh(ssGeo, ssMat);
-    mesh.name = 'SolidSky';
-  } else if (type === 'camera') {
-    mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-    mesh.position.set(0, 2, 5);
-  } else {
-    var geo = primitiveGeos[type]();
-    var color = primitiveColors[type] || 0xbfff3c;
-    var mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.1 });
-    mesh = new THREE.Mesh(geo, mat);
-    mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.position.y = type === 'plane' ? 0.01 : 0.5;
-    if (type === 'plane') mesh.rotation.x = -Math.PI / 2;
-  }
-  mesh.name = mesh.name || (type.charAt(0).toUpperCase() + type.slice(1) + '_' + (sceneObjects.length + 1));
-  mesh.userData = { type, color: mesh.material ? '#' + mesh.material.color.getHexString() : '#ffffff', scripts: [], matType: 'standard', matProps: {} };
-  scene.add(mesh);
-  sceneObjects.push(mesh);
-  if (mesh.isCamera) createFrustumHelper(mesh);
-  selectObject(mesh);
-  logToConsole('Created ' + mesh.name, 'info');
-}
-
-function deleteSelected() {
-  if (!selectedObj) return;
-  pushUndo();
-  logToConsole('Deleted ' + selectedObj.name, 'warn');
-  if (selectedObj.isCamera) removeFrustumHelper(selectedObj);
-  scene.remove(selectedObj);
-  sceneObjects = sceneObjects.filter(function(o) { return o !== selectedObj; });
-  transform.detach();
-  selectedObj = null;
-  selectObject(null);
-}
-
-function duplicateSelected() {
-  if (!selectedObj) return;
-  pushUndo();
-  var clone = selectedObj.clone();
-  if (selectedObj.material) clone.material = selectedObj.material.clone();
-  clone.position.x += 1;
-  clone.name = selectedObj.name + '_copy';
-  clone.userData = { type: selectedObj.userData.type, color: selectedObj.userData.color, scripts: JSON.parse(JSON.stringify(selectedObj.userData.scripts || [])), matType: selectedObj.userData.matType, matProps: Object.assign({}, selectedObj.userData.matProps || {}) };
-  scene.add(clone);
-  sceneObjects.push(clone);
-  selectObject(clone);
-}
-
-function serializeScene() {
-  return sceneObjects.filter(function(o) { return o.name !== '__ground'; }).map(function(o) {
-    var color = o.userData.color;
-    if (!color && o.material && o.material.color) color = '#' + o.material.color.getHexString();
-    return {
-      name: o.name, type: o.userData.type,
-      position: [o.position.x, o.position.y, o.position.z],
-      rotation: [o.rotation.x, o.rotation.y, o.rotation.z],
-      scale: [o.scale.x, o.scale.y, o.scale.z],
-      color: color,
-      scripts: o.userData.scripts || [],
-      matType: o.userData.matType || 'standard',
-      matProps: o.userData.matProps || {},
-      attachTo: o.userData.attachTo || null,
-    };
-  });
-}
-
-function deserializeScene(data) {
-  Object.keys(camHelpers).forEach(function(k) { if (camHelpers[k]) scene.remove(camHelpers[k]); });
-  for (var k in camHelpers) delete camHelpers[k];
-  sceneObjects.forEach(function(o) { scene.remove(o); });
-  sceneObjects = [];
-  (data || []).forEach(function(d) {
-    var mesh;
-    if (d.type === 'light') {
-      mesh = new THREE.PointLight(0xffffff, 1, 20);
-    } else if (d.type === 'camera') {
-      mesh = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
-    } else if (d.type === 'empty') {
-      mesh = new THREE.Object3D();
-    } else {
-      var geo = primitiveGeos[d.type] ? primitiveGeos[d.type]() : new THREE.BoxGeometry(1, 1, 1);
-      var color = d.color ? new THREE.Color(d.color) : new THREE.Color(0xbfff3c);
-      var mat = buildMaterial(d.matType || 'standard', color, d.matProps || {});
-      mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true; mesh.receiveShadow = true;
-    }
-    mesh.name = d.name || 'Object';
-    mesh.userData = { type: d.type, color: d.color, scripts: d.scripts || [], matType: d.matType || 'standard', matProps: d.matProps || {} };
-    if (d.position) mesh.position.set(d.position[0], d.position[1], d.position[2]);
-    if (d.rotation) mesh.rotation.set(d.rotation[0], d.rotation[1], d.rotation[2]);
-    if (d.scale) mesh.scale.set(d.scale[0], d.scale[1], d.scale[2]);
-    if (mesh.isCamera) createFrustumHelper(mesh);
-    scene.add(mesh);
-    sceneObjects.push(mesh);
-  });
-  refreshHierarchy();
-}
-
-/* ════════════════════════════════════════════════════
-   RESIZE
-   ════════════════════════════════════════════════════ */
-function onResize() {
-  var w = container.clientWidth, h = container.clientHeight;
-  if (w > 0 && h > 0) { camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h); }
-}
-window.addEventListener('resize', onResize);
-new ResizeObserver(onResize).observe(container);
-setTimeout(onResize, 0);
-setTimeout(onResize, 200);
-
-/* ════════════════════════════════════════════════════
-   RAYCASTING
-   ════════════════════════════════════════════════════ */
-var raycaster = new THREE.Raycaster();
-var mouse = new THREE.Vector2();
-renderer.domElement.addEventListener('pointerdown', function(e) {
-  if (transform.dragging) return;
-  if (e.button === 2) return;
-  var rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  var targets = sceneObjects.filter(function(o) { return o.name !== '__ground'; });
-  var hits = raycaster.intersectObjects(targets, false);
-  if (hits.length > 0) selectObject(hits[0].object);
-  else selectObject(null);
+document.getElementById('btnClearConsole').addEventListener('click', function() {
+  document.getElementById('consoleEl').innerHTML = '';
 });
-
-renderer.domElement.addEventListener('contextmenu', function(e) {
-  e.preventDefault(); e.stopPropagation();
-  var rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  var targets = sceneObjects.filter(function(o) { return o.name !== '__ground'; });
-  var hits = raycaster.intersectObjects(targets, false);
-  if (hits.length > 0) {
-    var obj = hits[0].object;
-    selectObject(obj);
-    var objItems = [
-      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
-      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
-      '---',
-    ].concat(buildAddItems(), [
-      '---',
-      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
-    ]);
-    showCtxMenu(e.clientX, e.clientY, objItems, obj);
-  } else {
-    showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
-  }
-});
-
-transform.addEventListener('objectChange', function() { if (selectedObj) updatePropsUI(); });
-
-/* ════════════════════════════════════════════════════
-   KEYBOARD
-   ════════════════════════════════════════════════════ */
-document.addEventListener('keydown', function(e) {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-  if (window._monacoEditor && document.activeElement && document.activeElement.closest('.monaco-editor')) return;
-  if (e.key === 'g') setTool('translate');
-  if (e.key === 'r') setTool('rotate');
-  if (e.key === 's' && !e.ctrlKey) setTool('scale');
-  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
-  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
-  if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-  if (e.ctrlKey && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
-  if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
-  if (e.key === 'Escape') { if (playMode) exitPlayMode(); else selectObject(null); }
-});
-
-function setTool(tool) {
-  currentTool = tool;
-  transform.setMode(tool);
-  document.getElementById('toolMove').classList.toggle('active', tool === 'translate');
-  document.getElementById('toolRotate').classList.toggle('active', tool === 'rotate');
-  document.getElementById('toolScale').classList.toggle('active', tool === 'scale');
-}
-
-/* ════════════════════════════════════════════════════
-   TABS
-   ════════════════════════════════════════════════════ */
-document.querySelectorAll('[data-right]').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('[data-right]').forEach(function(t) { t.classList.remove('active'); });
-    tab.classList.add('active');
-    document.getElementById('propsPanel').classList.toggle('hidden', tab.dataset.right !== 'props');
-  });
-});
-
-document.querySelectorAll('[data-btab]').forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    document.querySelectorAll('[data-btab]').forEach(function(t) { t.classList.remove('active'); });
-    tab.classList.add('active');
-    document.getElementById('codePanel').classList.toggle('hidden', tab.dataset.btab !== 'code');
-    document.getElementById('consolePanel').classList.toggle('hidden', tab.dataset.btab !== 'console');
-    document.getElementById('filesPanel').classList.toggle('hidden', tab.dataset.btab !== 'files');
-    document.getElementById('packagesPanel').classList.toggle('hidden', tab.dataset.btab !== 'packages');
-    if (tab.dataset.btab === 'code' && window._monacoEditor) window._monacoEditor.layout();
-  });
-});
-
-/* ════════════════════════════════════════════════════
-   PACKAGES SYSTEM
-   ════════════════════════════════════════════════════ */
-var PACKAGES = [
-  { id: 'mat_default', name: 'Default', type: 'material', icon: '&#127912;', category: 'material',
-    props: { color: '#bfff3c', matType: 'standard', matProps: { roughness: 0.6, metalness: 0.1 } } },
-  { id: 'mat_metal', name: 'Metal', type: 'material', icon: '&#9881;', category: 'material',
-    props: { color: '#888899', matType: 'standard', matProps: { roughness: 0.1, metalness: 0.9 } } },
-  { id: 'mat_glass', name: 'Glass', type: 'material', icon: '&#128302;', category: 'material',
-    props: { color: '#aaccee', matType: 'standard', matProps: { roughness: 0.0, metalness: 0.1 } } },
-  { id: 'mat_wood', name: 'Wood', type: 'material', icon: '&#127795;', category: 'material',
-    props: { color: '#8B5E3C', matType: 'standard', matProps: { roughness: 0.8, metalness: 0.0 } } },
-  { id: 'mat_emissive', name: 'Emissive', type: 'material', icon: '&#128161;', category: 'material',
-    props: { color: '#bfff3c', matType: 'phong', matProps: { emissive: '#bfff3c', shininess: 80 } } },
-  { id: 'mat_toon', name: 'Toon', type: 'material', icon: '&#127912;', category: 'material',
-    props: { color: '#ff8426', matType: 'toon', matProps: {} } },
-  { id: 'mat_red', name: 'Red', type: 'material', icon: '&#128308;', category: 'material',
-    props: { color: '#ff2674', matType: 'standard', matProps: { roughness: 0.4, metalness: 0.2 } } },
-  { id: 'mat_blue', name: 'Blue', type: 'material', icon: '&#128309;', category: 'material',
-    props: { color: '#234975', matType: 'standard', matProps: { roughness: 0.5, metalness: 0.1 } } },
-  { id: 'mat_gold', name: 'Gold', type: 'material', icon: '&#128176;', category: 'material',
-    props: { color: '#ffd100', matType: 'standard', matProps: { roughness: 0.15, metalness: 0.95 } } },
-  { id: 'mat_neon', name: 'Neon', type: 'material', icon: '&#128171;', category: 'material',
-    props: { color: '#10d275', matType: 'phong', matProps: { emissive: '#10d275', shininess: 100 } } },
-
-  { id: 'shd_outline', name: 'Outline', type: 'shader', icon: '&#9999;', category: 'shader',
-    props: { vertShader: 'varying vec3 vNormal;\nvoid main() {\n  vNormal = normalize(normalMatrix * normal);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
-             fragShader: 'varying vec3 vNormal;\nvoid main() {\n  float intensity = pow(0.65 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);\n  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0) * intensity;\n}' } },
-  { id: 'shd_fresnel', name: 'Fresnel', type: 'shader', icon: '&#9999;', category: 'shader',
-    props: { vertShader: 'varying vec3 vNormal;\nvarying vec3 vViewDir;\nvoid main() {\n  vNormal = normalize(normalMatrix * normal);\n  vec4 worldPos = modelMatrix * vec4(position, 1.0);\n  vViewDir = normalize(cameraPosition - worldPos.xyz);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
-             fragShader: 'varying vec3 vNormal;\nvarying vec3 vViewDir;\nvoid main() {\n  float fresnel = 1.0 - max(dot(vViewDir, vNormal), 0.0);\n  fresnel = pow(fresnel, 3.0);\n  gl_FragColor = vec4(0.41, 0.68, 0.83, fresnel);\n}' } },
-  { id: 'shd_hologram', name: 'Hologram', type: 'shader', icon: '&#9999;', category: 'shader',
-    props: { vertShader: 'varying vec2 vUv;\nvarying vec3 vNormal;\nvoid main() {\n  vUv = uv;\n  vNormal = normalize(normalMatrix * normal);\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
-             fragShader: 'varying vec2 vUv;\nvarying vec3 vNormal;\nuniform float time;\nvoid main() {\n  float scanline = sin(vUv.y * 80.0 + time * 3.0) * 0.5 + 0.5;\n  float glow = max(dot(vNormal, vec3(0.0, 0.0, 1.0)), 0.0);\n  gl_FragColor = vec4(0.41, 0.68, 0.83, glow * 0.6 * scanline);\n}' } },
-  { id: 'shd_wireframe', name: 'Wireframe', type: 'shader', icon: '&#9999;', category: 'shader',
-    props: { vertShader: 'varying vec3 vBary;\nattribute vec3 barycentric;\nvoid main() {\n  vBary = barycentric;\n  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n}',
-             fragShader: 'varying vec3 vBary;\nvoid main() {\n  vec3 d = fwidth(vBary);\n  vec3 a3 = smoothstep(vec3(0.0), d * 1.5, vBary);\n  float minval = min(min(a3.x, a3.y), a3.z);\n  gl_FragColor = vec4(0.75, 1.0, 0.24, 1.0 - minval);\n}' } },
-
-  { id: 'scr_rotate', name: 'Rotate', type: 'script', icon: '&#9881;', category: 'script',
-    code: '// Spins the object continuously\nfunction update() {\n  self.rotation.y += 0.02;\n}' },
-  { id: 'scr_bob', name: 'Bob', type: 'script', icon: '&#8597;', category: 'script',
-    code: '// Bobs the object up and down\nvar t = 0;\nfunction update() {\n  t += 0.03;\n  self.position.y += Math.sin(t) * 0.01;\n}' },
-  { id: 'scr_pulse', name: 'Pulse', type: 'script', icon: '&#128165;', category: 'script',
-    code: '// Pulses the object scale\nvar t = 0;\nfunction update() {\n  t += 0.04;\n  var s = 1.0 + Math.sin(t) * 0.15;\n  self.scale.set(s, s, s);\n}' },
-  { id: 'scr_orbit', name: 'Orbit', type: 'script', icon: '&#127759;', category: 'script',
-    code: '// Orbits around the origin\nvar t = 0;\nvar radius = 3.0;\nfunction update() {\n  t += 0.02;\n  self.position.x = Math.cos(t) * radius;\n  self.position.z = Math.sin(t) * radius;\n}' },
-  { id: 'scr_spin_x', name: 'Spin X', type: 'script', icon: '&#8634;', category: 'script',
-    code: 'function update() {\n  self.rotation.x += 0.03;\n}' },
-  { id: 'scr_flicker', name: 'Flicker', type: 'script', icon: '&#128161;', category: 'script',
-    code: '// Flickers material emissive (for lights/neon)\nfunction update() {\n  if (self.material && self.material.emissive) {\n    var b = 0.5 + Math.random() * 0.5;\n    self.material.emissive.setRGB(b * 0.75, b * 1.0, b * 0.24);\n  }\n}' },
-];
-
-var currentPkgFilter = 'all';
-var pkgSearchTerm = '';
-
-function renderPackages() {
-  var grid = document.getElementById('pkgGrid');
-  var html = '';
-  PACKAGES.forEach(function(pkg) {
-    if (currentPkgFilter !== 'all' && pkg.type !== currentPkgFilter) return;
-    if (pkgSearchTerm && pkg.name.toLowerCase().indexOf(pkgSearchTerm) === -1) return;
-    html += '<div class="pkg-item" draggable="true" data-pkg="' + pkg.id + '" data-type="' + pkg.type + '">' +
-      '<span class="pkg-icon">' + pkg.icon + '</span>' +
-      '<span class="pkg-name">' + pkg.name + '</span>' +
-      '<span class="pkg-type-badge">' + pkg.type + '</span>' +
-      '</div>';
-  });
-  if (!html) html = '<div style="grid-column:1/-1;text-align:center;color:#444;padding:20px;font-size:.76rem">No packages found</div>';
-  grid.innerHTML = html;
-  attachPkgDragHandlers();
-}
-
-function attachPkgDragHandlers() {
-  document.querySelectorAll('.pkg-item').forEach(function(el) {
-    el.addEventListener('dragstart', function(e) {
-      e.dataTransfer.setData('text/plain', el.dataset.pkg);
-      e.dataTransfer.effectAllowed = 'copy';
-      el.classList.add('dragging');
-      setTimeout(function() { enableDropTargets(true); }, 0);
-    });
-    el.addEventListener('dragend', function() {
-      el.classList.remove('dragging');
-      enableDropTargets(false);
-    });
-  });
-}
-
-function enableDropTargets(on) {
-  document.querySelectorAll('.h-item, .file-item[data-fidx]').forEach(function(el) {
-    if (on) {
-      el.setAttribute('draggable', 'false');
-      el.addEventListener('dragover', onDragOver);
-      el.addEventListener('dragleave', onDragLeave);
-      el.addEventListener('drop', onPkgDrop);
-    } else {
-      el.removeEventListener('dragover', onDragOver);
-      el.removeEventListener('dragleave', onDragLeave);
-      el.removeEventListener('drop', onPkgDrop);
-      el.classList.remove('drop-target');
-    }
-  });
-  if (!on) document.querySelectorAll('.drop-target').forEach(function(el) { el.classList.remove('drop-target'); });
-}
-
-function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; this.classList.add('drop-target'); }
-function onDragLeave(e) { this.classList.remove('drop-target'); }
-
-function onPkgDrop(e) {
-  e.preventDefault();
-  this.classList.remove('drop-target');
-  var pkgId = e.dataTransfer.getData('text/plain');
-  var pkg = PACKAGES.find(function(p) { return p.id === pkgId; });
-  if (!pkg) return;
-
-  var obj = null;
-  if (this.dataset.hidx !== undefined) obj = sceneObjects[parseInt(this.dataset.hidx)];
-  else if (this.dataset.fidx !== undefined) obj = sceneObjects[parseInt(this.dataset.fidx)];
-  if (!obj) return;
-
-  pushUndo();
-  applyPackage(obj, pkg);
-  selectObject(obj);
-  logToConsole('Applied ' + pkg.type + ' "' + pkg.name + '" to ' + obj.name, 'info');
-}
-
-function applyPackage(obj, pkg) {
-  if (pkg.type === 'material') {
-    var color = new THREE.Color(pkg.props.color);
-    if (obj.material) obj.material.dispose();
-    obj.material = buildMaterial(pkg.props.matType, color, pkg.props.matProps);
-    obj.userData.color = pkg.props.color;
-    obj.userData.matType = pkg.props.matType;
-    obj.userData.matProps = Object.assign({}, pkg.props.matProps);
-  } else if (pkg.type === 'shader') {
-    if (obj.material) obj.material.dispose();
-    obj.material = new THREE.ShaderMaterial({ vertexShader: pkg.props.vertShader, fragmentShader: pkg.props.fragShader });
-    obj.userData.matType = 'shader';
-    obj.userData.matProps = { vertShader: pkg.props.vertShader, fragShader: pkg.props.fragShader };
-  } else if (pkg.type === 'script') {
-    if (!obj.userData.scripts) obj.userData.scripts = [];
-    obj.userData.scripts.push({ name: pkg.name, code: pkg.code });
-    refreshScriptList();
-    refreshFileTree();
-  }
-  if (obj === selectedObj) updateMaterialUI();
-}
-
-document.querySelectorAll('[data-pfilter]').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('[data-pfilter]').forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-    currentPkgFilter = btn.dataset.pfilter;
-    renderPackages();
-  });
-});
-
-document.getElementById('pkgSearch').addEventListener('input', function() {
-  pkgSearchTerm = this.value.toLowerCase();
-  renderPackages();
-});
-
-renderPackages();
-
-/* ════════════════════════════════════════════════════
-   CONTEXT MENU SYSTEM
-   ════════════════════════════════════════════════════ */
-const ctxMenu = document.getElementById('ctxMenu');
-let ctxMenuTarget = null;
-
-function showCtxMenu(x, y, items, target) {
-  ctxMenuTarget = target || null;
-  let html = '';
-  items.forEach(function(item) {
-    if (item === '---') { html += '<div class="ctx-sep"></div>'; return; }
-    var cls = item.danger ? ' ctx-item danger' : ' ctx-item';
-    html += '<div class="' + cls + '" data-ctx="' + item.action + '"><span class="ctx-icon">' + (item.icon || '') + '</span>' + item.label + '</div>';
-  });
-  ctxMenu.innerHTML = html;
-  ctxMenu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
-  ctxMenu.style.top = Math.min(y, window.innerHeight - items.length * 30) + 'px';
-  ctxMenu.classList.add('open');
-}
-
-function hideCtxMenu() { ctxMenu.classList.remove('open'); ctxMenuTarget = null; }
-
-document.addEventListener('click', hideCtxMenu);
-document.addEventListener('contextmenu', function(e) { e.preventDefault(); hideCtxMenu(); });
-
-ctxMenu.addEventListener('click', function(e) {
-  var item = e.target.closest('[data-ctx]');
-  if (!item) return;
-  var action = item.dataset.ctx;
-  hideCtxMenu();
-  handleCtxAction(action, ctxMenuTarget);
-});
-
-function handleCtxAction(action, target) {
-  if (action === 'add_box') addPrimitive('box');
-  else if (action === 'add_sphere') addPrimitive('sphere');
-  else if (action === 'add_cylinder') addPrimitive('cylinder');
-  else if (action === 'add_cone') addPrimitive('cone');
-  else if (action === 'add_torus') addPrimitive('torus');
-  else if (action === 'add_plane') addPrimitive('plane');
-  else if (action === 'add_light') addPrimitive('light');
-  else if (action === 'add_directional_light') addPrimitive('directional_light');
-  else if (action === 'add_spot_light') addPrimitive('spot_light');
-  else if (action === 'add_ambient_light') addPrimitive('ambient_light');
-  else if (action === 'add_hemisphere_light') addPrimitive('hemisphere_light');
-  else if (action === 'add_gradient_sky') addPrimitive('gradient_sky');
-  else if (action === 'add_starfield_sky') addPrimitive('starfield_sky');
-  else if (action === 'add_solid_sky') addPrimitive('solid_sky');
-  else if (action === 'add_camera') addPrimitive('camera');
-  else if (action === 'add_empty') addPrimitive('empty');
-  else if (action === 'delete_obj') { if (target) { selectedObj = target; deleteSelected(); } }
-  else if (action === 'duplicate_obj') { if (target) { selectedObj = target; duplicateSelected(); } }
-  else if (action === 'rename_obj') {
-    if (target) {
-      var newName = prompt('Rename:', target.name);
-      if (newName && newName.trim()) { pushUndo(); target.name = newName.trim(); refreshHierarchy(); }
-    }
-  }
-  else if (action === 'new_folder') { addFolder(); }
-  else if (action === 'new_script_file') { addNewScriptFile(target); }
-  else if (action === 'delete_file') { if (target && target.type === 'file') { pushUndo(); var obj = sceneObjects[target.objIdx]; if (obj && obj.userData.scripts) { obj.userData.scripts.splice(target.scriptIdx, 1); refreshFileTree(); refreshScriptList(); } } }
-  else if (action === 'rename_file') {
-    if (target && target.type === 'file') {
-      var obj = sceneObjects[target.objIdx];
-      if (obj && obj.userData.scripts && obj.userData.scripts[target.scriptIdx]) {
-        var nn = prompt('Rename script:', obj.userData.scripts[target.scriptIdx].name);
-        if (nn && nn.trim()) { pushUndo(); obj.userData.scripts[target.scriptIdx].name = nn.trim(); refreshFileTree(); }
-      }
-    }
-  }
-  else if (action === 'delete_folder') { if (target && target.type === 'folder') { pushUndo(); target.items.forEach(function(i) { scene.remove(i); }); sceneObjects = sceneObjects.filter(function(o) { return target.items.indexOf(o) === -1; }); selectObject(null); refreshHierarchy(); } }
-}
-
-function buildAddItems() {
-  return [
-    { icon: 'C', label: 'Add Cube', action: 'add_box' },
-    { icon: 'S', label: 'Add Sphere', action: 'add_sphere' },
-    { icon: 'Y', label: 'Add Cylinder', action: 'add_cylinder' },
-    { icon: 'N', label: 'Add Cone', action: 'add_cone' },
-    { icon: 'T', label: 'Add Torus', action: 'add_torus' },
-    { icon: 'P', label: 'Add Plane', action: 'add_plane' },
-    { icon: '+', label: 'Add Empty', action: 'add_empty' },
-    '---',
-    { icon: '&#128247;', label: 'Add Camera', action: 'add_camera' },
-    '---',
-    { icon: '&#9728;', label: 'Point Light', action: 'add_light' },
-    { icon: '&#9788;', label: 'Directional Light', action: 'add_directional_light' },
-    { icon: '&#128294;', label: 'Spot Light', action: 'add_spot_light' },
-    { icon: '&#9790;', label: 'Ambient Light', action: 'add_ambient_light' },
-    { icon: '&#127748;', label: 'Hemisphere Light', action: 'add_hemisphere_light' },
-    '---',
-    { icon: '&#127747;', label: 'Gradient Sky', action: 'add_gradient_sky' },
-    { icon: '&#11088;', label: 'Starfield Sky', action: 'add_starfield_sky' },
-    { icon: '&#127752;', label: 'Solid Sky', action: 'add_solid_sky' },
-  ];
-}
-
-const sceneCtxItems = buildAddItems();
-
-/* ════════════════════════════════════════════════════
-   TOOLBAR
-   ════════════════════════════════════════════════════ */
-document.querySelectorAll('[data-tool]').forEach(function(btn) {
-  btn.addEventListener('click', function() { setTool(btn.dataset.tool); });
-});
-document.getElementById('btnUndo').addEventListener('click', undo);
-document.getElementById('btnRedo').addEventListener('click', redo);
-document.getElementById('btnDup').addEventListener('click', duplicateSelected);
-document.getElementById('btnDel').addEventListener('click', deleteSelected);
-document.getElementById('btnGrid').addEventListener('click', function() { gridVisible = !gridVisible; gridHelper.visible = gridVisible; });
-document.getElementById('btnWire').addEventListener('click', function() {
-  wireframeMode = !wireframeMode;
-  sceneObjects.forEach(function(o) { if (o.material) o.material.wireframe = wireframeMode; });
-});
-
-/* ════════════════════════════════════════════════════
-   FOLDERS + NEW FILE HELPERS
-   ════════════════════════════════════════════════════ */
-let fileFolders = {};
-
-function addFolder() {
-  var name = prompt('Folder name:', 'Folder');
-  if (!name || !name.trim()) return;
-  pushUndo();
-  fileFolders[name.trim()] = [];
-  refreshFileTree();
-  logToConsole('Created folder: ' + name.trim(), 'info');
-}
-
-function addNewScriptFile(target) {
-  pushUndo();
-  var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xbfff3c, transparent: true, opacity: 0 }));
-  mesh.position.set(0, 100, 0);
-  mesh.name = 'ScriptHolder_' + (sceneObjects.length + 1);
-  mesh.userData = { type: 'box', color: '#bfff3c', scripts: [{ name: 'Script', code: '// New script\nfunction update() {\n\n}' }], matType: 'standard', matProps: {} };
-  scene.add(mesh);
-  sceneObjects.push(mesh);
-  refreshFileTree();
-  logToConsole('Created script file', 'info');
-}
-
-/* ════════════════════════════════════════════════════
-   HIERARCHY + FILE CLICKS + CONTEXT MENUS
-   ════════════════════════════════════════════════════ */
-document.getElementById('hierarchy').addEventListener('click', function(e) {
-  var item = e.target.closest('[data-hidx]');
-  if (item) selectObject(sceneObjects[parseInt(item.dataset.hidx)]);
-});
-
-document.getElementById('hierarchy').addEventListener('contextmenu', function(e) {
-  e.preventDefault(); e.stopPropagation();
-  var item = e.target.closest('[data-hidx]');
-  if (item) {
-    var obj = sceneObjects[parseInt(item.dataset.hidx)];
-    selectObject(obj);
-    var hItems = [
-      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
-      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
-      '---',
-    ].concat(buildAddItems(), [
-      '---',
-      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
-    ]);
-    showCtxMenu(e.clientX, e.clientY, hItems, obj);
-  } else {
-    showCtxMenu(e.clientX, e.clientY, sceneCtxItems, null);
-  }
-});
-
-document.getElementById('fileTree').addEventListener('click', function(e) {
-  var item = e.target.closest('[data-fidx]');
-  if (item) { selectObject(sceneObjects[parseInt(item.dataset.fidx)]); document.querySelector('[data-right="props"]').click(); return; }
-  var sitem = e.target.closest('[data-fsidx]');
-  if (sitem) {
-    var obj = sceneObjects[parseInt(sitem.dataset.fsidx)];
-    var si = parseInt(sitem.dataset.fssi);
-    if (obj && obj.userData.scripts && obj.userData.scripts[si]) {
-      selectObject(obj);
-      if (window._monacoEditor) window._monacoEditor.setValue(obj.userData.scripts[si].code);
-      document.querySelector('[data-btab="code"]').click();
-    }
-  }
-});
-
-document.getElementById('fileTree').addEventListener('contextmenu', function(e) {
-  e.preventDefault(); e.stopPropagation();
-  var sitem = e.target.closest('[data-fsidx]');
-  if (sitem) {
-    var objIdx = parseInt(sitem.dataset.fsidx);
-    var si = parseInt(sitem.dataset.fssi);
-    showCtxMenu(e.clientX, e.clientY, [
-      { icon: '&#9998;', label: 'Rename', action: 'rename_file' },
-      { icon: 'X', label: 'Delete', action: 'delete_file', danger: true },
-    ], { type: 'file', objIdx: objIdx, scriptIdx: si });
-    return;
-  }
-  var fitem = e.target.closest('[data-foidx]');
-  if (fitem) {
-    var obj = sceneObjects[parseInt(fitem.dataset.foidx)];
-    selectObject(obj);
-    showCtxMenu(e.clientX, e.clientY, [
-      { icon: '&#9998;', label: 'Rename', action: 'rename_obj' },
-      { icon: 'D+', label: 'Duplicate', action: 'duplicate_obj' },
-      { icon: 'X', label: 'Delete', action: 'delete_obj', danger: true },
-    ], obj);
-    return;
-  }
-  var ffolder = e.target.closest('[data-ffolder]');
-  if (ffolder) {
-    var items = ffolder.dataset.ffolderItems ? JSON.parse(ffolder.dataset.ffolderItems) : [];
-    showCtxMenu(e.clientX, e.clientY, [
-      { icon: 'X', label: 'Delete All', action: 'delete_folder', danger: true },
-    ], { type: 'folder', items: items });
-    return;
-  }
-  showCtxMenu(e.clientX, e.clientY, [
-    { icon: '&#128193;', label: 'New Folder', action: 'new_folder' },
-    { icon: '&#9998;', label: 'New Script', action: 'new_script_file' },
-    '---',
-  ].concat(buildAddItems()), null);
-});
-
-/* ════════════════════════════════════════════════════
-   PROPERTY INPUTS (with undo on change end)
-   ════════════════════════════════════════════════════ */
-['propPosX','propPosY','propPosZ'].forEach(function(id) {
-  var el = document.getElementById(id);
-  el.addEventListener('focus', pushUndo);
-  el.addEventListener('input', function() {
-    if (!selectedObj) return;
-    selectedObj.position.x = parseFloat(document.getElementById('propPosX').value) || 0;
-    selectedObj.position.y = parseFloat(document.getElementById('propPosY').value) || 0;
-    selectedObj.position.z = parseFloat(document.getElementById('propPosZ').value) || 0;
-  });
-});
-['propRotX','propRotY','propRotZ'].forEach(function(id) {
-  var el = document.getElementById(id);
-  el.addEventListener('focus', pushUndo);
-  el.addEventListener('input', function() {
-    if (!selectedObj) return;
-    selectedObj.rotation.x = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotX').value) || 0);
-    selectedObj.rotation.y = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotY').value) || 0);
-    selectedObj.rotation.z = THREE.MathUtils.degToRad(parseFloat(document.getElementById('propRotZ').value) || 0);
-  });
-});
-['propScaleX','propScaleY','propScaleZ'].forEach(function(id) {
-  var el = document.getElementById(id);
-  el.addEventListener('focus', pushUndo);
-  el.addEventListener('input', function() {
-    if (!selectedObj) return;
-    selectedObj.scale.x = parseFloat(document.getElementById('propScaleX').value) || 1;
-    selectedObj.scale.y = parseFloat(document.getElementById('propScaleY').value) || 1;
-    selectedObj.scale.z = parseFloat(document.getElementById('propScaleZ').value) || 1;
-  });
-});
-document.getElementById('propName').addEventListener('focus', pushUndo);
-document.getElementById('propName').addEventListener('input', function() {
-  if (!selectedObj) return;
-  selectedObj.name = document.getElementById('propName').value;
-  refreshHierarchy();
-});
-
-document.getElementById('cameraAttach').addEventListener('change', function() {
-  if (!selectedObj || !selectedObj.isCamera) return;
-  selectedObj.userData.attachTo = this.value || null;
-  logToConsole('Camera ' + (this.value ? 'attached to ' + this.value : 'detached'), 'info');
-});
-
-/* ════════════════════════════════════════════════════
-   SPLITTER RESIZE SYSTEM
-   ════════════════════════════════════════════════════ */
-(function() {
-  function initSplitV(splitter, leftEl, rightEl, opt) {
-    opt = opt || {};
-    var resizeRight = opt.resizeRight || false;
-    var minL = opt.minLeft || 120, maxL = opt.maxLeft || 0.4;
-    var startX, startLW, startRW;
-    splitter.addEventListener('mousedown', function(e) {
-      e.preventDefault();
-      startX = e.clientX;
-      startLW = leftEl.offsetWidth;
-      startRW = rightEl ? rightEl.offsetWidth : 0;
-      splitter.classList.add('active');
-      var overlay = document.createElement('div');
-      overlay.className = 'resize-overlay';
-      document.body.appendChild(overlay);
-      function onMove(ev) {
-        var dx = ev.clientX - startX;
-        if (resizeRight) {
-          var newRW = Math.max(120, Math.min(window.innerWidth * 0.5, startRW - dx));
-          rightEl.style.width = newRW + 'px';
-          rightEl.style.flex = 'none';
-          rightEl.style.minWidth = '0';
-        } else {
-          var newW = Math.max(minL, Math.min(window.innerWidth * maxL, startLW + dx));
-          leftEl.style.width = newW + 'px';
-          leftEl.style.flex = 'none';
-          leftEl.style.minWidth = '0';
-        }
-        onResize();
-        if (window._monacoEditor) window._monacoEditor.layout();
-      }
-      function onUp() {
-        splitter.classList.remove('active');
-        overlay.remove();
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        onResize();
-        if (window._monacoEditor) window._monacoEditor.layout();
-      }
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    });
-  }
-
-  function initSplitH(splitter, topEl, bottomEl, opt) {
-    opt = opt || {};
-    var minT = opt.minTop || 80, minB = opt.minBottom || 80;
-    var startY, startTH;
-    splitter.addEventListener('mousedown', function(e) {
-      e.preventDefault();
-      startY = e.clientY;
-      startTH = topEl.offsetHeight;
-      splitter.classList.add('active');
-      var overlay = document.createElement('div');
-      overlay.className = 'resize-overlay row';
-      document.body.appendChild(overlay);
-      function onMove(ev) {
-        var dy = ev.clientY - startY;
-        var newH = Math.max(minT, startTH + dy);
-        topEl.style.height = newH + 'px';
-        topEl.style.flex = 'none';
-        topEl.style.minHeight = '0';
-        onResize();
-        if (window._monacoEditor) window._monacoEditor.layout();
-      }
-      function onUp() {
-        splitter.classList.remove('active');
-        overlay.remove();
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        onResize();
-        if (window._monacoEditor) window._monacoEditor.layout();
-      }
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    });
-  }
-
-  var panelLeft = document.getElementById('panelLeft');
-  var centerCol = document.getElementById('centerCol');
-  var rightCol = document.getElementById('rightCol');
-  var viewport = document.getElementById('viewport');
-  var bottomPanel = document.getElementById('bottomPanel');
-  var camPanel = document.getElementById('camPreview');
-
-  initSplitV(document.getElementById('splitLeft'), panelLeft, centerCol, { minLeft: 120, maxLeft: 0.35 });
-  initSplitV(document.getElementById('splitViewportRight'), viewport, rightCol, { resizeRight: true });
-  initSplitH(document.getElementById('splitBottom'), document.querySelector('.center-body'), bottomPanel, { minTop: 150, minBottom: 80 });
-  initSplitH(document.getElementById('splitCamInspector'), camPanel, camPanel.parentElement, { minTop: 80, minBottom: 100 });
-})();
 document.getElementById('btnToggleBottom').addEventListener('click', function() {
-  document.getElementById('bottomPanel').classList.toggle('collapsed');
+  document.getElementById('paneConsole').classList.toggle('min');
   if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
 });
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'ready') logToConsole('Preview ready', 'info');
+  if (e.data.type === 'console') logToConsole(e.data.text, e.data.level);
+});
 
-/* ════════════════════════════════════════════════════
-   SAVE / LOAD
-   ════════════════════════════════════════════════════ */
-var currentGameId = new URLSearchParams(window.location.search).get('id');
-async function getApiBase() {
-  try { var r = await fetch('/config.js'); var t = await r.text(); var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) return m[1].replace(/^wss?:\/\//, 'https://'); } catch(e) {}
-  return '';
+/* ── Run / Stop ── */
+var frame = document.getElementById('previewFrame');
+function snapshot() {
+  if (models[currentFile]) files[currentFile] = window._monacoEditor.getValue();
+  return Object.assign({}, files);
 }
-document.getElementById('btnSave').addEventListener('click', function() { quickSave(); });
-document.getElementById('btnPublish').addEventListener('click', function() { openPublishModal(); });
+document.getElementById('btnRun').addEventListener('click', function() {
+  var data = snapshot();
+  var runTimer = null;
+  function send() {
+    if (runTimer) clearTimeout(runTimer);
+    window.removeEventListener('message', wait);
+    try { frame.contentWindow.postMessage({ type: 'code', files: data }, '*'); } catch (e) {}
+  }
+  function wait(e) { if (e.data && e.data.type === 'ready') send(); }
+  window.addEventListener('message', wait);
+  // ponytail: srcdoc beats src when both present — drop srcdoc or the frame never navigates and ready never fires
+  frame.removeAttribute('srcdoc');
+  // ponytail: cache-buster forces a real reload — same-src assignment is ignored and the ready handshake never re-fires
+  frame.src = '/run.html?n=' + Date.now();
+  runTimer = setTimeout(function() {
+    window.removeEventListener('message', wait);
+    logToConsole('Preview timed out — press F12 and check the browser console', 'error');
+  }, 6000);
+});
+document.getElementById('btnStop').addEventListener('click', function() {
+  frame.removeAttribute('src');
+  frame.srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
+  logToConsole('Stopped', 'info');
+});
 
+/* ── Save / Load / Publish ── */
+document.getElementById('btnSave').addEventListener('click', quickSave);
+document.getElementById('btnPublish').addEventListener('click', openPublishModal);
 var pendingThumbData = null;
-
 async function quickSave() {
-  var token = window.currentToken;
-  if (!token) { alert('Sign in to save games'); return; }
+  if (!window.currentToken) { alert('Sign in to save projects'); return; }
   var title = document.getElementById('gameTitle').value || 'Untitled Game';
-  var sceneData = JSON.stringify(serializeScene());
-  var apiBase = await getApiBase();
+  var c = await getCfg();
   try {
     if (currentGameId) {
-      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData }) });
+      await fetch(c.api + '/api/games/' + currentGameId, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify({ title: title, files: snapshot() }) });
     } else {
-      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ title, scene: sceneData }) });
+      var res = await fetch(c.api + '/api/games', { method: 'POST', headers: authHeaders(true), body: JSON.stringify({ title: title, files: snapshot() }) });
       var d = await res.json();
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
-    logToConsole('Saved!', 'info');
+    logToConsole('Saved!', 'success');
+    markClean();
   } catch (err) { logToConsole('Save failed: ' + err.message, 'error'); }
 }
-
 function openPublishModal() {
   document.getElementById('publishModal').classList.add('open');
   document.getElementById('modalGameTitle').value = document.getElementById('gameTitle').value || '';
@@ -1420,224 +534,669 @@ function openPublishModal() {
   document.getElementById('thumbPreview').style.display = 'none';
   document.getElementById('thumbPlaceholder').style.display = '';
 }
-
+function closePublishModal() { document.getElementById('publishModal').classList.remove('open'); }
 document.getElementById('modalCancelBtn').addEventListener('click', closePublishModal);
 document.getElementById('modalPublishBtn2').addEventListener('click', confirmSave);
 document.getElementById('thumbUpload').addEventListener('click', function() { document.getElementById('thumbInput').click(); });
 document.getElementById('publishModal').addEventListener('click', function(e) { if (e.target === this) closePublishModal(); });
-
-function closePublishModal() {
-  document.getElementById('publishModal').classList.remove('open');
-}
-
 document.getElementById('thumbInput').addEventListener('change', function(e) {
-  var file = e.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev) {
+  var f = e.target.files[0];
+  if (!f) return;
+  var r = new FileReader();
+  r.onload = function(ev) {
     pendingThumbData = ev.target.result;
     document.getElementById('thumbPreview').src = pendingThumbData;
     document.getElementById('thumbPreview').style.display = 'block';
     document.getElementById('thumbPlaceholder').style.display = 'none';
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(f);
 });
-
 async function confirmSave() {
   var title = document.getElementById('modalGameTitle').value.trim() || 'Untitled Game';
   document.getElementById('gameTitle').value = title;
   var description = document.getElementById('modalDescription').value.trim();
   var credits = document.getElementById('modalCredits').value.trim();
   closePublishModal();
-
-  var token = window.currentToken;
-  if (!token) { alert('Sign in to publish games'); return; }
-  var sceneData = JSON.stringify(serializeScene());
-  var apiBase = await getApiBase();
+  if (!window.currentToken) { alert('Sign in to publish projects'); return; }
+  var c = await getCfg();
   try {
-    var body = { title, scene: sceneData, published: true, description: description, credits: credits };
+    var body = { title: title, files: snapshot(), published: true, description: description, credits: credits };
     if (pendingThumbData) body.thumbnail = pendingThumbData;
     if (currentGameId) {
-      await fetch(apiBase + '/api/games/' + currentGameId, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
+      await fetch(c.api + '/api/games/' + currentGameId, { method: 'PUT', headers: authHeaders(true), body: JSON.stringify(body) });
     } else {
-      var res = await fetch(apiBase + '/api/games', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify(body) });
+      var res = await fetch(c.api + '/api/games', { method: 'POST', headers: authHeaders(true), body: JSON.stringify(body) });
       var d = await res.json();
       if (d.game) { currentGameId = d.game.id; window.history.replaceState({}, '', '/editor?id=' + currentGameId); }
     }
-    logToConsole('Published!', 'info');
+    logToConsole('Published!', 'success');
+    markClean();
     setTimeout(function() { window.location.href = '/games'; }, 800);
   } catch (err) { logToConsole('Publish failed: ' + err.message, 'error'); }
 }
-
 async function loadGame() {
   if (!currentGameId) return;
-  var apiBase = await getApiBase();
-  try { var res = await fetch(apiBase + '/api/games/' + currentGameId); var d = await res.json(); if (d.game) { document.getElementById('gameTitle').value = d.game.title; document.getElementById('modalDescription').value = d.game.description || ''; document.getElementById('modalCredits').value = d.game.credits || ''; if (d.game.thumbnail) { document.getElementById('thumbPreview').src = d.game.thumbnail; document.getElementById('thumbPreview').style.display = 'block'; document.getElementById('thumbPlaceholder').style.display = 'none'; pendingThumbData = d.game.thumbnail; } var sd = typeof d.game.scene === 'string' ? JSON.parse(d.game.scene) : d.game.scene; deserializeScene(sd); } } catch(e) {}
+  var c = await getCfg();
+  try {
+    var res = await fetch(c.api + '/api/games/' + currentGameId);
+    var d = await res.json();
+    if (!d.game) return;
+    document.getElementById('gameTitle').value = d.game.title || 'Untitled Game';
+    document.getElementById('modalDescription').value = d.game.description || '';
+    document.getElementById('modalCredits').value = d.game.credits || '';
+    if (d.game.thumbnail) {
+      document.getElementById('thumbPreview').src = d.game.thumbnail;
+      document.getElementById('thumbPreview').style.display = 'block';
+      document.getElementById('thumbPlaceholder').style.display = 'none';
+      pendingThumbData = d.game.thumbnail;
+    }
+    var f = d.game.files;
+    if (typeof f === 'string') { try { f = JSON.parse(f); } catch (e) { f = null; } }
+    if (f && Object.keys(f).length) {
+      files = f; models = {};
+      syncEditorTabs();
+      if (window._monacoEditor) { Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); }); openFile(Object.keys(files)[0]); }
+      else { currentFile = Object.keys(files)[0]; renderFiles(); }
+      markClean();
+    }
+  } catch (e) {}
 }
 
-/* ════════════════════════════════════════════════════
-   PLAY MODE
-   ════════════════════════════════════════════════════ */
-function enterPlayMode() {
-  playMode = true; transform.detach();
-  document.getElementById('playOverlay').classList.add('active');
-  var frame = document.getElementById('playFrame');
-  var sceneData = serializeScene();
-  function onReady() {
-    window.removeEventListener('message', waitForReady);
-    try { frame.contentWindow.postMessage({ type: 'play', scene: sceneData }, '*'); } catch(e) {}
-  }
-  function waitForReady(e) {
-    if (e.data && e.data.type === 'ready') onReady();
-  }
-  window.addEventListener('message', waitForReady);
-  frame.removeAttribute('srcdoc');
-  frame.src = '/play.html';
-}
-function exitPlayMode() {
-  playMode = false; document.getElementById('playOverlay').classList.remove('active');
-  var frame = document.getElementById('playFrame');
-  try { frame.contentWindow.postMessage({ type: 'stop' }, '*'); } catch(e) {}
-  frame.removeAttribute('src');
-  frame.srcdoc = '<html><body style="margin:0;background:#000"></body></html>';
-}
-document.getElementById('btnPlay').addEventListener('click', enterPlayMode);
-document.getElementById('btnStop').addEventListener('click', exitPlayMode);
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'console') logToConsole(e.data.text, e.data.level); });
-
-/* ════════════════════════════════════════════════════
-   MONACO
-   ════════════════════════════════════════════════════ */
-function loadMonaco() {
-  var s = document.createElement('script');
-  s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
-  s.onload = function() {
-    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
-    require(['vs/editor/editor.main'], function() {
-      var ed = monaco.editor.create(document.getElementById('monacoEditor'), {
-        value: '// Select an object and attach a script\n// Available: scene, objects, camera, self (current object)\n// Function update() runs every frame\n\nfunction update() {\n  self.rotation.y += 0.01;\n}',
-        language: 'javascript', theme: 'vs-dark', fontSize: 13,
-        minimap: { enabled: false }, automaticLayout: false,
-        scrollBeyondLastLine: false, padding: { top: 8 },
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace", tabSize: 2,
-      });
-      window._monacoEditor = ed;
-      ed.onDidChangeModelContent(function() {
-        if (selectedObj) {
-          if (!selectedObj.userData.scripts) selectedObj.userData.scripts = [];
-          if (selectedObj.userData.scripts.length === 0) {
-            selectedObj.userData.scripts.push({ name: 'Script', code: ed.getValue() });
-          } else {
-            selectedObj.userData.scripts[0].code = ed.getValue();
-          }
-          refreshFileTree();
-        }
-      });
-      ed.layout();
-    });
-  };
-  document.head.appendChild(s);
-}
-loadMonaco();
-
-/* ════════════════════════════════════════════════════
-   CAMERA FRUSTUM + PREVIEW
-   ════════════════════════════════════════════════════ */
-const camHelpers = {};
-const camPreviewEl = document.getElementById('camPreview');
-const camPreviewCanvas = document.getElementById('camPreviewCanvas');
-const camEmptyEl = document.getElementById('camEmpty');
-const camPreviewRenderer = new THREE.WebGLRenderer({ canvas: camPreviewCanvas, antialias: true });
-camPreviewRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-camPreviewRenderer.setSize(220, 165);
-camPreviewRenderer.shadowMap.enabled = true;
-camPreviewRenderer.toneMapping = THREE.ACESFilmicToneMapping;
-camPreviewRenderer.setScissorTest(true);
-
-function createFrustumHelper(camObj) {
-  if (camHelpers[camObj.uuid]) { scene.remove(camHelpers[camObj.uuid]); delete camHelpers[camObj.uuid]; }
-  var helper = new THREE.CameraHelper(camObj);
-  scene.add(helper);
-  camHelpers[camObj.uuid] = helper;
-}
-function removeFrustumHelper(camObj) {
-  if (camHelpers[camObj.uuid]) { scene.remove(camHelpers[camObj.uuid]); delete camHelpers[camObj.uuid]; }
-}
-function updateAllFrustumHelpers() {
-  sceneObjects.forEach(function(o) {
-    if (o.isCamera && camHelpers[o.uuid]) camHelpers[o.uuid].update();
+/* ── Export / Import ── */
+document.getElementById('btnExport').addEventListener('click', function() {
+  var data = snapshot();
+  var zip = new JSZip();
+  Object.keys(data).forEach(function(p) { zip.file(p, data[p]); });
+  zip.generateAsync({ type: 'blob' }).then(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (document.getElementById('gameTitle').value || 'project').replace(/[^a-zA-Z0-9-_]/g, '') + '.zip';
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(a.href); }, 5000);
   });
-}
-
-function refreshCameraPreview() {
-  var cam = null;
-  if (selectedObj && selectedObj.isCamera) cam = selectedObj;
-  var anyCam = !cam;
-  if (!cam) {
-    for (var i = 0; i < sceneObjects.length; i++) {
-      if (sceneObjects[i].isCamera) { cam = sceneObjects[i]; break; }
+});
+document.getElementById('btnImport').addEventListener('click', function() { document.getElementById('importInput').click(); });
+document.getElementById('importInput').addEventListener('change', function(e) {
+  var list = Array.prototype.slice.call(e.target.files || []);
+  if (!list.length) return;
+  logToConsole('Importing ' + list.length + ' file(s)…', 'info');
+  var done = 0;
+  list.forEach(function(f) {
+    var isZip = f.name.endsWith('.zip');
+    var isText = /\.(html|css|js|json|txt|md)$/i.test(f.name);
+    // ponytail: images/audio go to game-assets via upload below; other binaries rejected — extend allowlist if projects need more
+    var isAsset = /\.(png|jpe?g|gif|webp|svg|mp3|wav|ogg|glb|gltf)$/i.test(f.name);
+    if (isZip) {
+      JSZip.loadAsync(f).then(function(zip) {
+        var ps = [];
+        zip.forEach(function(path, entry) {
+          if (!entry.dir && /\.(html|css|js|json|txt|md)$/i.test(path)) ps.push(entry.async('string').then(function(t) { files[path] = t; }));
+        });
+        return Promise.all(ps);
+      }).then(function() { afterImport(list.length); }).catch(function(err) { logToConsole('Zip import failed: ' + err.message, 'error'); });
+    } else if (isText) {
+      var r = new FileReader();
+      r.onload = function(ev) { files[f.name] = ev.target.result; if (++done === list.length) afterImport(list.length); };
+      r.readAsText(f);
+    } else if (isAsset) {
+      uploadAsset(f).then(function() { if (++done === list.length) afterImport(list.length); });
+    } else {
+      // unknown type: sniff content — text becomes a project file, binary uploads as an asset
+      (function(file) {
+        var r2 = new FileReader();
+        function next() { if (++done === list.length) afterImport(list.length); }
+        r2.onload = function(ev) {
+          var txt = ev.target.result || '';
+          if (txt.indexOf('\u0000') !== -1) uploadAsset(file).then(next);
+          else { files[file.name] = txt; next(); }
+        };
+        r2.onerror = function() { uploadAsset(file).then(next); };
+        r2.readAsText(file);
+      })(f);
+    }
+  });
+  e.target.value = '';
+  function afterImport(n) {
+    try {
+      models = {};
+      if (window._monacoEditor) Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); });
+      syncEditorTabs();
+      openFile(Object.keys(files)[0]);
+      Object.keys(files).forEach(function(p) { dirtyFlags[p] = true; });
+      setDirty(currentFile, true);
+      logToConsole('Imported ' + n + ' file(s)', 'success');
+    } catch (err) {
+      logToConsole('Import failed: ' + err.message, 'error');
+      alert('Import failed: ' + err.message);
     }
   }
-  if (cam) {
-    camEmptyEl.style.display = 'none';
-    camPreviewCanvas.style.display = 'block';
-    var w = camPreviewCanvas.parentElement.clientWidth || 220;
-    var headerH = camPreviewEl.querySelector('.panel-header').offsetHeight || 24;
-    var h = camPreviewEl.clientHeight - headerH;
-    if (h < 10) h = 100;
-    cam.aspect = w / h;
-    cam.updateProjectionMatrix();
-    camPreviewRenderer.setSize(w, h);
-    camPreviewRenderer.setScissor(0, 0, w, h);
-    camPreviewRenderer.setViewport(0, 0, w, h);
-    camPreviewRenderer.render(scene, cam);
-  } else {
-    camEmptyEl.style.display = '';
-    camPreviewCanvas.style.display = 'none';
+});
+async function uploadAsset(f) {
+  if (!window.currentToken) { logToConsole('Sign in to upload assets', 'error'); return; }
+  var c = await getCfg();
+  var path = 'draft/' + Date.now() + '-' + f.name.replace(/[^a-zA-Z0-9._-]/g, '');
+  try {
+    var res = await fetch(c.url + '/storage/v1/object/game-assets/' + path, {
+      method: 'POST',
+      headers: { 'apikey': c.anon, 'Authorization': 'Bearer ' + window.currentToken, 'Content-Type': f.type || 'application/octet-stream' },
+      body: f
+    });
+    if (!res.ok) throw new Error('upload ' + res.status);
+    logToConsole('Asset URL (paste into code): ' + c.url + '/storage/v1/object/public/game-assets/' + path, 'success');
+  } catch (err) { logToConsole('Asset upload failed: ' + err.message, 'error'); }
+}
+
+/* ── Snippets ── */
+var SNIPPETS = {
+fetch: 'const res = await fetch("https://api.example.com/data");\nconst data = await res.json();\nconsole.log(data);\n',
+ws: 'const ws = new WebSocket("wss://example.com/socket");\nws.onopen = () => ws.send("hello");\nws.onmessage = (e) => console.log("got:", e.data);\n',
+loop: 'let last = performance.now();\nfunction tick(now) {\n  const dt = (now - last) / 1000;\n  last = now;\n  update(dt);\n  requestAnimationFrame(tick);\n}\nrequestAnimationFrame(tick);\n'
+};
+document.querySelectorAll('[data-snippet]').forEach(function(b) {
+  b.addEventListener('click', function() {
+    if (!window._monacoEditor) return;
+    var ed = window._monacoEditor;
+    var sel = ed.getSelection();
+    ed.executeEdits('snippet', [{ range: sel, text: SNIPPETS[b.getAttribute('data-snippet')] }]);
+    ed.focus();
+  });
+});
+
+/* ── AI assistant (BYOK + header-token MCP) ── */
+['aiEndpoint', 'aiModel', 'aiKey', 'aiMcpUrl', 'aiMcpToken'].forEach(function(id) {
+  try {
+    var v = localStorage.getItem('glox-ai-' + id);
+    if (v) document.getElementById(id).value = v;
+    document.getElementById(id).addEventListener('change', function(e) {
+      try { localStorage.setItem('glox-ai-' + id, e.target.value); } catch (err) {}
+    });
+  } catch (e) {}
+});
+var aiHistory = [];
+var aiLastText = '';
+function aiMsg(text, cls) {
+  var box = document.getElementById('aiMsgs');
+  var div = document.createElement('div');
+  div.className = 'ai-msg ' + cls;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  if (cls === 'asst') aiLastText = text;
+}
+async function mcpCall(url, token, method, params, id) {
+  var res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ jsonrpc: '2.0', id: id, method: method, params: params || {} })
+  });
+  var text = await res.text();
+  // ponytail: SSE responses reduced to last data: line — full stream parsing if MCP servers chunk tool results
+  var m = text.match(/(?:^|\n)data:\s*(\{.*\})\s*$/);
+  try { return JSON.parse(m ? m[1] : text); } catch (e) { throw new Error('bad MCP response'); }
+}
+var mcpToolsCache = {};
+async function mcpTools() {
+  var url = document.getElementById('aiMcpUrl').value.trim();
+  var token = document.getElementById('aiMcpToken').value;
+  if (!url || !token) return [];
+  if (mcpToolsCache[url]) return mcpToolsCache[url];
+  var r = await mcpCall(url, token, 'tools/list', {}, 1);
+  var tools = ((r.result || {}).tools || []).map(function(t) {
+    return { name: 'mcp_' + t.name, description: (t.description || '').slice(0, 200), args: t.inputSchema || { type: 'object', properties: {} } };
+  });
+  mcpToolsCache[url] = tools;
+  return tools;
+}
+function localTools() {
+  return [
+    { name: 'list_files', description: 'List project file paths', args: { type: 'object', properties: {} } },
+    { name: 'read_file', description: 'Read a project file', args: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } }
+  ];
+}
+function toOpenAITools(tools) {
+  return tools.map(function(t) {
+    return { type: 'function', function: { name: t.name, description: t.description, parameters: t.args } };
+  });
+}
+async function runLocalTool(name, args) {
+  if (name === 'list_files') return { files: Object.keys(snapshot()) };
+  if (name === 'read_file') {
+    var f = snapshot();
+    if (!(args.path in f)) throw new Error('no such file');
+    return { path: args.path, content: f[args.path].slice(0, 12000) };
   }
+  throw new Error('unknown tool');
+}
+async function aiSend() {
+  var input = document.getElementById('aiInput');
+  var q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  var endpoint = document.getElementById('aiEndpoint').value.trim().replace(/\/$/, '');
+  var model = document.getElementById('aiModel').value.trim();
+  var key = document.getElementById('aiKey').value;
+  if (!key) { aiMsg('Set your API key in Settings first (stored only in this browser).', 'tool'); return; }
+  aiMsg(q, 'user');
+  aiHistory.push({ role: 'user', content: q });
+  var sys = 'You help with a small web project. Files:\n' + Object.keys(snapshot()).map(function(p) { return '- ' + p; }).join('\n') + '\nUse read_file to inspect code before answering. Be concise.';
+  var tools = localTools().concat(await mcpTools().catch(function() { return []; }));
+  var msgs = [{ role: 'system', content: sys }].concat(aiHistory.slice(-10));
+  try {
+    for (var step = 0; step < 5; step++) {
+      var res = await fetch(endpoint + '/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model: model, messages: msgs, tools: toOpenAITools(tools) })
+      });
+      if (!res.ok) throw new Error('LLM ' + res.status);
+      var d = await res.json();
+      var msg = d.choices[0].message;
+      msgs.push(msg);
+      var calls = msg.tool_calls || [];
+      if (!calls.length) {
+        aiMsg(msg.content || '(empty response)', 'asst');
+        aiHistory.push({ role: 'assistant', content: msg.content || '' });
+        return;
+      }
+      for (var i = 0; i < calls.length; i++) {
+        var c = calls[i];
+        var out;
+        try {
+          var a = JSON.parse(c.function.arguments || '{}');
+          if (c.function.name.indexOf('mcp_') === 0) {
+            var url = document.getElementById('aiMcpUrl').value.trim();
+            var token = document.getElementById('aiMcpToken').value;
+            var r = await mcpCall(url, token, 'tools/call', { name: c.function.name.slice(4), arguments: a }, 10 + i);
+            out = JSON.stringify(r.result || r).slice(0, 8000);
+          } else {
+            out = JSON.stringify(await runLocalTool(c.function.name, a)).slice(0, 8000);
+          }
+        } catch (err) { out = 'error: ' + err.message; }
+        aiMsg(c.function.name + ' → ' + out.slice(0, 200), 'tool');
+        msgs.push({ role: 'tool', tool_call_id: c.id, content: out });
+      }
+    }
+    aiMsg('Stopped after 5 tool steps — ask a smaller question.', 'tool');
+  } catch (err) { aiMsg('Failed: ' + err.message, 'tool'); }
+}
+document.getElementById('aiSend').addEventListener('click', aiSend);
+document.getElementById('aiInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') aiSend(); });
+document.getElementById('aiInsert').addEventListener('click', function() {
+  var m = aiLastText.match(/```(?:\w+)?\n([\s\S]*?)```/);
+  if (!m) { logToConsole('No code block in last AI answer', 'error'); return; }
+  if (!confirm('Replace current file with AI code?')) return;
+  window._monacoEditor.setValue(m[1]);
+  if (models[currentFile]) files[currentFile] = m[1];
+  logToConsole('Inserted AI code into ' + currentFile, 'success');
+});
+
+/* ── Terminal (xterm + project shell; no OS shell — static hosting) ── */
+var termBuf = '';
+function termWrite(s) { if (window._xterm) window._xterm.write(s); }
+function termPrompt() { termWrite('\r\n\x1b[1;35mglox\x1b[0m$ '); }
+function initTerminal(host) {
+  if (typeof Terminal === 'undefined') return;
+  if (window._xterm && window._xtermHost === host) return;
+  if (window._xterm) { try { window._xterm.dispose(); } catch (e) {} }
+  var term = new Terminal({ theme: { background: (edGet()['ed-bg'] || '#1e1e1e') }, fontSize: parseInt(edGet()['ed-code-size'] || '13', 10), fontFamily: "'JetBrains Mono',monospace" });
+  var fit = null;
+  try { fit = new FitAddon.FitAddon(); term.loadAddon(fit); } catch (e) {}
+  term.open(host);
+  try { fit && fit.fit(); } catch (e) {}
+  window._xterm = term; window._xtermFit = fit; window._xtermHost = host;
+  term.writeln('glox shell — project files only (help for commands)');
+  termPrompt();
+  term.onData(function(d) {
+    if (d === '\r') { term.write('\r\n'); termRun(termBuf); termBuf = ''; termPrompt(); }
+    else if (d === '\x7f') { if (termBuf.length) { termBuf = termBuf.slice(0, -1); term.write('\b \b'); } }
+    else if (d === '\x03') { termBuf = ''; term.write('^C'); termPrompt(); }
+    else if (d >= ' ' && d <= '~') { termBuf += d; term.write(d); }
+  });
+}
+function termRun(line) {
+  var parts = line.trim().split(/\s+/).filter(Boolean);
+  var cmd = parts[0] || '';
+  var arg = parts.slice(1).join(' ');
+  var t = window._xterm;
+  if (cmd === 'help') t.writeln('ls · cat <file> · open <file> · run · save · echo <text> · clear');
+  else if (cmd === 'ls') t.writeln(Object.keys(snapshot()).join('  '));
+  else if (cmd === 'cat') {
+    var f = snapshot();
+    t.writeln(arg in f ? f[arg].slice(0, 2000) : 'no such file');
+  }
+  else if (cmd === 'open') {
+    if (arg in files) openFile(arg);
+    else t.writeln('no such file');
+  }
+  else if (cmd === 'run') document.getElementById('btnRun').click();
+  else if (cmd === 'save') quickSave();
+  else if (cmd === 'echo') t.writeln(arg);
+  else if (cmd === 'clear') t.clear();
+  else if (cmd) t.writeln('unknown: ' + cmd + ' (try help)');
 }
 
-/* ════════════════════════════════════════════════════
-   RENDER LOOP
-   ════════════════════════════════════════════════════ */
-function animate() {
-  requestAnimationFrame(animate);
-  orbit.update();
-  updateAllFrustumHelpers();
-  renderer.render(scene, camera);
-  if (!playMode) refreshCameraPreview();
+/* ── Local folder (File System Access API; Chromium only) ── */
+var dirHandle = null;
+var fileHandles = {};
+if (!window.showDirectoryPicker) {
+  window.addEventListener('DOMContentLoaded', function() {
+    var b = document.getElementById('btnFolder');
+    if (b) b.style.display = 'none';
+  });
 }
-animate();
-loadGame();
-refreshHierarchy();
+document.getElementById('btnFolder').addEventListener('click', openFolder);
+document.getElementById('btnDiskSave').addEventListener('click', saveToDisk);
+async function openFolder() {
+  if (!window.showDirectoryPicker) { logToConsole('Open folder needs Chrome/Edge. Use Import instead.', 'error'); return; }
+  try { dirHandle = await window.showDirectoryPicker(); }
+  catch (e) { return; }
+  var loaded = 0;
+  async function walk(handle, prefix) {
+    for await (var entry of handle.values()) {
+      var rel = prefix ? prefix + '/' + entry.name : entry.name;
+      if (entry.kind === 'directory') { await walk(entry, rel); continue; }
+      if (/\.(html|css|js|json|txt|md)$/i.test(entry.name)) {
+        var f = await entry.getFile();
+        files[rel] = await f.text();
+        fileHandles[rel] = entry;
+        loaded++;
+      } else {
+        // ponytail: non-code goes straight to game-assets; URL logged for pasting — no local binary store
+        await uploadAsset(await entry.getFile());
+        loaded++;
+      }
+    }
+  }
+  try {
+    await walk(dirHandle, '');
+  } catch (e) { logToConsole('Folder read failed: ' + e.message, 'error'); return; }
+  if (!loaded) { logToConsole('That folder is empty', 'error'); return; }
+  models = {};
+  if (window._monacoEditor) Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); });
+  syncEditorTabs();
+  openFile(Object.keys(files)[0]);
+  document.getElementById('btnDiskSave').style.display = '';
+  logToConsole('Opened folder: ' + loaded + ' file(s). Disk save enabled.', 'success');
+}
+async function saveToDisk() {
+  if (!dirHandle) return;
+  snapshot();
+  for (const p of Object.keys(files)) {
+    try {
+      var h = fileHandles[p] || await dirHandle.getFileHandle(p, { create: true });
+      fileHandles[p] = h;
+      var w = await h.createWritable();
+      await w.write(files[p]);
+      await w.close();
+    } catch (e) { logToConsole('Disk save failed for ' + p, 'error'); return; }
+  }
+  logToConsole('Saved to disk.', 'success');
+}
+window.addEventListener('beforeunload', function(e) {
+  if (Object.keys(dirtyFlags).some(function(k) { return dirtyFlags[k]; })) e.preventDefault();
+});
+
+/* ── Studio theme engine: every --ed-* variable, live + persisted ── */
+var ED_DEFAULTS = {
+  'ed-accent': '#855CD6', 'ed-accent-strong': '#774DCB', 'ed-accent-soft': '#c9b8f5', 'ed-publish': '#FF8C1A',
+  'ed-bg': '#1e1e1e', 'ed-panel': '#181818', 'ed-modal': '#252526', 'ed-border': '#2d2d2d',
+  'ed-text': '#cccccc', 'ed-text-dim': '#8b8b96', 'ed-text-faint': '#5b5b66', 'ed-bright': '#ffffff',
+  'ed-error': '#ff6b6b', 'ed-success': '#4fd897',
+  'ed-radius': '4', 'ed-radius-lg': '6',
+  'ed-topbar-h': '35', 'ed-activity-w': '48', 'ed-act-btn': '44', 'ed-status-h': '22',
+  'ed-code-size': '13', 'ed-base': 'dark', 'ed-minimap': 'off', 'ed-wordwrap': 'off'
+};
+var ED_SCHEMA = [
+  { group: 'Theme', items: [
+    { k: 'ed-accent', t: 'color', label: 'Accent' },
+    { k: 'ed-accent-strong', t: 'color', label: 'Strong accent' },
+    { k: 'ed-accent-soft', t: 'color', label: 'Soft accent' },
+    { k: 'ed-publish', t: 'color', label: 'Publish' },
+    { k: 'ed-bg', t: 'color', label: 'Background' },
+    { k: 'ed-panel', t: 'color', label: 'Panels' },
+    { k: 'ed-modal', t: 'color', label: 'Dialogs' },
+    { k: 'ed-border', t: 'color', label: 'Borders' },
+    { k: 'ed-text', t: 'color', label: 'Text' },
+    { k: 'ed-text-dim', t: 'color', label: 'Dim text' },
+    { k: 'ed-text-faint', t: 'color', label: 'Faint text' },
+    { k: 'ed-bright', t: 'color', label: 'Bright text' },
+    { k: 'ed-error', t: 'color', label: 'Error' },
+    { k: 'ed-success', t: 'color', label: 'Success' }
+  ]},
+  { group: 'Shape', items: [
+    { k: 'ed-radius', t: 'range', min: 0, max: 12, unit: 'px', label: 'Corners' },
+    { k: 'ed-radius-lg', t: 'range', min: 0, max: 16, unit: 'px', label: 'Big corners' }
+  ]},
+  { group: 'Bars & type', items: [
+    { k: 'ed-topbar-h', t: 'range', min: 28, max: 56, unit: 'px', label: 'Titlebar height' },
+    { k: 'ed-activity-w', t: 'range', min: 40, max: 72, unit: 'px', label: 'Activity width' },
+    { k: 'ed-status-h', t: 'range', min: 18, max: 32, unit: 'px', label: 'Status height' },
+    { k: 'ed-code-size', t: 'range', min: 11, max: 18, unit: 'px', label: 'Code size' }
+  ]},
+  { group: 'Editor', items: [
+    { k: 'ed-base', t: 'select', options: ['dark', 'light'], label: 'Base theme' },
+    { k: 'ed-minimap', t: 'select', options: ['off', 'on'], label: 'Minimap' },
+    { k: 'ed-wordwrap', t: 'select', options: ['off', 'on'], label: 'Word wrap' }
+  ]}
+];
+function edGet() {
+  var map = {};
+  try { map = JSON.parse(localStorage.getItem('glox-ed-theme') || '{}'); } catch (e) {}
+  var out = {};
+  Object.keys(ED_DEFAULTS).forEach(function(k) { out[k] = (k in map) ? map[k] : ED_DEFAULTS[k]; });
+  return out;
+}
+function edSave(map) {
+  try { localStorage.setItem('glox-ed-theme', JSON.stringify(map)); } catch (e) {}
+}
+function edApplyAll() {
+  var map = edGet();
+  var root = document.documentElement.style;
+  Object.keys(map).forEach(function(k) {
+    if (k === 'ed-base' || k === 'ed-minimap' || k === 'ed-wordwrap') return;
+    var unit = (k === 'ed-code-size' || k === 'ed-topbar-h' || k === 'ed-activity-w' || k === 'ed-status-h' || k === 'ed-radius' || k === 'ed-radius-lg') ? 'px' : '';
+    root.setProperty('--' + k, map[k] + unit);
+  });
+  applyMonacoTheme(map);
+  if (window._xterm) {
+    try {
+      window._xterm.setOption('fontSize', parseInt(map['ed-code-size'], 10));
+      window._xterm.setOption('theme', { background: map['ed-bg'] });
+    } catch (e) {}
+  }
+  var ce = document.getElementById('consoleEl');
+  if (ce) ce.style.fontSize = map['ed-code-size'] + 'px';
+}
+function applyMonacoTheme(map) {
+  if (!window._monacoEditor || typeof monaco === 'undefined') return;
+  map = map || edGet();
+  var dark = map['ed-base'] !== 'light';
+  monaco.editor.defineTheme('glox', {
+    base: dark ? 'vs-dark' : 'vs', inherit: true, rules: [],
+    colors: { 'editor.background': map['ed-bg'] }
+  });
+  monaco.editor.setTheme('glox');
+  window._monacoEditor.updateOptions({
+    fontSize: parseInt(map['ed-code-size'], 10),
+    minimap: { enabled: map['ed-minimap'] === 'on' },
+    wordWrap: map['ed-wordwrap']
+  });
+}
+function edBuildPanel() {
+  var body = document.getElementById('settingsBody');
+  body.innerHTML = '';
+  ED_SCHEMA.forEach(function(g) {
+    var gh = document.createElement('div');
+    gh.className = 'settings-group';
+    gh.textContent = g.group;
+    body.appendChild(gh);
+    g.items.forEach(function(it) {
+      (function(item) {
+        var row = document.createElement('div');
+        row.className = 'settings-row';
+        var lab = document.createElement('span');
+        lab.textContent = item.label;
+        row.appendChild(lab);
+        var map = edGet();
+        if (item.t === 'color') {
+          var c = document.createElement('input');
+          c.type = 'color'; c.value = map[item.k];
+          c.addEventListener('input', function() { edSet(item.k, c.value); });
+          row.appendChild(c);
+        } else if (item.t === 'range') {
+          var val = document.createElement('span');
+          val.className = 'val';
+          var r = document.createElement('input');
+          r.type = 'range'; r.min = item.min; r.max = item.max; r.value = map[item.k];
+          val.textContent = map[item.k] + (item.unit || '');
+          r.addEventListener('input', function() { val.textContent = r.value + (item.unit || ''); edSet(item.k, r.value); });
+          row.appendChild(r); row.appendChild(val);
+        } else if (item.t === 'select') {
+          var s = document.createElement('select');
+          item.options.forEach(function(o) {
+            var op = document.createElement('option');
+            op.value = o; op.textContent = o;
+            if (map[item.k] === o) op.selected = true;
+            s.appendChild(op);
+          });
+          s.addEventListener('change', function() { edSet(item.k, s.value); });
+          row.appendChild(s);
+        }
+        body.appendChild(row);
+      })(it);
+    });
+  });
+}
+function edSet(k, v) {
+  var map = edGet();
+  map[k] = v;
+  edSave(map);
+  edApplyAll();
+}
+document.getElementById('actSettings').addEventListener('click', function() {
+  document.getElementById('settingsPanel').classList.toggle('open');
+  if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
+});
+document.getElementById('settingsReset').addEventListener('click', function() {
+  try { localStorage.removeItem('glox-ed-theme'); } catch (e) {}
+  edBuildPanel();
+  edApplyAll();
+});
+edBuildPanel();
+edApplyAll();
+
+/* ── Monaco ── */
+var s = document.createElement('script');
+s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
+s.onload = function() {
+  require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
+  require(['vs/editor/editor.main'], function() {
+    monaco.editor.defineTheme('glox-dark', {
+      base: 'vs-dark', inherit: true,
+      rules: [],
+      colors: { 'editor.background': '#1e1e1e' }
+    });
+    window._monacoEditor = monaco.editor.create(document.getElementById('editorContainer'), {
+      theme: 'glox-dark', fontSize: 13, fontFamily: "'JetBrains Mono',monospace",
+      minimap: { enabled: false }, automaticLayout: true
+    });
+    window._monacoEditor.onDidChangeModelContent(function() { setDirty(currentFile, true); });
+    window._monacoEditor.onDidChangeCursorPosition(function(e) {
+      document.getElementById('stPos').textContent = 'Ln ' + e.position.lineNumber + ', Col ' + e.position.column;
+    });
+    applyMonacoTheme();
+    openFile(currentFile);
+    loadGame();
+    // ponytail: retry editor placement twice — React dock and Monaco load race; factory ref + this covers both orders
+    setTimeout(function() { moveEditorTo(currentFile); }, 400);
+    setTimeout(function() { moveEditorTo(currentFile); }, 1500);
+  });
+};
+document.head.appendChild(s);
+renderFiles();
 </script>
+<script type="module">
+/* ═══ FlexLayout dock (React, no build — ESM CDN) ═══ */
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Layout, Model, Actions } from 'flexlayout-react';
+window.FlexLayout = { Actions: Actions };
+var el = function(t, p) {
+  var kids = Array.prototype.slice.call(arguments, 2);
+  return React.createElement.apply(React, [t, p].concat(kids));
+};
 
-<!-- Publish/Save Modal -->
-<div class="modal-overlay" id="publishModal">
-  <div class="modal">
-    <h2>Publish Game</h2>
-    <label>Thumbnail</label>
-    <div class="thumb-upload" id="thumbUpload">
-      <div class="placeholder" id="thumbPlaceholder">
-        <svg viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        Click to upload thumbnail
-      </div>
-      <img id="thumbPreview" style="display:none">
-      <input type="file" id="thumbInput" accept="image/*" style="display:none">
-    </div>
-    <label>Project Name</label>
-    <input type="text" id="modalGameTitle" placeholder="My awesome game" maxlength="60">
-    <label>Description</label>
-    <textarea id="modalDescription" placeholder="What's your game about?" maxlength="300"></textarea>
-    <label>Credits</label>
-    <input type="text" id="modalCredits" placeholder="Made by You" maxlength="100">
-    <div class="modal-actions">
-      <button class="modal-cancel" id="modalCancelBtn">Cancel</button>
-      <button class="modal-publish" id="modalPublishBtn2">Publish</button>
-    </div>
-  </div>
-</div>
-
-</div><!-- .editor-shell -->
+function editorTabs() {
+  return Object.keys(window.files).map(function(p) {
+    return { type: 'tab', id: p, name: p, component: 'editor', config: { file: p }, enableClose: false, enableDrag: true };
+  });
+}
+function defaultJson() {
+  return {
+    global: { tabEnableClose: false, tabSetEnableClose: false },
+    layout: { type: 'row', weight: 100, children: [
+      { type: 'tabset', id: 'files-set', weight: 14, enableDeleteWhenEmpty: false, children: [
+        { type: 'tab', id: 'files-tab', name: 'Explorer', component: 'files', enableClose: false, enableDrag: false }
+      ]},
+      { type: 'row', weight: 56, children: [
+        { type: 'tabset', id: 'editor-set', weight: 72, enableDeleteWhenEmpty: false, children: editorTabs() },
+        { type: 'tabset', id: 'console-set', weight: 28, enableDeleteWhenEmpty: false, children: [
+          { type: 'tab', id: 'console-tab', name: 'Console', component: 'console', enableClose: false, enableDrag: false },
+          { type: 'tab', id: 'terminal-tab', name: 'Terminal', component: 'terminal', enableClose: false, enableDrag: false }
+        ]}
+      ]},
+      { type: 'tabset', id: 'preview-set', weight: 30, enableDeleteWhenEmpty: false, children: [
+        { type: 'tab', id: 'preview-tab', name: 'Preview', component: 'preview', enableClose: false, enableDrag: false }
+      ]}
+    ]}
+  };
+}
+function loadJson() {
+  try {
+    var j = JSON.parse(localStorage.getItem('glox-layout-v2'));
+    if (!j || !j.layout) return null;
+    var ids = [];
+    (function walk(n) { if (n.type === 'tab' && n.component === 'editor') ids.push(n.id); (n.children || []).forEach(walk); })(j.layout);
+    if (ids.length && ids.every(function(id) { return id in window.files; })) return j;
+  } catch (e) {}
+  return null;
+}
+function hostRef(kind, file) {
+  return function(node) {
+    if (!node) return;
+    if (kind === 'editor') {
+      tabDivs[file] = node;
+      if (file === window.currentFile) moveEditorTo(file);
+      return;
+    }
+    var src = document.getElementById(kind === 'files' ? 'paneFiles' : kind === 'preview' ? 'panePreview' : 'paneConsole');
+    if (src && src.parentNode !== node) node.appendChild(src);
+  };
+}
+function factory(node) {
+  var c = node.getComponent();
+  if (c === 'editor') return el('div', { className: 'pane-host', ref: hostRef('editor', node.getConfig().file) });
+  if (c === 'terminal') return el('div', { className: 'pane-host', ref: function(n) { if (n) initTerminal(n); } });
+  return el('div', { className: 'pane-host', ref: hostRef(c) });
+}
+function onAction(a) {
+  if (a.type === Actions.SELECT_TAB) {
+    try {
+      var n = window._flexModel.getNodeById(a.data.tabNode);
+      if (n && n.getComponent && n.getComponent() === 'editor') openFile(n.getId());
+    } catch (e) {}
+  }
+  return a;
+}
+function onModelChange() {
+  if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 30);
+  try { if (window._xtermFit) window._xtermFit.fit(); } catch (e) {}
+  try { localStorage.setItem('glox-layout-v2', JSON.stringify(window._flexModel.toJson())); } catch (e) {}
+}
+var flexModel = Model.fromJson(loadJson() || defaultJson());
+window._flexModel = flexModel;
+createRoot(document.getElementById('workbench')).render(el(Layout, { model: flexModel, factory: factory, onAction: onAction, onModelChange: onModelChange }));
+syncEditorTabs();
+</script>
 </body>
 </html>

@@ -192,7 +192,8 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   <div class="status">${status === 'success' ? '&#9989;' : '&#10060;'}</div>
   <p class="msg">${message}</p>
   <a href="/" class="btn">${status === 'success' ? 'Go to Glox' : 'Back to Glox'}</a>
-</div></body></html>`;
+</div>
+</body></html>`;
 
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
@@ -631,6 +632,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       description: body.description || '',
       credits: body.credits || '',
       scene: body.scene || '[]',
+      files: body.files || null,
       thumbnail: body.thumbnail || null,
       published: body.published || false,
     }).select().single();
@@ -654,6 +656,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (body.description !== undefined) updates.description = body.description;
     if (body.credits !== undefined) updates.credits = body.credits;
     if (body.scene !== undefined) updates.scene = body.scene;
+    if (body.files !== undefined) updates.files = body.files;
     if (body.published !== undefined) updates.published = body.published;
     if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;
     updates.updated_at = new Date().toISOString();
@@ -683,9 +686,14 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/chat.html';
   }
 
-  // ── Redirect /login to /login.html ─────────────────────────────
+  // ── Redirect /login to / (main page) ──────────────────────────
   if (url.pathname === '/login') {
-    url.pathname = '/login.html';
+    url.pathname = '/';
+  }
+
+  // ── Redirect /profile to /profile.html ─────────────────────────
+  if (url.pathname === '/profile') {
+    url.pathname = '/profile.html';
   }
 
   // ── Redirect /servers to /servers.html ─────────────────────────

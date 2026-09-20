@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{margin:0;height:100%;background:#000}</style>
+</head>
+<body>
+<script>
+// Code runner: builds a blob-URL site from {path: content} files, then boots it.
+// Protocol: parent posts {type:'code', files}, we post {type:'ready'} + {type:'console',...}.
+window.addEventListener('message', (e) => {
+  const d = e.data || {};
+  if (d.type !== 'code' || !d.files) return;
+  const files = d.files;
+  const urls = {};
+  for (const p of Object.keys(files)) {
+    const mime = p.endsWith('.html') ? 'text/html' : p.endsWith('.css') ? 'text/css' : 'application/javascript';
+    urls[p] = URL.createObjectURL(new Blob([files[p]], { type: mime }));
+  }
+  let index = files['index.html'] || '';
+  if (!index) {
+    parent.postMessage({ type: 'console', level: 'error', text: 'No index.html in project' }, '*');
+    return;
+  }
+  // ponytail: rewrites same-dir relative refs only; nested paths need exact keys — add a resolver if projects nest files
+  index = index.replace(/(src|href)=["'](?!https?:|data:|blob:|#)([^"']+)["']/g, (m, attr, p) => {
+    const key = Object.keys(urls).find(k => k === p || k.endsWith('/' + p));
+    return key ? attr + '="' + urls[key] + '"' : m;
+  });
+  const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})<\/script>';
+  parent.postMessage({ type: 'console', level: 'info', text: 'Running' }, '*');
+  location.href = URL.createObjectURL(new Blob([fwd + index], { type: 'text/html' }));
+});
+parent.postMessage({ type: 'ready' }, '*');
+</script>
+</body>
+</html>

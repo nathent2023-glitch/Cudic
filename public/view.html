@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glox — Play</title>
+<style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:sans-serif}iframe{position:fixed;inset:0;width:100%;height:100%;border:none}.msg{display:flex;height:100%;align-items:center;justify-content:center}</style>
+</head>
+<body>
+<div class="msg" id="msg">Loading…</div>
+<script>
+(async function() {
+  var id = new URLSearchParams(location.search).get('id');
+  if (!id) { document.getElementById('msg').textContent = 'Missing game id'; return; }
+  var api = '';
+  try {
+    var t = await (await fetch('/config.js')).text();
+    var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/);
+    if (m) api = m[1].replace(/^wss?:\/\//, 'https://');
+  } catch (e) {}
+  var game = null;
+  try {
+    var d = await (await fetch(api + '/api/games/' + id)).json();
+    game = d.game || null;
+  } catch (e) {}
+  if (!game) { document.getElementById('msg').textContent = 'Game not found'; return; }
+  var files = game.files;
+  if (typeof files === 'string') { try { files = JSON.parse(files); } catch (e) { files = null; } }
+  // ponytail: scene-JSON games fall back to the editor; a legacy scene player only if old games resurface
+  if (!files || !Object.keys(files).length) { location.href = '/editor?id=' + id; return; }
+  document.getElementById('msg').remove();
+  document.title = game.title || 'Glox — Play';
+  var f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-scripts');
+  f.src = '/run.html';
+  document.body.appendChild(f);
+  window.addEventListener('message', function wait(e) {
+    if (e.data && e.data.type === 'ready') {
+      window.removeEventListener('message', wait);
+      try { f.contentWindow.postMessage({ type: 'code', files: files }, '*'); } catch (err) {}
+    }
+  });
+})();
+</script>
+</body>
+</html>
