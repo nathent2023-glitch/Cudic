@@ -3,8 +3,8 @@
 //           getSession(), signOut(), handleAuthCallback()
 
 function getSupabase() {
-  if (window._supabase) return window._supabase;
   if (window._supabasePromise) return window._supabasePromise;
+  if (window._supabase) return Promise.resolve(window._supabase);
   if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('YOUR_')) return null;
   if (window.supabase && window.supabase.createClient) {
     window._supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

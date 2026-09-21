@@ -137,16 +137,20 @@
       var btn = this, val = document.getElementById('displayName').value.trim(), m = document.getElementById('nameMsg');
       if (!val) { msg(m, 'Display name required.', false); return; }
       btn.disabled = true;
-      fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: val }) })
+      m.textContent = ''; m.className = 'msg';
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 45000) : null;
+      fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: val }), signal: ctrl ? ctrl.signal : undefined })
         .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
         .then(function(res){
+          if (timer) clearTimeout(timer);
           btn.disabled = false;
           if (!res.ok) { msg(m, res.d.error || 'Save failed.', false); return; }
           document.getElementById('publicName').textContent = res.d.display_name;
           document.getElementById('avatarLg').textContent = initials(res.d.display_name);
           if (window._reloadSidebarUser) window._reloadSidebarUser();
           msg(m, 'Display name updated.', true);
-        }).catch(function(){ btn.disabled = false; msg(m, 'Save failed.', false); });
+        }).catch(function(e){ if (timer) clearTimeout(timer); btn.disabled = false; msg(m, (e && e.name === 'AbortError') ? 'Server is waking up — try again in a minute.' : 'Save failed.', false); });
     });
 
     /* Private: change password */
