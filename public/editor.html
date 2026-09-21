@@ -281,9 +281,20 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
   </div>
 </div>
 <script src="/config.js"></script>
+<script src="/auth.js"></script>
 <script>
 /* ═══ Glox Studio — code-first websites & games ═══ */
 window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
+// Prime the token from the real login session (URL token wins when present)
+(async function bootEditorAuth() {
+  try {
+    if (window.currentToken || typeof getSupabase !== 'function') return;
+    var db = await getSupabase();
+    if (!db) return;
+    var r = await db.auth.getSession();
+    if (r.data && r.data.session && r.data.session.access_token) window.currentToken = r.data.session.access_token;
+  } catch (e) {}
+})();
 var currentGameId = new URLSearchParams(window.location.search).get('id');
 var cfg = null;
 async function getCfg() {
