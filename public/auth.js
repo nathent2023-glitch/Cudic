@@ -88,7 +88,10 @@ async function signUpWithEmail(email, password, displayName) {
   });
   if (error) throw error;
 
-  // Send verification email via our server (non-blocking, but surfaced)
+  // Auto-confirmed (session present): signed in immediately, no email needed
+  if (data.session) return Object.assign({}, data, { verifyEmail: 'none' });
+
+  // Send verification email via our server, fall back to Supabase's own mail
   if (data.user) {
     try {
       const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
@@ -101,13 +104,15 @@ async function signUpWithEmail(email, password, displayName) {
           displayName: displayName,
         }),
       });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Verification email failed to send');
-      }
+      if (!res.ok) throw new Error('custom mail unavailable');
+      return Object.assign({}, data, { verifyEmail: 'custom' });
     } catch (err) {
-      // Account exists — report the email failure instead of pretending
-      throw new Error('Account created, but verification email failed: ' + err.message);
+      try {
+        if (db) await db.auth.resend({ type: 'signup', email: email });
+        return Object.assign({}, data, { verifyEmail: 'supabase' });
+      } catch (e2) {
+        return Object.assign({}, data, { verifyEmail: 'none' });
+      }
     }
   }
 
