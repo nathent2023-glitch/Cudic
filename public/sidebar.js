@@ -88,11 +88,19 @@
     loadServers();
     try{
       if(attempted&&!localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token')){
+        var diag=['cfg='+(typeof SUPABASE_URL!=='undefined'?'ok':'MISSING')];
+        try{
+          if(typeof getSupabase==='function'){
+            var db2=await getSupabase();
+            diag.push('db='+(!!db2));
+            if(db2){var gs=await db2.auth.getSession();diag.push('sess='+!!(gs.data&&gs.data.session));if(gs.error)diag.push('sesserr='+gs.error.message);}
+          }else{diag.push('no-authjs');}
+        }catch(e3){diag.push('exc='+((e3&&e3.message)||e3));}
         var t=document.createElement('div');
         t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel-raised);border:1px solid var(--danger);color:var(--text-primary);border-radius:10px;padding:12px 18px;font-size:0.85rem;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.25);max-width:90vw;text-align:center';
-        t.textContent='GitHub sign-in did not complete'+(window._authError?': '+window._authError:'. Please try again.');
+        t.textContent='GitHub sign-in did not complete ('+diag.join(', ')+(window._authError?'; '+window._authError:'')+'). Please try again.';
         document.body.appendChild(t);
-        setTimeout(function(){t.remove()},12000);
+        setTimeout(function(){t.remove()},20000);
       }
     }catch(e2){}
   })();
