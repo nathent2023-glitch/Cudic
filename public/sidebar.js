@@ -74,8 +74,15 @@
   document.documentElement.classList.remove('light-theme');
   try { localStorage.removeItem('glox-theme'); } catch (e) {}
 
-  // Load user info
-  loadSidebarUser();
+  // Boot: finish OAuth callback first (GitHub lands on /lobbies with ?code=),
+  // then load user + servers so the session is visible immediately.
+  (async function bootSidebar(){
+    try{
+      if(window.location.search.indexOf('code=')!==-1&&typeof handleAuthCallback==='function'){await handleAuthCallback();}
+    }catch(e){}
+    loadSidebarUser();
+    loadServers();
+  })();
 
   function loadSidebarUser(){
     try{
@@ -114,8 +121,7 @@
     }catch(e){}
   }
 
-  // Load servers
-  loadServers();
+  // Load servers (called from bootSidebar above)
   async function loadServers(){
     try{
       var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');

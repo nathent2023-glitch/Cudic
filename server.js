@@ -87,7 +87,7 @@ const server = http.createServer(async (req, res) => {
       // Send email via Resend
       const verifyUrl = `https://glox-o7rr.onrender.com/auth/verify?token=${token}`;
       const { error } = await resend.emails.send({
-        from: 'Glox <onboarding@resend.dev>',
+        from: process.env.RESEND_FROM || 'Glox <onboarding@resend.dev>',
         to: email,
         subject: 'Verify your Glox account',
         html: `

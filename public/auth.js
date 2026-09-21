@@ -88,11 +88,11 @@ async function signUpWithEmail(email, password, displayName) {
   });
   if (error) throw error;
 
-  // Send verification email via our server (non-blocking)
+  // Send verification email via our server (non-blocking, but surfaced)
   if (data.user) {
     try {
       const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-      await fetch(serverBase + '/auth/send-verification', {
+      const res = await fetch(serverBase + '/auth/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,9 +101,13 @@ async function signUpWithEmail(email, password, displayName) {
           displayName: displayName,
         }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Verification email failed to send');
+      }
     } catch (err) {
-      // Silently fail — Supabase's own confirmation email will handle it
-      console.warn('Custom verification email failed, relying on Supabase:', err);
+      // Account exists — report the email failure instead of pretending
+      throw new Error('Account created, but verification email failed: ' + err.message);
     }
   }
 
