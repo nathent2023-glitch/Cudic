@@ -9,6 +9,28 @@ const { Resend } = require('resend');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+// ── Input validation ──────────────────────────────────────────
+// Lobby/username allowlist: blocks tag injection at the source for every client,
+// including stale cached pages. Colon allowed for internal server:xxx lobbies.
+function validName(s) {
+  return typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _\-:]{0,47}$/.test(s);
+}
+
+// ── Rate limiting (in-memory; single instance, resets on restart) ──
+const rateBuckets = new Map();
+function rateLimit(key, max, windowMs) {
+  const now = Date.now();
+  let b = rateBuckets.get(key);
+  if (!b || b.reset < now) { b = { n: 0, reset: now + windowMs }; rateBuckets.set(key, b); }
+  b.n++;
+  return b.n <= max;
+}
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) return xff.split(',')[0].trim();
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
 // SMTP fallback (no custom domain needed). Generic SMTP via SMTP_HOST/PORT/USER/PASS,
 // or Gmail shorthand via GMAIL_USER + GMAIL_APP_PASSWORD
 // (Google Account → Security → 2-Step Verification → App passwords).
@@ -81,6 +103,11 @@ function cors(res) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  // Baseline security headers (no dep). SAMEORIGIN keeps the sandboxed preview working.
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+
   if (req.method === 'OPTIONS') {
     cors(res);
     res.writeHead(204);
@@ -103,6 +130,14 @@ const server = http.createServer(async (req, res) => {
       if (!email || !userId) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'email and userId required' }));
+        return;
+      }
+
+      // Abuse guard: verification mail is a spam vector (arbitrary recipient)
+      const ip = clientIp(req);
+      if (!rateLimit('mail:ip:' + ip, 5, 10 * 60 * 1000) || !rateLimit('mail:to:' + email.toLowerCase(), 3, 60 * 60 * 1000)) {
+        res.writeHead(429, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Too many requests. Try again later.' }));
         return;
       }
 
@@ -366,6 +401,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (!lobbyName) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'lobby param required' }));
+      return;
+    }
+    if (!validName(lobbyName)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid lobby name.' }));
       return;
     }
 
@@ -738,6 +778,13 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── Favicon (inline SVG — one route covers every page, no 404 noise) ──
+  if (url.pathname === '/favicon.ico') {
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+    res.end(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#774DCB"/><text x="16" y="23" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="white">G</text></svg>`);
+    return;
+  }
+
   // ── Redirect /chat to /chat.html ───────────────────────────────
   if (url.pathname === '/chat') {
     url.pathname = '/chat.html';
@@ -888,6 +935,10 @@ wss.on('connection', (ws) => {
 
       if (!lobby || !username) {
         ws.send(JSON.stringify({ type: 'error', text: 'Lobby and username are required.' }));
+        return;
+      }
+      if (!validName(lobby) || !validName(username)) {
+        ws.send(JSON.stringify({ type: 'error', text: 'Letters, numbers, spaces, - _ : only (max 48 chars).' }));
         return;
       }
 

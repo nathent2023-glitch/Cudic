@@ -6,15 +6,20 @@
 </head>
 <body>
 <script>
-// Code runner: builds a blob-URL site from {path: content} files, then boots it.
+// Code runner: inlines local .js/.css into index.html, then boots it.
+// Inlining (not blob refs) because the preview iframe is sandboxed without
+// allow-same-origin (opaque origin): blob: subresource fetches are blocked.
 // Protocol: parent posts {type:'code', files}, we post {type:'ready'} + {type:'console',...}.
 window.addEventListener('message', (e) => {
   const d = e.data || {};
   if (d.type !== 'code' || !d.files) return;
   const files = d.files;
   const urls = {};
+  function esc(s, tag) { return String(s).replace(new RegExp('</' + tag, 'gi'), '<\\/' + tag); }
+  function find(p) { return Object.keys(urls).find(k => k === p || k.endsWith('/' + p)); }
   for (const p of Object.keys(files)) {
-    const mime = p.endsWith('.html') ? 'text/html' : p.endsWith('.css') ? 'text/css' : 'application/javascript';
+    if (p.endsWith('.js') || p.endsWith('.css')) continue; // inlined below, no blob needed
+    const mime = p.endsWith('.html') ? 'text/html' : 'application/octet-stream';
     urls[p] = URL.createObjectURL(new Blob([files[p]], { type: mime }));
   }
   let index = files['index.html'] || '';
@@ -22,14 +27,32 @@ window.addEventListener('message', (e) => {
     parent.postMessage({ type: 'console', level: 'error', text: 'No index.html in project' }, '*');
     return;
   }
-  // ponytail: rewrites same-dir relative refs only; nested paths need exact keys — add a resolver if projects nest files
+  // Inline local stylesheets: <link href="x.css"> -> <style>…</style>
+  index = index.replace(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi, (tag, p) => {
+    if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
+    const key = find(p);
+    if (!key || !key.endsWith('.css')) return tag;
+    return '<style>\n' + esc(files[key], 'style') + '\n</style>';
+  });
+  // Inline local scripts: script tags with src="x.js" get their content inlined
+  index = index.replace(/<script\b([^>]*?)\bsrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (tag, pre, p, post) => {
+    if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
+    const key = find(p) || Object.keys(files).find(k => k === p || k.endsWith('/' + p));
+    if (!key || !key.endsWith('.js')) return tag;
+    return '<script' + pre + post + '>\n' + esc(files[key], 'script') + '\n<\/script>';
+  });
+  // Remaining relative refs (images, etc.): blob URLs, best effort
   index = index.replace(/(src|href)=["'](?!https?:|data:|blob:|#)([^"']+)["']/g, (m, attr, p) => {
-    const key = Object.keys(urls).find(k => k === p || k.endsWith('/' + p));
+    const key = find(p);
     return key ? attr + '="' + urls[key] + '"' : m;
   });
   const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})<\/script>';
   parent.postMessage({ type: 'console', level: 'info', text: 'Running' }, '*');
-  location.href = URL.createObjectURL(new Blob([fwd + index], { type: 'text/html' }));
+  // ponytail: doctype must stay first or the frame renders in quirks mode
+  const doc = (/^\s*<!doctype html>/i.test(index))
+    ? index.replace(/^(\s*<!doctype html>)/i, '$1' + fwd)
+    : fwd + index;
+  location.href = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
 });
 parent.postMessage({ type: 'ready' }, '*');
 </script>

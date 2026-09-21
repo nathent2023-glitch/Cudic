@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Glox — Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23774DCB'/%3E%3Ctext x='16' y='23' font-size='18' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='white'%3EG%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flexlayout-react@0.11.0/style/dark.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
@@ -31,6 +32,13 @@
   --ed-code-size:13px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
+/* Dark scrollbars everywhere (native ones render light on this dark UI) */
+*{scrollbar-width:thin;scrollbar-color:#3d3d3d transparent}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#3d3d3d;border-radius:5px;border:2px solid transparent;background-clip:content-box}
+*::-webkit-scrollbar-thumb:hover{background:#555;background-clip:content-box;border:2px solid transparent}
+*::-webkit-scrollbar-corner{background:transparent}
 html,body{height:100%}
 body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text);overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
 /* ── Titlebar ── */
@@ -105,7 +113,7 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
 /* ── Preview ── */
 .preview-wrap{width:100%;height:100%;display:flex;flex-direction:column;background:#000;min-width:0}
 .preview-head{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--ed-panel);font-size:.66rem;font-weight:600;color:var(--ed-text-dim);text-transform:uppercase;letter-spacing:.05em}
-#previewFrame{flex:1;border:none;background:#000;width:100%}
+#previewFrame{flex:1;border:none;background:#000;width:100%;height:100%;display:block}
 /* ── AI panel ── */
 .ai-panel{width:320px;flex-shrink:0;display:none;flex-direction:column;background:var(--ed-panel);border-left:1px solid var(--ed-border);min-height:0}
 .ai-panel.open{display:flex}
@@ -166,7 +174,9 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
   <button class="btn publish" id="btnPublish">Publish</button>
   <button class="btn" id="btnExport">Export</button>
   <button class="btn" id="btnImport">Import</button>
+  <button class="btn" id="btnImportFolder" title="Import a whole folder (replaces project)">Folder</button>
   <input type="file" id="importInput" multiple style="display:none">
+  <input type="file" id="importFolderInput" webkitdirectory style="display:none">
 </div>
 <div class="main">
   <div class="activity">
@@ -295,10 +305,16 @@ function authHeaders(json) {
 }
 
 /* ── Project files ── */
+// ponytail: getModels() already returns models — Object.keys() on it yields
+// index strings, and strings have no .dispose() (that was the import crash).
+function disposeAllModels() {
+  if (!window._monacoEditor) return;
+  try { monaco.editor.getModels().forEach(function(m) { try { m.dispose(); } catch (e) {} }); } catch (e) {}
+}
 var TEMPLATE = {
 'index.html': '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>My Game</title>\n<link rel="stylesheet" href="style.css">\n<script type="importmap">\n{\n  "imports": {\n    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",\n    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"\n  }\n}<\/script>\n</head>\n<body>\n<script type="module" src="main.js"><\/script>\n</body>\n</html>\n',
 'style.css': 'html,body{margin:0;height:100%;overflow:hidden;background:#000}\ncanvas{display:block}\n',
-'main.js': 'import * as THREE from "three";\n\nconst scene = new THREE.Scene();\nscene.background = new THREE.Color(0x1a1033);\nconst camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);\ncamera.position.set(3, 2, 4);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(innerWidth, innerHeight);\ndocument.body.appendChild(renderer.domElement);\nscene.add(new THREE.AmbientLight(0xffffff, 0.7));\nconst cube = new THREE.Mesh(\n  new THREE.BoxGeometry(1, 1, 1),\n  new THREE.MeshStandardMaterial({ color: 0x855cd6 })\n);\nscene.add(cube);\naddEventListener("resize", () => {\n  camera.aspect = innerWidth / innerHeight;\n  camera.updateProjectionMatrix();\n  renderer.setSize(innerWidth, innerHeight);\n});\n(function loop() {\n  requestAnimationFrame(loop);\n  cube.rotation.x += 0.01;\n  cube.rotation.y += 0.015;\n  renderer.render(scene, camera);\n})();\n'
+'main.js': 'import * as THREE from "three";\n\nconst scene = new THREE.Scene();\nscene.background = new THREE.Color(0x1a1033);\nconst camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);\ncamera.position.set(3, 2, 4);\ncamera.lookAt(0, 0, 0);\nconst renderer = new THREE.WebGLRenderer({ antialias: true });\nrenderer.setSize(innerWidth, innerHeight);\ndocument.body.appendChild(renderer.domElement);\nscene.add(new THREE.AmbientLight(0xffffff, 0.7));\nconst cube = new THREE.Mesh(\n  new THREE.BoxGeometry(1, 1, 1),\n  new THREE.MeshStandardMaterial({ color: 0x855cd6 })\n);\nscene.add(cube);\naddEventListener("resize", () => {\n  camera.aspect = innerWidth / innerHeight;\n  camera.updateProjectionMatrix();\n  renderer.setSize(innerWidth, innerHeight);\n});\n(function loop() {\n  requestAnimationFrame(loop);\n  cube.rotation.x += 0.01;\n  cube.rotation.y += 0.015;\n  renderer.render(scene, camera);\n})();\n'
 };
 var files = Object.assign({}, TEMPLATE);
 var currentFile = 'index.html';
@@ -329,6 +345,8 @@ function langOf(p) {
   if (p.endsWith('.html')) return 'html';
   if (p.endsWith('.css')) return 'css';
   if (p.endsWith('.json')) return 'json';
+  if (p.endsWith('.md') || p.endsWith('.markdown')) return 'markdown';
+  if (p.endsWith('.txt')) return 'plaintext';
   return 'javascript';
 }
 function renderFiles() {
@@ -410,6 +428,9 @@ function openFile(p) {
   moveEditorTo(p);
   flexSelect(p);
   renderFiles();
+  // ponytail: monaco measures on attach — a freshly shown FlexLayout tab has
+  // zero size until now, so relayout or the file renders blank.
+  try { requestAnimationFrame(function() { if (window._monacoEditor) window._monacoEditor.layout(); }); } catch (e) {}
 }
 /* ── Activity bar (FlexLayout panes + vanilla AI rail) ── */
 var removedPanes = {};
@@ -595,7 +616,7 @@ async function loadGame() {
     if (f && Object.keys(f).length) {
       files = f; models = {};
       syncEditorTabs();
-      if (window._monacoEditor) { Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); }); openFile(Object.keys(files)[0]); }
+      if (window._monacoEditor) { disposeAllModels(); openFile(Object.keys(files)[0]); }
       else { currentFile = Object.keys(files)[0]; renderFiles(); }
       markClean();
     }
@@ -616,17 +637,40 @@ document.getElementById('btnExport').addEventListener('click', function() {
   });
 });
 document.getElementById('btnImport').addEventListener('click', function() { document.getElementById('importInput').click(); });
+document.getElementById('btnImportFolder').addEventListener('click', function() { document.getElementById('importFolderInput').click(); });
+document.getElementById('importFolderInput').addEventListener('change', function(e) {
+  var fl = Array.prototype.slice.call(e.target.files || []);
+  if (fl.length && fl[0].webkitRelativePath) document.getElementById('gameTitle').value = fl[0].webkitRelativePath.split('/')[0];
+  // Reuse the file pipeline: File objects keep webkitRelativePath through DataTransfer
+  var dt = new DataTransfer();
+  fl.forEach(function(f) { dt.items.add(f); });
+  var main = document.getElementById('importInput');
+  main.files = dt.files;
+  main.dispatchEvent(new Event('change'));
+  e.target.value = '';
+});
 document.getElementById('importInput').addEventListener('change', function(e) {
   var list = Array.prototype.slice.call(e.target.files || []);
   if (!list.length) return;
-  logToConsole('Importing ' + list.length + ' file(s)…', 'info');
+  // Import replaces the project instantly — but keep a backup until something importable arrives
+  var prevFiles = files, prevId = currentGameId, prevTitle = document.getElementById('gameTitle').value;
+  var prevUrl = null;
+  try { prevUrl = window.location.pathname + window.location.search; } catch (e9) {}
+  files = {};
+  currentGameId = null;
+  try { window.history.replaceState({}, '', '/editor'); } catch (e0) {}
+  logToConsole('Importing ' + list.length + ' file(s).', 'info');
   var done = 0;
   list.forEach(function(f) {
+    // Folder picks carry webkitRelativePath — strip the root folder, keep inner structure
+    var fkey = f.name;
+    if (f.webkitRelativePath) { var fparts = f.webkitRelativePath.split('/'); fparts.shift(); if (fparts.join('/')) fkey = fparts.join('/'); }
     var isZip = f.name.endsWith('.zip');
-    var isText = /\.(html|css|js|json|txt|md)$/i.test(f.name);
+    var isText = /\.(html|css|js|json|txt|md)$/i.test(fkey);
     // ponytail: images/audio go to game-assets via upload below; other binaries rejected — extend allowlist if projects need more
-    var isAsset = /\.(png|jpe?g|gif|webp|svg|mp3|wav|ogg|glb|gltf)$/i.test(f.name);
+    var isAsset = /\.(png|jpe?g|gif|webp|svg|mp3|wav|ogg|glb|gltf)$/i.test(fkey);
     if (isZip) {
+      document.getElementById('gameTitle').value = f.name.replace(/\.zip$/i, '');
       JSZip.loadAsync(f).then(function(zip) {
         var ps = [];
         zip.forEach(function(path, entry) {
@@ -636,30 +680,41 @@ document.getElementById('importInput').addEventListener('change', function(e) {
       }).then(function() { afterImport(list.length); }).catch(function(err) { logToConsole('Zip import failed: ' + err.message, 'error'); });
     } else if (isText) {
       var r = new FileReader();
-      r.onload = function(ev) { files[f.name] = ev.target.result; if (++done === list.length) afterImport(list.length); };
+      r.onload = function(ev) { files[fkey] = ev.target.result; if (++done === list.length) afterImport(list.length); };
       r.readAsText(f);
     } else if (isAsset) {
       uploadAsset(f).then(function() { if (++done === list.length) afterImport(list.length); });
     } else {
       // unknown type: sniff content — text becomes a project file, binary uploads as an asset
-      (function(file) {
+      (function(file, k) {
         var r2 = new FileReader();
         function next() { if (++done === list.length) afterImport(list.length); }
         r2.onload = function(ev) {
           var txt = ev.target.result || '';
           if (txt.indexOf('\u0000') !== -1) uploadAsset(file).then(next);
-          else { files[file.name] = txt; next(); }
+          else { files[k] = txt; next(); }
         };
         r2.onerror = function() { uploadAsset(file).then(next); };
         r2.readAsText(file);
-      })(f);
+      })(f, fkey);
     }
   });
   e.target.value = '';
   function afterImport(n) {
     try {
+      if (!Object.keys(files).length) {
+        files = prevFiles; currentGameId = prevId;
+        document.getElementById('gameTitle').value = prevTitle;
+        try { if (prevUrl) window.history.replaceState({}, '', prevUrl); } catch (e2) {}
+        models = {};
+        disposeAllModels();
+        syncEditorTabs();
+        openFile(Object.keys(files)[0]);
+        logToConsole('Nothing importable in that pick — project restored.', 'error');
+        return;
+      }
       models = {};
-      if (window._monacoEditor) Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); });
+  if (window._monacoEditor) disposeAllModels();
       syncEditorTabs();
       openFile(Object.keys(files)[0]);
       Object.keys(files).forEach(function(p) { dirtyFlags[p] = true; });
@@ -911,8 +966,8 @@ async function openFolder() {
     await walk(dirHandle, '');
   } catch (e) { logToConsole('Folder read failed: ' + e.message, 'error'); return; }
   if (!loaded) { logToConsole('That folder is empty', 'error'); return; }
-  models = {};
-  if (window._monacoEditor) Object.keys(monaco.editor.getModels()).forEach(function(m) { m.dispose(); });
+      models = {};
+      disposeAllModels();
   syncEditorTabs();
   openFile(Object.keys(files)[0]);
   document.getElementById('btnDiskSave').style.display = '';
