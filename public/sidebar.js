@@ -4,6 +4,24 @@
 
   var page=document.body.getAttribute('data-page')||'home';
 
+  // Single source of truth for the auth token. Asks the Supabase client
+  // first (it owns session storage), falls back to the legacy key.
+  async function getAuthToken(){
+    try{
+      if(typeof getSupabase==='function'){
+        var db=await getSupabase();
+        if(db){var r=await db.auth.getSession();if(r.data&&r.data.session&&r.data.session.access_token)return r.data.session.access_token;}
+      }
+    }catch(e){}
+    try{
+      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      var s=raw?JSON.parse(raw):null;
+      if(s&&s.access_token)return s.access_token;
+    }catch(e){}
+    return null;
+  }
+  window.getAuthToken=getAuthToken;
+
   // Apply saved prefs (personalization + performance) on every page
   try{
     var _acc=localStorage.getItem('glox_accent');
@@ -84,6 +102,8 @@
       var hasHash=window.location.hash.indexOf('access_token')!==-1;
       if((hasCode||hasHash)&&typeof handleAuthCallback==='function'){attempted=true;await handleAuthCallback();}
     }catch(e){window._authError=(e&&e.message)||'Sign-in failed';}
+    try{window.currentToken=window.currentToken||await getAuthToken();}catch(e){}
+    try{window.dispatchEvent(new Event('glox:auth'));}catch(e){}
     loadSidebarUser();
     loadServers();
     try{
@@ -106,12 +126,10 @@
   })();
 
   function loadSidebarUser(){
+    getAuthToken().then(function(access_token){
     try{
-      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-      if(!raw) return;
-      var s=JSON.parse(raw);
-      if(!s||!s.access_token) return;
-      var parts=s.access_token.split('.');
+      if(!access_token) return;
+      var parts=access_token.split('.');
       if(parts.length<2) return;
       var payload=JSON.parse(atob(parts[1]));
       var name=payload.user_metadata?.full_name||payload.user_metadata?.name||payload.email||'User';
@@ -119,12 +137,13 @@
       document.getElementById('sbAvatar').textContent=initials;
       document.getElementById('sbName').textContent=name;
       document.getElementById('sbStatus').textContent='Signed in';
-      window.currentToken=s.access_token;
+      window.currentToken=access_token;
       window.currentUser={id:payload.sub,email:payload.email,name:name};
 
       // Fetch profile for user_id
-      fetchProfile(s.access_token);
+      fetchProfile(access_token);
     }catch(e){}
+    });
   }
 
   async function fetchProfile(token){
@@ -145,8 +164,7 @@
   // Load servers (called from bootSidebar above)
   async function loadServers(){
     try{
-      var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-      var token=raw?JSON.parse(raw).access_token:null;
+      var token=window.currentToken||await getAuthToken();
       var apiHost=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
       var headers=token?{'Authorization':'Bearer '+token}:{};
       // My servers
@@ -188,6 +206,7 @@
     accountRow.addEventListener('click',function(){window.location.href='/profile'});
     logoutBtn.addEventListener('click',function(e){
       e.stopPropagation();
+      try{if(typeof getSupabase==='function'){getSupabase().then(function(db){if(db){try{db.auth.signOut();}catch(x){}}}).catch(function(){});}}catch(x){}
       localStorage.removeItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
       window.location.href='/';
     });

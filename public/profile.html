@@ -97,9 +97,9 @@
   <script src="/auth.js"></script>
   <script src="/sidebar.js"></script>
   <script>
-  (function(){
+  (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
-    function token(){ try { var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
+    async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
     function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
     function msg(el, text, ok){ el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
     function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
@@ -115,7 +115,7 @@
     function applyAccent(a){ var c = hexRgb(a.main); document.documentElement.style.setProperty('--signal', a.main); document.documentElement.style.setProperty('--signal-hover', a.hover); document.documentElement.style.setProperty('--signal-tint', 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.12)'); }
     function applyMotion(off){ document.documentElement.classList.toggle('reduce-motion', !!off); }
 
-    var t = token();
+    var t = await token();
     if (!t) { document.getElementById('guestNotice').style.display = 'block'; return; }
     document.getElementById('profileBody').style.display = 'block';
 
