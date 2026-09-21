@@ -9,17 +9,35 @@ const { Resend } = require('resend');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
-// Gmail SMTP fallback (no custom domain needed). Set GMAIL_USER + GMAIL_APP_PASSWORD
+// SMTP fallback (no custom domain needed). Generic SMTP via SMTP_HOST/PORT/USER/PASS,
+// or Gmail shorthand via GMAIL_USER + GMAIL_APP_PASSWORD
 // (Google Account → Security → 2-Step Verification → App passwords).
-let gmailTransporter = null;
-function getGmailTransporter() {
-  if (gmailTransporter || !process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return gmailTransporter;
+// Outlook/ school mail: SMTP_HOST=smtp.office365.com, SMTP_PORT=587,
+// SMTP_USER=you@school.edu, SMTP_PASS=your password (SMTP AUTH must be enabled).
+let mailTransporter = null;
+function getMailTransporter() {
+  if (mailTransporter) return mailTransporter;
   const nodemailer = require('nodemailer');
-  gmailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  });
-  return gmailTransporter;
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    mailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    mailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+    });
+  }
+  return mailTransporter;
+}
+function getMailFrom() {
+  return process.env.SMTP_FROM
+    || (process.env.SMTP_USER && `Glox <${process.env.SMTP_USER}>`)
+    || (process.env.GMAIL_USER && `Glox <${process.env.GMAIL_USER}>`)
+    || null;
 }
 
 // ── Email verification tokens ───────────────────────────────────
@@ -73,9 +91,9 @@ const server = http.createServer(async (req, res) => {
   // ── API: send verification email ──────────────────────────────
   if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
     cors(res);
-    if (!resend && !process.env.GMAIL_USER) {
+    if (!resend && !getMailFrom()) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or GMAIL_USER missing)' }));
+      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or SMTP/Gmail env missing)' }));
       return;
     }
     let body = '';
@@ -125,20 +143,20 @@ const server = http.createServer(async (req, res) => {
         mailError = new Error('Resend not configured');
       }
 
-      // Fall back to Gmail SMTP (works without a verified domain)
+      // Fall back to SMTP (works without a verified domain)
       if (mailError) {
         try {
-          const transporter = getGmailTransporter();
+          const transporter = getMailTransporter();
           if (!transporter) throw mailError;
           await transporter.sendMail({
-            from: `Glox <${process.env.GMAIL_USER}>`,
+            from: getMailFrom(),
             to: email,
             subject: 'Verify your Glox account',
             html: mailHtml,
           });
           mailError = null;
-        } catch (gmailErr) {
-          console.error('Gmail error:', gmailErr);
+        } catch (smtpErr) {
+          console.error('SMTP error:', smtpErr);
         }
       }
 
