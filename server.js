@@ -319,7 +319,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ profile }));
+    res.end(JSON.stringify({ profile, email: user.email || '' }));
     return;
   }
 

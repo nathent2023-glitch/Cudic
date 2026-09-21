@@ -129,13 +129,8 @@
         document.getElementById('avatarLg').textContent = initials(d.profile.display_name);
         document.getElementById('publicId').textContent = '#' + d.profile.user_id;
         if (d.profile.created_at) document.getElementById('publicSince').textContent = new Date(d.profile.created_at).toLocaleDateString();
+        if (d.email) document.getElementById('emailField').value = d.email;
       }).catch(function(){});
-    getSupabase().then(function(db){
-      if (!db) return;
-      db.auth.getUser().then(function(res){
-        if (res.data && res.data.user) document.getElementById('emailField').value = res.data.user.email || '';
-      });
-    }).catch(function(){});
 
     /* Public: save display name */
     document.getElementById('saveName').addEventListener('click', function(){
