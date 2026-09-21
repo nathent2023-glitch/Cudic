@@ -36,7 +36,7 @@ async function handleAuthCallback() {
     const db = await getSupabase();
     if (!db) return;
     const { error } = await db.auth.exchangeCodeForSession(code);
-    if (error) console.error('Auth callback error:', error.message);
+    if (error) { window._authError = error.message; throw error; }
     url.searchParams.delete('code');
     url.searchParams.delete('state');
     window.history.replaceState({}, '', url.pathname + url.search);

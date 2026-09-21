@@ -36,7 +36,7 @@ create trigger on_auth_user_created
 create table if not exists public.lobbies (
   id uuid primary key default gen_random_uuid(),
   name text unique not null,
-  created_by uuid references public.users(id),
+  created_by uuid references public.users(id) on delete set null,
   persistent boolean default false,
   created_at timestamptz default now()
 );

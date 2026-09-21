@@ -74,14 +74,27 @@
   document.documentElement.classList.remove('light-theme');
   try { localStorage.removeItem('glox-theme'); } catch (e) {}
 
-  // Boot: finish OAuth callback first (GitHub lands on /lobbies with ?code=),
-  // then load user + servers so the session is visible immediately.
+  // Boot: finish OAuth callback first (GitHub lands on /lobbies with ?code=
+  // or #access_token), then load user + servers so the session is visible
+  // immediately. A failed handshake shows a toast instead of silent guest.
   (async function bootSidebar(){
+    var attempted=false;
     try{
-      if(window.location.search.indexOf('code=')!==-1&&typeof handleAuthCallback==='function'){await handleAuthCallback();}
-    }catch(e){}
+      var hasCode=window.location.search.indexOf('code=')!==-1;
+      var hasHash=window.location.hash.indexOf('access_token')!==-1;
+      if((hasCode||hasHash)&&typeof handleAuthCallback==='function'){attempted=true;await handleAuthCallback();}
+    }catch(e){window._authError=(e&&e.message)||'Sign-in failed';}
     loadSidebarUser();
     loadServers();
+    try{
+      if(attempted&&!localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token')){
+        var t=document.createElement('div');
+        t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel-raised);border:1px solid var(--danger);color:var(--text-primary);border-radius:10px;padding:12px 18px;font-size:0.85rem;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.25);max-width:90vw;text-align:center';
+        t.textContent='GitHub sign-in did not complete'+(window._authError?': '+window._authError:'. Please try again.');
+        document.body.appendChild(t);
+        setTimeout(function(){t.remove()},12000);
+      }
+    }catch(e2){}
   })();
 
   function loadSidebarUser(){
