@@ -9,6 +9,19 @@ const { Resend } = require('resend');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
+// Gmail SMTP fallback (no custom domain needed). Set GMAIL_USER + GMAIL_APP_PASSWORD
+// (Google Account → Security → 2-Step Verification → App passwords).
+let gmailTransporter = null;
+function getGmailTransporter() {
+  if (gmailTransporter || !process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) return gmailTransporter;
+  const nodemailer = require('nodemailer');
+  gmailTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+  });
+  return gmailTransporter;
+}
+
 // ── Email verification tokens ───────────────────────────────────
 // token → { email, userId, displayName, expires }
 const verifyTokens = new Map();
@@ -60,9 +73,9 @@ const server = http.createServer(async (req, res) => {
   // ── API: send verification email ──────────────────────────────
   if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
     cors(res);
-    if (!resend) {
+    if (!resend && !process.env.GMAIL_USER) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY missing)' }));
+      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or GMAIL_USER missing)' }));
       return;
     }
     let body = '';
@@ -86,11 +99,7 @@ const server = http.createServer(async (req, res) => {
 
       // Send email via Resend
       const verifyUrl = `https://glox-o7rr.onrender.com/auth/verify?token=${token}`;
-      const { error } = await resend.emails.send({
-        from: process.env.RESEND_FROM || 'Glox <onboarding@resend.dev>',
-        to: email,
-        subject: 'Verify your Glox account',
-        html: `
+      const mailHtml = `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFFFF;color:#2E2A4B;border-radius:16px;border:1px solid #C9D5F0;">
             <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#774DCB;">.</span></h1>
             <p style="color:#5C5878;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
@@ -99,11 +108,41 @@ const server = http.createServer(async (req, res) => {
             <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#774DCB;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
             <p style="font-size:13px;color:#9C97B8;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
           </div>
-        `,
-      });
+        `;
+      let mailError = null;
+      if (resend) {
+        const { error } = await resend.emails.send({
+          from: process.env.RESEND_FROM || 'Glox <onboarding@resend.dev>',
+          to: email,
+          subject: 'Verify your Glox account',
+          html: mailHtml,
+        });
+        if (error) {
+          console.error('Resend error:', error);
+          mailError = error;
+        }
+      } else {
+        mailError = new Error('Resend not configured');
+      }
 
-      if (error) {
-        console.error('Resend error:', error);
+      // Fall back to Gmail SMTP (works without a verified domain)
+      if (mailError) {
+        try {
+          const transporter = getGmailTransporter();
+          if (!transporter) throw mailError;
+          await transporter.sendMail({
+            from: `Glox <${process.env.GMAIL_USER}>`,
+            to: email,
+            subject: 'Verify your Glox account',
+            html: mailHtml,
+          });
+          mailError = null;
+        } catch (gmailErr) {
+          console.error('Gmail error:', gmailErr);
+        }
+      }
+
+      if (mailError) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Failed to send email' }));
         return;
