@@ -707,7 +707,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
-    const { data, error } = await supabase.from('games').select('*').eq('id', id).single();
+    const { data, error } = await supabase.from('games').select('*, users(display_name, user_id)').eq('id', id).single();
     if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ game: data }));

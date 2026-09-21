@@ -613,6 +613,25 @@ async function loadGame() {
     var res = await fetch(c.api + '/api/games/' + currentGameId);
     var d = await res.json();
     if (!d.game) return;
+    // Owner check: only the owner may load a project into the editor.
+    // (The server also rejects non-owner saves; this keeps the UI honest.)
+    if (d.game.owner_id) {
+      if (!window.currentToken && typeof getSupabase === 'function') {
+        try {
+          var odb = await getSupabase();
+          if (odb) { var os = await odb.auth.getSession(); if (os.data && os.data.session) window.currentToken = os.data.session.access_token; }
+        } catch (e) {}
+      }
+      var uid = null;
+      try {
+        if (window.currentToken) uid = JSON.parse(atob(window.currentToken.split('.')[1])).sub || null;
+      } catch (e) {}
+      if (!uid || uid !== d.game.owner_id) {
+        alert('Only the owner can edit this project.');
+        window.location.href = '/view.html?id=' + currentGameId;
+        return;
+      }
+    }
     document.getElementById('gameTitle').value = d.game.title || 'Untitled Game';
     document.getElementById('modalDescription').value = d.game.description || '';
     document.getElementById('modalCredits').value = d.game.credits || '';
