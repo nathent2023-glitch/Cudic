@@ -66,7 +66,7 @@
       return api;
     }
     if (!id) { document.getElementById('overlayText').textContent = 'Missing game id'; return; }
-    document.getElementById('studioBtn').href = '/editor?id=' + encodeURIComponent(id);
+    document.getElementById('studioBtn').href = '/studio?id=' + encodeURIComponent(id);
     // Owner check: only the owner gets the Studio button (server still enforces on save)
     function checkOwner(ownerId) {
       try {
@@ -87,7 +87,7 @@
         var files = game.files;
         if (typeof files === 'string') { try { files = JSON.parse(files); } catch (e) { files = null; } }
         // ponytail: scene-JSON games fall back to the editor; a legacy scene player only if old games resurface
-        if (!files || !Object.keys(files).length) { location.href = '/editor?id=' + encodeURIComponent(id); return; }
+        if (!files || !Object.keys(files).length) { location.href = '/studio?id=' + encodeURIComponent(id); return; }
         document.title = (game.title || 'Untitled') + ' — Glox';
         document.getElementById('gameTitle').textContent = game.title || 'Untitled Game';
         var author = game.users || {};

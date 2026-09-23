@@ -94,6 +94,9 @@ create policy "Authenticated users can create games" on public.games for insert 
 -- ── Studio projects: multi-file websites/games ─────────────────────
 -- files: { "index.html": "...", "style.css": "...", "main.js": "..." }
 alter table public.games add column if not exists files jsonb;
+-- assets manifest: { "logo.png": "game-assets/<gameId>/logo.png", ... }
+-- (blobs live in the game-assets bucket; files JSON stays strings-only)
+alter table public.games add column if not exists assets jsonb;
 
 -- Game assets bucket (images, audio, models referenced by projects)
 insert into storage.buckets (id, name, public)

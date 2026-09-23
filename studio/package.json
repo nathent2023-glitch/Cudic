@@ -1,0 +1,61 @@
+{
+  "name": "glox-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Glox code studio shell (VS Code workbench, Phase 0 scaffold)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@codingame/monaco-vscode-accessibility-service-override": "latest",
+    "@codingame/monaco-vscode-api": "latest",
+    "@codingame/monaco-vscode-configuration-service-override": "latest",
+    "@codingame/monaco-vscode-css-default-extension": "latest",
+    "@codingame/monaco-vscode-dialogs-service-override": "latest",
+    "@codingame/monaco-vscode-emmet-service-override": "latest",
+    "@codingame/monaco-vscode-environment-service-override": "latest",
+    "@codingame/monaco-vscode-explorer-service-override": "latest",
+    "@codingame/monaco-vscode-extension-gallery-service-override": "latest",
+    "@codingame/monaco-vscode-extensions-service-override": "latest",
+    "@codingame/monaco-vscode-files-service-override": "latest",
+    "@codingame/monaco-vscode-html-default-extension": "latest",
+    "@codingame/monaco-vscode-javascript-default-extension": "latest",
+    "@codingame/monaco-vscode-json-default-extension": "latest",
+    "@codingame/monaco-vscode-keybindings-service-override": "latest",
+    "@codingame/monaco-vscode-languages-service-override": "latest",
+    "@codingame/monaco-vscode-lifecycle-service-override": "latest",
+    "@codingame/monaco-vscode-markers-service-override": "latest",
+    "@codingame/monaco-vscode-model-service-override": "latest",
+    "@codingame/monaco-vscode-notifications-service-override": "latest",
+    "@codingame/monaco-vscode-output-service-override": "latest",
+    "@codingame/monaco-vscode-preferences-service-override": "latest",
+    "@codingame/monaco-vscode-quickaccess-service-override": "latest",
+    "@codingame/monaco-vscode-rollup-vsix-plugin": "^37.1.0",
+    "@codingame/monaco-vscode-search-service-override": "latest",
+    "@codingame/monaco-vscode-snippets-service-override": "latest",
+    "@codingame/monaco-vscode-storage-service-override": "latest",
+    "@codingame/monaco-vscode-textmate-service-override": "latest",
+    "@codingame/monaco-vscode-theme-defaults-default-extension": "latest",
+    "@codingame/monaco-vscode-theme-service-override": "latest",
+    "@codingame/monaco-vscode-theme-seti-default-extension": "^37.1.0",
+    "@codingame/monaco-vscode-view-status-bar-service-override": "latest",
+    "@codingame/monaco-vscode-view-title-bar-service-override": "latest",
+    "@codingame/monaco-vscode-workbench-service-override": "latest",
+    "@codingame/monaco-vscode-working-copy-service-override": "latest",
+    "@codingame/monaco-vscode-workspace-trust-service-override": "latest",
+    "jszip": "^3.10.1",
+    "mammoth": "^1.12.3",
+    "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@latest",
+    "vscode": "npm:@codingame/monaco-vscode-extension-api@latest"
+  },
+  "devDependencies": {
+    "@codingame/esbuild-import-meta-url-plugin": "latest",
+    "vite": "^6.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}

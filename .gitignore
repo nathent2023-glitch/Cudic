@@ -6,3 +6,5 @@ agora.db-wal
 .env.local
 .env.*.local
 .playwright-mcp/
+# Phase 0: studio build output is local-only (Vercel build lands in a later phase)
+public/studio/

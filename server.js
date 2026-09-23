@@ -703,6 +703,20 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: my games (Studio "Your Projects" tab) ───────────────────
+  if (url.pathname === '/api/games/mine' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    const { data } = await supabase.from('games').select('id, title, description, thumbnail, published, created_at, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ games: data || [] }));
+    return;
+  }
+
   // ── API: get single game ───────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
@@ -730,6 +744,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       credits: body.credits || '',
       scene: body.scene || '[]',
       files: body.files || null,
+      assets: body.assets || null,
       thumbnail: body.thumbnail || null,
       published: body.published || false,
     }).select().single();
@@ -754,6 +769,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (body.credits !== undefined) updates.credits = body.credits;
     if (body.scene !== undefined) updates.scene = body.scene;
     if (body.files !== undefined) updates.files = body.files;
+    if (body.assets !== undefined) updates.assets = body.assets;
     if (body.published !== undefined) updates.published = body.published;
     if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;
     updates.updated_at = new Date().toISOString();
@@ -798,6 +814,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   // ── Redirect /profile to /profile.html ─────────────────────────
   if (url.pathname === '/profile') {
     url.pathname = '/profile.html';
+  }
+
+  // ── Phase 0: workbench scaffold (Vite build output, local-only for now)
+  if (url.pathname === '/studio') {
+    url.pathname = '/studio/index.html';
   }
 
   // ── Redirect /servers to /servers.html ─────────────────────────
