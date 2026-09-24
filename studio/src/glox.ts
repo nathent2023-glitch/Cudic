@@ -26,10 +26,22 @@ import {
 import { mimeOf, collectBinaryFiles, collectTextFiles } from './project';
 import mammoth from 'mammoth';
 
-const BTN =
-  'background:#774DCB;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;';
-const GHOST_BTN =
-  'background:transparent;color:#c9d4ff;border:1px solid #3a4670;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;';
+const ICON_CSS =
+  '.glox-ibtn:hover{background:var(--vscode-toolbar-hoverBackground,rgba(255,255,255,0.08));}' +
+  '.glox-ibtn:active{background:var(--vscode-toolbar-activeBackground,rgba(255,255,255,0.12));}' +
+  '.glox-ibtn:focus-visible{outline:1px solid var(--vscode-focusBorder,#774DCB);outline-offset:-1px;}';
+
+function iconBtn(icon: string, title: string, color?: string): HTMLButtonElement {
+  const b = el(
+    `<button class="glox-ibtn" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;background:transparent;border:none;border-radius:5px;color:${
+      color ?? 'var(--vscode-foreground,#dbe4ff)'
+    };cursor:pointer;padding:0;flex:0 0 auto;"></button>`
+  ) as HTMLButtonElement;
+  b.append(el(`<span class="codicon codicon-${icon}" style="font-size:16px;"></span>`));
+  b.title = title;
+  b.setAttribute('aria-label', title);
+  return b;
+}
 
 function el(html: string): HTMLElement {
   const t = document.createElement('template');
@@ -286,6 +298,7 @@ export async function gloxRun(): Promise<void> {
 class PreviewPane extends SimpleEditorPane {
   static readonly ID = 'workbench.editors.gloxPreview';
   private static live = new Set<PreviewPane>();
+  private slot: HTMLElement | null = null;
   private frame: HTMLIFrameElement | null = null;
 
   constructor(group: IEditorGroup) {
@@ -294,20 +307,30 @@ class PreviewPane extends SimpleEditorPane {
 
   static livePanes(): PreviewPane[] {
     for (const p of [...PreviewPane.live]) {
-      if (p.frame == null || !p.frame.isConnected) PreviewPane.live.delete(p);
+      if (p.slot == null || !p.slot.isConnected) PreviewPane.live.delete(p);
     }
     return [...PreviewPane.live];
   }
 
+  // Fresh iframe per render: re-setting srcdoc on a long-lived frame silently
+  // stops navigating in restored/background states — replace, never reuse.
+  private mount(html: string): void {
+    if (this.slot == null) return;
+    const fresh = document.createElement('iframe');
+    fresh.setAttribute('sandbox', 'allow-scripts');
+    fresh.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
+    fresh.srcdoc = html;
+    this.slot.replaceChildren(fresh);
+    this.frame = fresh;
+  }
+
   showHtml(html: string): void {
-    if (this.frame != null) this.frame.srcdoc = html;
+    this.mount(html);
   }
 
   private async renderDoc(doc: { fileName: string; getText: () => string }): Promise<void> {
-    if (this.frame == null) return;
-    this.frame.srcdoc = await previewHtmlFor(
-      doc.fileName.split('/').pop() ?? 'untitled',
-      doc.getText()
+    this.mount(
+      await previewHtmlFor(doc.fileName.split('/').pop() ?? 'untitled', doc.getText())
     );
   }
 
@@ -329,13 +352,14 @@ class PreviewPane extends SimpleEditorPane {
 
   initialize(): HTMLElement {
     const wrap = el(
-      `<div style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:8px;gap:8px;background:#1e1e2e;"></div>`
+      `<div style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:0 8px 8px;gap:4px;background:#1e1e2e;"></div>`
     );
-    const bar = el(`<div style="display:flex;gap:6px;flex-wrap:wrap;"></div>`);
-    const run = el(`<button style="${BTN}">▶ Run</button>`) as HTMLButtonElement;
-    const refresh = el(`<button style="${GHOST_BTN}">Refresh</button>`) as HTMLButtonElement;
-    const stop = el(`<button style="${GHOST_BTN}">Stop</button>`) as HTMLButtonElement;
-    const pop = el(`<button style="${GHOST_BTN}">Open in browser</button>`) as HTMLButtonElement;
+    wrap.append(el(`<style>${ICON_CSS}</style>`));
+    const bar = el(`<div style="display:flex;gap:4px;align-items:center;min-height:28px;"></div>`);
+    const run = iconBtn('play', 'Run', '#A78BFA');
+    const refresh = iconBtn('refresh', 'Refresh');
+    const stop = iconBtn('debug-stop', 'Stop');
+    const pop = iconBtn('globe', 'Open in browser');
     run.onclick = () => {
       void this.rerun();
     };
@@ -343,7 +367,7 @@ class PreviewPane extends SimpleEditorPane {
       void this.rerun();
     };
     stop.onclick = () => {
-      if (this.frame != null) this.frame.srcdoc = '';
+      this.mount('');
     };
     pop.onclick = () => {
       if (this.frame == null || this.frame.srcdoc === '') return;
@@ -351,11 +375,11 @@ class PreviewPane extends SimpleEditorPane {
       window.open(URL.createObjectURL(blob), '_blank', 'noopener');
     };
     bar.append(run, refresh, stop, pop);
-    this.frame = document.createElement('iframe');
-    this.frame.setAttribute('sandbox', 'allow-scripts');
-    this.frame.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
-    this.frame.srcdoc = '';
-    wrap.append(bar, this.frame);
+    this.slot = el(
+      `<div style="flex:1;display:flex;flex-direction:column;min-height:0;"></div>`
+    );
+    wrap.append(el(`<style>${ICON_CSS}</style>`));
+    wrap.append(bar, this.slot);
     PreviewPane.live.add(this);
     return wrap;
   }
@@ -459,10 +483,11 @@ class ViewerPane extends SimpleEditorPane {
 
   initialize(): HTMLElement {
     const wrap = el(
-      `<div style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:8px;gap:8px;background:#1e1e2e;"></div>`
+      `<div style="display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:0 8px 8px;gap:4px;background:#1e1e2e;"></div>`
     );
-    const bar = el(`<div style="display:flex;gap:6px;flex-wrap:wrap;"></div>`);
-    const dl = el(`<button style="${GHOST_BTN}">Download</button>`) as HTMLButtonElement;
+    wrap.append(el(`<style>${ICON_CSS}</style>`));
+    const bar = el(`<div style="display:flex;gap:4px;align-items:center;min-height:28px;"></div>`);
+    const dl = iconBtn('cloud-download', 'Download');
     dl.onclick = () => {
       if (this.current?.data == null) return;
       const a = document.createElement('a');
