@@ -23,7 +23,7 @@ import {
   Action2,
   MenuId
 } from '@codingame/monaco-vscode-api/vscode/vs/platform/actions/common/actions';
-import { mimeOf, collectBinaryFiles } from './project';
+import { mimeOf, collectBinaryFiles, collectTextFiles } from './project';
 import mammoth from 'mammoth';
 
 const BTN =
@@ -87,12 +87,73 @@ async function injectAssetUrls(html: string): Promise<string> {
     });
 }
 
-async function buildStandalone(name: string, code: string): Promise<string> {
-  if (/\.html?$/.test(name)) return injectAssetUrls(code);
+function lookupFile(project: Record<string, string>, ref: string): string | null {
+  const n = normalizeRef(ref);
+  if (project[n] != null) return n;
+  const l = n.toLowerCase();
+  for (const k of Object.keys(project)) {
+    if (k.toLowerCase() === l) return k;
+  }
+  return null;
+}
+
+const REMOTE_REF = /^(https?:|data:|blob:|#|[a-z][a-z0-9+.-]*:|\/\/)/i;
+
+// Preview runs the project: local css/js siblings get inlined, the open
+// file's live editor text overlays its slot (no save needed). Remote URLs,
+// CDNs and importmaps pass through untouched.
+async function assemble(baseHtml: string, selfName: string, selfCode: string): Promise<string> {
+  const project = await collectTextFiles();
+  const selfLower = selfName.toLowerCase();
+  let cssUsed = false;
+  let jsUsed = false;
+  const sibling = (ref: string, markUsed: () => void): string | null => {
+    const hit = lookupFile(project, ref);
+    if (hit == null) return null;
+    if (hit.toLowerCase() === selfLower) {
+      markUsed();
+      return selfCode;
+    }
+    return project[hit];
+  };
+  let html = baseHtml.replace(
+    /<link\b[^>]*rel\s*=\s*(["'])stylesheet\1[^>]*href\s*=\s*(["'])([^"']+)\2[^>]*>/gi,
+    (m, _q1, _q2, ref) => {
+      if (REMOTE_REF.test(ref)) return m;
+      const css = sibling(ref, () => {
+        cssUsed = true;
+      });
+      if (css == null) return m;
+      return '<style>' + css.replace(/<\/style/gi, '<\\/style') + '</style>';
+    }
+  );
+  html = html.replace(
+    /<script\b([^>]*)src\s*=\s*(["'])([^"']+)\2([^>]*)>\s*<\/script\s*>/gi,
+    (m, pre, _q, ref, post) => {
+      if (REMOTE_REF.test(ref)) return m;
+      const js = sibling(ref, () => {
+        jsUsed = true;
+      });
+      if (js == null) return m;
+      return (
+        '<script' + pre + post + '>' + js.replace(/<\/script/gi, '<\\/script') + '</script>'
+      );
+    }
+  );
+  if (/\.css$/i.test(selfName) && !cssUsed) {
+    const tag = '<style>' + selfCode.replace(/<\/style/gi, '<\\/style') + '</style>';
+    html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : html + tag;
+  }
+  if (/\.m?jsx?$/i.test(selfName) && !jsUsed) {
+    const tag = '<script>' + selfCode.replace(/<\/script/gi, '<\\/script') + '</script>';
+    html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, tag + '</body>') : html + tag;
+  }
+  return injectAssetUrls(html);
+}
+
+function legacySingle(name: string, code: string): string {
   if (/\.css$/.test(name)) {
-    return injectAssetUrls(
-      `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${code}</style></head><body><h1>style preview</h1></body></html>`
-    );
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${code}</style></head><body><h1>style preview</h1></body></html>`;
   }
   if (/\.m?jsx?$/.test(name) || name === 'untitled') {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#0d1021;color:#dbe4ff;font-family:monospace;padding:12px}#err{color:#ff7b7b;white-space:pre-wrap}</style></head><body><div id="out"></div><div id="err"></div><script>
@@ -105,7 +166,16 @@ try{${code}\n}catch(e){err.textContent=String(e&&e.stack||e);}</script></body></
   return `<!DOCTYPE html><html><body><pre>${esc(code)}</pre></body></html>`;
 }
 
-let previewFrame: HTMLIFrameElement | null = null;
+// Preview always runs the project's index.html when one exists.
+async function previewHtmlFor(name: string, code: string): Promise<string> {
+  if (/\.html?$/.test(name)) return assemble(code, name, code);
+  const project = await collectTextFiles();
+  const entry = project['index.html'];
+  if (entry == null) return legacySingle(name, code);
+  if (/\.css$/i.test(name) || /\.m?jsx?$/i.test(name)) return assemble(entry, name, code);
+  return assemble(entry, '', '');
+}
+
 // Last focused code document — Preview pane has no activeTextEditor when focused.
 let lastCodeDoc: vscode.TextDocument | null = null;
 // Defer: vscode API isn't ready at module import time (localExtensionHost boots later).
@@ -188,27 +258,73 @@ export async function seedPreviewDoc(): Promise<void> {
 }
 
 export async function gloxRun(): Promise<void> {
-  if (previewFrame == null) {
+  const panes = PreviewPane.livePanes();
+  if (panes.length === 0) {
     vscode.window.showErrorMessage('Preview: pane not ready yet, reopen Glox Preview.');
     return;
   }
-  const doc = targetDoc();
+  let doc = targetDoc();
+  if (doc == null) {
+    const fb = await fallbackDoc();
+    if (fb != null) {
+      lastCodeDoc = fb as vscode.TextDocument;
+      doc = lastCodeDoc;
+    }
+  }
   if (doc == null) {
     vscode.window.showWarningMessage('Preview: no file to show. Open a file first, then Run.');
     return;
   }
-  previewFrame.srcdoc = await buildStandalone(
+  const html = await previewHtmlFor(
     doc.fileName.split('/').pop() ?? 'untitled',
     doc.getText()
   );
+  panes.forEach((p) => p.showHtml(html));
 }
 
 // ---- Preview editor pane (tab) ---------------------------------------------
 class PreviewPane extends SimpleEditorPane {
   static readonly ID = 'workbench.editors.gloxPreview';
+  private static live = new Set<PreviewPane>();
+  private frame: HTMLIFrameElement | null = null;
 
   constructor(group: IEditorGroup) {
     super(PreviewPane.ID, group);
+  }
+
+  static livePanes(): PreviewPane[] {
+    for (const p of [...PreviewPane.live]) {
+      if (p.frame == null || !p.frame.isConnected) PreviewPane.live.delete(p);
+    }
+    return [...PreviewPane.live];
+  }
+
+  showHtml(html: string): void {
+    if (this.frame != null) this.frame.srcdoc = html;
+  }
+
+  private async renderDoc(doc: { fileName: string; getText: () => string }): Promise<void> {
+    if (this.frame == null) return;
+    this.frame.srcdoc = await previewHtmlFor(
+      doc.fileName.split('/').pop() ?? 'untitled',
+      doc.getText()
+    );
+  }
+
+  async rerun(): Promise<void> {
+    let doc = targetDoc();
+    if (doc == null) {
+      const fb = await fallbackDoc();
+      if (fb != null) {
+        lastCodeDoc = fb as vscode.TextDocument;
+        doc = lastCodeDoc;
+      }
+    }
+    if (doc == null) {
+      vscode.window.showWarningMessage('Preview: no file to show. Open a file first, then Run.');
+      return;
+    }
+    await this.renderDoc(doc);
   }
 
   initialize(): HTMLElement {
@@ -221,43 +337,32 @@ class PreviewPane extends SimpleEditorPane {
     const stop = el(`<button style="${GHOST_BTN}">Stop</button>`) as HTMLButtonElement;
     const pop = el(`<button style="${GHOST_BTN}">Open in browser</button>`) as HTMLButtonElement;
     run.onclick = () => {
-      void gloxRun();
+      void this.rerun();
     };
     refresh.onclick = () => {
-      void gloxRun();
+      void this.rerun();
     };
     stop.onclick = () => {
-      if (previewFrame != null) previewFrame.srcdoc = '';
+      if (this.frame != null) this.frame.srcdoc = '';
     };
     pop.onclick = () => {
-      if (previewFrame == null || previewFrame.srcdoc === '') return;
-      const blob = new Blob([previewFrame.srcdoc], { type: 'text/html' });
+      if (this.frame == null || this.frame.srcdoc === '') return;
+      const blob = new Blob([this.frame.srcdoc], { type: 'text/html' });
       window.open(URL.createObjectURL(blob), '_blank', 'noopener');
     };
     bar.append(run, refresh, stop, pop);
-    previewFrame = document.createElement('iframe');
-    previewFrame.setAttribute('sandbox', 'allow-scripts');
-    previewFrame.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
-    previewFrame.srcdoc = '';
-    wrap.append(bar, previewFrame);
+    this.frame = document.createElement('iframe');
+    this.frame.setAttribute('sandbox', 'allow-scripts');
+    this.frame.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
+    this.frame.srcdoc = '';
+    wrap.append(bar, this.frame);
+    PreviewPane.live.add(this);
     return wrap;
   }
 
   async renderInput(_input: EditorInput): Promise<monaco.IDisposable> {
-    let doc = targetDoc();
-    if (doc == null) {
-      const fb = await fallbackDoc();
-      if (fb != null) {
-        lastCodeDoc = fb as vscode.TextDocument;
-        doc = lastCodeDoc;
-      }
-    }
-    if (doc != null && previewFrame != null) {
-      previewFrame.srcdoc = await buildStandalone(
-        doc.fileName.split('/').pop() ?? 'untitled',
-        doc.getText()
-      );
-    }
+    PreviewPane.live.add(this);
+    await this.rerun();
     return { dispose() {} };
   }
 }
@@ -266,6 +371,12 @@ class PreviewInput extends SimpleEditorInput {
   constructor(resource?: monaco.Uri) {
     super(resource);
     this.setName('Glox Preview');
+  }
+  override get typeId(): string {
+    return PreviewPane.ID;
+  }
+  override get editorId(): string {
+    return PreviewPane.ID;
   }
 }
 
@@ -328,6 +439,12 @@ class ViewerInput extends SimpleEditorInput {
     this.sourcePath = String(resource?.path ?? '');
     this.setName(this.sourcePath.split('/').pop() || 'file');
     this.mime = mimeOf(this.sourcePath);
+  }
+  override get typeId(): string {
+    return ViewerPane.ID;
+  }
+  override get editorId(): string {
+    return ViewerPane.ID;
   }
 }
 

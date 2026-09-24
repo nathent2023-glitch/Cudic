@@ -79,6 +79,10 @@ body {
 .sidebar:not(:hover) .sidebar-item span { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
 .sidebar:not(:hover) .sidebar-bottom { padding: 16px 8px 0; }
 .sidebar:not(:hover) #logoutBtn { display: none !important; }
+/* Collapsed rail: hide the servers empty-state text (it squeezes), keep
+   server rows as icons only (name span stays hidden by the rule above). */
+.sidebar:not(:hover) #serverList > div { display: none; }
+.sidebar:not(:hover) #serverList .sidebar-item span:first-child { opacity: 1; max-width: none; }
 
 .nav-section-label {
   font-size: 0.75rem;

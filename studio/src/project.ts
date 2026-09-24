@@ -14,8 +14,9 @@ import JSZip from 'jszip';
 
 const DEMO: Record<string, string> = {
   'index.html':
-    '<!DOCTYPE html>\n<html>\n<body>\n<h1>Glox Studio shell</h1>\n</body>\n</html>\n',
-  'main.js': 'console.log("hello from the workbench");\n'
+    '<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <title>Glox Studio</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <h1>Glox Studio shell</h1>\n</body>\n</html>\n',
+  'style.css':
+    "body {\n    font-family: 'Courier New', Courier, monospace;\n    background-color: #0d1117;\n    color: #c9d1d9;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    height: 100vh;\n    margin: 0;\n}\n\nh1 {\n    background-color: #161b22;\n    padding: 20px 40px;\n    border-radius: 6px;\n    border: 1px solid #30363d;\n    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);\n    letter-spacing: 1px;\n}\n"
 };
 
 export type FileContent = string | Uint8Array;
@@ -188,6 +189,15 @@ export async function collectBinaryFiles(): Promise<Record<string, Uint8Array>> 
   const out: Record<string, Uint8Array> = {};
   for (const [k, v] of Object.entries(all)) {
     if (typeof v !== 'string') out[k] = v;
+  }
+  return out;
+}
+
+export async function collectTextFiles(): Promise<Record<string, string>> {
+  const all = await collectFiles();
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(all)) {
+    if (typeof v === 'string') out[k] = v;
   }
   return out;
 }
