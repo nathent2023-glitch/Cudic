@@ -717,6 +717,40 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: list game comments ──────────────────────────────────
+  if (/^\/api\/games\/[^/]+\/comments$/.test(url.pathname) && req.method === 'GET') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const { data } = await supabase.from('game_comments').select('id, text, created_at, user_id, display_name').eq('game_id', id).order('created_at', { ascending: true }).limit(100);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ comments: data || [] }));
+    return;
+  }
+
+  // ── API: post game comment ───────────────────────────────────
+  if (/^\/api\/games\/[^/]+\/comments$/.test(url.pathname) && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const id = url.pathname.split('/')[3];
+    const body = await readBody(req);
+    const text = (body.text || '').trim().substring(0, 2000);
+    if (!text) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Empty comment' })); return; }
+    const { data: prof } = await supabase.from('users').select('display_name').eq('id', user.id).single();
+    const { data, error } = await supabase.from('game_comments').insert({
+      game_id: id,
+      user_id: user.id,
+      display_name: (prof && prof.display_name) || 'Unknown',
+      text
+    }).select().single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ comment: data, error: error?.message }));
+    return;
+  }
+
   // ── API: get single game ───────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
@@ -789,6 +823,29 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const id = url.pathname.split('/')[3];
     await supabase.from('games').delete().eq('id', id).eq('owner_id', user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: delete comment (author or game owner) ────────────────
+  if (url.pathname.startsWith('/api/comments/') && req.method === 'DELETE') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const cid = url.pathname.split('/')[3];
+    const { data: c } = await supabase.from('game_comments').select('id, user_id, game_id').eq('id', cid).single();
+    if (!c) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    let allowed = c.user_id === user.id;
+    if (!allowed) {
+      const { data: g } = await supabase.from('games').select('owner_id').eq('id', c.game_id).single();
+      allowed = !!(g && g.owner_id === user.id);
+    }
+    if (!allowed) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
+    await supabase.from('game_comments').delete().eq('id', cid);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;

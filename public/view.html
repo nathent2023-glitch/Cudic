@@ -29,6 +29,14 @@
     .side-card p { font-size: 0.85rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; }
     .side-card .dim { color: var(--text-tertiary); }
     .meta { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 14px; }
+    .comment { padding: 10px 0; border-top: 1px solid var(--line); }
+    .comment:first-child { border-top: none; }
+    .comment-head { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 4px; }
+    .comment-head strong { color: var(--text-primary); font-size: 0.8rem; }
+    .comment-del { margin-left: auto; background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 0.72rem; font-family: inherit; }
+    .comment-del:hover { color: #ff5c5c; }
+    .comment-body { font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    #commentBox { width: 100%; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--text-primary); font-size: 0.83rem; font-family: inherit; padding: 9px 12px; margin: 12px 0 8px; outline: none; resize: vertical; }
   </style></head>
 <body data-page="games">
   <div class="game-layout"><div class="game-content" id="content" style="display:none">
@@ -51,6 +59,15 @@
         <p id="gameCredits" class="dim">No credits yet.</p>
         <div class="meta" id="gameMeta"></div>
       </div>
+    </div>
+    <div class="side-card" id="commentsCard" style="margin-top:20px">
+      <h2>Comments <span id="commentCount" class="dim" style="font-weight:400"></span></h2>
+      <div id="commentList"><p class="dim">Loading…</p></div>
+      <div id="commentForm" style="display:none">
+        <textarea id="commentBox" rows="2" maxlength="2000" placeholder="Say something…"></textarea>
+        <button class="btn" id="commentPost">Post</button>
+      </div>
+      <p id="commentSignin" class="dim" style="display:none;margin-top:12px">Sign in to comment.</p>
     </div>
   </div></div>
   <script src="/config.js"></script>
@@ -79,6 +96,81 @@
         }).catch(function(){});
       } catch (e) {}
     }
+    var session = null;
+    function getSession() {
+      if (session) return Promise.resolve(session);
+      try {
+        return getSupabase().then(function(db){
+          if (!db) return null;
+          return db.auth.getSession().then(function(r){
+            var s = r.data && r.data.session;
+            session = s ? { uid: s.user.id, token: s.access_token } : null;
+            return session;
+          });
+        }).catch(function(){ return null; });
+      } catch (e) { return Promise.resolve(null); }
+    }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+    function commentDate(t) { try { return new Date(t).toLocaleString(); } catch (e) { return ''; } }
+    function initComments(game) {
+      function loadComments() {
+        fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/comments')
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            var list = d.comments || [];
+            document.getElementById('commentCount').textContent = list.length ? '(' + list.length + ')' : '';
+            var box = document.getElementById('commentList');
+            if (!list.length) { box.innerHTML = '<p class="dim">No comments yet.</p>'; return; }
+            getSession().then(function(s){
+              var uid = s && s.uid;
+              box.innerHTML = list.map(function(c){
+                var canDel = uid && (c.user_id === uid || game.owner_id === uid);
+                return '<div class="comment"><div class="comment-head"><strong>' + escapeHtml(c.display_name) + '</strong><span>' + escapeHtml(commentDate(c.created_at)) + '</span>' +
+                  (canDel ? '<button class="comment-del" data-cid="' + c.id + '">Delete</button>' : '') +
+                  '</div><div class="comment-body">' + escapeHtml(c.text) + '</div></div>';
+              }).join('');
+              box.querySelectorAll('.comment-del').forEach(function(b){
+                b.addEventListener('click', function(){ deleteComment(b.getAttribute('data-cid')); });
+              });
+            });
+          })
+          .catch(function(){ document.getElementById('commentList').innerHTML = '<p class="dim">Could not load comments.</p>'; });
+      }
+      function postComment() {
+        var ta = document.getElementById('commentBox');
+        var text = ta.value.trim();
+        if (!text) return;
+        getSession().then(function(s){
+          if (!s) return;
+          fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token },
+            body: JSON.stringify({ text: text.substring(0, 2000) })
+          }).then(function(r){ return r.json(); }).then(function(d){
+            if (d.comment) { ta.value = ''; loadComments(); }
+            else { alert('Could not post comment: ' + (d.error || 'server did not accept it')); }
+          }).catch(function(){ alert('Could not post comment: server unreachable or feature not deployed yet.'); });
+        });
+      }
+      function deleteComment(cid) {
+        getSession().then(function(s){
+          if (!s) return;
+          fetch(apiBase() + '/api/comments/' + encodeURIComponent(cid), {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + s.token }
+          }).then(function(){ loadComments(); }).catch(function(){});
+        });
+      }
+      loadComments();
+      getSession().then(function(s){
+        if (!s) {
+          document.getElementById('commentSignin').style.display = 'block';
+          return;
+        }
+        document.getElementById('commentForm').style.display = 'block';
+        document.getElementById('commentPost').addEventListener('click', postComment);
+      });
+    }
     fetch(apiBase() + '/api/games/' + encodeURIComponent(id))
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -98,6 +190,7 @@
         if (game.credits) { var ce = document.getElementById('gameCredits'); ce.textContent = game.credits; ce.classList.remove('dim'); }
         if (game.created_at) document.getElementById('gameMeta').textContent = 'Published ' + new Date(game.created_at).toLocaleDateString();
         checkOwner(game.owner_id);
+        initComments(game);
         document.getElementById('content').style.display = 'block';
         var card = document.getElementById('playerCard');
         document.getElementById('overlay').remove();
