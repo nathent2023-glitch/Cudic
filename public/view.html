@@ -51,6 +51,7 @@
     </div>
     <div class="game-grid">
       <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
+      <div id="playerErr" style="display:none;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:0.8rem;color:#ff7b7b;background:var(--panel-raised)"></div>
       <div class="side-card">
         <h2>Notes and Credits</h2>
         <h3>Notes</h3>
@@ -198,7 +199,7 @@
         f.setAttribute('sandbox', 'allow-scripts');
         f.setAttribute('allowfullscreen', 'true');
         f.setAttribute('scrolling', 'no');
-        f.src = '/run.html';
+        f.src = '/run.html?v=2';
         card.appendChild(f);
         // Viewers can allow scrolling for website-style games; remembered per game
         var scrollKey = 'glox-scroll:' + id;
@@ -215,12 +216,33 @@
           try { localStorage.setItem(scrollKey, scrollOn ? '1' : '0'); } catch (e) {}
           applyScroll(scrollOn);
         });
+        var playerStarted = false;
+        function playerFail(msg) {
+          var el = document.getElementById('playerErr');
+          el.textContent = msg;
+          el.style.display = 'block';
+        }
         window.addEventListener('message', function wait(e) {
           if (e.data && e.data.type === 'ready') {
+            // Compat rule: keep in step with run.html's ready version.
+            if (e.data.v !== 2) {
+              window.removeEventListener('message', wait);
+              playerFail('Player files are outdated — hard-refresh (Ctrl+Shift+R) to load the latest player.');
+              return;
+            }
+            playerStarted = true;
             window.removeEventListener('message', wait);
-            try { f.contentWindow.postMessage({ type: 'code', files: files }, '*'); } catch (err) {}
+            try { f.contentWindow.postMessage({ type: 'code', files: files, assets: game.assets || {}, assetsBase: (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ? SUPABASE_URL + '/storage/v1/object/public/' : '' }, '*'); } catch (err) {}
           }
         });
+        window.addEventListener('message', function(e){
+          if (!e.data || e.data.type !== 'console') return;
+          playerStarted = true;
+          if (e.data.level === 'error') playerFail('Game error: ' + e.data.text);
+        });
+        setTimeout(function(){
+          if (!playerStarted) playerFail('Player did not start. Hard-refresh (Ctrl+Shift+R); if it persists, open the project in Studio and re-save.');
+        }, 6000);
         document.getElementById('fsBtn').addEventListener('click', function(){
           if (card.requestFullscreen) card.requestFullscreen();
         });

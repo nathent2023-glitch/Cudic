@@ -73,10 +73,14 @@ fileSystemProvider.registerFile(
   )
 );
 registerFileSystemOverlay(1, fileSystemProvider);
+// Asset-only projects may have zero text files — never open a garbage URI.
+const bootKeys = Object.keys(boot.files);
 const firstFile =
   boot.files['index.html'] != null
     ? '/workspace/index.html'
-    : '/workspace/' + Object.keys(boot.files)[0];
+    : bootKeys.length > 0
+      ? '/workspace/' + bootKeys[0]
+      : null;
 
 // Workers as bundled constructors (Vite ?worker chunks — self-contained, correct URLs).
 // NOTE: getWorkerUrl/getWorkerOptions are intentionally absent: the lib falls back
@@ -170,9 +174,8 @@ const constructOptions: IWorkbenchConstructionOptions = {
     workspace: { workspaceUri: monaco.Uri.file('/workspace.code-workspace') }
   },
   defaultLayout: {
-    editors: [
-      { uri: monaco.Uri.file(firstFile), viewColumn: 1 }
-    ]
+    editors:
+      firstFile != null ? [{ uri: monaco.Uri.file(firstFile), viewColumn: 1 }] : []
   },
   productConfiguration: {
     nameShort: 'Glox Studio',
@@ -222,6 +225,21 @@ registerProjectCommands();
 
 // Seed Preview's fallback doc so first-open Preview renders with zero clicks.
 void seedPreviewDoc();
+
+// Storage compat hook: bump GLOX_STORE_V when stored UI state may be
+// incompatible with a new build. Advisory toast only — never auto-wipe
+// (unsaved work is memory-only, sessions live in storage).
+try {
+  const seenStoreV = localStorage.getItem('glox-store-v');
+  localStorage.setItem('glox-store-v', '1');
+  if (seenStoreV != null && seenStoreV !== '1') {
+    vscode.window.showInformationMessage(
+      'Glox Studio updated — reload once more if any tab misbehaves.'
+    );
+  }
+} catch {
+  // private mode etc. — non-fatal
+}
 
 // ---- Glox icon in the title bar (highest bar) ------------------------------
 // Wait for title bar to mount, then prepend the cube + open-Preview click.

@@ -907,7 +907,14 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       res.end('Not found');
       return;
     }
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };
+    if (ext === '.html') headers['Cache-Control'] = 'no-store';
+    // Hashed studio bundles are content-addressed — safe to cache forever.
+    // (index.html itself stays no-store: it points at the latest hashes.)
+    if (ext !== '.html' && filePath.includes(`${path.sep}studio${path.sep}`)) {
+      headers['Cache-Control'] = 'public, max-age=31536000, immutable';
+    }
+    res.writeHead(200, headers);
     res.end(data);
   });
 });

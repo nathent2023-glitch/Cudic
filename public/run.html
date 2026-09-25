@@ -6,45 +6,85 @@
 </head>
 <body>
 <script>
-// Code runner: inlines local .js/.css into index.html, then boots it.
-// Inlining (not blob refs) because the preview iframe is sandboxed without
-// allow-same-origin (opaque origin): blob: subresource fetches are blocked.
-// Protocol: parent posts {type:'code', files}, we post {type:'ready'} + {type:'console',...}.
-window.addEventListener('message', (e) => {
+// Code runner: inlines local .js/.css into index.html, then boots it via
+// document.write (NOT blob: navigation — the player iframe is sandboxed
+// without allow-same-origin and blob: loads are blocked there by design;
+// allow-same-origin is NOT an option: it would expose the parent origin +
+// localStorage token to user-published games).
+// Protocol: parent posts {type:'code', files, assets, assetsBase},
+// we post {type:'ready'} + {type:'console',...}.
+window.addEventListener('message', async (e) => {
   const d = e.data || {};
   if (d.type !== 'code' || !d.files) return;
   const files = d.files;
-  const urls = {};
+  const assets = d.assets || {};
+  const assetsBase = d.assetsBase || '';
   function esc(s, tag) { return String(s).replace(new RegExp('</' + tag, 'gi'), '<\\/' + tag); }
-  function find(p) { return Object.keys(urls).find(k => k === p || k.endsWith('/' + p)); }
-  for (const p of Object.keys(files)) {
-    if (p.endsWith('.js') || p.endsWith('.css')) continue; // inlined below, no blob needed
-    const mime = p.endsWith('.html') ? 'text/html' : 'application/octet-stream';
-    urls[p] = URL.createObjectURL(new Blob([files[p]], { type: mime }));
+  function find(p) { return Object.keys(files).find(k => k === p || k.endsWith('/' + p)); }
+  function mimeOf(p) {
+    if (/\.png$/i.test(p)) return 'image/png';
+    if (/\.jpe?g$/i.test(p)) return 'image/jpeg';
+    if (/\.gif$/i.test(p)) return 'image/gif';
+    if (/\.svg$/i.test(p)) return 'image/svg+xml';
+    if (/\.webp$/i.test(p)) return 'image/webp';
+    if (/\.mp3$/i.test(p)) return 'audio/mpeg';
+    if (/\.wav$/i.test(p)) return 'audio/wav';
+    if (/\.ogg$/i.test(p)) return 'audio/ogg';
+    if (/\.mp4$/i.test(p)) return 'video/mp4';
+    if (/\.webm$/i.test(p)) return 'video/webm';
+    if (/\.pdf$/i.test(p)) return 'application/pdf';
+    return 'application/octet-stream';
+  }
+  function dataUrl(mime, content) {
+    return new Promise((res, rej) => {
+      try {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(new Blob([content], { type: mime }));
+      } catch (err) { rej(err); }
+    });
   }
   let index = files['index.html'] || '';
   if (!index) {
     parent.postMessage({ type: 'console', level: 'error', text: 'No index.html in project' }, '*');
     return;
   }
+  // Binary siblings in the files map -> data: URLs (sandbox-safe).
+  const BIN = /\.(png|jpe?g|gif|svg|webp|ico|mp3|wav|ogg|mp4|webm|pdf)$/i;
+  const dataUrls = {};
+  for (const p of Object.keys(files)) {
+    if (BIN.test(p) && typeof files[p] === 'string') {
+      try { dataUrls[p] = await dataUrl(mimeOf(p), files[p]); } catch (err) {}
+    }
+  }
+  function assetUrl(p) {
+    const hit = find(p);
+    if (hit && dataUrls[hit]) return dataUrls[hit];
+    const keys = Object.keys(assets);
+    for (let i = 0; i < keys.length; i++) {
+      if (keys[i] === p || keys[i].endsWith('/' + p)) return assetsBase + assets[keys[i]];
+    }
+    return null;
+  }
   // Inline local stylesheets: <link href="x.css"> -> <style>…</style>
   index = index.replace(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi, (tag, p) => {
     if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
     const key = find(p);
-    if (!key || !key.endsWith('.css')) return tag;
+    if (!key || !/\.css$/i.test(key) || typeof files[key] !== 'string') return tag;
     return '<style>\n' + esc(files[key], 'style') + '\n</style>';
   });
   // Inline local scripts: script tags with src="x.js" get their content inlined
   index = index.replace(/<script\b([^>]*?)\bsrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (tag, pre, p, post) => {
     if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
-    const key = find(p) || Object.keys(files).find(k => k === p || k.endsWith('/' + p));
-    if (!key || !key.endsWith('.js')) return tag;
+    const key = find(p);
+    if (!key || !/\.js$/i.test(key) || typeof files[key] !== 'string') return tag;
     return '<script' + pre + post + '>\n' + esc(files[key], 'script') + '\n<\/script>';
   });
-  // Remaining relative refs (images, etc.): blob URLs, best effort
+  // Remaining relative refs (images, etc.): public asset URL or data: URL
   index = index.replace(/(src|href)=["'](?!https?:|data:|blob:|#)([^"']+)["']/g, (m, attr, p) => {
-    const key = find(p);
-    return key ? attr + '="' + urls[key] + '"' : m;
+    const u = assetUrl(p);
+    return u ? attr + '="' + u + '"' : m;
   });
   const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})<\/script>';
   parent.postMessage({ type: 'console', level: 'info', text: 'Running' }, '*');
@@ -52,9 +92,13 @@ window.addEventListener('message', (e) => {
   const doc = (/^\s*<!doctype html>/i.test(index))
     ? index.replace(/^(\s*<!doctype html>)/i, '$1' + fwd)
     : fwd + index;
-  location.href = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
+  document.open();
+  document.write(doc);
+  document.close();
 });
-parent.postMessage({ type: 'ready' }, '*');
+// Compat rule: bump v (and view.html's check) on any protocol change.
+// Old players announce themselves instead of silently misbehaving.
+parent.postMessage({ type: 'ready', v: 2 }, '*');
 </script>
 </body>
 </html>
