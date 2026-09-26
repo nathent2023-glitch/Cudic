@@ -57,8 +57,8 @@ function getMailTransporter() {
 }
 function getMailFrom() {
   return process.env.SMTP_FROM
-    || (process.env.SMTP_USER && `Glox <${process.env.SMTP_USER}>`)
-    || (process.env.GMAIL_USER && `Glox <${process.env.GMAIL_USER}>`)
+    || (process.env.SMTP_USER && `Cudic <${process.env.SMTP_USER}>`)
+    || (process.env.GMAIL_USER && `Cudic <${process.env.GMAIL_USER}>`)
     || null;
 }
 
@@ -154,10 +154,10 @@ const server = http.createServer(async (req, res) => {
       const verifyUrl = `https://glox-o7rr.onrender.com/auth/verify?token=${token}`;
       const mailHtml = `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFFFF;color:#2E2A4B;border-radius:16px;border:1px solid #C9D5F0;">
-            <h1 style="font-size:24px;margin-bottom:8px;">glox<span style="color:#774DCB;">.</span></h1>
+            <h1 style="font-size:24px;margin-bottom:8px;">cudic<span style="color:#774DCB;">.</span></h1>
             <p style="color:#5C5878;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
             <p style="font-size:15px;line-height:1.6;color:#5C5878;">Hi ${displayName || email},</p>
-            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Click the button below to verify your email and start using Glox:</p>
+            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Click the button below to verify your email and start using Cudic:</p>
             <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#774DCB;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
             <p style="font-size:13px;color:#9C97B8;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
           </div>
@@ -165,9 +165,9 @@ const server = http.createServer(async (req, res) => {
       let mailError = null;
       if (resend) {
         const { error } = await resend.emails.send({
-          from: process.env.RESEND_FROM || 'Glox <onboarding@resend.dev>',
+          from: process.env.RESEND_FROM || 'Cudic <onboarding@resend.dev>',
           to: email,
-          subject: 'Verify your Glox account',
+          subject: 'Verify your Cudic account',
           html: mailHtml,
         });
         if (error) {
@@ -186,7 +186,7 @@ const server = http.createServer(async (req, res) => {
           await transporter.sendMail({
             from: getMailFrom(),
             to: email,
-            subject: 'Verify your Glox account',
+            subject: 'Verify your Cudic account',
             html: mailHtml,
           });
           mailError = null;
@@ -254,7 +254,7 @@ const server = http.createServer(async (req, res) => {
             email_confirm: true,
           });
           status = 'success';
-          message = `Email verified! You can now use Glox.`;
+          message = `Email verified! You can now use Cudic.`;
         } catch (err) {
           console.error('Verify update error:', err);
           message = 'Verification failed. Please try again.';
@@ -265,7 +265,7 @@ const server = http.createServer(async (req, res) => {
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Glox — Email Verified</title>
+<title>Cudic — Email Verified</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -280,10 +280,10 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
 </style></head>
 <body>
 <div class="card">
-  <div class="brand">glox<span>.</span></div>
+  <div class="brand">cudic<span>.</span></div>
   <div class="status">${status === 'success' ? '&#9989;' : '&#10060;'}</div>
   <p class="msg">${message}</p>
-  <a href="/" class="btn">${status === 'success' ? 'Go to Glox' : 'Back to Glox'}</a>
+  <a href="/" class="btn">${status === 'success' ? 'Go to Cudic' : 'Back to Cudic'}</a>
 </div>
 </body></html>`;
 
@@ -787,6 +787,73 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: fork game (copy row + storage objects, fresh discussion) ──
+  if (/^\/api\/games\/[^/]+\/fork$/.test(url.pathname) && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const id = url.pathname.split('/')[3];
+    const { data: g } = await supabase.from('games').select('*').eq('id', id).single();
+    if (!g) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    if (!g.published && g.owner_id !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
+    const { data: nu, error: insErr } = await supabase.from('games').insert({
+      owner_id: user.id,
+      title: (g.title || 'Untitled') + ' (fork)',
+      description: g.description || '',
+      credits: g.credits || '',
+      scene: g.scene || '[]',
+      files: g.files || null,
+      assets: null,
+      thumbnail: g.thumbnail || null,
+      published: false
+    }).select().single();
+    if (insErr || !nu) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: insErr?.message || 'Fork failed' })); return; }
+    // Copy storage objects old prefix -> new prefix (recursive), rewrite manifest.
+    const bucket = supabase.storage.from('game-assets');
+    async function walk(prefix, out) {
+      const { data: entries } = await bucket.list(prefix, { limit: 1000 });
+      for (const e of entries || []) {
+        const p = prefix ? prefix + '/' + e.name : e.name;
+        if (e.metadata) out.push(p);
+        else await walk(p, out);
+      }
+    }
+    try {
+      const paths = [];
+      await walk(id, paths);
+      for (const from of paths) {
+        const to = nu.id + from.substring(id.length);
+        try {
+          const { error: cpErr } = await bucket.copy(from, to);
+          if (cpErr) throw cpErr;
+        } catch {
+          const { data: blob } = await bucket.download(from);
+          if (blob) await bucket.upload(to, blob, { upsert: true });
+        }
+      }
+      const manifest = g.assets || {};
+      const rewritten = {};
+      for (const [k, v] of Object.entries(manifest)) {
+        const stripped = String(v).replace(/^game-assets\//, '');
+        rewritten[k] = stripped.startsWith(id + '/')
+          ? 'game-assets/' + nu.id + stripped.substring(id.length)
+          : String(v);
+      }
+      if (Object.keys(rewritten).length) {
+        await supabase.from('games').update({ assets: rewritten }).eq('id', nu.id);
+        nu.assets = rewritten;
+      }
+    } catch {
+      // storage copy is best-effort; text files already forked
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ game: nu }));
+    return;
+  }
+
   // ── API: update game ──────────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'PUT') {
     cors(res);
@@ -822,6 +889,21 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const id = url.pathname.split('/')[3];
+    // Best-effort: purge the project's storage prefix so binaries don't orphan.
+    try {
+      const bucket = supabase.storage.from('game-assets');
+      const paths = [];
+      async function walk(prefix) {
+        const { data: entries } = await bucket.list(prefix, { limit: 1000 });
+        for (const e of entries || []) {
+          const p = prefix ? prefix + '/' + e.name : e.name;
+          if (e.metadata) paths.push(p);
+          else await walk(p);
+        }
+      }
+      await walk(id, paths);
+      if (paths.length) await bucket.remove(paths);
+    } catch {}
     await supabase.from('games').delete().eq('id', id).eq('owner_id', user.id);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
@@ -854,7 +936,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   // ── Favicon (inline SVG — one route covers every page, no 404 noise) ──
   if (url.pathname === '/favicon.ico') {
     res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
-    res.end(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#774DCB"/><text x="16" y="23" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="white">G</text></svg>`);
+    res.end(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#774DCB"/><text x="16" y="23" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="white">C</text></svg>`);
     return;
   }
 
@@ -1185,5 +1267,5 @@ setTimeout(cleanupNonPersistent, 60*1000); // run 1 min after start
 
 // ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {
-  console.log(`\n  Glox is running → http://localhost:${PORT}\n`);
+  console.log(`\n  Cudic is running → http://localhost:${PORT}\n`);
 });

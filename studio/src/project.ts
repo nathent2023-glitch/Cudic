@@ -1,4 +1,4 @@
-// Phase 2 — bridge Explorer ↔ Glox backend (games.files JSON).
+// Phase 2 — bridge Explorer ↔ Cudic backend (games.files JSON).
 import * as vscode from 'vscode';
 import * as monaco from 'monaco-editor';
 import {
@@ -14,7 +14,7 @@ import JSZip from 'jszip';
 
 const DEMO: Record<string, string> = {
   'index.html':
-    '<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <title>Glox Studio</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <h1>Glox Studio shell</h1>\n</body>\n</html>\n',
+    '<!DOCTYPE html>\n<html>\n<head>\n    <meta charset="UTF-8">\n    <title>Cudic Studio</title>\n    <link rel="stylesheet" href="style.css">\n</head>\n<body>\n    <h1>Cudic Studio shell</h1>\n</body>\n</html>\n',
   'style.css':
     "body {\n    font-family: 'Courier New', Courier, monospace;\n    background-color: #0d1117;\n    color: #c9d1d9;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    height: 100vh;\n    margin: 0;\n}\n\nh1 {\n    background-color: #161b22;\n    padding: 20px 40px;\n    border-radius: 6px;\n    border: 1px solid #30363d;\n    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);\n    letter-spacing: 1px;\n}\n"
 };
@@ -275,10 +275,69 @@ export function applyProjectToProvider(
   registerFiles(boot.files);
 }
 
+async function setPublished(pub: boolean): Promise<void> {
+  const token = getToken();
+  if (token == null) {
+    vscode.window.showWarningMessage('Sign in to publish projects.');
+    return;
+  }
+  if (projectId == null) {
+    vscode.window.showWarningMessage('Save the project first, then publish.');
+    return;
+  }
+  const base = await apiBase();
+  try {
+    const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId), {
+      method: 'PUT',
+      headers: headers(true),
+      body: JSON.stringify({ published: pub })
+    });
+    const d = await res.json();
+    if (d?.error != null && d.game == null) throw new Error(d.error);
+    vscode.window.showInformationMessage(
+      pub ? 'Cudic: Published "' + projectTitle + '"' : 'Cudic: Unpublished (back to draft).'
+    );
+  } catch (e) {
+    vscode.window.showErrorMessage('Publish failed: ' + (e as Error).message);
+  }
+}
+
+async function deleteProject(): Promise<void> {
+  const token = getToken();
+  if (token == null) {
+    vscode.window.showWarningMessage('Sign in to delete projects.');
+    return;
+  }
+  if (projectId == null) {
+    vscode.window.showWarningMessage('Nothing to delete — this project was never saved.');
+    return;
+  }
+  const pick = await vscode.window.showWarningMessage(
+    'Delete "' + projectTitle + '" from Cudic? This cannot be undone.',
+    { modal: true },
+    'Delete'
+  );
+  if (pick !== 'Delete') return;
+  const base = await apiBase();
+  try {
+    const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId), {
+      method: 'DELETE',
+      headers: headers(false)
+    });
+    const d = await res.json().catch(() => ({}));
+    if (d?.error != null && !d.ok) throw new Error(d.error);
+    projectId = null;
+    history.replaceState({}, '', '/studio');
+    vscode.window.showInformationMessage('Cudic: Deleted "' + projectTitle + '".');
+  } catch (e) {
+    vscode.window.showErrorMessage('Delete failed: ' + (e as Error).message);
+  }
+}
+
 async function saveProject(): Promise<void> {
   const token = getToken();
   if (token == null) {
-    vscode.window.showWarningMessage('Sign in to save projects to Glox.');
+    vscode.window.showWarningMessage('Sign in to save projects to Cudic.');
     return;
   }
   const files = await collectFiles();
@@ -318,7 +377,7 @@ async function saveProject(): Promise<void> {
     const d = await res.json();
     if (d?.error != null && d.game == null) throw new Error(d.error);
     vscode.window.showInformationMessage(
-      'Glox: Saved "' + projectTitle + '"' +
+      'Cudic: Saved "' + projectTitle + '"' +
       (bins.length > 0 ? ' (' + bins.length + ' asset(s)).' : '')
     );
   } catch (e) {
@@ -412,7 +471,7 @@ async function importIntoWorkspace(): Promise<void> {
     vscode.window.showInformationMessage(
       'Imported ' + Object.keys(incoming).length + ' file(s).' +
       (skipped > 0 ? ' ' + skipped + ' over 25MB skipped.' : '') +
-      ' Save to keep them on Glox.'
+      ' Save to keep them on Cudic.'
     );
   } catch (e) {
     vscode.window.showErrorMessage('Import failed: ' + (e as Error).message);
@@ -451,7 +510,7 @@ async function importFolder(): Promise<void> {
     vscode.window.showInformationMessage(
       'Imported folder (' + Object.keys(incoming).length + ' files).' +
       (skipped > 0 ? ' ' + skipped + ' over 25MB skipped.' : '') +
-      ' Save to keep them on Glox.'
+      ' Save to keep them on Cudic.'
     );
   } catch (e) {
     vscode.window.showErrorMessage('Import failed: ' + (e as Error).message);
@@ -484,7 +543,7 @@ export function registerProjectCommands(): void {
       constructor() {
         super({
           id: 'glox.saveProject',
-          title: { value: 'Glox: Save project', original: 'Glox: Save project' },
+          title: { value: 'Cudic: Save project', original: 'Cudic: Save project' },
           menu: [
             { id: MenuId.CommandPalette },
             { id: MenuId.MenubarFileMenu, group: '5_glox' }
@@ -502,7 +561,7 @@ export function registerProjectCommands(): void {
       constructor() {
         super({
           id: 'glox.importFiles',
-          title: { value: 'Glox: Import files', original: 'Glox: Import files' },
+          title: { value: 'Cudic: Import files', original: 'Cudic: Import files' },
           menu: [
             { id: MenuId.CommandPalette },
             { id: MenuId.MenubarFileMenu, group: '5_glox' }
@@ -520,7 +579,7 @@ export function registerProjectCommands(): void {
       constructor() {
         super({
           id: 'glox.importFolder',
-          title: { value: 'Glox: Import folder', original: 'Glox: Import folder' },
+          title: { value: 'Cudic: Import folder', original: 'Cudic: Import folder' },
           menu: [
             { id: MenuId.CommandPalette },
             { id: MenuId.MenubarFileMenu, group: '5_glox' }
@@ -538,7 +597,7 @@ export function registerProjectCommands(): void {
       constructor() {
         super({
           id: 'glox.exportProject',
-          title: { value: 'Glox: Export project as zip', original: 'Glox: Export project as zip' },
+          title: { value: 'Cudic: Export project as zip', original: 'Cudic: Export project as zip' },
           menu: [
             { id: MenuId.CommandPalette },
             { id: MenuId.MenubarFileMenu, group: '5_glox' }
@@ -547,6 +606,60 @@ export function registerProjectCommands(): void {
       }
       async run(): Promise<void> {
         await exportProject();
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.publishProject',
+          title: { value: 'Cudic: Publish project', original: 'Cudic: Publish project' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await setPublished(true);
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.unpublishProject',
+          title: { value: 'Cudic: Unpublish project', original: 'Cudic: Unpublish project' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await setPublished(false);
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.deleteProject',
+          title: { value: 'Cudic: Delete project', original: 'Cudic: Delete project' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await deleteProject();
       }
     }
   );

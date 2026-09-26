@@ -1,8 +1,8 @@
 {
-  "name": "glox-studio",
+  "name": "cudic-studio",
   "version": "0.1.0",
   "private": true,
-  "description": "Glox code studio shell (VS Code workbench, Phase 0 scaffold)",
+  "description": "Cudic code studio shell (VS Code workbench, Phase 0 scaffold)",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -1,9 +1,9 @@
-# Glox — Project Memory & Credentials
+# Cudic — Project Memory & Credentials
 
 ## Project Overview
 - Real-time chat lobby web app with persistent messages, OAuth login, split deployment
 - Working directory: `C:\Users\sophi\OneDrive\Desktop\Glox`
-- GitHub repo: `nathent2023-glitch/glox` (branch: `master`)
+- GitHub repo: `nathent2023-glitch/Cudic` (branch: `master`)
 
 ## Deployment URLs
 - Frontend (Vercel): `https://glox-two.vercel.app`

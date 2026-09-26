@@ -1,4 +1,4 @@
-# Glox
+# Cudic
 
 > **© All Rights Reserved — No Permission Granted**
 

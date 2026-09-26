@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Glox — Studio</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23774DCB'/%3E%3Ctext x='16' y='23' font-size='18' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='white'%3EG%3C/text%3E%3C/svg%3E">
+<title>Cudic — Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23774DCB'/%3E%3Ctext x='16' y='23' font-size='18' font-family='sans-serif' font-weight='bold' text-anchor='middle' fill='white'%3EC%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flexlayout-react@0.11.0/style/dark.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
@@ -21,7 +21,7 @@
 }
 </script>
 <style>
-/* ── Glox Studio theme engine: every chrome value lives in --ed-* ── */
+/* ── Cudic Studio theme engine: every chrome value lives in --ed-* ── */
 :root{
   --ed-accent:#855CD6; --ed-accent-strong:#774DCB; --ed-accent-soft:#c9b8f5; --ed-publish:#FF8C1A;
   --ed-bg:#1e1e1e; --ed-panel:#181818; --ed-modal:#252526; --ed-border:#2d2d2d;
@@ -163,7 +163,7 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
 </head>
 <body>
 <div class="topbar">
-  <span class="brand">glox<span>.</span></span>
+  <span class="brand">cudic<span>.</span></span>
   <a class="nav-btn" href="/games">Gallery</a>
   <div class="sep"></div>
   <input class="title-input" id="gameTitle" value="Untitled Game" maxlength="60">
@@ -251,7 +251,7 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
   </div>
 </div>
 <div class="statusbar">
-  <span>glox studio</span>
+  <span>cudic studio</span>
   <span id="stFile">index.html</span>
   <div class="st-right">
     <span id="stPos">Ln 1, Col 1</span>
@@ -283,7 +283,7 @@ body{font-family:'Inter',sans-serif;background:var(--ed-bg);color:var(--ed-text)
 <script src="/config.js"></script>
 <script src="/auth.js"></script>
 <script>
-/* ═══ Glox Studio — code-first websites & games ═══ */
+/* ═══ Cudic Studio — code-first websites & games ═══ */
 window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
 // Prime the token from the real login session (URL token wins when present)
 (async function bootEditorAuth() {
@@ -918,7 +918,7 @@ document.getElementById('aiInsert').addEventListener('click', function() {
 /* ── Terminal (xterm + project shell; no OS shell — static hosting) ── */
 var termBuf = '';
 function termWrite(s) { if (window._xterm) window._xterm.write(s); }
-function termPrompt() { termWrite('\r\n\x1b[1;35mglox\x1b[0m$ '); }
+function termPrompt() { termWrite('\r\n\x1b[1;35mcudic\x1b[0m$ '); }
 function initTerminal(host) {
   if (typeof Terminal === 'undefined') return;
   if (window._xterm && window._xtermHost === host) return;
@@ -929,7 +929,7 @@ function initTerminal(host) {
   term.open(host);
   try { fit && fit.fit(); } catch (e) {}
   window._xterm = term; window._xtermFit = fit; window._xtermHost = host;
-  term.writeln('glox shell — project files only (help for commands)');
+  term.writeln('cudic shell — project files only (help for commands)');
   termPrompt();
   term.onData(function(d) {
     if (d === '\r') { term.write('\r\n'); termRun(termBuf); termBuf = ''; termPrompt(); }
@@ -1096,11 +1096,11 @@ function applyMonacoTheme(map) {
   if (!window._monacoEditor || typeof monaco === 'undefined') return;
   map = map || edGet();
   var dark = map['ed-base'] !== 'light';
-  monaco.editor.defineTheme('glox', {
+    monaco.editor.defineTheme('cudic', {
     base: dark ? 'vs-dark' : 'vs', inherit: true, rules: [],
     colors: { 'editor.background': map['ed-bg'] }
   });
-  monaco.editor.setTheme('glox');
+    monaco.editor.setTheme('cudic');
   window._monacoEditor.updateOptions({
     fontSize: parseInt(map['ed-code-size'], 10),
     minimap: { enabled: map['ed-minimap'] === 'on' },
@@ -1176,13 +1176,13 @@ s.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js';
 s.onload = function() {
   require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' } });
   require(['vs/editor/editor.main'], function() {
-    monaco.editor.defineTheme('glox-dark', {
+    monaco.editor.defineTheme('cudic-dark', {
       base: 'vs-dark', inherit: true,
       rules: [],
       colors: { 'editor.background': '#1e1e1e' }
     });
     window._monacoEditor = monaco.editor.create(document.getElementById('editorContainer'), {
-      theme: 'glox-dark', fontSize: 13, fontFamily: "'JetBrains Mono',monospace",
+      theme: 'cudic-dark', fontSize: 13, fontFamily: "'JetBrains Mono',monospace",
       minimap: { enabled: false }, automaticLayout: true
     });
     window._monacoEditor.onDidChangeModelContent(function() { setDirty(currentFile, true); });

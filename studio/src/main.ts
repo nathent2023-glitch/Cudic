@@ -1,11 +1,11 @@
-// Glox Studio Phase 1 — workbench shell + built-in Glox panels
+// Cudic Studio Phase 1 — workbench shell + built-in Cudic panels
 import '@codingame/monaco-vscode-theme-defaults-default-extension';
 import '@codingame/monaco-vscode-theme-seti-default-extension';
 import '@codingame/monaco-vscode-javascript-default-extension';
 import '@codingame/monaco-vscode-html-default-extension';
 import '@codingame/monaco-vscode-css-default-extension';
 import '@codingame/monaco-vscode-json-default-extension';
-// Glox extension: Preview webview, Run command, nav sidebar, toggle
+// Cudic extension: Preview webview, Run command, nav sidebar, toggle
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker.js?worker';
 import ExtensionHostWorker from '@codingame/monaco-vscode-api/workers/extensionHost.worker?worker';
 import TextMateWorker from '@codingame/monaco-vscode-textmate-service-override/worker?worker';
@@ -13,7 +13,7 @@ import SearchWorker from '@codingame/monaco-vscode-search-service-override/worke
 import OutputLinkWorker from '@codingame/monaco-vscode-output-service-override/worker?worker';
 // Extension-host iframe asks for a URL string via getWorkerUrl (not getWorker).
 import extensionHostWorkerUrl from '@codingame/monaco-vscode-api/workers/extensionHost.worker?worker&url';
-// Glox built-ins (Preview as editor tab + commands) — registered directly with
+// Cudic built-ins (Preview as editor tab + commands) — registered directly with
 // the workbench, no vsix, cannot be uninstalled.
 import './glox';
 import { seedPreviewDoc } from './glox';
@@ -62,7 +62,7 @@ import getAccessibilityServiceOverride from '@codingame/monaco-vscode-accessibil
 import type { IWorkbenchConstructionOptions } from '@codingame/monaco-vscode-api';
 import { EnvironmentOverride } from '@codingame/monaco-vscode-api/workbench';
 
-// In-memory workspace, filled from the Glox backend project (?id=) or demo files
+// In-memory workspace, filled from the Cudic backend project (?id=) or demo files
 const fileSystemProvider = new RegisteredFileSystemProvider(false);
 const boot = await bootProject();
 applyProjectToProvider(fileSystemProvider, boot);
@@ -164,7 +164,7 @@ const commonServices: IEditorOverrideServices = {
 const constructOptions: IWorkbenchConstructionOptions = {
   // Workspace trust disabled entirely: everything is always trusted (no Restricted Mode)
   enableWorkspaceTrust: false,
-  windowIndicator: { label: 'Glox Studio', tooltip: '', command: '' },
+  windowIndicator: { label: 'Cudic Studio', tooltip: '', command: '' },
   workspaceProvider: {
     trusted: true,
     async open() {
@@ -178,8 +178,8 @@ const constructOptions: IWorkbenchConstructionOptions = {
       firstFile != null ? [{ uri: monaco.Uri.file(firstFile), viewColumn: 1 }] : []
   },
   productConfiguration: {
-    nameShort: 'Glox Studio',
-    nameLong: 'Glox Studio',
+    nameShort: 'Cudic Studio',
+    nameLong: 'Cudic Studio',
     extensionsGallery: {
       serviceUrl: 'https://open-vsx.org/vscode/gallery',
       resourceUrlTemplate:
@@ -190,7 +190,7 @@ const constructOptions: IWorkbenchConstructionOptions = {
     }
   },
   configurationDefaults: {
-    'window.title': 'Glox Studio${separator}${dirty}${activeEditorShort}'
+    'window.title': 'Cudic Studio${separator}${dirty}${activeEditorShort}'
   }
 };
 
@@ -220,7 +220,7 @@ await initializeMonacoService(
   envOptions
 );
 
-// Phase 2 — Glox: Save project / Import files / Import folder / Export as zip
+// Phase 2 — Cudic: Save project / Import files / Import folder / Export as zip
 registerProjectCommands();
 
 // Seed Preview's fallback doc so first-open Preview renders with zero clicks.
@@ -234,16 +234,16 @@ try {
   localStorage.setItem('glox-store-v', '1');
   if (seenStoreV != null && seenStoreV !== '1') {
     vscode.window.showInformationMessage(
-      'Glox Studio updated — reload once more if any tab misbehaves.'
+      'Cudic Studio updated — reload once more if any tab misbehaves.'
     );
   }
 } catch {
   // private mode etc. — non-fatal
 }
 
-// ---- Glox icon in the title bar (highest bar) ------------------------------
+// ---- Cudic icon in the title bar (highest bar) ------------------------------
 // Wait for title bar to mount, then prepend the cube + open-Preview click.
-async function mountTitleBarGloxIcon(): Promise<void> {
+async function mountTitleBarCudicIcon(): Promise<void> {
   const deadline = Date.now() + 8000;
   while (Date.now() < deadline) {
     const titleBar = shadowRoot.querySelector(
@@ -252,13 +252,13 @@ async function mountTitleBarGloxIcon(): Promise<void> {
     if (titleBar != null) {
       const btn = document.createElement('button');
       btn.id = 'glox-title-icon';
-      btn.title = 'Glox: Open Preview';
+      btn.title = 'Cudic: Open Preview';
       btn.style.cssText =
         'display:flex;align-items:center;justify-content:center;width:28px;height:24px;' +
         'background:transparent;border:none;cursor:pointer;padding:0;margin-right:6px;flex:0 0 auto;';
       const img = document.createElement('img');
       img.src = new URL('./glox.svg', import.meta.url).toString();
-      img.alt = 'Glox';
+      img.alt = 'Cudic';
       img.style.cssText = 'width:18px;height:18px;display:block;';
       btn.append(img);
       btn.onclick = () => {
@@ -275,4 +275,4 @@ async function mountTitleBarGloxIcon(): Promise<void> {
     await new Promise((r) => setTimeout(r, 200));
   }
 }
-void mountTitleBarGloxIcon();
+void mountTitleBarCudicIcon();

@@ -1,6 +1,6 @@
-# Glox Design System
+# Cudic Design System
 
-Glox is a browser tool for building and playing small 3D games — a scene
+Cudic is a browser tool for building and playing small 3D games — a scene
 editor with live scripting, chat lobbies, and a public gallery. The UI
 should feel like a **workshop for builders**, not a generic SaaS dashboard:
 technical but warm, confident, a little playful. It should NOT feel like a
@@ -104,7 +104,7 @@ uppercase tracking.
 - Replace all emoji icons with a single icon set, one stroke weight
   (1.5px), 20px default — e.g. Lucide or Phosphor (outline variant).
   Home / Chat / Games / Editor / Settings all come from the same family.
-- Wordmark: `glox` in Space Grotesk 600, with the accent dot recolored
+- Wordmark: `cudic` in Space Grotesk 600, with the accent dot recolored
   from lime to `--signal`.
 - Logomark (new): a simple isometric cube outline — a nod to the 3D scene
   the editor builds. Used as the favicon and loading state; a single
@@ -183,7 +183,7 @@ One deliberate motion moment per screen, nothing more:
 
 ## Scope note
 
-**`/editor` is now Glox Studio** — a dark, code-first IDE (Monaco, file
+**`/editor` is now Cudic Studio** — a dark, code-first IDE (Monaco, file
 explorer, live preview, console, publish flow) for building websites and
 Three.js games as plain `index.html` / `style.css` / `main.js` projects.
 It stays **dark-only** (exempt from the light palette) like a real IDE.

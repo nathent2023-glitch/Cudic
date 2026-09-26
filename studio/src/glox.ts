@@ -1,4 +1,4 @@
-// Glox built-ins — core UI, no vsix, cannot be uninstalled.
+// Cudic built-ins — core UI, no vsix, cannot be uninstalled.
 // Preview is a real editor tab (same as index.html). No sidebar container.
 import * as vscode from 'vscode';
 import {
@@ -272,7 +272,7 @@ export async function seedPreviewDoc(): Promise<void> {
 export async function gloxRun(): Promise<void> {
   const panes = PreviewPane.livePanes();
   if (panes.length === 0) {
-    vscode.window.showErrorMessage('Preview: pane not ready yet, reopen Glox Preview.');
+    vscode.window.showErrorMessage('Preview: pane not ready yet, reopen Cudic Preview.');
     return;
   }
   let doc = targetDoc();
@@ -394,7 +394,7 @@ class PreviewPane extends SimpleEditorPane {
 class PreviewInput extends SimpleEditorInput {
   constructor(resource?: monaco.Uri) {
     super(resource);
-    this.setName('Glox Preview');
+    this.setName('Cudic Preview');
   }
   override get typeId(): string {
     return PreviewPane.ID;
@@ -404,13 +404,13 @@ class PreviewInput extends SimpleEditorInput {
   }
 }
 
-registerEditorPane(PreviewPane.ID, 'Glox Preview', PreviewPane, [PreviewInput]);
+registerEditorPane(PreviewPane.ID, 'Cudic Preview', PreviewPane, [PreviewInput]);
 
 registerEditor(
   '*.gloxpreview',
   {
     id: PreviewPane.ID,
-    label: 'Glox Preview',
+    label: 'Cudic Preview',
     priority: {
       diff: RegisteredEditorPriority.default,
       editor: RegisteredEditorPriority.default,
@@ -577,14 +577,14 @@ class ViewerPane extends SimpleEditorPane {
   }
 }
 
-registerEditorPane(ViewerPane.ID, 'Glox Viewer', ViewerPane, [ViewerInput]);
+registerEditorPane(ViewerPane.ID, 'Cudic Viewer', ViewerPane, [ViewerInput]);
 
 for (const glob of VIEW_GLOBS) {
   registerEditor(
     glob,
     {
       id: ViewerPane.ID,
-      label: 'Glox Viewer',
+      label: 'Cudic Viewer',
       priority: {
         diff: RegisteredEditorPriority.default,
         editor: RegisteredEditorPriority.default,
@@ -627,7 +627,7 @@ registerEditorSerializer(
   }
 );
 
-export async function openGloxPreview(): Promise<void> {
+export async function openCudicPreview(): Promise<void> {
   // Capture the code file BEFORE focus switches to the Preview pane.
   const active = vscode.window.activeTextEditor?.document;
   if (active != null && !active.fileName.endsWith('.gloxpreview')) {
@@ -654,8 +654,8 @@ registerAction2(
     constructor() {
       super({
         id: 'glox.openPreview',
-        title: { value: 'Open Glox Preview', original: 'Open Glox Preview' },
-        category: 'Glox',
+        title: { value: 'Open Cudic Preview', original: 'Open Cudic Preview' },
+        category: 'Cudic',
         icon: 'open-preview' as never,
         menu: [
           { id: MenuId.CommandPalette },
@@ -687,7 +687,7 @@ registerAction2(
           // unreadable; keep previous lastCodeDoc
         }
       }
-      await openGloxPreview();
+      await openCudicPreview();
     }
   }
 );
@@ -697,8 +697,8 @@ registerAction2(
     constructor() {
       super({
         id: 'glox.run',
-        title: { value: 'Glox: Run active file', original: 'Glox: Run active file' },
-        category: 'Glox',
+        title: { value: 'Cudic: Run active file', original: 'Cudic: Run active file' },
+        category: 'Cudic',
         menu: [{ id: MenuId.CommandPalette }]
       });
     }
@@ -713,7 +713,7 @@ registerAction2(
     constructor() {
       super({
         id: 'glox.leaveStudio',
-        title: { value: 'Glox: Leave Studio', original: 'Glox: Leave Studio' },
+        title: { value: 'Cudic: Leave Studio', original: 'Cudic: Leave Studio' },
         menu: [
           { id: MenuId.CommandPalette },
           { id: MenuId.MenubarFileMenu, group: '5_glox' }
@@ -731,8 +731,8 @@ registerAction2(
     constructor() {
       super({
         id: 'glox.toggleSidebar',
-        title: { value: 'Glox: Toggle sidebar', original: 'Glox: Toggle sidebar' },
-        category: 'Glox',
+        title: { value: 'Cudic: Toggle sidebar', original: 'Cudic: Toggle sidebar' },
+        category: 'Cudic',
         menu: [{ id: MenuId.CommandPalette }]
       });
     }

@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="en"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Glox — Play</title>
+  <title>Cudic — Play</title>
   <link rel="stylesheet" href="/sidebar.css?v=7">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
@@ -48,6 +48,7 @@
       <button class="btn-ghost" id="scrollBtn" title="Allow the game page to scroll (for website-style games)">Scroll: off</button>
       <button class="btn-ghost" id="fsBtn">Fullscreen</button>
       <a class="btn" id="studioBtn" href="#" style="display:none">Open in Studio</a>
+      <button class="btn-ghost" id="forkBtn" style="display:none">Fork</button>
     </div>
     <div class="game-grid">
       <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
@@ -181,7 +182,7 @@
         if (typeof files === 'string') { try { files = JSON.parse(files); } catch (e) { files = null; } }
         // ponytail: scene-JSON games fall back to the editor; a legacy scene player only if old games resurface
         if (!files || !Object.keys(files).length) { location.href = '/studio?id=' + encodeURIComponent(id); return; }
-        document.title = (game.title || 'Untitled') + ' — Glox';
+        document.title = (game.title || 'Untitled') + ' — Cudic';
         document.getElementById('gameTitle').textContent = game.title || 'Untitled Game';
         var author = game.users || {};
         var name = author.display_name || 'Unknown';
@@ -192,6 +193,22 @@
         if (game.created_at) document.getElementById('gameMeta').textContent = 'Published ' + new Date(game.created_at).toLocaleDateString();
         checkOwner(game.owner_id);
         initComments(game);
+        getSession().then(function(s){
+          if (!s) return;
+          var fb = document.getElementById('forkBtn');
+          fb.style.display = '';
+          fb.addEventListener('click', function(){
+            fb.disabled = true;
+            fb.textContent = 'Forking…';
+            fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/fork', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + s.token }
+            }).then(function(r){ return r.json(); }).then(function(d){
+              if (d.game) window.location.href = '/studio?id=' + encodeURIComponent(d.game.id);
+              else { alert('Fork failed: ' + (d.error || 'unknown')); fb.disabled = false; fb.textContent = 'Fork'; }
+            }).catch(function(){ alert('Fork failed.'); fb.disabled = false; fb.textContent = 'Fork'; });
+          });
+        });
         document.getElementById('content').style.display = 'block';
         var card = document.getElementById('playerCard');
         document.getElementById('overlay').remove();
