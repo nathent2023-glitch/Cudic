@@ -65,9 +65,12 @@ npm run dev          # vite dev server
 - **Rebuild Studio after editing anything under `studio/src/`** — `public/studio/`
   is gitignored, so what you see in the browser is always the last build.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
-  (currently **v8**) — pages cache CSS aggressively.
+  (currently **v9**) — pages cache CSS aggressively.
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
-  in the Playwright browser + check console.
+  and check the console. Playwright MCP is **disabled**; the browser tools that
+  work here are `chrome-devtools` (screenshots return media inline when no
+  `filePath` is given) and `public-browser`. Headless Chrome `--screenshot` is
+  unreliable in this environment — do not use it to verify visuals.
 
 ---
 
@@ -76,7 +79,8 @@ npm run dev          # vite dev server
 ```
 server.js                 # ~1340 lines: HTTP + API + WS + AI proxy + email
 public/                   # the classic app (served at Vercel output root)
-  index.html              # landing / auth split screen
+  index.html              # marketing landing (dark, animated, GSAP)
+  login.html              # auth split screen (sign in / create / guest)
   chat.html  lobbies.html # chat
   servers.html            # server list + comments
   games.html  view.html   # gallery + game view (GSAP motion)
@@ -110,8 +114,8 @@ render.yaml               # Render service (PORT 10000)
 
 ### Pages & routes
 Vercel rewrites (`vercel.json`) map extensionless paths → `.html`:
-`/` `/login` → index, `/profile`, `/chat`, `/games`, `/themes`, `/editor`,
-`/servers`, `/lobbies`, `/studio` → `studio/index.html`.
+`/` → index (landing), `/login` → login.html, `/profile`, `/chat`, `/games`,
+`/themes`, `/editor`, `/servers`, `/lobbies`, `/studio` → `studio/index.html`.
 `server.js` mirrors all of these for local dev.
 
 Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
@@ -398,16 +402,19 @@ Read it before building any classic-page screen. Headlines:
    **Never wipe `localStorage`. Never click "Send" in automated tests.**
    Verify by rendering/screenshots/reading only.
 3. **Do NOT commit unless explicitly asked.** Push = Vercel + Render auto-deploy.
-4. **Uncommitted work right now** (since `17b6043`): `sidebar.css/js` brand
-   animation, favicon links across all 9 pages, `server.js` favicon route,
-   `cudic_sfpng.png`/`cudic_sfsvg.svg`, `chat.html` redesign + model expansion,
-   `extension.ts` friendly-error/model-list, `llm.ts` shape mapping,
-   `providers.ts` Zen/Gemini `modelsPath`, plus modified classic pages.
+4. **Working tree should be clean** — the last batch (landing page, `/login`
+   split, SEO files, screenshot crops) was committed as `d3cb2dc` and pushed to
+   both branches. If you see modified `public/*.html` or `server.js`, something
+   new is in flight: confirm with `git status` before assuming it is stale.
 5. **The OneDrive copy** (`C:\Users\sophi\OneDrive\Desktop\Glox`) is a *separate*
-   checkout with `master` checked out and **stale**. Real work happens in
+   checkout with `master` checked out. Real work happens in
    `C:\Users\sophi\Glox` on `fix-inline-scripts`. Pull before using it.
-6. **Branch**: `fix-inline-scripts` (current), `master` = `17b6043` pushed,
-   `fix-live-auth` exists, `origin/master` present. There are ~131 commits.
+   It was fast-forwarded to `d3cb2dc` on 2026-09-27, so it is no longer stale.
+   Because it holds `master`, **you cannot `git checkout master` in the main
+   worktree** — merge there, or `git -C <OneDrive path> merge --ff-only <branch>`.
+6. **Branch**: `fix-inline-scripts` (current) and `master` are both at
+   `d3cb2dc`, matching `origin`. `fix-live-auth` exists. Pushing `master`
+   deploys Vercel + Render.
 7. **New AI provider ⇒ add its host to `AI_HOSTS`** (`server.js:726`) or the proxy
    403s. Loopback hosts are intentionally *blocked* there and called directly.
 8. **`public/studio/` is gitignored** — a fresh clone has no `/studio` until
@@ -468,15 +475,27 @@ Pushing to `master` deploys both. Verify locally first.
 
 ## 16. Work state at time of writing
 
-**Shipped & pushed** (`17b6043`): Cudic AI panel v1, theme packs store, sidebar
-push-aside, editor context menus, gallery GSAP motion, landing wordmark.
+**Clean tree.** `fix-inline-scripts` = `master` = `origin` = `d3cb2dc`, pushed
+2026-09-27. Verify with `git status` before assuming this still holds.
 
-**Uncommitted**: sidebar rail brand animation, favicon wiring, chat redesign +
-ASCII noise + motion, company→model expansion (Zen 84 / OpenRouter 458 live),
-`fetchModels` response-shape mapping, Google `modelsPath`, Anthropic curated note.
+**Shipped in `d3cb2dc`**: marketing landing at `/` (animated: coordinate-graph
+hero, marquee, feature trio, Studio/gallery/themes sections, real product
+screenshots in `public/shots/`), auth screen relocated to `/login`
+(`login.html` + rewrites in `server.js` and `vercel.json`), SEO foundations
+(description/OG/Twitter/canonical on 9 pages + `studio/index.html`,
+`robots.txt`, `sitemap.xml`, `og.png`).
 
-**Blocked / needs the user**: a real end-to-end inference call — they must sign in,
-add a key, hit Test. Automated clicks can't do it without risking their key/quota.
+**Shipped earlier**: `7de42e7` project thumbnails + full model catalogs + rail
+brand animation; `17b6043` Cudic AI panel, theme packs store, sidebar
+push-aside, editor context menus, gallery GSAP motion.
 
-**Next**: user reviews the expanded model lists and monochrome chat → on approval,
-commit and push when told.
+**Live and verified after push**: `/`, `/login`, `/games` serve the new build;
+`/robots.txt` and `/sitemap.xml` return 200; Render `/api/games` healthy.
+
+**Blocked / needs the user**: a real end-to-end AI inference call — they must
+sign in, add a key, hit Test. Automated clicks can't do it without risking
+their key/quota.
+
+**Next**: the user drives landing-page design taste and wants more motion —
+iterate on `public/index.html` when they give direction, then commit and push
+when told.
