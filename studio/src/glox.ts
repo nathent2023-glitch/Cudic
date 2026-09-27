@@ -23,7 +23,7 @@ import {
   Action2,
   MenuId
 } from '@codingame/monaco-vscode-api/vscode/vs/platform/actions/common/actions';
-import { mimeOf, collectBinaryFiles, collectTextFiles } from './project';
+import { mimeOf, collectBinaryFiles, collectTextFiles, previewBridge } from './project';
 import mammoth from 'mammoth';
 
 const ICON_CSS =
@@ -295,6 +295,68 @@ export async function gloxRun(): Promise<void> {
 }
 
 // ---- Preview editor pane (tab) ---------------------------------------------
+
+// Runs INSIDE the sandboxed preview frame (it is opaque to us, so the parent
+// can't read its DOM — the frame has to rasterize itself and post it up).
+const CAPTURE_SNIPPET = [
+  '<scr' + 'ipt>(function(){',
+  'function send(m){parent.postMessage(m,"*")}',
+  'function fail(e){send({cudic:"cap",ok:false,error:String(e)})}',
+  'window.addEventListener("message",function(e){',
+  'var d=e.data;if(!d||d.cudic!=="capture")return;',
+  'try{',
+  'var w=window.innerWidth||1280,h=window.innerHeight||720;',
+  'var svg=\'<svg xmlns="http://www.w3.org/2000/svg" width="\'+w+\'" height="\'+h+\'"><foreignObject width="\'+w+\'" height="\'+h+\'">\'+new XMLSerializer().serializeToString(document.documentElement.cloneNode(true))+\'</foreignObject></svg>\';',
+  'var img=new Image();',
+  'img.onload=function(){try{',
+  'var c=document.createElement("canvas");c.width=w;c.height=h;',
+  'var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);',
+  'var px=x.getImageData(0,0,w,h).data,lo=255,hi=0;',
+  'for(var i=0;i<px.length;i+=3988){if(px[i]<lo)lo=px[i];if(px[i]>hi)hi=px[i];}',
+  'if(hi-lo<12)return fail("preview is blank");',
+  'send({cudic:"cap",ok:true,data:c.toDataURL("image/jpeg",0.85)});',
+  '}catch(err){fail(err)}};',
+  'img.onerror=function(){fail("rasterize failed")};',
+  'img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);',
+  '}catch(err){fail(err)}});',
+  '})();</scr' + 'ipt>'
+].join('');
+
+// The preview frame is created here, but setThumbnail() lives in project.ts
+// (which glox.ts already imports) — expose capture through a slot to avoid a
+// circular import.
+previewBridge.capture = capturePreviewThumbnail;
+
+function capturePreviewThumbnail(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const frame = PreviewPane.livePanes()
+      .map((p) => p.frameEl())
+      .find((f): f is HTMLIFrameElement => f != null);
+    if (frame == null) {
+      resolve(null);
+      return;
+    }
+    let timer = 0;
+    let done = false;
+    const finish = (r: string | null): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      window.removeEventListener('message', onMessage);
+      resolve(r);
+    };
+    const onMessage = (e: MessageEvent): void => {
+      if (e.source !== frame.contentWindow) return;
+      const d = e.data as { cudic?: string; ok?: boolean; data?: string } | null;
+      if (d == null || d.cudic !== 'cap') return;
+      finish(d.ok === true && typeof d.data === 'string' ? d.data : null);
+    };
+    window.addEventListener('message', onMessage);
+    timer = window.setTimeout(() => finish(null), 8000);
+    frame.contentWindow?.postMessage({ cudic: 'capture' }, '*');
+  });
+}
+
 class PreviewPane extends SimpleEditorPane {
   static readonly ID = 'workbench.editors.gloxPreview';
   private static live = new Set<PreviewPane>();
@@ -312,6 +374,10 @@ class PreviewPane extends SimpleEditorPane {
     return [...PreviewPane.live];
   }
 
+  frameEl(): HTMLIFrameElement | null {
+    return this.frame != null && this.frame.srcdoc !== '' ? this.frame : null;
+  }
+
   // Fresh iframe per render: re-setting srcdoc on a long-lived frame silently
   // stops navigating in restored/background states — replace, never reuse.
   private mount(html: string): void {
@@ -319,7 +385,7 @@ class PreviewPane extends SimpleEditorPane {
     const fresh = document.createElement('iframe');
     fresh.setAttribute('sandbox', 'allow-scripts');
     fresh.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
-    fresh.srcdoc = html;
+    fresh.srcdoc = html + CAPTURE_SNIPPET;
     this.slot.replaceChildren(fresh);
     this.frame = fresh;
   }

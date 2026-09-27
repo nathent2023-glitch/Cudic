@@ -991,8 +991,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
 
   // ── Favicon (inline SVG — one route covers every page, no 404 noise) ──
   if (url.pathname === '/favicon.ico') {
-    res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
-    res.end(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#774DCB"/><text x="16" y="23" font-size="18" font-family="sans-serif" font-weight="bold" text-anchor="middle" fill="white">C</text></svg>`);
+    fs.readFile(path.join(__dirname, 'public', 'cudic_sfsvg.svg'), (err, data) => {
+      if (err) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=86400' });
+      res.end(data);
+    });
     return;
   }
 

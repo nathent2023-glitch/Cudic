@@ -69,6 +69,9 @@ function headers(json: boolean): Record<string, string> {
   return h;
 }
 
+// Filled in by glox.ts (it owns the preview pane) — see note there.
+export const previewBridge: { capture?: () => Promise<string | null> } = {};
+
 interface StorageCfg {
   api: string;
   url: string;
@@ -299,6 +302,112 @@ async function setPublished(pub: boolean): Promise<void> {
     );
   } catch (e) {
     vscode.window.showErrorMessage('Publish failed: ' + (e as Error).message);
+  }
+}
+
+async function putThumbnail(value: string | null): Promise<void> {
+  const base = await apiBase();
+  const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId as string), {
+    method: 'PUT',
+    headers: headers(true),
+    body: JSON.stringify({ thumbnail: value })
+  });
+  const d = await res.json();
+  if (d?.error != null && d.game == null) throw new Error(d.error);
+}
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(new Error('Could not read that file.'));
+    fr.readAsDataURL(file);
+  });
+}
+
+// Keep rows small — a phone photo would otherwise be stored at full size.
+function shrinkImage(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 1000;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      if (scale === 1) {
+        resolve(dataUrl);
+        return;
+      }
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      const ctx = c.getContext('2d');
+      if (ctx == null) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function pickImageFile(): Promise<File | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    // Left in the document until the dialog resolves so it stays reachable.
+    document.body.appendChild(input);
+    const done = (f: File | null): void => {
+      input.remove();
+      resolve(f);
+    };
+    input.addEventListener('change', () => done(input.files?.[0] ?? null), { once: true });
+    input.addEventListener('cancel', () => done(null), { once: true });
+    input.click();
+  });
+}
+
+async function setThumbnail(): Promise<void> {
+  const token = getToken();
+  if (token == null) {
+    vscode.window.showWarningMessage('Sign in to set a thumbnail.');
+    return;
+  }
+  if (projectId == null) {
+    vscode.window.showWarningMessage('Save the project first, then set a thumbnail.');
+    return;
+  }
+  const upload = { label: '$(upload) Upload image…', description: 'Choose a cover from your computer' };
+  const capture = { label: '$(screen-normal) Capture from preview', description: 'Screenshot what the preview is showing' };
+  const clear = { label: '$(clear-all) Remove thumbnail', description: 'Back to the default placeholder' };
+  const pick = await vscode.window.showQuickPick([upload, capture, clear], {
+    placeHolder: 'Set project thumbnail'
+  });
+  if (pick == null) return;
+  try {
+    if (pick.label === upload.label) {
+      const file = await pickImageFile();
+      if (file == null) return;
+      await putThumbnail(await shrinkImage(await readAsDataUrl(file)));
+    } else if (pick.label === capture.label) {
+      const shot = previewBridge.capture != null ? await previewBridge.capture() : null;
+      if (shot == null) {
+        vscode.window.showWarningMessage(
+          'Nothing to capture yet — open the Preview tab and run it first, or upload an image instead.'
+        );
+        return;
+      }
+      await putThumbnail(shot);
+    } else {
+      await putThumbnail(null);
+    }
+    vscode.window.showInformationMessage('Cudic: Thumbnail saved — it now shows on your gallery card.');
+  } catch (e) {
+    vscode.window.showErrorMessage('Thumbnail failed: ' + (e as Error).message);
   }
 }
 
@@ -553,6 +662,24 @@ export function registerProjectCommands(): void {
       }
       async run(): Promise<void> {
         await saveProject();
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.setThumbnail',
+          title: { value: 'Cudic: Set thumbnail', original: 'Cudic: Set thumbnail' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await setThumbnail();
       }
     }
   );

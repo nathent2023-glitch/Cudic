@@ -5,167 +5,403 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-__NONCE__'; style-src 'unsafe-inline';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+  /* Codex restraint up front (gate, provider list, key), shadcn Message/
+     Bubble language in the chat itself. Cudic signal kept as the accent. */
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
     margin: 0; padding: 0; display: flex; flex-direction: column;
-    font-family: var(--vscode-font-family, sans-serif);
-    font-size: var(--vscode-font-size, 13px);
-    color: var(--vscode-foreground, #dbe4ff);
-    background: var(--vscode-sideBar-background, transparent);
+    font-family: var(--vscode-font-family, -apple-system, "Segoe UI", Inter, sans-serif);
+    font-size: 13px; line-height: 1.6;
+    color: var(--vscode-foreground, #fafafa);
+    background: transparent;
   }
-  .cfg { padding: 10px 12px 6px; border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #2d2d2d); display: flex; flex-direction: column; gap: 7px; flex-shrink: 0; max-height: 52%; overflow-y: auto; }
-  .cfg label { font-size: 11px; opacity: 0.75; display: flex; flex-direction: column; gap: 3px; }
-  select, input[type="text"], input[type="password"], textarea {
-    background: var(--vscode-input-background, #1e1e1e);
-    color: var(--vscode-input-foreground, #fff);
-    border: 1px solid var(--vscode-input-border, #3c3c3c);
-    border-radius: 5px; padding: 5px 7px; font: inherit; width: 100%;
+  button { font: inherit; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  /* ── Slim topbar ── */
+  #topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, #27272a);
+    flex-shrink: 0;
   }
-  select:focus, input:focus, textarea:focus { outline: 1px solid var(--vscode-focusBorder, #774DCB); outline-offset: -1px; }
-  .row { display: flex; gap: 6px; align-items: center; }
-  .row .grow { flex: 1; min-width: 0; }
-  button {
-    background: var(--vscode-button-secondaryBackground, #3a3d41);
-    color: var(--vscode-button-secondaryForeground, #fff);
-    border: none; border-radius: 5px; padding: 5px 10px; font: inherit; cursor: pointer; white-space: nowrap;
+  #topbar .title { font-weight: 600; font-size: 12.5px; }
+  #topbar .sp { flex: 1; }
+  #modelPill {
+    font-size: 11px; color: var(--vscode-descriptionForeground, #a1a1aa);
+    background: var(--vscode-input-background, #18181b);
+    border: 1px solid var(--vscode-input-border, #27272a);
+    border-radius: 99px; padding: 2px 10px; max-width: 45%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  button:hover { background: var(--vscode-button-secondaryHoverBackground, #45494e); }
-  button.primary { background: var(--vscode-button-background, #774DCB); color: var(--vscode-button-foreground, #fff); }
-  button.primary:hover { background: var(--vscode-button-hoverBackground, #643BAD); }
-  button:disabled { opacity: 0.5; cursor: default; }
-  .hint { font-size: 11px; opacity: 0.65; line-height: 1.45; }
-  .hint a { color: var(--vscode-textLink-foreground, #774DCB); }
+  .iconbtn {
+    background: transparent; border: none; border-radius: 6px;
+    color: var(--vscode-foreground, #fafafa); opacity: 0.7;
+    width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; padding: 0; flex-shrink: 0;
+  }
+  .iconbtn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, #27272a); }
+  /* ── Gate (codex screen) ── */
+  #gate {
+    flex: 1; min-height: 0; display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  #noiseCv { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.9; pointer-events: none; }
+  #gate .brand, #gate .stack { position: relative; z-index: 1; }
+  #gate.hidden, .hidden { display: none !important; }
+  #gate .brand { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  #gate .brand .mark {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: #fafafa;
+    color: #111;
+    display: flex; align-items: center; justify-content: center; font-size: 21px;
+  }
+  #gate .brand h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: 0.01em; }
+  #gate .stack { padding: 0 28px 26px; display: flex; flex-direction: column; gap: 9px; align-items: stretch; }
+  .pill {
+    border-radius: 99px; padding: 10px; font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; text-align: center; width: 100%;
+  }
+  .pill.white { background: #fafafa; color: #111; border: none; }
+  .pill.white:hover { background: #fff; }
+  .pill.dark { background: #212124; color: #fafafa; border-color: #3f3f46; }
+  .pill.dark:hover { background: #2b2b30; }
+  .textbtn { background: none; border: none; color: var(--vscode-descriptionForeground, #a1a1aa); font-size: 12.5px; padding: 4px; }
+  .textbtn:hover { color: var(--vscode-foreground, #fafafa); }
+  /* ── Setup screens (providers / key / options) ── */
+  .screen { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .screen h2 { margin: 2px 0 4px; font-size: 14px; font-weight: 600; }
+  .screen .sub { font-size: 12px; color: var(--vscode-descriptionForeground, #a1a1aa); line-height: 1.55; margin: 0 0 2px; }
+  .backrow { display: flex; align-items: center; gap: 4px; margin: 0 0 2px; }
+  #psearch {
+    background: var(--vscode-input-background, #09090b);
+    color: var(--vscode-input-foreground, #fafafa);
+    border: 1px solid var(--vscode-input-border, #27272a);
+    border-radius: 8px; padding: 8px 10px; font: inherit; width: 100%;
+  }
+  #psearch:focus { outline: none; border-color: #71717a; }
+  #plist { display: flex; flex-direction: column; }
+  #plist button {
+    background: none; border: none; border-bottom: 1px solid var(--vscode-input-border, #222226);
+    color: var(--vscode-foreground, #fafafa); text-align: left;
+    padding: 11px 2px; font-size: 13px; display: flex; align-items: center; gap: 8px;
+    border-radius: 0;
+  }
+  #plist button:hover { background: var(--vscode-toolbar-hoverBackground, #1c1c1f); }
+  #plist button .chev { margin-left: auto; opacity: 0.4; }
+  #plist button small { display: block; font-size: 11px; color: var(--vscode-descriptionForeground, #a1a1aa); }
+  .mlist { display: flex; flex-direction: column; padding: 2px 0 6px; }
+  .mlist button {
+    background: none; border: none; border-bottom: 1px solid #1e1e22;
+    color: var(--vscode-foreground, #fafafa); text-align: left;
+    padding: 9px 2px 9px 16px; font-size: 12.5px; font-family: var(--vscode-editor-font-family, monospace);
+    display: flex; align-items: center; gap: 8px; border-radius: 0;
+  }
+  .mlist button:hover { background: var(--vscode-toolbar-hoverBackground, #1c1c1f); }
+  .mlist button .tick { margin-left: auto; opacity: 0.85; }
+  .mlist button.current { color: var(--vscode-textLink-foreground, #9cdcfe); }
+  .field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 500; }
+  .field input {
+    background: var(--vscode-input-background, #09090b);
+    color: var(--vscode-input-foreground, #fafafa);
+    border: 1px solid var(--vscode-input-border, #27272a);
+    border-radius: 8px; padding: 9px 10px; font: inherit; font-weight: 400; width: 100%;
+  }
+  .field input:focus { outline: none; border-color: #71717a; box-shadow: 0 0 0 1px #52525b; }
+  .hint { font-size: 11.5px; color: var(--vscode-descriptionForeground, #a1a1aa); line-height: 1.55; }
   .ok { color: var(--vscode-testing-iconPassed, #4ec9b0); }
   .err { color: var(--vscode-errorForeground, #f48771); }
-  #msgs { flex: 1; min-height: 90px; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
-  #emptyState { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; }
-  #emptyState .big { font-size: 28px; opacity: 0.9; }
-  #emptyState h3 { margin: 0; font-size: 14px; }
-  #emptyState p { margin: 0; font-size: 12px; opacity: 0.65; max-width: 220px; line-height: 1.5; }
-  #emptyState button.primary { font-size: 13px; padding: 8px 18px; }
-  .msg { line-height: 1.5; word-wrap: break-word; }
-  .msg.user { background: var(--vscode-input-background, #1e1e1e); border-radius: 8px; padding: 8px 10px; align-self: flex-end; max-width: 100%; white-space: pre-wrap; }
-  .msg.ai { align-self: stretch; }
-  .msg.ai .who { font-size: 11px; opacity: 0.6; margin-bottom: 3px; }
-  .msg .body { white-space: pre-wrap; }
-  .codeblock { margin: 6px 0; border: 1px solid var(--vscode-input-border, #3c3c3c); border-radius: 6px; overflow: hidden; }
-  .codeblock .chead { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 11px; opacity: 0.9; background: var(--vscode-input-background, #1e1e1e); }
-  .codeblock .chead .fname { font-family: monospace; overflow: hidden; text-overflow: ellipsis; }
+  .btnrow { display: flex; gap: 8px; }
+  .btnrow .pill { flex: 1; }
+  .checkrow { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+  .checkrow input { width: auto; accent-color: #fafafa; }
+  /* ── Messages ── */
+  #chatwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #msgs { flex: 1; min-height: 90px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .mrow { display: flex; gap: 8px; align-items: flex-end; }
+  .mrow.end { justify-content: flex-end; }
+  .avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: #27272a;
+    color: #fafafa;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+  .mcontent { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; }
+  .mrow.end .mcontent { align-items: flex-end; }
+  .mheader { font-size: 11px; color: var(--vscode-descriptionForeground, #a1a1aa); font-weight: 500; }
+  .bubble {
+    background: var(--vscode-input-background, #27272a);
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 14px; padding: 8px 12px; max-width: 100%;
+    overflow-wrap: break-word; white-space: pre-wrap;
+  }
+  .mrow.end .bubble { border-bottom-right-radius: 4px; }
+  .prose { overflow-wrap: break-word; }
+  .prose > :first-child { margin-top: 2px; }
+  .mfooter { display: flex; gap: 2px; margin-top: 2px; }
+  .mrow.end .mfooter { justify-content: flex-end; }
+  .mfooter .iconbtn { width: 24px; height: 24px; font-size: 12px; opacity: 0; }
+  .mrow:hover .mfooter .iconbtn, .mfooter .iconbtn:focus-visible { opacity: 0.7; }
+  .mfooter .iconbtn:hover { opacity: 1; }
+  .codeblock {
+    margin: 8px 0; border: 1px solid var(--vscode-input-border, #27272a);
+    border-radius: 10px; overflow: hidden; background: #00000033;
+  }
+  .codeblock .chead {
+    display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px;
+    font-size: 11px; color: var(--vscode-descriptionForeground, #a1a1aa);
+    background: var(--vscode-input-background, #18181b);
+    border-bottom: 1px solid var(--vscode-input-border, #27272a);
+  }
+  .codeblock .chead .fname { font-family: var(--vscode-editor-font-family, monospace); overflow: hidden; text-overflow: ellipsis; }
   .codeblock .chead .sp { flex: 1; }
-  .codeblock .chead button { padding: 2px 8px; font-size: 11px; }
-  .codeblock pre { margin: 0; padding: 8px 10px; overflow-x: auto; font-family: var(--vscode-editor-font-family, monospace); font-size: 12px; }
-  #composer { border-top: 1px solid var(--vscode-sideBarSectionHeader-border, #2d2d2d); padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
-  #chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { font-size: 11px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--vscode-input-border, #3c3c3c); cursor: pointer; opacity: 0.85; }
+  .codeblock .chead button {
+    background: var(--vscode-button-secondaryBackground, #27272a);
+    color: var(--vscode-button-secondaryForeground, #fafafa);
+    border: none; border-radius: 6px; padding: 3px 9px; font-size: 11px;
+  }
+  .codeblock pre { margin: 0; padding: 9px 11px; overflow-x: auto; font-family: var(--vscode-editor-font-family, monospace); font-size: 12px; line-height: 1.55; }
+  .typing { display: inline-flex; gap: 4px; padding: 6px 0; }
+  .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--vscode-descriptionForeground, #a1a1aa); animation: tp 1s infinite; }
+  .typing i:nth-child(2) { animation-delay: 0.15s; }
+  .typing i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes tp { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+  .errbubble {
+    border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+    background: var(--vscode-inputValidation-errorBackground, #5a1d1d55);
+    border-radius: 10px; padding: 8px 11px; font-size: 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .errbubble button {
+    background: var(--vscode-button-secondaryBackground, #27272a);
+    color: var(--vscode-button-secondaryForeground, #fafafa);
+    border: none; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; align-self: flex-start;
+  }
+  /* ── Empty suggestions ── */
+  #emptyState { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 20px 16px; }
+  #emptyState .big {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #27272a;
+    color: #fafafa;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  #emptyState h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  #emptyState p { margin: 0; font-size: 12px; color: var(--vscode-descriptionForeground, #a1a1aa); max-width: 230px; line-height: 1.55; }
+  #emptyState .sugs { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 250px; margin-top: 4px; }
+  #emptyState .sugs button {
+    background: transparent; border: 1px solid var(--vscode-input-border, #27272a);
+    border-radius: 10px; padding: 8px 10px; font-size: 12px; text-align: left;
+    color: var(--vscode-foreground, #fafafa); white-space: normal;
+  }
+  #emptyState .sugs button:hover { background: var(--vscode-toolbar-hoverBackground, #27272a); border-color: #52525b; }
+  /* ── Composer ── */
+  #composer { padding: 10px 12px 12px; flex-shrink: 0; }
+  .composer-box {
+    border: 1px solid var(--vscode-input-border, #27272a);
+    background: var(--vscode-input-background, #09090b);
+    border-radius: 14px; padding: 8px 8px 6px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .composer-box:focus-within { border-color: #52525b; }
+  #q { border: none; background: transparent; min-height: 22px; max-height: 130px; resize: none; padding: 2px 4px; color: inherit; font: inherit; width: 100%; }
+  #q:focus { outline: none; }
+  .composer-row { display: flex; align-items: center; gap: 4px; }
+  #chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .chip {
+    font-size: 11px; padding: 3px 10px; border-radius: 99px;
+    border: 1px solid var(--vscode-input-border, #27272a);
+    background: transparent; color: var(--vscode-foreground, #fafafa);
+    cursor: pointer;
+  }
   .chip.off { opacity: 0.4; text-decoration: line-through; }
-  #q { min-height: 64px; resize: vertical; }
+  #sendBtn {
+    width: 30px; height: 30px; border-radius: 50%; padding: 0; border: none;
+    background: #fafafa; color: #111;
+    font-size: 15px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+  }
+  #sendBtn:disabled { opacity: 0.35; }
+  #stopBtn { width: 30px; height: 30px; border-radius: 50%; padding: 0; font-size: 11px; background: var(--vscode-button-secondaryBackground, #27272a); color: var(--vscode-button-secondaryForeground, #fafafa); border: none; }
   .cursor { display: inline-block; width: 7px; height: 1em; background: var(--vscode-foreground, #fff); vertical-align: text-bottom; animation: blink 0.9s steps(1) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
+  /* ── Motion (stillness is opt-out via reduced-motion) ── */
+  @media (prefers-reduced-motion: no-preference) {
+    #gate:not(.hidden) .brand { animation: rise 0.45s ease both; }
+    #gate:not(.hidden) .stack > * { animation: rise 0.4s ease both; }
+    #gate:not(.hidden) .stack > *:nth-child(2) { animation-delay: 0.07s; }
+    #gate:not(.hidden) .stack > *:nth-child(3) { animation-delay: 0.14s; }
+    .screen:not(.hidden), #chatwrap:not(.hidden) { animation: screenIn 0.22s ease both; }
+    .mrow { animation: msgIn 0.25s ease both; }
+    .mrow.streaming .avatar { animation: pulse 1.4s ease-in-out infinite; }
+    .pill { transition: transform 0.15s ease, background 0.15s ease; }
+    .pill:hover { transform: translateY(-1px); }
+    #sendBtn { transition: transform 0.15s ease; }
+    #sendBtn:hover:not(:disabled) { transform: scale(1.08); }
+    #sendBtn:active:not(:disabled) { transform: scale(0.94); }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes screenIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 </style>
 </head>
 <body>
-  <div class="cfg">
-    <label>Provider
-      <select id="provider"></select>
-    </label>
-    <div class="row">
-      <div class="grow"><label style="margin:0">Model
-        <input id="model" type="text" list="modelList" placeholder="pick or type a model id">
+  <div id="topbar">
+    <span class="title">✦ Cudic AI</span>
+    <span class="sp"></span>
+    <span id="modelPill" title="Active provider · model">…</span>
+    <button class="iconbtn" id="gearBtn" title="Providers & keys" aria-label="Providers and keys">⚙</button>
+    <button class="iconbtn" id="clearBtn2" title="Clear chat" aria-label="Clear chat">🗑</button>
+  </div>
+
+  <!-- Gate: codex-style first run -->
+  <div id="gate" class="hidden">
+    <canvas id="noiseCv"></canvas>
+    <div class="brand"><div class="mark">✦</div><h1>Cudic AI</h1></div>
+    <div class="stack">
+      <button class="pill white" id="gateAdd">Add a provider</button>
+      <button class="pill dark" id="gateKey">Use API key</button>
+      <button class="textbtn" id="gateMore">More options</button>
+    </div>
+  </div>
+
+  <!-- Provider list -->
+  <div id="providersScreen" class="screen hidden">
+    <div class="backrow"><button class="iconbtn" id="provBack" aria-label="Back">‹</button><h2 style="margin:0">Providers</h2></div>
+    <input id="psearch" type="text" placeholder="Search 50+ providers…" autocomplete="off" spellcheck="false">
+    <div id="plist"></div>
+  </div>
+
+  <!-- Key + model for one provider -->
+  <div id="keyScreen" class="screen hidden">
+    <div class="backrow"><button class="iconbtn" id="keyBack" aria-label="Back">‹</button><h2 style="margin:0" id="keyProvName">Provider</h2></div>
+    <p class="sub" id="keyProvHelp"></p>
+    <div class="field">Model
+      <div style="display:flex;gap:6px">
+        <input id="model" type="text" list="modelList" placeholder="pick or type a model id" style="flex:1;min-width:0">
         <datalist id="modelList"></datalist>
-      </label></div>
-      <button id="modelsBtn" title="Fetch live model list">⟳</button>
+        <button id="modelsBtn" title="Fetch live model list" style="flex-shrink:0">⟳</button>
+      </div>
     </div>
-    <div class="row">
-      <div class="grow"><label style="margin:0"><span id="keyLabel">API key</span>
-        <input id="key" type="password" placeholder="paste key" autocomplete="off" spellcheck="false">
-      </label></div>
-      <button id="saveBtn" class="primary">Save</button>
-      <button id="testBtn" title="Send a tiny test completion">Test</button>
+    <div class="field"><span id="keyLabel">API key</span>
+      <input id="key" type="password" placeholder="paste key" autocomplete="off" spellcheck="false">
     </div>
-    <div class="hint" id="keyHint"></div>
     <div class="hint" id="keyState"></div>
-    <label style="flex-direction:row;align-items:center;gap:6px"><input id="completeOn" type="checkbox" style="width:auto"> Ghost autocomplete (Tab)</label>
-    <label>Completion model (blank = chat model)
-      <input id="completeModel" type="text" placeholder="e.g. a small fast model">
-    </label>
-    <div class="hint" id="provNote"></div>
-  </div>
-  <div id="msgs"><div id="emptyState"></div></div>
-  <div id="composer">
-    <div id="chips"></div>
-    <textarea id="q" placeholder="Ask about your project… (Enter to send, Shift+Enter for newline)"></textarea>
-    <div class="row">
-      <button id="sendBtn" class="primary grow">Send</button>
-      <button id="stopBtn" disabled>Stop</button>
-      <button id="clearBtn" title="Clear chat">Clear</button>
+    <div class="btnrow" style="margin-top:2px">
+      <button class="pill white" id="saveBtn">Save</button>
+      <button class="pill dark" id="testBtn" title="Send a tiny test completion">Test</button>
     </div>
   </div>
+
+  <!-- More options -->
+  <div id="optionsScreen" class="screen hidden">
+    <div class="backrow"><button class="iconbtn" id="optBack" aria-label="Back">‹</button><h2 style="margin:0">Options</h2></div>
+    <label class="checkrow"><input id="completeOn" type="checkbox"> Ghost autocomplete (Tab)</label>
+    <div class="field">Completion model (blank = chat model)
+      <input id="completeModel" type="text" placeholder="e.g. a small fast model">
+    </div>
+    <div class="field">Custom endpoint (blank = provider default)
+      <input id="baseUrl" type="text" placeholder="https://my-host/v1" autocomplete="off" spellcheck="false">
+    </div>
+    <p class="sub" id="provNote"></p>
+  </div>
+
+  <!-- Chat -->
+  <div id="chatwrap" class="hidden">
+    <div id="msgs"><div id="emptyState"></div></div>
+    <div id="composer">
+      <div class="composer-box">
+        <textarea id="q" rows="1" placeholder="Ask about your project…"></textarea>
+        <div class="composer-row">
+          <div id="chips"></div>
+          <button id="stopBtn" disabled title="Stop" aria-label="Stop">■</button>
+          <button id="sendBtn" title="Send (Enter)" aria-label="Send">↑</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 <script nonce="__NONCE__">
 (function () {
-  // Webview API when hosted as a real webview, plain postMessage when
-  // hosted in the Studio side panel iframe (sandboxed srcdoc).
   var api = (function () {
     try { if (typeof acquireVsCodeApi === 'function') return acquireVsCodeApi(); } catch (e) {}
     return { postMessage: function (m) { parent.postMessage(m, '*'); } };
   })();
-  var $ = function (id) { return document.getElementById(id); };
-  var providerEl = $('provider'), modelEl = $('model'), modelList = $('modelList'),
-    keyEl = $('key'), keyLabel = $('keyLabel'), keyHint = $('keyHint'), keyState = $('keyState'),
-    completeOn = $('completeOn'), completeModel = $('completeModel'), provNote = $('provNote'),
-    msgs = $('msgs'), q = $('q'), chips = $('chips'),
-    sendBtn = $('sendBtn'), stopBtn = $('stopBtn'), clearBtn = $('clearBtn');
-  var PRESETS = [], SETTINGS = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', hasKey: false };
-  var history = [], streaming = null, attachActive = true, chatted = false, fetchedFor = {};
-
-  // Pull the live model list whenever we have (or don't need) a key —
-  // once per provider per session. Kills stale-ID errors at the root.
-  function maybeFetch() {
-    var p = preset();
-    if (!p || !p.modelsPath || fetchedFor[SETTINGS.provider]) return;
-    if (!SETTINGS.hasKey && !p.keyOptional && !p.publicModels) return;
-    fetchedFor[SETTINGS.provider] = true;
-    api.postMessage({ type: 'ai:models' });
-  }
-
-  function needsKey() {
-    var p = preset();
-    return !p.keyOptional && !SETTINGS.hasKey;
-  }
-  // Centered empty state: big Add-provider button until a key exists,
-  // friendly hint afterwards. Returns to this on Clear.
-  function showEmpty() {
-    var box = $('emptyState');
-    if (!box || chatted) return;
-    if (needsKey()) {
-      box.innerHTML = '<div class="big">✦</div><h3>Power Studio with AI</h3>' +
-        '<p>Pick a provider up top, paste a key — free options included.</p>' +
-        '<button class="primary" id="emptyAdd">＋ Add a provider</button>';
-      $('emptyAdd').onclick = function () { keyEl.focus(); };
-    } else {
-      box.innerHTML = '<div class="big">✦</div><h3>Ask about your project</h3>' +
-        '<p>The active file attaches automatically. Code answers get Apply buttons.</p>';
-    }
-  }
+  function $(id) { return document.getElementById(id); }
+  var modelEl = $('model'), modelList = $('modelList'),
+    keyEl = $('key'), keyLabel = $('keyLabel'), keyState = $('keyState'),
+    completeOn = $('completeOn'), completeModel = $('completeModel'), baseUrlEl = $('baseUrl'),
+    provNote = $('provNote'), msgs = $('msgs'), q = $('q'), chips = $('chips'),
+    sendBtn = $('sendBtn'), stopBtn = $('stopBtn'),
+    modelPill = $('modelPill'), keyHint = null;
+  var PRESETS = [], SETTINGS = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', hasKey: false, keyed: [] };
+  var history = [], streaming = null, attachActive = true, chatted = false, fetchedFor = {}, lastQ = '', baseOverrideVal = '', justSavedKey = false;
 
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function preset() { return PRESETS.find(function (p) { return p.id === SETTINGS.provider; }) || PRESETS[0]; }
+  function needsKey() {
+    var p = preset();
+    return !!(p && !p.keyOptional && !SETTINGS.hasKey);
+  }
+  function modelName() {
+    var p = preset();
+    var m = (SETTINGS.model || '').trim() || ((p && p.models[0]) || '');
+    return ((p && p.name) || '…') + (m ? ' · ' + m : '');
+  }
+  var SCREENS = ['gate', 'providersScreen', 'keyScreen', 'optionsScreen', 'chatwrap'];
+  function show(name) {
+    SCREENS.forEach(function (id) { $(id).classList.toggle('hidden', id !== name); });
+    // The ASCII fbm only runs while the gate is up (perf + stillness).
+    if (name === 'gate') Noise.start(); else Noise.stop();
+  }
+  // Route: chat only when usable, otherwise the gate. Never yank the user
+  // out of the providers/key/options screens mid-setup.
+  function decide() {
+    var cur = null;
+    SCREENS.forEach(function (id) { if (!$(id).classList.contains('hidden')) cur = id; });
+    if (cur === 'providersScreen' || cur === 'keyScreen' || cur === 'optionsScreen') return;
+    if (chatted || !needsKey()) show('chatwrap');
+    else show('gate');
+  }
 
   function refreshCfg() {
     var p = preset();
-    providerEl.innerHTML = PRESETS.map(function (x) {
-      return '<option value="' + x.id + '"' + (x.id === SETTINGS.provider ? ' selected' : '') + '>' + esc(x.name) + '</option>';
-    }).join('');
-    modelList.innerHTML = (p.models || []).map(function (m) { return '<option value="' + esc(m) + '">'; }).join('');
+    modelList.innerHTML = ((p && p.models) || []).map(function (m) { return '<option value="' + esc(m) + '">'; }).join('');
     if (!modelEl.value && SETTINGS.model) modelEl.value = SETTINGS.model;
-    keyLabel.textContent = p.keyLabel || 'API key';
-    keyHint.innerHTML = esc(p.keyHelp || '') + (p.note ? '<br>' + esc(p.note) : '');
-    provNote.textContent = p.loopback ? 'Local engine — called direct from your browser, never proxied.' : 'Cloud calls route through your Cudic login (sign in on the site). Keys stay in this browser.';
-    keyState.innerHTML = p.keyOptional ? '<span class="ok">no key needed</span>' :
-      (SETTINGS.hasKey ? '<span class="ok">✓ key saved in this browser</span>' : '<span class="err">no key saved yet</span>');
+    if (p) {
+      $('keyProvName').textContent = p.name;
+      $('keyProvHelp').textContent = p.keyHelp || '';
+      keyLabel.textContent = p.keyLabel || 'API key';
+    }
+    provNote.textContent = (p && p.loopback) ? 'Local engine — called direct from your browser, never proxied.' : 'Cloud calls route through your Cudic login (sign in on the site). Keys stay in this browser.';
+    keyState.innerHTML = !p ? '' : (p.keyOptional ? '<span class="ok">no key needed</span>' :
+      (SETTINGS.hasKey ? '<span class="ok">✓ key saved in this browser</span>' : '<span class="err">no key saved yet</span>'));
     keyEl.placeholder = SETTINGS.hasKey ? '•••••••• (saved — paste to replace)' : 'paste key';
     completeOn.checked = !!SETTINGS.completeOn;
     if (SETTINGS.completeModel) completeModel.value = SETTINGS.completeModel;
+    baseOverrideVal = SETTINGS.baseOverride || '';
+    if (document.activeElement !== baseUrlEl) baseUrlEl.value = baseOverrideVal;
+    modelPill.textContent = modelName();
+    modelPill.title = modelName();
+  }
+  // A company's full catalog loads whenever we can: public lists,
+  // local engines, or a saved key for that company.
+  function canList(p, pid) {
+    if (!p || !p.modelsPath) return false;
+    if (p.publicModels || p.loopback) return true;
+    return (SETTINGS.keyed || []).indexOf(pid || p.id) !== -1;
+  }
+  function maybeFetch() {
+    var p = preset();
+    if (!p || !p.modelsPath || fetchedFor[SETTINGS.provider]) return;
+    if (!canList(p, SETTINGS.provider)) return;
+    fetchedFor[SETTINGS.provider] = true;
+    api.postMessage({ type: 'ai:models' });
+  }
+  function saveAll(withKey) {
+    var msg = { type: 'ai:saveSettings', provider: SETTINGS.provider, model: modelEl.value.trim(), baseOverride: baseOverrideVal, completeOn: completeOn.checked, completeModel: completeModel.value.trim() };
+    if (withKey) msg.key = keyEl.value;
+    api.postMessage(msg);
+    if (withKey) keyEl.value = '';
   }
 
   function chipHtml() {
@@ -173,19 +409,167 @@
     $('chipFile').onclick = function () { attachActive = !attachActive; chipHtml(); };
   }
 
+  /* ── ASCII fbm backdrop: value-noise fractal, quantized to glyphs ── */
+  var Noise = (function () {
+    var cv = null, ctx = null, raf = 0, last = 0, W = 0, H = 0, cols = 0, rows = 0;
+    var RAMP = ' .·:;=+x#%@';
+    function hash(x, y) {
+      var h = (x * 374761393 + y * 668265263) | 0;
+      h = (h ^ (h >> 13)) | 0; h = (h * 1274126177) | 0; h = (h ^ (h >> 16)) >>> 0;
+      return h / 4294967295;
+    }
+    function sm(t) { return t * t * (3 - 2 * t); }
+    function vnoise(x, y) {
+      var xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+      var a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+      var u = sm(xf), v = sm(yf);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    }
+    function fbm(x, y, t) {
+      var v = 0, amp = 0.5, f = 1, o;
+      for (o = 0; o < 4; o++) { v += amp * vnoise(x * f + t * 0.05, y * f - t * 0.03); amp *= 0.5; f *= 2.03; }
+      return v;
+    }
+    function reduced() {
+      try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+    }
+    function size() {
+      var r = cv.parentElement.getBoundingClientRect();
+      W = Math.max(2, Math.floor(r.width)); H = Math.max(2, Math.floor(r.height));
+      cv.width = W; cv.height = H;
+      cols = Math.ceil(W / 8); rows = Math.ceil(H / 13);
+      ctx.font = '10px ui-monospace, monospace'; ctx.textBaseline = 'top';
+    }
+    function draw(t) {
+      ctx.clearRect(0, 0, W, H);
+      var i, j;
+      for (j = 0; j < rows; j++) {
+        var dy = (j / rows - 0.5) * 2;
+        for (i = 0; i < cols; i++) {
+          var v = fbm(i * 0.045, j * 0.045, t);
+          var idx = Math.min(RAMP.length - 1, (v * RAMP.length) | 0);
+          if (idx <= 0) continue;
+          var dx = (i / cols - 0.5) * 2;
+          var edge = Math.max(0, 1 - (dx * dx + dy * dy) * 0.85);
+          var a = (0.03 + v * 0.075) * edge;
+          if (a < 0.008) continue;
+          ctx.fillStyle = 'rgba(235,235,240,' + a.toFixed(3) + ')';
+          ctx.fillText(RAMP[idx], i * 8, j * 13);
+        }
+      }
+    }
+    function frame(ts) {
+      raf = 0;
+      if (ts - last < 90) { raf = requestAnimationFrame(frame); return; }
+      last = ts;
+      draw(ts / 1000);
+      raf = requestAnimationFrame(frame);
+    }
+    return {
+      start: function () {
+        if (!cv) cv = $('noiseCv');
+        if (!cv) return;
+        if (!ctx) ctx = cv.getContext('2d');
+        size();
+        if (reduced()) { draw(3.7); return; }
+        if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
+      },
+      stop: function () { if (raf) { cancelAnimationFrame(raf); raf = 0; } },
+      kick: function () { if (ctx && cv && !$('gate').classList.contains('hidden')) size(); }
+    };
+  })();
+  window.addEventListener('resize', function () { Noise.kick(); });
+
+  var SUGS = ['Explain the active file', 'Review my code for bugs', 'What should I build next?'];
+  function showEmpty() {
+    var box = $('emptyState');
+    if (!box || chatted) return;
+    box.innerHTML = '<div class="big">✦</div><h3>How can I help?</h3>' +
+      '<div class="sugs">' +
+      SUGS.map(function (s, i) { return '<button data-sug="' + i + '">' + esc(s) + '</button>'; }).join('') +
+      '</div>';
+    box.querySelectorAll('[data-sug]').forEach(function (b) {
+      b.onclick = function () { q.value = SUGS[+b.getAttribute('data-sug')]; autoresize(); send(); };
+    });
+  }
+
+  // Company rows expand into their model lineups, like each provider's own
+  // picker. Tapping a model selects it and moves to key entry.
+  var expandedId = null, LISTS = {}, FETCHERR = {};
+  function modelsOf(p) {
+    var seen = {}, out = [];
+    (LISTS[p.id] || []).concat(p.models || []).forEach(function (m) {
+      if (m && !seen[m]) { seen[m] = 1; out.push(m); }
+    });
+    return out;
+  }
+  function renderPlist(filter) {
+    var list = $('plist');
+    var f = (filter || '').toLowerCase();
+    var html = '';
+    PRESETS.forEach(function (p) {
+      var ms = modelsOf(p);
+      var matchProv = !f || p.name.toLowerCase().indexOf(f) !== -1 || p.id.indexOf(f) !== -1;
+      var matchModels = ms.filter(function (m) { return m.toLowerCase().indexOf(f) !== -1; });
+      if (f && !matchProv && !matchModels.length) return;
+      var sub = (LISTS[p.id] && LISTS[p.id].length) ? LISTS[p.id].length + ' models'
+        : esc((p.models[0] || p.keyHelp || '').slice(0, 60));
+      html += '<button data-prov="' + p.id + '"><span>' + esc(p.name) +
+        '<small>' + sub + '</small></span><span class="chev">›</span></button>';
+      if (expandedId === p.id) {
+        var show = (f && !matchProv) ? matchModels : ms;
+        html += '<div class="mlist">' + (show.map(function (m) {
+          var cur = (SETTINGS.provider === p.id && (SETTINGS.model || p.models[0] || '') === m);
+          return '<button data-model="' + esc(m) + '" data-pid="' + p.id + '"' + (cur ? ' class="current"' : '') + '>' +
+            '<span>' + esc(m) + '</span>' + (cur ? '<span class="tick">✓</span>' : '') + '</button>';
+        }).join('') || '<p class="hint">No models listed — open it and hit ⟳.</p>');
+        if (FETCHERR[p.id]) html += '<p class="hint err">⚠ ' + esc(FETCHERR[p.id]) + '</p>';
+        html += '</div>';
+      }
+    });
+    list.innerHTML = html || '<p class="hint">No providers match.</p>';
+    list.querySelectorAll('[data-prov]').forEach(function (b) {
+      b.onclick = function () {
+        var id = b.getAttribute('data-prov');
+        expandedId = (expandedId === id) ? null : id;
+        if (expandedId) {
+          var p = PRESETS.find(function (x) { return x.id === id; });
+          if (p && p.modelsPath && !LISTS[id] && !fetchedFor[id] && canList(p, id)) {
+            fetchedFor[id] = true;
+            delete FETCHERR[id];
+            api.postMessage({ type: 'ai:models', provider: id });
+          }
+        }
+        renderPlist($('psearch').value);
+      };
+    });
+    list.querySelectorAll('[data-model]').forEach(function (b) {
+      b.onclick = function () {
+        var pid = b.getAttribute('data-pid'), m = b.getAttribute('data-model');
+        expandedId = null;
+        SETTINGS.provider = pid; modelEl.value = m;
+        baseOverrideVal = '';
+        api.postMessage({ type: 'ai:saveSettings', provider: pid, model: m, baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
+        show('keyScreen');
+      };
+    });
+  }
+
   function addUser(text) {
-    var d = document.createElement('div');
-    d.className = 'msg user'; d.textContent = text;
-    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+    var row = document.createElement('div');
+    row.className = 'mrow end';
+    row.innerHTML = '<div class="mcontent"><div class="bubble"></div></div>';
+    row.querySelector('.bubble').textContent = text;
+    msgs.appendChild(row); msgs.scrollTop = msgs.scrollHeight;
   }
   function addAi() {
-    var d = document.createElement('div');
-    d.className = 'msg ai';
-    d.innerHTML = '<div class="who">Cudic AI</div><div class="body"><span class="cursor"></span></div>';
-    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
-    return d.querySelector('.body');
+    var row = document.createElement('div');
+    row.className = 'mrow streaming';
+    row.innerHTML = '<div class="avatar">✦</div><div class="mcontent"><div class="mheader">Cudic AI</div>' +
+      '<div class="prose"><span class="typing" role="status"><i></i><i></i><i></i></span></div><div class="mfooter"></div></div>';
+    msgs.appendChild(row); msgs.scrollTop = msgs.scrollHeight;
+    return { row: row, body: row.querySelector('.prose'), footer: row.querySelector('.mfooter') };
   }
-  // Minimal markdown: fenced code blocks with Apply (```lang:/path) + Copy.
   function renderAi(bodyEl, raw) {
     var html = '', last = 0, re = /```(\w*)(?::([^\n]*))?\n([\s\S]*?)(?:```|$)/g, m;
     function text(t) { return esc(t); }
@@ -196,7 +580,7 @@
       html += '<div class="codeblock" data-code="' + id + '"><div class="chead"><span>' + esc(lang) + '</span>' +
         (fpath ? '<span class="fname">' + esc(fpath) + '</span>' : '') + '<span class="sp"></span>' +
         (fpath ? '<button data-apply="' + id + '">Apply</button>' : '') +
-        '<button data-copy="' + id + '">Copy</button></div><pre>' + esc(code) + '</pre></div>';
+        '<button data-copy="' + id + '" aria-label="Copy code">Copy</button></div><pre>' + esc(code) + '</pre></div>';
       html += '<span data-store="' + id + '" data-path="' + esc(fpath) + '" style="display:none">' + esc(code) + '</span>';
       last = m.index + m[0].length;
     }
@@ -205,8 +589,13 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
   msgs.addEventListener('click', function (e) {
-    var b = e.target.closest('button[data-copy],button[data-apply]');
+    var b = e.target.closest('button[data-copy],button[data-apply],button[data-retry],button[data-msgcopy]');
     if (!b) return;
+    if (b.hasAttribute('data-retry')) { q.value = lastQ; autoresize(); send(); return; }
+    if (b.hasAttribute('data-msgcopy')) {
+      try { navigator.clipboard.writeText(b.getAttribute('data-raw') || ''); } catch (err) {}
+      return;
+    }
     var id = b.getAttribute('data-copy') || b.getAttribute('data-apply');
     var store = msgs.querySelector('span[data-store="' + id + '"]');
     if (!store) return;
@@ -220,73 +609,118 @@
     }
   });
 
+  function autoresize() {
+    q.style.height = 'auto';
+    q.style.height = Math.min(130, q.scrollHeight) + 'px';
+  }
+  q.addEventListener('input', autoresize);
+
   function send() {
     var text = q.value.trim();
     if (!text || streaming) return;
+    lastQ = text;
     var box = $('emptyState');
     if (box) box.remove();
     chatted = true;
+    show('chatwrap');
     addUser(text);
-    q.value = '';
-    var bodyEl = addAi();
+    q.value = ''; autoresize();
+    var slot = addAi();
     var id = 'm' + Date.now().toString(36);
-    streaming = { id: id, bodyEl: bodyEl, raw: '' };
+    streaming = { id: id, row: slot.row, body: slot.body, footer: slot.footer, raw: '' };
     sendBtn.disabled = true; stopBtn.disabled = false;
     api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive });
   }
   sendBtn.onclick = send;
   stopBtn.onclick = function () { if (streaming) api.postMessage({ type: 'ai:stop', id: streaming.id }); };
-  clearBtn.onclick = function () { history = []; msgs.innerHTML = '<div id="emptyState"></div>'; chatted = false; showEmpty(); };
+  function clearChat() {
+    history = []; lastQ = '';
+    msgs.innerHTML = '<div id="emptyState"></div>';
+    chatted = false; decide();
+  }
+  $('clearBtn2').onclick = clearChat;
+  $('gearBtn').onclick = function () { renderPlist($('psearch').value); show('providersScreen'); };
   q.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   });
 
-  providerEl.onchange = function () {
-    SETTINGS.provider = providerEl.value; SETTINGS.model = ''; modelEl.value = '';
-    api.postMessage({ type: 'ai:saveSettings', provider: SETTINGS.provider, model: '', baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
-  };
+  // Gate
+  $('gateAdd').onclick = function () { renderPlist(''); $('psearch').value = ''; show('providersScreen'); };
+  $('gateKey').onclick = function () { show('keyScreen'); };
+  $('gateMore').onclick = function () { show('optionsScreen'); };
+  // Providers list
+  $('psearch').addEventListener('input', function () { renderPlist($('psearch').value); });
+  $('provBack').onclick = decide;
+  // Key screen
+  $('keyBack').onclick = function () { renderPlist($('psearch').value); show('providersScreen'); };
   $('saveBtn').onclick = function () {
-    api.postMessage({ type: 'ai:saveSettings', provider: providerEl.value, model: modelEl.value.trim(), baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim(), key: keyEl.value });
-    keyEl.value = '';
+    justSavedKey = !!keyEl.value;
+    // A fresh key deserves a fresh catalog attempt.
+    delete fetchedFor[SETTINGS.provider]; delete FETCHERR[SETTINGS.provider];
+    saveAll(true);
   };
   $('testBtn').onclick = function () { api.postMessage({ type: 'ai:test' }); };
   $('modelsBtn').onclick = function () { api.postMessage({ type: 'ai:models' }); };
-  completeOn.onchange = function () {
-    api.postMessage({ type: 'ai:saveSettings', provider: providerEl.value, model: modelEl.value.trim(), baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
-  };
+  // Options screen
+  $('optBack').onclick = decide;
+  function saveOpts() {
+    baseOverrideVal = baseUrlEl.value.trim();
+    saveAll(false);
+  }
+  completeOn.onchange = saveOpts;
+  completeModel.onchange = saveOpts;
+  baseUrlEl.onchange = saveOpts;
 
   window.addEventListener('message', function (e) {
     var m = e.data || {};
     if (m.type === 'ai:init') {
       PRESETS = m.presets || []; SETTINGS = Object.assign(SETTINGS, m.settings || {});
-      refreshCfg(); chipHtml(); showEmpty(); maybeFetch();
+      refreshCfg(); chipHtml(); showEmpty(); decide(); maybeFetch();
     } else if (m.type === 'ai:state') {
       SETTINGS = Object.assign(SETTINGS, m.settings || {});
       refreshCfg(); showEmpty(); maybeFetch();
+      // A fresh key lands the user in chat; anything else respects screens.
+      if (justSavedKey) {
+        justSavedKey = false;
+        if (!needsKey()) show('chatwrap');
+        else decide();
+      } else decide();
     } else if (m.type === 'ai:chunk') {
-      if (streaming && streaming.id === m.id) { streaming.raw += m.token; renderAi(streaming.bodyEl, streaming.raw); }
+      if (streaming && streaming.id === m.id) { streaming.raw += m.token; renderAi(streaming.body, streaming.raw); }
     } else if (m.type === 'ai:done') {
       if (streaming && streaming.id === m.id) {
         history.push({ q: m.q, a: streaming.raw });
+        streaming.row.classList.remove('streaming');
+        streaming.footer.innerHTML = '<button class="iconbtn" data-msgcopy data-raw="' + esc(streaming.raw).replace(/"/g, '&quot;') + '" aria-label="Copy message">⧉</button>';
         streaming = null; sendBtn.disabled = false; stopBtn.disabled = true;
       }
     } else if (m.type === 'ai:error') {
       if (streaming && streaming.id === m.id) {
-        renderAi(streaming.bodyEl, '⚠ ' + (m.error || 'Request failed.'));
+        streaming.row.classList.remove('streaming');
+        streaming.body.innerHTML = '<div class="errbubble"><span>⚠ ' + esc(m.error || 'Request failed.') + '</span><span><button data-retry>Retry</button></span></div>';
         streaming = null; sendBtn.disabled = false; stopBtn.disabled = true;
       } else {
         keyState.innerHTML = '<span class="err">⚠ ' + esc(m.error || 'Request failed.') + '</span>';
       }
     } else if (m.type === 'ai:modelsResult') {
-      if (m.error) keyState.innerHTML = '<span class="err">⚠ ' + esc(m.error) + '</span>';
-      else if (Array.isArray(m.models) && m.models.length) {
+      if (m.provider && !m.error && Array.isArray(m.models)) {
+        LISTS[m.provider] = m.models;
+        delete FETCHERR[m.provider];
+        if (expandedId === m.provider) renderPlist($('psearch').value);
+      }
+      if (m.provider && m.error) {
+        FETCHERR[m.provider] = m.error;
+        if (expandedId === m.provider) renderPlist($('psearch').value);
+      }
+      if (m.error && (!m.provider || m.provider === SETTINGS.provider))
+        keyState.innerHTML = '<span class="err">⚠ ' + esc(m.error) + '</span>';
+      else if (Array.isArray(m.models) && m.models.length && (!m.provider || m.provider === SETTINGS.provider)) {
         modelList.innerHTML = m.models.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
         keyState.innerHTML = '<span class="ok">✓ ' + m.models.length + ' models found — pick from the list</span>';
       }
     } else if (m.type === 'ai:applied') {
       keyState.innerHTML = m.ok ? '<span class="ok">✓ wrote ' + esc(m.path) + '</span>'
         : '<span class="err">⚠ ' + esc(m.error || ('Could not write ' + m.path)) + '</span>';
-      setTimeout(refreshCfg, 2500);
     } else if (m.type === 'ai:testResult') {
       keyState.innerHTML = m.ok ? '<span class="ok">✓ connected — "' + esc(m.text) + '"</span>'
         : '<span class="err">⚠ ' + esc(m.error || 'Test failed.') + '</span>';

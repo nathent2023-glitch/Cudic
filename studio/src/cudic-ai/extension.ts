@@ -57,7 +57,10 @@ function publicSettings(s: AiSettings) {
   return {
     provider: s.provider, model: s.model, baseOverride: s.baseOverride,
     completeOn: s.completeOn, completeModel: s.completeModel,
-    hasKey: !!(s.keys[s.provider] || presetById(s.provider).keyOptional)
+    hasKey: !!(s.keys[s.provider] || presetById(s.provider).keyOptional),
+    // Presence only (never values) so the list screen knows which
+    // companies can load their full catalog.
+    keyed: Object.keys(s.keys).filter((k) => !!s.keys[k])
   };
 }
 
@@ -136,14 +139,19 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
     return;
   }
   if (m.type === 'ai:models') {
+    // Optional provider override lets the list screen load another
+    // company's lineup without switching the active provider.
+    const pid = typeof m.provider === 'string' && m.provider ? m.provider : st.provider;
+    const target = presetById(pid);
+    const tkey = (st.keys[pid] ?? '');
     try {
-      const models = await fetchModels(preset, key, st.baseOverride || undefined);
+      const models = await fetchModels(target, tkey, pid === st.provider ? st.baseOverride || undefined : undefined);
       const next = loadSettings();
-      next.modelLists = { ...next.modelLists, [next.provider]: models.slice(0, 500) };
+      next.modelLists = { ...next.modelLists, [pid]: models.slice(0, 500) };
       saveSettings(next);
-      postToPanel({ type: 'ai:modelsResult', models });
+      postToPanel({ type: 'ai:modelsResult', provider: pid, models });
     } catch (e) {
-      postToPanel({ type: 'ai:modelsResult', error: friendlyError(preset.name, (e as Error).message) });
+      postToPanel({ type: 'ai:modelsResult', provider: pid, error: friendlyError(target.name, (e as Error).message) });
     }
     return;
   }

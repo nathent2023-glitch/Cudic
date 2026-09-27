@@ -211,10 +211,11 @@ export async function fetchModels(preset: ProviderPreset, key: string, baseOverr
   if (!preset.modelsPath) throw new Error(preset.name + ' has no model list endpoint — type the model ID.');
   const base = baseOf(preset, baseOverride);
   const url = base + preset.modelsPath;
+  // Public catalogs go keyless — some reject even an empty Bearer header.
   const headers: Record<string, string> =
     preset.format === 'anthropic'
-      ? { 'x-api-key': key, 'anthropic-version': '2023-06-01' }
-      : { Authorization: 'Bearer ' + key };
+      ? { ...(key ? { 'x-api-key': key } : {}), 'anthropic-version': '2023-06-01' }
+      : key ? { Authorization: 'Bearer ' + key } : {};
   const invoke = async (target: string, h: Record<string, string>): Promise<Response> => {
     if (isLoopbackUrl(target)) return fetch(target, { headers: h });
     if (!supaToken) throw new Error('Sign in on the Cudic site first.');
@@ -229,5 +230,13 @@ export async function fetchModels(preset: ProviderPreset, key: string, baseOverr
   const j = (await res.json()) as Record<string, unknown>;
   const data = (j.data ?? j.models) as Array<Record<string, unknown> | string> | undefined;
   if (!Array.isArray(data)) throw new Error('Unexpected model list shape.');
-  return data.map((m) => (typeof m === 'string' ? m : String((m as Record<string, unknown>).id ?? ''))).filter(Boolean);
+  // Google returns {models:[{name:'models/gemini-…'}]} — strip the prefix.
+  return data
+    .map((m) => {
+      if (typeof m === 'string') return m;
+      const o = m as Record<string, unknown>;
+      const raw = String(o.id ?? o.name ?? '');
+      return raw.replace(/^models\//, '');
+    })
+    .filter(Boolean);
 }
