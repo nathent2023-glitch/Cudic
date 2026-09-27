@@ -1,439 +1,1333 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
-    <title>Cudic</title>
+    <title>Cudic — build and play small games in your browser</title>
+    <meta name="description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Cudic — build and play small games in your browser">
+    <meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta property="og:url" content="https://glox-two.vercel.app/">
+    <meta property="og:image" content="https://glox-two.vercel.app/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cudic — build and play small games in your browser">
+    <meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta name="twitter:image" content="https://glox-two.vercel.app/og.png">
+    <link rel="canonical" content="https://glox-two.vercel.app/">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="stylesheet" href="/sidebar.css?v=9">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
     <style>
-        /* ── Auth layout (no sidebar, full screen) ──────────────── */
+        /* ── Landing: dark workbench chrome, one ember accent ─────── */
+        html,
+        body {
+            height: auto;
+        }
+
         body {
             display: block;
-            overflow: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
         }
 
-        .auth-layout {
-            display: flex;
-            min-height: 100vh;
+        :root {
+            --bg: #0A0B0E;
+            --bg-2: #0D0F13;
+            --panel: #121317;
+            --line: rgba(255, 255, 255, .08);
+            --line-2: rgba(255, 255, 255, .16);
+            --text: #F4F5F7;
+            --muted: #949AA5;
+            --dim: #5D626C;
+            --ember: #FF8C1A;
+            --ember-2: #FFA750;
         }
 
-        /* Left: brand panel */
-        .auth-brand {
-            flex: 1.3;
-            background: var(--ink);
-            padding: 56px 48px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
+        ::selection {
+            background: var(--ember);
+            color: #120A02;
         }
 
-        .dotgrid-bg {
-            background-image: radial-gradient(circle, rgba(46, 42, 75, 0.12) 1px, transparent 1px);
-            background-size: 22px 22px;
+        :focus-visible {
+            outline: 2px solid var(--ember);
+            outline-offset: 3px;
+            border-radius: 3px;
         }
 
-        .brand-mark {
+        /* ── Scroll progress ─────────────────────────────────────── */
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--ember);
+            transform: scaleX(0);
+            transform-origin: 0 50%;
+            z-index: 300;
+        }
+
+        /* ── Nav ─────────────────────────────────────────────────── */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 200;
+            border-bottom: 1px solid transparent;
+            transition: background .3s ease, border-color .3s ease, backdrop-filter .3s ease;
+        }
+
+        .nav.scrolled {
+            background: rgba(10, 11, 14, .82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom-color: var(--line);
+        }
+
+        .nav-in {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 16px 32px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 32px;
         }
 
-        .brand-mark img {
-            height: 30px;
-            width: auto;
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            text-decoration: none;
+            color: var(--text);
+            flex-shrink: 0;
+        }
+
+        .brand img {
+            width: 25px;
+            height: 25px;
             display: block;
+            /* source artwork is pure black; invert it for the dark chrome */
+            filter: invert(1);
         }
 
-        .brand-word {
+        .brand .word {
             font-family: var(--font-head);
             font-weight: 600;
-            font-size: 1.375rem;
-            color: var(--text-primary);
+            font-size: 1.18rem;
+            letter-spacing: -.01em;
         }
 
-        .brand-word .dot {
-            color: var(--signal);
+        .brand .word i {
+            font-style: normal;
+            color: var(--ember);
         }
 
-        .brand-tagline {
-            font-family: var(--font-head);
-            font-weight: 500;
-            font-size: 2rem;
-            line-height: 1.25;
-            max-width: 340px;
-            color: var(--text-primary);
-        }
-
-        .brand-caption {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            max-width: 320px;
-            line-height: 1.5;
-        }
-
-        /* Right: form panel */
-        .auth-form-panel {
-            flex: 1;
-            background: var(--panel);
-            padding: 56px 48px;
+        .nav-links {
             display: flex;
-            flex-direction: column;
-            justify-content: center;
+            gap: 26px;
+            margin-left: 8px;
         }
 
-        .form-inner {
-            max-width: 340px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .auth-tabs {
-            display: flex;
-            gap: 24px;
-            border-bottom: 1px solid var(--line);
-            margin-bottom: 28px;
-        }
-
-        .auth-tab {
-            font-family: var(--font-body);
+        .navlink {
+            position: relative;
+            color: var(--muted);
+            font-size: .9rem;
             font-weight: 500;
-            font-size: 0.9375rem;
-            padding-bottom: 10px;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            background: none;
-            border-top: none;
-            border-left: none;
-            border-right: none;
+            text-decoration: none;
+            padding: 4px 0;
+            transition: color .2s;
         }
 
-        .auth-tab.active {
-            color: var(--text-primary);
-            border-bottom-color: var(--signal);
-        }
-
-        .field {
-            margin-bottom: 14px;
-        }
-
-        .field label {
-            display: block;
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-        }
-
-        .field input {
+        .navlink::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
             width: 100%;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            font-size: 0.9375rem;
-            padding: 10px 12px;
-            outline: none;
-            transition: border-color 0.15s;
+            height: 1px;
+            background: var(--ember);
+            transform: scaleX(0);
+            transform-origin: 100% 50%;
+            transition: transform .4s cubic-bezier(.22, 1, .36, 1);
         }
 
-        .field input::placeholder {
-            color: var(--text-tertiary);
+        .navlink:hover {
+            color: var(--text);
         }
 
-        .field input:focus {
-            outline: 2px solid var(--signal);
-            outline-offset: 1px;
+        .navlink:hover::after {
+            transform: scaleX(1);
+            transform-origin: 0 50%;
         }
 
-        .auth-btn {
-            font-family: var(--font-head);
-            font-weight: 500;
-            font-size: 0.9375rem;
-            border-radius: var(--radius-sm);
-            padding: 10px 16px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            transition: background 0.15s;
-        }
-
-        .auth-btn svg {
-            width: 18px;
-            height: 18px;
-            stroke: currentColor;
-            stroke-width: 1.5;
-            fill: none;
-        }
-
-        .auth-btn-primary {
-            background: var(--signal);
-            color: #fff;
-        }
-
-        .auth-btn-primary:hover {
-            background: var(--signal-hover);
-        }
-
-        .auth-btn-secondary {
-            background: transparent;
-            border-color: var(--line);
-            color: var(--text-primary);
-        }
-
-        .auth-btn-secondary:hover {
-            background: var(--panel-raised);
-        }
-
-        .divider {
+        .nav-cta {
+            margin-left: auto;
             display: flex;
             align-items: center;
             gap: 12px;
-            color: var(--text-tertiary);
-            font-size: 0.8125rem;
-            margin: 22px 0;
         }
 
-        .divider::before,
-        .divider::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background: var(--line);
-        }
-
-        .error-msg {
-            color: var(--danger);
-            font-size: 0.8rem;
-            text-align: center;
-            display: none;
-            padding: 8px 12px;
-            background: rgba(240, 101, 92, .08);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(240, 101, 92, .15);
-            margin-top: 8px;
-        }
-
-        .success-msg {
-            color: var(--success);
-            font-size: 0.8rem;
-            text-align: center;
-            display: none;
-            padding: 8px 12px;
-            background: rgba(79, 216, 151, .08);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(79, 216, 151, .15);
-            margin-top: 8px;
-        }
-
-        .lobbies-label {
-            color: var(--text-tertiary);
-            font-size: 0.75rem;
-            margin-top: 8px;
-            margin-bottom: 4px;
-        }
-
-        .lobby-list {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            max-height: 110px;
-            overflow-y: auto;
-        }
-
-        .lobby-item {
-            display: flex;
-            justify-content: space-between;
+        /* ── Buttons ─────────────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
             align-items: center;
-            padding: 10px 14px;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
+            justify-content: center;
+            gap: 9px;
+            font-family: var(--font-head);
+            font-weight: 500;
+            font-size: .95rem;
+            padding: 13px 22px;
             border-radius: var(--radius-sm);
+            border: 1px solid transparent;
             cursor: pointer;
-            transition: border-color 0.15s;
-            font-family: inherit;
-            color: var(--text-primary);
-            font-size: 0.84rem;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .3s ease;
         }
 
-        .lobby-item:hover {
-            border-color: var(--signal);
+        .btn svg {
+            width: 17px;
+            height: 17px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        .lobby-item .name {
-            font-weight: 600;
+        .btn:hover {
+            transform: translateY(-2px);
         }
 
-        .lobby-item .count {
-            color: var(--text-secondary);
-            font-size: 0.78rem;
+        .btn:active {
+            transform: translateY(0);
         }
 
-        /* ── Verify notice ──────────────────────────────────────── */
-        .verify-notice {
-            display: none;
-            text-align: center;
-            padding: 16px;
-            background: rgba(242, 166, 90, .06);
-            border: 1px solid rgba(242, 166, 90, .15);
-            border-radius: var(--radius-sm);
-            margin-bottom: 14px;
+        .btn-ember {
+            background: var(--ember);
+            color: #140B02;
         }
 
-        .verify-notice p {
-            color: var(--text-secondary);
-            font-size: 0.84rem;
-            line-height: 1.5;
-            margin-bottom: 12px;
+        .btn-ember:hover {
+            background: var(--ember-2);
+            box-shadow: 0 12px 34px -14px rgba(255, 140, 26, .85);
         }
 
-        .verify-notice .btn-resend {
-            padding: 8px 20px;
-            background: transparent;
-            border: 1px solid var(--signal);
-            border-radius: var(--radius-sm);
-            color: var(--signal);
-            font-size: 0.82rem;
-            cursor: pointer;
-            font-family: inherit;
-            transition: background 0.15s;
+        .btn-ghost {
+            border-color: var(--line-2);
+            color: var(--text);
         }
 
-        .verify-notice .btn-resend:hover {
-            background: var(--signal-tint);
-        }
-
-        /* ── User bar ───────────────────────────────────────────── */
-        .user-bar {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            margin-bottom: 14px;
-        }
-
-        .user-bar span {
-            color: var(--signal);
-            font-size: 0.83rem;
-            font-weight: 600;
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, .05);
+            border-color: rgba(255, 255, 255, .3);
         }
 
         .btn-sm {
-            padding: 5px 12px;
-            background: transparent;
+            padding: 9px 16px;
+            font-size: .875rem;
+        }
+
+        /* ── Hero ────────────────────────────────────────────────── */
+        .hero {
+            position: relative;
+            padding: 148px 0 84px;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(560px circle at var(--mx, 30%) var(--my, 34%), rgba(255, 255, 255, .055), transparent 68%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, .085) 1px, transparent 1px);
+            background-size: 24px 24px;
+            -webkit-mask-image: radial-gradient(ellipse 78% 62% at 46% 44%, #000 25%, transparent 76%);
+            mask-image: radial-gradient(ellipse 78% 62% at 46% 44%, #000 25%, transparent 76%);
+            pointer-events: none;
+            z-index: -2;
+            opacity: .7;
+        }
+
+        .hero-in {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 32px;
+            display: grid;
+            grid-template-columns: 1.02fr .98fr;
+            gap: 52px;
+            align-items: center;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: .8rem;
+            color: var(--muted);
             border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .03);
+            border-radius: 99px;
+            padding: 6px 14px 6px 10px;
+        }
+
+        .chip .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--ember);
+            box-shadow: 0 0 0 0 rgba(255, 140, 26, .6);
+            animation: pulse 2.4s ease-out infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 140, 26, .55);
+            }
+
+            70% {
+                box-shadow: 0 0 0 9px rgba(255, 140, 26, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 140, 26, 0);
+            }
+        }
+
+        h1 {
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: clamp(2.5rem, 5.4vw, 4.2rem);
+            line-height: 1.04;
+            letter-spacing: -.035em;
+            margin: 24px 0 0;
+        }
+
+        .w {
+            display: inline-block;
+            overflow: hidden;
+            padding-bottom: .12em;
+            margin-bottom: -.12em;
+            vertical-align: bottom;
+        }
+
+        .w>i {
+            display: inline-block;
+            font-style: normal;
+        }
+
+        .w.hl>i {
+            color: var(--ember);
+        }
+
+        .lede {
+            margin-top: 20px;
+            font-size: 1.075rem;
+            line-height: 1.65;
+            color: var(--muted);
+            max-width: 44ch;
+        }
+
+        .hero-actions {
+            margin-top: 34px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .hero-note {
+            margin-top: 20px;
+            font-size: .83rem;
+            color: var(--dim);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero-note svg {
+            width: 15px;
+            height: 15px;
+            stroke: var(--ember);
+            stroke-width: 1.6;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ── Graph window ────────────────────────────────────────── */
+        .graphwin {
+            background: linear-gradient(180deg, #101217 0%, #0B0D11 100%);
+            border: 1px solid var(--line-2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 40px 90px -44px rgba(0, 0, 0, .95), 0 0 0 1px rgba(255, 255, 255, .02) inset;
+            will-change: transform;
+        }
+
+        .gw-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 14px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255, 255, 255, .022);
+        }
+
+        .gw-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #2A2D34;
+        }
+
+        .gw-title {
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            color: var(--dim);
+            margin-left: 6px;
+            letter-spacing: .01em;
+        }
+
+        .gw-body {
+            padding: 6px;
+        }
+
+        .gw-body svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .gridline {
+            stroke: rgba(255, 255, 255, .055);
+            stroke-width: 1;
+        }
+
+        .axis {
+            stroke: rgba(255, 255, 255, .3);
+            stroke-width: 1.4;
+        }
+
+        .tick {
+            fill: var(--dim);
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .axis-name {
+            fill: var(--muted);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        .plot {
+            fill: none;
+            stroke-width: 2.4;
+            stroke-linecap: round;
+        }
+
+        .plot-a {
+            stroke: #FFFFFF;
+        }
+
+        .plot-b {
+            stroke: var(--ember);
+        }
+
+        .pt {
+            fill: var(--bg);
+            stroke-width: 2.6;
+        }
+
+        .pt-a {
+            stroke: #FFFFFF;
+        }
+
+        .pt-b {
+            stroke: var(--ember);
+        }
+
+        .eq {
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        .eq-a {
+            fill: #FFFFFF;
+        }
+
+        .eq-b {
+            fill: var(--ember);
+        }
+
+        /* ── Marquee ─────────────────────────────────────────────── */
+        .marquee {
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            background: var(--bg-2);
+            overflow: hidden;
+            padding: 17px 0;
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+        }
+
+        .mq-track {
+            display: flex;
+            width: max-content;
+            animation: mq 38s linear infinite;
+        }
+
+        .mq-group {
+            display: flex;
+            flex-shrink: 0;
+        }
+
+        .mq-item {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            padding-right: 30px;
+            font-family: var(--font-head);
+            font-weight: 500;
+            font-size: .93rem;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .mq-item::after {
+            content: '';
+            width: 5px;
+            height: 5px;
+            background: var(--ember);
+            transform: rotate(45deg);
+            flex-shrink: 0;
+        }
+
+        @keyframes mq {
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* ── Sections ────────────────────────────────────────────── */
+        .sec {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 110px 32px;
+        }
+
+        .sec-head {
+            max-width: 720px;
+        }
+
+        .kicker {
+            font-family: var(--font-mono);
+            font-size: .78rem;
+            color: var(--ember);
+            letter-spacing: .04em;
+            margin-bottom: 16px;
+        }
+
+        h2 {
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: clamp(1.85rem, 3.4vw, 2.7rem);
+            line-height: 1.12;
+            letter-spacing: -.028em;
+        }
+
+        .sec-sub {
+            margin-top: 16px;
+            color: var(--muted);
+            font-size: 1.03rem;
+            line-height: 1.65;
+            max-width: 54ch;
+        }
+
+        /* ── Feature trio ────────────────────────────────────────── */
+        .trio {
+            margin-top: 52px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .fcard {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 28px 26px 30px;
+            overflow: hidden;
+            transition: border-color .3s ease, background .3s ease;
+            will-change: transform;
+        }
+
+        .fcard::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(300px circle at var(--cx, 50%) var(--cy, 0%), rgba(255, 140, 26, .11), transparent 62%);
+            opacity: 0;
+            transition: opacity .35s ease;
+            pointer-events: none;
+        }
+
+        .fcard:hover {
+            border-color: var(--line-2);
+            background: #141519;
+        }
+
+        .fcard:hover::before {
+            opacity: 1;
+        }
+
+        .ficon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--line-2);
+            background: rgba(255, 255, 255, .04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ember);
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .ficon svg {
+            width: 21px;
+            height: 21px;
+            stroke: currentColor;
+            stroke-width: 1.5;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .fcard h3 {
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: 1.14rem;
+            letter-spacing: -.015em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .fcard p {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: .94rem;
+            line-height: 1.62;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Showcase (screenshot) ───────────────────────────────── */
+        .showcase {
+            background: var(--bg-2);
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: .86fr 1.14fr;
+            gap: 56px;
+            align-items: center;
+        }
+
+        .split.rev {
+            grid-template-columns: 1.14fr .86fr;
+        }
+
+        .win {
+            background: #0A0B0E;
+            border: 1px solid var(--line-2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 46px 96px -46px rgba(0, 0, 0, 1);
+            will-change: transform;
+        }
+
+        .win img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .win-float {
+            will-change: transform;
+        }
+
+        ul.ticks {
+            list-style: none;
+            margin-top: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        ul.ticks li {
+            display: flex;
+            gap: 13px;
+            align-items: flex-start;
+            color: var(--muted);
+            font-size: .97rem;
+            line-height: 1.55;
+        }
+
+        ul.ticks li b {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .tickmark {
+            flex-shrink: 0;
+            width: 19px;
+            height: 19px;
+            border-radius: 50%;
+            background: rgba(255, 140, 26, .14);
+            border: 1px solid rgba(255, 140, 26, .42);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+        }
+
+        .tickmark svg {
+            width: 11px;
+            height: 11px;
+            stroke: var(--ember);
+            stroke-width: 2.4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sec-cta {
+            margin-top: 34px;
+        }
+
+        /* ── Final CTA ───────────────────────────────────────────── */
+        .finale {
+            text-align: center;
+            padding: 128px 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .finale::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: min(900px, 92vw);
+            height: 100%;
+            transform: translateX(-50%);
+            background-image: linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            -webkit-mask-image: radial-gradient(ellipse 50% 58% at 50% 42%, #000, transparent 74%);
+            mask-image: radial-gradient(ellipse 50% 58% at 50% 42%, #000, transparent 74%);
+            pointer-events: none;
+        }
+
+        .finale-in {
+            position: relative;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .finale h2 {
+            font-size: clamp(2.1rem, 4.6vw, 3.4rem);
+        }
+
+        .finale p {
+            margin: 18px auto 0;
+            color: var(--muted);
+            font-size: 1.05rem;
+            line-height: 1.65;
+            max-width: 50ch;
+        }
+
+        .finale .hero-actions {
+            justify-content: center;
+            margin-top: 36px;
+        }
+
+        .btn-ring {
+            position: relative;
+        }
+
+        .btn-ring::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
             border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.78rem;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.15s;
+            border: 1px solid var(--ember);
+            animation: ring 2.6s ease-out infinite;
+            pointer-events: none;
         }
 
-        .btn-sm:hover {
-            border-color: var(--danger);
-            color: var(--danger);
+        @keyframes ring {
+            0% {
+                opacity: .7;
+                transform: scale(1);
+            }
+
+            70%,
+            100% {
+                opacity: 0;
+                transform: scale(1.14);
+            }
         }
 
-        /* ── Responsive ─────────────────────────────────────────── */
-        @media (max-width: 800px) {
-            .auth-layout {
-                flex-direction: column;
+        /* ── Footer ──────────────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--line);
+            background: var(--bg-2);
+        }
+
+        .foot-in {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 40px 32px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 22px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .foot-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .foot-links a {
+            color: var(--muted);
+            font-size: .88rem;
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .foot-links a:hover {
+            color: var(--ember);
+        }
+
+        .foot-note {
+            color: var(--dim);
+            font-size: .82rem;
+        }
+
+        /* ── Responsive ──────────────────────────────────────────── */
+        @media (max-width: 980px) {
+            .hero-in,
+            .split,
+            .split.rev {
+                grid-template-columns: 1fr;
+                gap: 44px;
             }
 
-            .auth-brand {
-                padding: 32px 24px;
-                min-height: auto;
+            .hero {
+                padding-top: 122px;
             }
 
-            .brand-tagline {
-                font-size: 1.5rem;
+            .trio {
+                grid-template-columns: 1fr;
             }
 
-            .auth-form-panel {
-                padding: 32px 24px;
+            .nav-links {
+                display: none;
+            }
+
+            .sec {
+                padding: 76px 24px;
+            }
+
+            .hero-in {
+                padding: 0 24px;
+            }
+
+            .nav-in {
+                padding: 14px 24px;
+            }
+
+            .finale {
+                padding: 88px 24px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .nav-cta .btn-ghost {
+                display: none;
+            }
+
+            .hero-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: .001ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .001ms !important;
+            }
+
+            .mq-track {
+                animation: none;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="auth-layout">
-        <div class="auth-brand dotgrid-bg">
-            <div class="brand-mark"><img src="/cucid.svg" alt="cudic"></div>
-            <div>
-                <div class="brand-tagline">Build small 3D games, together.</div>
-                <p class="brand-caption" style="margin-top:14px;">Script a scene, invite friends into a lobby, and
-                    publish to the gallery — all from the browser.</p>
+    <div class="progress" id="progress"></div>
+
+    <header class="nav" id="nav">
+        <div class="nav-in">
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="25" height="25"><span class="word">cudic<i>.</i></span></a>
+            <nav class="nav-links">
+                <a class="navlink" href="/games">Gallery</a>
+                <a class="navlink" href="/themes">Themes</a>
+                <a class="navlink" href="/chat">Chat</a>
+                <a class="navlink" href="/studio">Studio</a>
+            </nav>
+            <div class="nav-cta">
+                <a class="btn btn-ghost btn-sm" href="/login">Sign in</a>
+                <a class="btn btn-ember btn-sm" href="/studio">Open Studio</a>
             </div>
-            <div class="brand-caption">No install. No build step. Just a scene and a script.</div>
         </div>
-        <div class="auth-form-panel">
-            <div class="form-inner">
-                <div class="user-bar" id="userBar"> <span id="userDisplay"></span> <button class="btn-sm"
-                        id="signOutBtn">Sign out</button> </div>
-                <div id="verifyNotice" class="verify-notice">
-                    <p><strong>Check your email</strong><br>We sent a verification link to <span
-                            id="verifyEmail"></span>. Click it to verify your account.</p> <button class="btn-resend"
-                        id="resendBtn">Resend email</button>
+    </header>
+
+    <main>
+        <!-- ── Hero ─────────────────────────────────────────────── -->
+        <section class="hero">
+            <div class="hero-in">
+                <div class="hero-copy">
+                    <span class="chip" data-h="chip"><span class="dot"></span> Free, in the browser, no install</span>
+                    <h1><span class="w"><i>Build</i></span> <span class="w"><i>small</i></span>
+                        <span class="w"><i>games.</i></span> <span class="w"><i>Play</i></span>
+                        <span class="w"><i>them</i></span> <span class="w hl"><i>instantly.</i></span></h1>
+                    <p class="lede" data-h="lede">Cudic is a browser studio for games, sites, and themes. Open
+                        Studio, drop in your files, hit publish — you get a page, a link, and somewhere to play it.</p>
+                    <div class="hero-actions" data-h="acts">
+                        <a class="btn btn-ember" href="/studio">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 4l14 8-14 8V4Z" />
+                            </svg>
+                            Open Studio
+                        </a>
+                        <a class="btn btn-ghost" href="/games">Browse the gallery</a>
+                    </div>
+                    <p class="hero-note" data-h="note">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                        Write HTML, CSS and JavaScript — nothing to install, nothing to configure.
+                    </p>
                 </div>
-                <div class="auth-tabs" id="authTabs"> <button class="auth-tab active" data-tab="login">Sign in</button>
-                    <button class="auth-tab" data-tab="signup">Create account</button> </div> <button
-                    class="auth-btn auth-btn-secondary" id="githubBtn" style="margin-bottom:20px;"> <svg
-                        viewBox="0 0 24 24" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="9" />
-                        <path
-                            d="M9 16v-2c-1.4 0-2-1-2-1.7 0-.6-.3-1.1-.7-1.4M9 16c-2 0-3-1-3-3.3 0-.8.3-1.5.8-2.1-.2-.6-.4-1.5.1-2.6 0 0 .7-.2 2.4.9a8 8 0 0 1 4.4 0c1.7-1.1 2.4-.9 2.4-.9.5 1.1.3 2 .1 2.6.5.6.8 1.3.8 2.1 0 2.3-1 3.3-3 3.3M9 16v2.3"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg> Continue with GitHub </button>
-                <form id="loginForm" style="display:flex;flex-direction:column;">
-                    <div class="field"><label>Email</label><input type="email" id="loginEmail"
-                            placeholder="you@example.com" required></div>
-                    <div class="field"><label>Password</label><input type="password" id="loginPass"
-                            placeholder="••••••••" required minlength="6"></div> <button type="submit"
-                        class="auth-btn auth-btn-primary" id="loginBtn">Sign in</button>
-                    <div id="loginError" class="error-msg"></div>
-                </form>
-                <form id="signupForm" style="display:none;flex-direction:column;">
-                    <div class="field"><label>Display name</label><input type="text" id="signupName"
-                            placeholder="Nathen" maxlength="20" required></div>
-                    <div class="field"><label>Email</label><input type="email" id="signupEmail"
-                            placeholder="you@example.com" required></div>
-                    <div class="field"><label>Password</label><input type="password" id="signupPass"
-                            placeholder="••••••••" required minlength="6"></div> <button type="submit"
-                        class="auth-btn auth-btn-primary" id="signupBtn">Create account</button>
-                    <div id="signupError" class="error-msg"></div>
-                </form>
-                <div class="divider" id="orDivider">or join without an account</div>
-                <form id="guestForm" style="display:flex;flex-direction:column;gap:14px;">
-                    <div class="field"><label>Your name</label><input type="text" id="guestName" placeholder="Nathen"
-                            maxlength="20" required></div>
-                    <div class="field"><label>Lobby name</label><input type="text" id="lobbyName"
-                            placeholder="e.g. friday-jam" maxlength="30" required></div> <label
-                        style="display:flex;align-items:center;gap:8px;font-size:0.8125rem;color:var(--text-secondary);cursor:pointer">
-                        <input type="checkbox" id="persistentLobby"
-                            style="accent-color:var(--signal);width:16px;height:16px"> Save chat history (persistent)
-                    </label> <button type="submit" class="auth-btn auth-btn-secondary">Join lobby</button>
-                </form>
-                <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
-                <div id="lobbyList" class="lobby-list"></div>
+
+                <div class="graphwin" id="graphwin">
+                    <div class="gw-bar">
+                        <span class="gw-dot"></span><span class="gw-dot"></span><span class="gw-dot"></span>
+                        <span class="gw-title">graph.js — live preview</span>
+                    </div>
+                    <div class="gw-body">
+                        <svg id="graph" viewBox="0 0 640 460" aria-hidden="true" focusable="false">
+                            <g id="grid"></g>
+                            <g id="axes">
+                                <line class="axis" x1="40" y1="240" x2="612" y2="240" />
+                                <line class="axis" x1="320" y1="24" x2="320" y2="436" />
+                                <path class="axis" d="M612 240 l-9 -5 M612 240 l-9 5" fill="none" />
+                                <path class="axis" d="M320 24 l-5 9 M320 24 l5 9" fill="none" />
+                                <text class="axis-name" x="622" y="245">x</text>
+                                <text class="axis-name" x="330" y="34">y</text>
+                            </g>
+                            <g id="ticks"></g>
+                            <!-- y = 0.5x - 1 : from x=-7 to x=7 -->
+                            <line class="plot plot-a" id="lineA" x1="40" y1="420" x2="600" y2="140" />
+                            <!-- y = 2x + 6 : clipped to the visible y range -->
+                            <line class="plot plot-b" id="lineB" x1="102" y1="436" x2="308" y2="24" />
+                            <text class="eq eq-a" id="eqA" x="596" y="130" text-anchor="end">y = 0.5x - 1</text>
+                            <text class="eq eq-b" id="eqB" x="316" y="66">y = 2x + 6</text>
+                            <circle class="pt pt-a" id="pA" cx="320" cy="280" r="7" />
+                            <circle class="pt pt-b" id="pB" cx="200" cy="240" r="7" />
+                            <circle class="pt pt-b" id="pC" cx="133" cy="374" r="7" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Marquee ──────────────────────────────────────────── -->
+        <div class="marquee" aria-hidden="true">
+            <div class="mq-track">
+                <div class="mq-group">
+                    <span class="mq-item">Scene editor</span><span class="mq-item">Live preview</span><span
+                        class="mq-item">Chat lobbies</span><span class="mq-item">Theme packs</span><span
+                        class="mq-item">Game gallery</span><span class="mq-item">One-click publish</span><span
+                        class="mq-item">Fork and remix</span><span class="mq-item">Custom thumbnails</span>
+                </div>
+                <div class="mq-group">
+                    <span class="mq-item">Scene editor</span><span class="mq-item">Live preview</span><span
+                        class="mq-item">Chat lobbies</span><span class="mq-item">Theme packs</span><span
+                        class="mq-item">Game gallery</span><span class="mq-item">One-click publish</span><span
+                        class="mq-item">Fork and remix</span><span class="mq-item">Custom thumbnails</span>
+                </div>
             </div>
         </div>
-    </div>
-    <script src="/config.js"></script>
-    <script src="/auth.js"></script>
-    <script>  (function () { var loginForm = document.getElementById('loginForm'), signupForm = document.getElementById('signupForm'); var guestForm = document.getElementById('guestForm'), userBar = document.getElementById('userBar'); var userDisplay = document.getElementById('userDisplay'), lobbyList = document.getElementById('lobbyList'); var lobbiesLabel = document.getElementById('lobbiesLabel'), verifyNotice = document.getElementById('verifyNotice'); var verifyEmail = document.getElementById('verifyEmail'); var currentUser = null, currentToken = null, isVerified = false; document.addEventListener('visibilitychange', function () { if (!document.hidden && currentUser && !isVerified) initPage() });    /* Tab switching */ document.querySelectorAll('.auth-tab').forEach(function (t) { t.addEventListener('click', function () { var tab = t.getAttribute('data-tab'); document.querySelectorAll('.auth-tab').forEach(function (t2) { t2.classList.toggle('active', t2.getAttribute('data-tab') === tab); }); loginForm.style.display = tab === 'login' ? 'flex' : 'none'; signupForm.style.display = tab === 'signup' ? 'flex' : 'none'; }); }); async function initPage() { try { var session = await getSession(); if (session && session.user) { currentUser = session.user; currentToken = session.access_token; var name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email; document.getElementById('guestName').value = name; document.getElementById('guestName').disabled = true; document.getElementById('userBar').style.display = 'flex'; document.getElementById('authTabs').style.display = 'none'; document.getElementById('loginForm').style.display = 'none'; document.getElementById('signupForm').style.display = 'none'; document.getElementById('guestForm').style.display = 'flex'; return; } else { var saved = localStorage.getItem('glox_username'); if (saved) document.getElementById('guestName').value = saved } } catch (e) { var saved2 = localStorage.getItem('glox_username'); if (saved2) document.getElementById('guestName').value = saved2 } } document.getElementById('signOutBtn').addEventListener('click', async function () { await signOut(); localStorage.removeItem('glox_username'); window.location.href = '/' }); document.getElementById('resendBtn').addEventListener('click', async function () { if (!currentUser) return; var btn = document.getElementById('resendBtn'); btn.disabled = true; btn.textContent = 'Sending...'; try { var sb = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; await fetch(sb + '/auth/send-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: currentUser.email, userId: currentUser.id, displayName: currentUser.user_metadata?.full_name || currentUser.email }) }); btn.textContent = 'Sent!'; setTimeout(function () { btn.textContent = 'Resend email'; btn.disabled = false }, 3000); } catch (e) { btn.textContent = 'Failed'; btn.disabled = false } }); document.getElementById('loginForm').addEventListener('submit', async function (e) { e.preventDefault(); var btn = document.getElementById('loginBtn'), errEl = document.getElementById('loginError'); btn.disabled = true; btn.textContent = 'Signing in...'; errEl.style.display = 'none'; try { await signInWithEmail(document.getElementById('loginEmail').value, document.getElementById('loginPass').value); window.location.href = '/lobbies' } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block' } finally { btn.disabled = false; btn.textContent = 'Sign in' } }); document.getElementById('signupForm').addEventListener('submit', async function (e) { e.preventDefault(); var btn = document.getElementById('signupBtn'), errEl = document.getElementById('signupError'); btn.disabled = true; btn.textContent = 'Creating...'; errEl.style.display = 'none'; try { var signupRes = await signUpWithEmail(document.getElementById('signupEmail').value, document.getElementById('signupPass').value, document.getElementById('signupName').value); if (signupRes && signupRes.session) { window.location.href = '/lobbies'; return; } errEl.textContent = (signupRes && signupRes.verifyEmail === 'none') ? 'Account created! You can sign in now.' : 'Account created! Check your email.'; errEl.style.color = 'var(--success)'; errEl.style.display = 'block'; setTimeout(function () { document.querySelector('.auth-tab[data-tab="login"]').click() }, 2500); } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = 'var(--danger)' } finally { btn.disabled = false; btn.textContent = 'Create account' } }); document.getElementById('guestForm').addEventListener('submit', function (e) { e.preventDefault(); var name = document.getElementById('guestName').value.trim(), lobby = document.getElementById('lobbyName').value.trim(); var persistent = document.getElementById('persistentLobby').checked; if (!name || !lobby) return; localStorage.setItem('glox_username', name); listWs.close(); var url = '/chat?lobby=' + encodeURIComponent(lobby) + '&username=' + encodeURIComponent(name); if (persistent) url += '&persistent=1'; if (currentToken) url += '&token=' + currentToken; window.location.href = url; }); document.getElementById('githubBtn').addEventListener('click', function () { signInWithGitHub() });    /* Lobby list WebSocket */ var wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host; var proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws'; var listWs = new WebSocket(proto + '://' + wsHost); listWs.onmessage = function (e) { var msg = JSON.parse(e.data); if (msg.type === 'lobby_list') { if (msg.lobbies.length) { lobbiesLabel.style.display = 'block'; lobbyList.innerHTML = msg.lobbies.map(function (l) { return '<button class="lobby-item" data-name="' + l.name + '"><span class="name">#' + l.name + '</span><span class="count">' + l.count + (l.count === 1 ? ' person' : ' people') + '</span></button>' }).join(''); lobbyList.querySelectorAll('.lobby-item').forEach(function (btn) { btn.addEventListener('click', function () { document.getElementById('lobbyName').value = btn.dataset.name; guestForm.dispatchEvent(new Event('submit', { cancelable: true })) }); }); } else { lobbiesLabel.style.display = 'none'; lobbyList.innerHTML = '' } } }; if (typeof handleAuthCallback === "function") { try { handleAuthCallback().then(function () { initPage() }).catch(function () { initPage() }) } catch (e) { initPage() } } else { initPage() }; })();  </script>
+
+        <!-- ── Feature trio ─────────────────────────────────────── -->
+        <section class="sec">
+            <div class="sec-head">
+                <p class="kicker" data-rv>// three things, one tab</p>
+                <h2 data-rv>Everything you need to go from a blank file to a playable link.</h2>
+            </div>
+            <div class="trio">
+                <article class="fcard" data-rv>
+                    <div class="ficon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 4 20 10 8 22H4v-4L16 6Z" />
+                        </svg>
+                    </div>
+                    <h3>Build in Studio</h3>
+                    <p>A full workbench in the browser tab — file explorer, editor, live preview and console, side
+                        by side. No local server, no setup.</p>
+                </article>
+                <article class="fcard" data-rv>
+                    <div class="ficon">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="3" y="8" width="18" height="9" rx="3" />
+                            <path d="M8 11v3M6.5 12.5h3M16 12h.01M18 14h.01" />
+                        </svg>
+                    </div>
+                    <h3>Publish to the gallery</h3>
+                    <p>One click gives your game a page, a link and comments. Take any published game, fork it, and
+                        start from someone else's code.</p>
+                </article>
+                <article class="fcard" data-rv>
+                    <div class="ficon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M4 5h16v11H9l-4 4V5Z" />
+                        </svg>
+                    </div>
+                    <h3>Chat while you play</h3>
+                    <p>Spin up a lobby, drop the link in a call, and keep the history if you want it. Servers with
+                        membership are there when you need them.</p>
+                </article>
+            </div>
+        </section>
+
+        <!-- ── Studio showcase ──────────────────────────────────── -->
+        <section class="showcase">
+            <div class="sec split">
+                <div>
+                    <p class="kicker" data-rv>// the editor</p>
+                    <h2 data-rv>A real workbench, in a browser tab.</h2>
+                    <p class="sec-sub" data-rv>Open a project and you get the thing you already know: a file tree, a
+                        tabbed editor, a running preview and a console that tells you what broke.</p>
+                    <ul class="ticks">
+                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg></span><span><b>Plain files.</b> HTML, CSS and JavaScript — export it and it
+                            still works anywhere.</span></li>
+                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg></span><span><b>Preview beside the code.</b> Save and the running page updates
+                            next to what you typed.</span></li>
+                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg></span><span><b>Publish in one move.</b> Set a thumbnail, hit publish, and it
+                            lands in the gallery.</span></li>
+                    </ul>
+                    <div class="sec-cta" data-rv>
+                        <a class="btn btn-ember" href="/studio">Open Studio</a>
+                    </div>
+                </div>
+                <div class="win" data-rv>
+                    <div class="win-float" id="shotStudio">
+                        <img src="/shots/studio.png" width="1600" height="1000" loading="lazy"
+                            alt="The Cudic Studio workbench showing a file explorer, an HTML file open in the editor and a status bar">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Gallery ──────────────────────────────────────────── -->
+        <section class="sec">
+            <div class="sec-head" style="max-width:640px">
+                <p class="kicker" data-rv>// the gallery</p>
+                <h2 data-rv>Every published game gets a home.</h2>
+                <p class="sec-sub" data-rv>A page of its own with a thumbnail, credits and comments — and a fork button
+                    that pulls the whole thing back into your Studio.</p>
+            </div>
+            <div class="win" data-rv style="margin-top:44px;max-width:880px">
+                <div class="win-float" id="shotGames">
+                    <img src="/shots/games.png" width="1040" height="430" loading="lazy"
+                        alt="The Cudic game gallery with a published game card showing its thumbnail, title and creator">
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Themes ───────────────────────────────────────────── -->
+        <section class="showcase">
+            <div class="sec split rev">
+                <div class="win" data-rv>
+                    <div class="win-float" id="shotThemes">
+                        <img src="/shots/themes.png" width="660" height="625" loading="lazy"
+                            alt="The Cudic theme pack store showing the Anime City Night pack with an install button">
+                    </div>
+                </div>
+                <div>
+                    <p class="kicker" data-rv>// theme packs</p>
+                    <h2 data-rv>Change the whole look in one click.</h2>
+                    <p class="sec-sub" data-rv>A pack re-skins the rail, the scenes and the icons together. Install one
+                        and everything you open afterwards picks it up.</p>
+                    <ul class="ticks">
+                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg></span><span><b>Background art, not just a swatch.</b> Packs ship real scenes
+                            that sit behind your work.</span></li>
+                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg></span><span><b>Icons and motion come along.</b> The set stays coherent instead
+                            of half-changed.</span></li>
+                    </ul>
+                    <div class="sec-cta" data-rv>
+                        <a class="btn btn-ghost" href="/themes">Browse theme packs</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Final CTA ────────────────────────────────────────── -->
+        <section class="finale">
+            <div class="finale-in">
+                <h2 data-rv>Start with an empty file.</h2>
+                <p data-rv>Studio opens straight into a new project. Write three lines, hit preview, and something is
+                    running. Publishing takes one more click.</p>
+                <div class="hero-actions" data-rv>
+                    <a class="btn btn-ember btn-ring" href="/studio">Open Studio</a>
+                    <a class="btn btn-ghost" href="/login">Create an account</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="foot-in">
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="25" height="25"><span class="word">cudic<i>.</i></span></a>
+            <nav class="foot-links">
+                <a href="/games">Gallery</a>
+                <a href="/themes">Themes</a>
+                <a href="/chat">Chat</a>
+                <a href="/studio">Studio</a>
+                <a href="/login">Sign in</a>
+            </nav>
+            <p class="foot-note">Built in the browser. No install, no build step.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            var RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var hasGSAP = typeof window.gsap !== 'undefined';
+
+            /* ── Build the coordinate grid from JS (one loop, not markup) ── */
+            var SVGNS = 'http://www.w3.org/2000/svg';
+            var grid = document.getElementById('grid');
+            var ticks = document.getElementById('ticks');
+            if (grid) {
+                for (var k = -7; k <= 7; k++) {
+                    var x = 320 + k * 40;
+                    if (x >= 40 && x <= 600) {
+                        var v = document.createElementNS(SVGNS, 'line');
+                        v.setAttribute('class', 'gridline');
+                        v.setAttribute('x1', x); v.setAttribute('x2', x);
+                        v.setAttribute('y1', 24); v.setAttribute('y2', 436);
+                        grid.appendChild(v);
+                    }
+                    var y = 240 + k * 40;
+                    if (y >= 40 && y <= 436) {
+                        var h = document.createElementNS(SVGNS, 'line');
+                        h.setAttribute('class', 'gridline');
+                        h.setAttribute('x1', 40); h.setAttribute('x2', 600);
+                        h.setAttribute('y1', y); h.setAttribute('y2', y);
+                        grid.appendChild(h);
+                    }
+                }
+                /* axis tick labels — mono, because these are literal values */
+                var labels = [[-4, '4', 'x'], [-2, '2', 'x'], [2, '2', 'x'], [4, '4', 'x'],
+                [2, '2', 'y'], [4, '4', 'y'], [-2, '-2', 'y'], [-4, '-4', 'y']];
+                for (var i = 0; i < labels.length; i++) {
+                    var t = document.createElementNS(SVGNS, 'text');
+                    t.setAttribute('class', 'tick');
+                    if (labels[i][2] === 'x') {
+                        t.setAttribute('x', 320 + labels[i][0] * 40);
+                        t.setAttribute('y', 258);
+                        t.setAttribute('text-anchor', 'middle');
+                    } else {
+                        t.setAttribute('x', 332);
+                        t.setAttribute('y', 244 - labels[i][0] * 40);
+                    }
+                    t.textContent = labels[i][1];
+                    ticks.appendChild(t);
+                }
+            }
+
+            if (!hasGSAP) return;
+            if (window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
+
+            /* ── Scroll progress + nav state ─────────────────────── */
+            var bar = document.getElementById('progress');
+            var nav = document.getElementById('nav');
+            function onScroll() {
+                var max = document.documentElement.scrollHeight - window.innerHeight;
+                var p = max > 0 ? window.scrollY / max : 0;
+                if (bar) bar.style.transform = 'scaleX(' + p + ')';
+                if (nav) nav.classList.toggle('scrolled', window.scrollY > 24);
+            }
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+
+            if (RM) return;
+
+            /* ── Hero entrance ───────────────────────────────────── */
+            var tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
+            tl.from('[data-h="chip"]', { y: 16, opacity: 0, duration: .7 })
+                .from('.w > i', { yPercent: 118, duration: 1.05, stagger: .055 }, '-=.42')
+                .from('[data-h="lede"]', { y: 18, opacity: 0, duration: .8 }, '-=.68')
+                .from('[data-h="acts"] > *', { y: 16, opacity: 0, duration: .7, stagger: .08 }, '-=.6')
+                .from('[data-h="note"]', { y: 12, opacity: 0, duration: .7 }, '-=.5')
+                .from('#graphwin', { y: 46, opacity: 0, scale: .965, duration: 1.15 }, '-=1.05');
+
+            /* ── Graph drawing sequence ──────────────────────────── */
+            var gt = gsap.timeline({ defaults: { ease: 'power2.out' }, delay: .55 });
+            gt.from('#grid line', {
+                scaleY: 0, scaleX: 0, transformOrigin: '50% 50%',
+                duration: .5, stagger: { each: .012, from: 'center' }
+            })
+                .from('#axes', { opacity: 0, scale: .86, transformOrigin: '320px 240px', duration: .55 }, '-=.2')
+                .from('#ticks text, #axes text', { opacity: 0, duration: .4, stagger: .02 }, '-=.2');
+
+            ['lineA', 'lineB'].forEach(function (id, n) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var len = Math.ceil(el.getTotalLength ? el.getTotalLength() : 700);
+                gt.fromTo(el, { strokeDasharray: len, strokeDashoffset: len },
+                    { strokeDashoffset: 0, duration: .95, ease: 'power2.inOut' }, n === 0 ? '-=.15' : '-=.55');
+            });
+
+            gt.from('#eqA, #eqB', { opacity: 0, y: 8, duration: .5, stagger: .12 }, '-=.35')
+                .from('#pA, #pB, #pC', { scale: 0, transformOrigin: '50% 50%', duration: .75, ease: 'elastic.out(1,.5)', stagger: .1 }, '-=.45');
+
+            /* ── Hero pointer spotlight + graph parallax ─────────── */
+            var hero = document.querySelector('.hero');
+            if (hero) {
+                hero.addEventListener('pointermove', function (e) {
+                    var r = hero.getBoundingClientRect();
+                    hero.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+                    hero.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+                });
+            }
+            var gw = document.getElementById('graphwin');
+            if (gw && window.matchMedia('(hover:hover)').matches) {
+                var gx = gsap.quickTo(gw, 'rotationY', { duration: .7, ease: 'power3' });
+                var gy = gsap.quickTo(gw, 'rotationX', { duration: .7, ease: 'power3' });
+                gw.addEventListener('pointermove', function (e) {
+                    var r = gw.getBoundingClientRect();
+                    gx(((e.clientX - r.left) / r.width - .5) * 9);
+                    gy(-((e.clientY - r.top) / r.height - .5) * 9);
+                });
+                gw.addEventListener('pointerleave', function () { gx(0); gy(0); });
+                gsap.set(gw, { transformPerspective: 1100 });
+            }
+
+            /* ── Scroll reveals ──────────────────────────────────── */
+            gsap.utils.toArray('[data-rv]').forEach(function (el, i) {
+                gsap.from(el, {
+                    y: 34, opacity: 0, duration: .9, ease: 'expo.out',
+                    delay: (i % 3) * .07,
+                    scrollTrigger: { trigger: el, start: 'top 88%', once: true }
+                });
+            });
+
+            /* ── Screenshot motion: float + scroll parallax ──────── */
+            gsap.utils.toArray('.win-float').forEach(function (el, i) {
+                gsap.to(el, {
+                    y: i % 2 ? 14 : -14,
+                    duration: 3.6 + i * .5,
+                    ease: 'sine.inOut',
+                    yoyo: true,
+                    repeat: -1
+                });
+                gsap.fromTo(el, { yPercent: 5 }, {
+                    yPercent: -5, ease: 'none',
+                    scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: .7 }
+                });
+            });
+
+            /* Straighten the studio shot as it scrolls into view */
+            var s = document.getElementById('shotStudio');
+            if (s) {
+                gsap.fromTo(s, { rotateX: 13, scale: .95, transformPerspective: 1400 },
+                {
+                    rotateX: 0, scale: 1, ease: 'none',
+                    scrollTrigger: { trigger: s, start: 'top 92%', end: 'center 55%', scrub: .6 }
+                });
+            }
+
+            /* ── Feature card hover: spotlight follow + tilt ─────── */
+            gsap.utils.toArray('.fcard').forEach(function (card) {
+                card.addEventListener('pointermove', function (e) {
+                    var r = card.getBoundingClientRect();
+                    card.style.setProperty('--cx', (e.clientX - r.left) + 'px');
+                    card.style.setProperty('--cy', (e.clientY - r.top) + 'px');
+                    if (window.matchMedia('(hover:hover)').matches) {
+                        gsap.to(card, {
+                            y: -6,
+                            rotationY: ((e.clientX - r.left) / r.width - .5) * 7,
+                            rotationX: -((e.clientY - r.top) / r.height - .5) * 7,
+                            transformPerspective: 800,
+                            duration: .45, ease: 'power3.out', overwrite: 'auto'
+                        });
+                    }
+                });
+                card.addEventListener('pointerleave', function () {
+                    gsap.to(card, { y: 0, rotationX: 0, rotationY: 0, duration: .7, ease: 'elastic.out(1,.55)', overwrite: 'auto' });
+                });
+            });
+        })();
+    </script>
 </body>
 
 </html>

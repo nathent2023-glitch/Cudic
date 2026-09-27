@@ -1004,9 +1004,9 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/chat.html';
   }
 
-  // ── Redirect /login to / (main page) ──────────────────────────
+  // ── Redirect /login to the sign-in screen ─────────────────────
   if (url.pathname === '/login') {
-    url.pathname = '/';
+    url.pathname = '/login.html';
   }
 
   // ── Redirect /profile to /profile.html ─────────────────────────
