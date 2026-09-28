@@ -95,7 +95,8 @@ public/                   # the classic app (served at Vercel output root)
   cudic_sfpng.png         # PNG version of same           (NEVER DELETE)
   cucid.svg               # full wordmark (user's logo)   (NEVER DELETE)
   fonts/                  # incl. "Nine Circles" (free commercial license)
-  themes/                 # static theme packs: index.json + <pack>/manifest.json
+  packs/                 # static theme packs: index.json + <pack>/manifest.json
+                         # (NOT themes/ — a /themes dir shadows the /themes rewrite on Vercel)
   studio/                 # ← GITIGNORED build output
 studio/
   vite.config.js          # base '/studio/', outDir '../public/studio'
@@ -358,7 +359,7 @@ list endpoints already supported it; **only Studio lacked a control**.
 - Store page `public/themes.html` at route `/themes`.
 - Engine `public/theme-engine.js` → `window.CudicTheme`:
   `boot()`, `applyPack(id)`, `installPack(files)`, `clearPack()`, `previewScene(id)`.
-- Static registry `public/themes/index.json`; packs in `public/themes/<id>/`
+- Static registry `public/packs/index.json`; packs in `public/packs/<id>/`
   (`manifest.json`, art). Shipped pack: **`anime-city-night`**
   (`sidebar.background` under a scrim, scene `city-night`, icons `neon`, motion `playful`).
 - A pack's background outranks a plain CSS background (apply order matters).

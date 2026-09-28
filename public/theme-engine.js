@@ -1,4 +1,5 @@
-// Cudic theme packs — static-file v1. Packs live in /themes/<slug>/manifest.json.
+// Cudic theme packs — static-file v1. Packs live in /packs/<slug>/manifest.json.
+// (/packs, not /themes — a /themes directory shadows the /themes rewrite on Vercel.)
 // A pack is pure JSON: colors, fonts, wallpaper, art, icons, motion. Nothing in
 // a pack ever executes — scenes/animations ship here and packs reference by id.
 (function () {
@@ -313,7 +314,7 @@
     var slug = storedSlug();
     if (!slug) return;
     try {
-      var res = await fetch('/themes/' + encodeURIComponent(slug) + '/manifest.json', { cache: 'no-store' });
+      var res = await fetch('/packs/' + encodeURIComponent(slug) + '/manifest.json', { cache: 'no-store' });
       if (!res.ok) throw 0;
       applyPack(await res.json(), slug);
     } catch (e) {

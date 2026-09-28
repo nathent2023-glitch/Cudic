@@ -217,11 +217,11 @@
       });
       async function boot() {
         try {
-          var idx = await (await fetch('/themes/index.json', { cache: 'no-store' })).json();
+          var idx = await (await fetch('/packs/index.json', { cache: 'no-store' })).json();
           var slugs = idx.packs || [];
           for (var i = 0; i < slugs.length; i++) {
             try {
-              var m = await (await fetch('/themes/' + encodeURIComponent(slugs[i]) + '/manifest.json', { cache: 'no-store' })).json();
+              var m = await (await fetch('/packs/' + encodeURIComponent(slugs[i]) + '/manifest.json', { cache: 'no-store' })).json();
               manifests[m.slug] = m;
             } catch (e) {}
           }
