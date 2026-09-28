@@ -807,6 +807,26 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: game thumbnail as a real URL ────────────────────────
+  // Stored as a data: URL (unusable by link scrapers); this serves real bytes.
+  // Must stay above the generic /api/games/:id GET below, which would swallow it.
+  if (/^\/api\/games\/[^/]+\/thumbnail$/.test(url.pathname) && req.method === 'GET') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const { data } = await supabase.from('games').select('thumbnail').eq('id', id).single();
+    const m = data && typeof data.thumbnail === 'string'
+      ? /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i.exec(data.thumbnail) : null;
+    if (!m) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found'); return; }
+    const buf = Buffer.from(m[2], 'base64');
+    res.writeHead(200, {
+      'Content-Type': m[1],
+      'Content-Length': buf.length,
+      'Cache-Control': 'public, max-age=86400'
+    });
+    res.end(buf);
+    return;
+  }
+
   // ── API: get single game ───────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);

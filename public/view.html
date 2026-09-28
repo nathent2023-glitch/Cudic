@@ -7,7 +7,6 @@
   <meta property="og:site_name" content="Cudic">
   <meta property="og:title" content="Play on Cudic">
   <meta property="og:description" content="Play this game instantly in your browser. Built with Cudic Studio — fork it and make your own version.">
-<meta property="og:url" content="https://glox-two.vercel.app/games">
 <meta property="og:image" content="https://glox-two.vercel.app/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +14,6 @@
 <meta name="twitter:title" content="Play on Cudic">
 <meta name="twitter:description" content="Play this game instantly in your browser. Built with Cudic Studio — fork it and make your own version.">
 <meta name="twitter:image" content="https://glox-two.vercel.app/og.png">
-<link rel="canonical" content="https://glox-two.vercel.app/games">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=9">
   <style>
@@ -64,6 +62,7 @@
       <button class="btn-ghost" id="fsBtn">Fullscreen</button>
       <a class="btn" id="studioBtn" href="#" style="display:none">Open in Studio</a>
       <button class="btn-ghost" id="forkBtn" style="display:none">Fork</button>
+      <button class="btn-ghost" id="shareBtn">Share</button>
     </div>
     <div class="game-grid">
       <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
@@ -101,6 +100,31 @@
     }
     if (!id) { document.getElementById('overlayText').textContent = 'Missing game id'; return; }
     document.getElementById('studioBtn').href = '/studio?id=' + encodeURIComponent(id);
+    // Share: native sheet on touch, clipboard everywhere else
+    document.getElementById('shareBtn').addEventListener('click', function(){
+      var url = location.origin + location.pathname + '?id=' + encodeURIComponent(id);
+      var btn = this;
+      if ((navigator.maxTouchPoints || 0) > 0 && navigator.share) {
+        navigator.share({ title: document.title, url: url }).catch(function(){});
+        return;
+      }
+      function copied(){
+        btn.textContent = 'Copied';
+        setTimeout(function(){ btn.textContent = 'Share'; }, 1500);
+      }
+      function legacy(){
+        var ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); copied(); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(copied).catch(legacy);
+      } else legacy();
+    });
     // Owner check: only the owner gets the Studio button (server still enforces on save)
     function checkOwner(ownerId) {
       try {
