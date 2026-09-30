@@ -70,7 +70,9 @@ function headers(json: boolean): Record<string, string> {
 }
 
 // Filled in by glox.ts (it owns the preview pane) — see note there.
-export const previewBridge: { capture?: () => Promise<string | null> } = {};
+export const previewBridge: {
+  capture?: () => Promise<{ data: string } | { error: string } | null>;
+} = {};
 
 interface StorageCfg {
   api: string;
@@ -401,7 +403,13 @@ async function setThumbnail(): Promise<void> {
         );
         return;
       }
-      await putThumbnail(shot);
+      if ('error' in shot) {
+        vscode.window.showWarningMessage(
+          'Thumbnail capture failed: ' + shot.error + '. You can upload an image instead.'
+        );
+        return;
+      }
+      await putThumbnail(shot.data);
     } else {
       await putThumbnail(null);
     }

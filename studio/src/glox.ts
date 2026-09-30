@@ -298,6 +298,8 @@ export async function gloxRun(): Promise<void> {
 
 // Runs INSIDE the sandboxed preview frame (it is opaque to us, so the parent
 // can't read its DOM — the frame has to rasterize itself and post it up).
+// cloneNode() drops <canvas> bitmaps and foreignObject doesn't paint the
+// propagated root background, so both are injected explicitly before export.
 const CAPTURE_SNIPPET = [
   '<scr' + 'ipt>(function(){',
   'function send(m){parent.postMessage(m,"*")}',
@@ -306,16 +308,20 @@ const CAPTURE_SNIPPET = [
   'var d=e.data;if(!d||d.cudic!=="capture")return;',
   'try{',
   'var w=window.innerWidth||1280,h=window.innerHeight||720;',
-  'var svg=\'<svg xmlns="http://www.w3.org/2000/svg" width="\'+w+\'" height="\'+h+\'"><foreignObject width="\'+w+\'" height="\'+h+\'">\'+new XMLSerializer().serializeToString(document.documentElement.cloneNode(true))+\'</foreignObject></svg>\';',
+  'var clone=document.documentElement.cloneNode(true);',
+  'var cs=document.querySelectorAll("canvas"),cc=clone.querySelectorAll("canvas");',
+  'for(var i=0;i<cs.length&&i<cc.length;i++){try{var cv=cs[i];if(!cv.width||!cv.height)continue;var im=document.createElement("img");for(var j=0;j<cv.attributes.length;j++)im.setAttribute(cv.attributes[j].name,cv.attributes[j].value);im.src=cv.toDataURL("image/png");cc[i].parentNode.replaceChild(im,cc[i]);}catch(x){}}',
+  'var bg="#ffffff";try{var b=getComputedStyle(document.body).backgroundColor;if(b&&b!=="rgba(0, 0, 0, 0)"&&b!=="transparent")bg=b;else{var h2=getComputedStyle(document.documentElement).backgroundColor;if(h2&&h2!=="rgba(0, 0, 0, 0)"&&h2!=="transparent")bg=h2}}catch(x){}',
+  'var svg=\'<svg xmlns="http://www.w3.org/2000/svg" width="\'+w+\'" height="\'+h+\'"><foreignObject width="\'+w+\'" height="\'+h+\'">\'+new XMLSerializer().serializeToString(clone)+\'</foreignObject></svg>\';',
   'var img=new Image();',
   'img.onload=function(){try{',
   'var c=document.createElement("canvas");c.width=w;c.height=h;',
-  'var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);',
+  'var x=c.getContext("2d");x.fillStyle=bg;x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);',
   'var px=x.getImageData(0,0,w,h).data,lo=255,hi=0;',
   'for(var i=0;i<px.length;i+=3988){if(px[i]<lo)lo=px[i];if(px[i]>hi)hi=px[i];}',
-  'if(hi-lo<12)return fail("preview is blank");',
+  'if(hi-lo<12)return fail("preview is blank (nothing visible to capture)");',
   'send({cudic:"cap",ok:true,data:c.toDataURL("image/jpeg",0.85)});',
-  '}catch(err){fail(err)}};',
+  '}catch(err){fail("rasterize: "+err)}};',
   'img.onerror=function(){fail("rasterize failed")};',
   'img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);',
   '}catch(err){fail(err)}});',
@@ -327,7 +333,7 @@ const CAPTURE_SNIPPET = [
 // circular import.
 previewBridge.capture = capturePreviewThumbnail;
 
-function capturePreviewThumbnail(): Promise<string | null> {
+function capturePreviewThumbnail(): Promise<{ data: string } | { error: string } | null> {
   return new Promise((resolve) => {
     const frame = PreviewPane.livePanes()
       .map((p) => p.frameEl())
@@ -338,7 +344,7 @@ function capturePreviewThumbnail(): Promise<string | null> {
     }
     let timer = 0;
     let done = false;
-    const finish = (r: string | null): void => {
+    const finish = (r: { data: string } | { error: string } | null): void => {
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -347,12 +353,16 @@ function capturePreviewThumbnail(): Promise<string | null> {
     };
     const onMessage = (e: MessageEvent): void => {
       if (e.source !== frame.contentWindow) return;
-      const d = e.data as { cudic?: string; ok?: boolean; data?: string } | null;
+      const d = e.data as { cudic?: string; ok?: boolean; data?: string; error?: string } | null;
       if (d == null || d.cudic !== 'cap') return;
-      finish(d.ok === true && typeof d.data === 'string' ? d.data : null);
+      finish(
+        d.ok === true && typeof d.data === 'string'
+          ? { data: d.data }
+          : { error: typeof d.error === 'string' && d.error.length > 0 ? d.error : 'capture failed' }
+      );
     };
     window.addEventListener('message', onMessage);
-    timer = window.setTimeout(() => finish(null), 8000);
+    timer = window.setTimeout(() => finish({ error: 'preview did not respond — press Run again' }), 8000);
     frame.contentWindow?.postMessage({ cudic: 'capture' }, '*');
   });
 }
