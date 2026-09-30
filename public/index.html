@@ -1,820 +1,588 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#F7F3EB">
     <meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
-    <title>Cudic — build and play small games in your browser</title>
-    <meta name="description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <title>Cudic - build and play small games in your browser</title>
+    <meta name="description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Cudic">
-    <meta property="og:title" content="Cudic — build and play small games in your browser">
-    <meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta property="og:title" content="Cudic - build and play small games in your browser">
+    <meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
     <meta property="og:url" content="https://glox-two.vercel.app/">
     <meta property="og:image" content="https://glox-two.vercel.app/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Cudic — build and play small games in your browser">
-    <meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta name="twitter:title" content="Cudic - build and play small games in your browser">
+    <meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
     <meta name="twitter:image" content="https://glox-two.vercel.app/og.png">
     <link rel="canonical" content="https://glox-two.vercel.app/">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=9">
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script>document.documentElement.className = 'js';</script>
     <style>
-        /* ── Landing: dark workbench chrome, one ember accent ─────── */
-        html,
-        body {
-            height: auto;
-        }
-
-        body {
-            display: block;
-            overflow-x: hidden;
-            overflow-y: auto;
-            background: var(--bg);
-            color: var(--text);
-            -webkit-font-smoothing: antialiased;
-        }
-
+        /* ── Cudic landing: light editorial, flat surfaces ──────────
+           Palette and rules from cudic-landing-design.md.
+           Colour is rare: ~70% paper, ~20% cream, under 5% accent. */
         :root {
-            --bg: #0A0B0E;
-            --bg-2: #0D0F13;
-            --panel: #121317;
-            --line: rgba(255, 255, 255, .08);
-            --line-2: rgba(255, 255, 255, .16);
-            --text: #F4F5F7;
-            --muted: #949AA5;
-            --dim: #5D626C;
-            --ember: #FF8C1A;
-            --ember-2: #FFA750;
+            --paper: #F7F3EB;
+            --cream: #EFE9DC;
+            --ink: #1F1D1A;
+            --stone: #6B655B;
+            --vermilion: #C43A21;
+            --vermilion-dark: #A22F1A;
+            --pine: #24463B;
+            --butter: #F2C14E;
+            --line: rgba(31, 29, 26, .16);
+
+            --font-head: 'Instrument Serif', Georgia, serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            background: var(--paper);
+        }
+
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--font-body);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
         ::selection {
-            background: var(--ember);
-            color: #120A02;
+            background: var(--butter);
+            color: var(--ink);
         }
 
         :focus-visible {
-            outline: 2px solid var(--ember);
-            outline-offset: 3px;
-            border-radius: 3px;
+            outline: 2px solid var(--vermilion);
+            outline-offset: 2px;
         }
 
-        /* ── Scroll progress ─────────────────────────────────────── */
-        .progress {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 2px;
-            background: var(--ember);
-            transform: scaleX(0);
-            transform-origin: 0 50%;
-            z-index: 300;
+        img {
+            max-width: 100%;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: var(--font-head);
+            font-weight: 400;
+            letter-spacing: -.02em;
+            margin: 0;
+        }
+
+        h1 em,
+        h2 em,
+        h3 em {
+            font-style: italic;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem);
+            line-height: 1.02;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 1.1;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        mark {
+            background: var(--butter);
+            color: var(--ink);
+            padding: 0 .15em;
+        }
+
+        .label {
+            font-family: var(--font-mono);
+            font-size: .75rem;
+            color: var(--stone);
+            text-transform: lowercase;
+            display: block;
+            margin-bottom: 18px;
+        }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .sec {
+            padding-top: 112px;
+            padding-bottom: 112px;
+        }
+
+        .band {
+            background: var(--cream);
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .sub {
+            margin-top: 16px;
+            color: var(--stone);
+            max-width: 60ch;
+        }
+
+        /* ── Links: underline slides ─────────────────────────────── */
+        .navlink,
+        .tlink,
+        .foot-links a {
+            text-decoration: none;
+            background-image: linear-gradient(currentColor, currentColor);
+            background-repeat: no-repeat;
+            background-size: 0 1px;
+            background-position: 0 100%;
+            transition: background-size .25s ease, color .2s ease;
+        }
+
+        .navlink:hover,
+        .tlink:hover {
+            background-size: 100% 1px;
+        }
+
+        .tlink {
+            color: var(--pine);
+            font-weight: 500;
+        }
+
+        /* ── Buttons: one primary per view ───────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-body);
+            font-size: .95rem;
+            font-weight: 600;
+            padding: .7rem 1.2rem;
+            border-radius: 0;
+            border: 1px solid transparent;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background .18s ease, color .18s ease, border-color .18s ease, font-weight .18s ease, letter-spacing .18s ease;
+        }
+
+        .btn:hover {
+            font-weight: 700;
+            letter-spacing: .02em;
+        }
+
+        /* ── Button labels morph letter-by-letter into serif italic ── */
+        .btn .ch {
+            display: inline-block;
+            position: relative;
+            white-space: pre;
+            transition: color .18s ease;
+            transition-delay: calc(var(--i) * 38ms);
+        }
+
+        .btn:hover .ch {
+            color: transparent;
+        }
+
+        .btn .ch i {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, calc(-50% + 6px));
+            font-family: var(--font-head);
+            font-style: italic;
+            font-weight: 400;
+            font-size: 1.14em;
+            line-height: 1;
+            white-space: pre;
+            color: var(--paper);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .28s ease, transform .28s ease;
+            transition-delay: calc(var(--i) * 38ms + 90ms);
+        }
+
+        .btn:hover .ch i {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-primary {
+            background: var(--vermilion);
+            color: var(--paper);
+        }
+
+        .btn-primary:hover {
+            background: var(--vermilion-dark);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+
+        .btn-secondary:hover {
+            background: var(--ink);
+            color: var(--paper);
         }
 
         /* ── Nav ─────────────────────────────────────────────────── */
         .nav {
-            position: fixed;
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            z-index: 200;
-            border-bottom: 1px solid transparent;
-            transition: background .3s ease, border-color .3s ease, backdrop-filter .3s ease;
-        }
-
-        .nav.scrolled {
-            background: rgba(10, 11, 14, .82);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border-bottom-color: var(--line);
+            z-index: 50;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
         }
 
         .nav-in {
-            max-width: 1240px;
+            max-width: 1080px;
             margin: 0 auto;
-            padding: 16px 32px;
+            padding: 14px 24px;
             display: flex;
             align-items: center;
-            gap: 32px;
+            gap: 30px;
         }
 
         .brand {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 9px;
+            gap: 8px;
             text-decoration: none;
-            color: var(--text);
-            flex-shrink: 0;
-        }
-
-        .brand img {
-            width: 25px;
-            height: 25px;
-            display: block;
-            /* source artwork is pure black; invert it for the dark chrome */
-            filter: invert(1);
-        }
-
-        .brand .word {
+            color: var(--ink);
             font-family: var(--font-head);
-            font-weight: 600;
-            font-size: 1.18rem;
+            font-size: 1.3rem;
             letter-spacing: -.01em;
         }
 
-        .brand .word i {
+        .brand img {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+
+        .brand i {
             font-style: normal;
-            color: var(--ember);
+            color: var(--vermilion);
         }
 
         .nav-links {
             display: flex;
             gap: 26px;
-            margin-left: 8px;
         }
 
         .navlink {
-            position: relative;
-            color: var(--muted);
-            font-size: .9rem;
+            color: var(--ink);
+            font-size: .92rem;
             font-weight: 500;
-            text-decoration: none;
-            padding: 4px 0;
-            transition: color .2s;
-        }
-
-        .navlink::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: 0;
-            width: 100%;
-            height: 1px;
-            background: var(--ember);
-            transform: scaleX(0);
-            transform-origin: 100% 50%;
-            transition: transform .4s cubic-bezier(.22, 1, .36, 1);
-        }
-
-        .navlink:hover {
-            color: var(--text);
-        }
-
-        .navlink:hover::after {
-            transform: scaleX(1);
-            transform-origin: 0 50%;
+            padding: 2px 0;
         }
 
         .nav-cta {
             margin-left: auto;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 22px;
         }
 
-        /* ── Buttons ─────────────────────────────────────────────── */
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 9px;
-            font-family: var(--font-head);
+        .nav-signin {
+            color: var(--pine);
+            font-size: .92rem;
             font-weight: 500;
-            font-size: .95rem;
-            padding: 13px 22px;
-            border-radius: var(--radius-sm);
-            border: 1px solid transparent;
-            cursor: pointer;
-            text-decoration: none;
-            white-space: nowrap;
-            transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .3s ease;
-        }
-
-        .btn svg {
-            width: 17px;
-            height: 17px;
-            stroke: currentColor;
-            stroke-width: 1.5;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-ember {
-            background: var(--ember);
-            color: #140B02;
-        }
-
-        .btn-ember:hover {
-            background: var(--ember-2);
-            box-shadow: 0 12px 34px -14px rgba(255, 140, 26, .85);
-        }
-
-        .btn-ghost {
-            border-color: var(--line-2);
-            color: var(--text);
-        }
-
-        .btn-ghost:hover {
-            background: rgba(255, 255, 255, .05);
-            border-color: rgba(255, 255, 255, .3);
-        }
-
-        .btn-sm {
-            padding: 9px 16px;
-            font-size: .875rem;
         }
 
         /* ── Hero ────────────────────────────────────────────────── */
         .hero {
-            position: relative;
-            padding: 148px 0 84px;
-            overflow: hidden;
-            isolation: isolate;
+            text-align: center;
+            padding: 116px 0 108px;
         }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(560px circle at var(--mx, 30%) var(--my, 34%), rgba(255, 255, 255, .055), transparent 68%);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .hero::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image: radial-gradient(circle, rgba(255, 255, 255, .085) 1px, transparent 1px);
-            background-size: 24px 24px;
-            -webkit-mask-image: radial-gradient(ellipse 78% 62% at 46% 44%, #000 25%, transparent 76%);
-            mask-image: radial-gradient(ellipse 78% 62% at 46% 44%, #000 25%, transparent 76%);
-            pointer-events: none;
-            z-index: -2;
-            opacity: .7;
-        }
-
-        .hero-in {
-            max-width: 1240px;
+        .hero h1 {
+            max-width: 15ch;
             margin: 0 auto;
-            padding: 0 32px;
-            display: grid;
-            grid-template-columns: 1.02fr .98fr;
-            gap: 52px;
-            align-items: center;
         }
 
-        .chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: .8rem;
-            color: var(--muted);
-            border: 1px solid var(--line);
-            background: rgba(255, 255, 255, .03);
-            border-radius: 99px;
-            padding: 6px 14px 6px 10px;
-        }
-
-        .chip .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--ember);
-            box-shadow: 0 0 0 0 rgba(255, 140, 26, .6);
-            animation: pulse 2.4s ease-out infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255, 140, 26, .55);
-            }
-
-            70% {
-                box-shadow: 0 0 0 9px rgba(255, 140, 26, 0);
-            }
-
-            100% {
-                box-shadow: 0 0 0 0 rgba(255, 140, 26, 0);
-            }
-        }
-
-        h1 {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: clamp(2.5rem, 5.4vw, 4.2rem);
-            line-height: 1.04;
-            letter-spacing: -.035em;
-            margin: 24px 0 0;
-        }
-
-        .w {
-            display: inline-block;
-            overflow: hidden;
-            padding-bottom: .12em;
-            margin-bottom: -.12em;
-            vertical-align: bottom;
-        }
-
-        .w>i {
-            display: inline-block;
-            font-style: normal;
-        }
-
-        .w.hl>i {
-            color: var(--ember);
-        }
-
-        .lede {
-            margin-top: 20px;
-            font-size: 1.075rem;
-            line-height: 1.65;
-            color: var(--muted);
-            max-width: 44ch;
+        .hero .lede {
+            margin: 26px auto 0;
+            max-width: 56ch;
+            color: var(--stone);
+            font-size: 1.1rem;
         }
 
         .hero-actions {
-            margin-top: 34px;
+            margin-top: 36px;
             display: flex;
             flex-wrap: wrap;
+            justify-content: center;
             gap: 14px;
         }
 
-        .hero-note {
-            margin-top: 20px;
-            font-size: .83rem;
-            color: var(--dim);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .hero-note svg {
-            width: 15px;
-            height: 15px;
-            stroke: var(--ember);
-            stroke-width: 1.6;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        /* ── Graph window ────────────────────────────────────────── */
-        .graphwin {
-            background: linear-gradient(180deg, #101217 0%, #0B0D11 100%);
-            border: 1px solid var(--line-2);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 40px 90px -44px rgba(0, 0, 0, .95), 0 0 0 1px rgba(255, 255, 255, .02) inset;
-            will-change: transform;
-        }
-
-        .gw-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 11px 14px;
-            border-bottom: 1px solid var(--line);
-            background: rgba(255, 255, 255, .022);
-        }
-
-        .gw-dot {
-            width: 9px;
-            height: 9px;
-            border-radius: 50%;
-            background: #2A2D34;
-        }
-
-        .gw-title {
-            font-family: var(--font-mono);
-            font-size: .72rem;
-            color: var(--dim);
-            margin-left: 6px;
-            letter-spacing: .01em;
-        }
-
-        .gw-body {
-            padding: 6px;
-        }
-
-        .gw-body svg {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .gridline {
-            stroke: rgba(255, 255, 255, .055);
-            stroke-width: 1;
-        }
-
-        .axis {
-            stroke: rgba(255, 255, 255, .3);
-            stroke-width: 1.4;
-        }
-
-        .tick {
-            fill: var(--dim);
-            font-family: var(--font-mono);
-            font-size: 11px;
-        }
-
-        .axis-name {
-            fill: var(--muted);
-            font-family: var(--font-mono);
-            font-size: 13px;
-            font-style: italic;
-        }
-
-        .plot {
-            fill: none;
-            stroke-width: 2.4;
-            stroke-linecap: round;
-        }
-
-        .plot-a {
-            stroke: #FFFFFF;
-        }
-
-        .plot-b {
-            stroke: var(--ember);
-        }
-
-        .pt {
-            fill: var(--bg);
-            stroke-width: 2.6;
-        }
-
-        .pt-a {
-            stroke: #FFFFFF;
-        }
-
-        .pt-b {
-            stroke: var(--ember);
-        }
-
-        .eq {
-            font-family: var(--font-mono);
-            font-size: 13px;
-        }
-
-        .eq-a {
-            fill: #FFFFFF;
-        }
-
-        .eq-b {
-            fill: var(--ember);
-        }
-
-        /* ── Marquee ─────────────────────────────────────────────── */
-        .marquee {
+        /* ── Feature strip (static, line above and below) ────────── */
+        .strip {
             border-top: 1px solid var(--line);
             border-bottom: 1px solid var(--line);
-            background: var(--bg-2);
-            overflow: hidden;
-            padding: 17px 0;
-            -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-            mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+            padding: 16px 0;
         }
 
-        .mq-track {
+        .strip-in {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px;
             display: flex;
-            width: max-content;
-            animation: mq 38s linear infinite;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px 0;
         }
 
-        .mq-group {
-            display: flex;
-            flex-shrink: 0;
-        }
-
-        .mq-item {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-            padding-right: 30px;
-            font-family: var(--font-head);
-            font-weight: 500;
-            font-size: .93rem;
-            color: var(--muted);
+        .strip-in span {
+            font-family: var(--font-mono);
+            font-size: .78rem;
+            color: var(--stone);
             white-space: nowrap;
         }
 
-        .mq-item::after {
-            content: '';
-            width: 5px;
-            height: 5px;
-            background: var(--ember);
-            transform: rotate(45deg);
-            flex-shrink: 0;
+        .strip-in span + span::before {
+            content: '·';
+            color: var(--vermilion);
+            margin: 0 10px;
         }
 
-        @keyframes mq {
-            to {
-                transform: translateX(-50%);
-            }
-        }
-
-        /* ── Sections ────────────────────────────────────────────── */
-        .sec {
-            max-width: 1240px;
-            margin: 0 auto;
-            padding: 110px 32px;
-        }
-
+        /* ── Cards: three things, one tab ────────────────────────── */
         .sec-head {
             max-width: 720px;
         }
 
-        .kicker {
-            font-family: var(--font-mono);
-            font-size: .78rem;
-            color: var(--ember);
-            letter-spacing: .04em;
-            margin-bottom: 16px;
-        }
-
-        h2 {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: clamp(1.85rem, 3.4vw, 2.7rem);
-            line-height: 1.12;
-            letter-spacing: -.028em;
-        }
-
-        .sec-sub {
-            margin-top: 16px;
-            color: var(--muted);
-            font-size: 1.03rem;
-            line-height: 1.65;
-            max-width: 54ch;
-        }
-
-        /* ── Feature trio ────────────────────────────────────────── */
-        .trio {
-            margin-top: 52px;
+        .cards {
+            margin-top: 48px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
         }
 
-        .fcard {
-            position: relative;
-            background: var(--panel);
+        .card {
+            background: var(--cream);
             border: 1px solid var(--line);
             border-radius: 12px;
-            padding: 28px 26px 30px;
-            overflow: hidden;
-            transition: border-color .3s ease, background .3s ease;
-            will-change: transform;
+            padding: 30px 28px;
         }
 
-        .fcard::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(300px circle at var(--cx, 50%) var(--cy, 0%), rgba(255, 140, 26, .11), transparent 62%);
-            opacity: 0;
-            transition: opacity .35s ease;
-            pointer-events: none;
+        .card h3 {
+            font-size: 1.4rem;
+            line-height: 1.2;
         }
 
-        .fcard:hover {
-            border-color: var(--line-2);
-            background: #141519;
+        .card p {
+            margin-top: 12px;
+            font-size: .97rem;
+            color: var(--ink);
         }
 
-        .fcard:hover::before {
-            opacity: 1;
-        }
-
-        .ficon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            border: 1px solid var(--line-2);
-            background: rgba(255, 255, 255, .04);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--ember);
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .ficon svg {
-            width: 21px;
-            height: 21px;
-            stroke: currentColor;
-            stroke-width: 1.5;
-            fill: none;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .fcard h3 {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: 1.14rem;
-            letter-spacing: -.015em;
-            position: relative;
-            z-index: 1;
-        }
-
-        .fcard p {
-            margin-top: 10px;
-            color: var(--muted);
-            font-size: .94rem;
-            line-height: 1.62;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ── Showcase (screenshot) ───────────────────────────────── */
-        .showcase {
-            background: var(--bg-2);
-            border-top: 1px solid var(--line);
-            border-bottom: 1px solid var(--line);
-        }
-
+        /* ── Two-column sections: bullets + screenshot ───────────── */
         .split {
             display: grid;
-            grid-template-columns: .86fr 1.14fr;
+            grid-template-columns: .9fr 1.1fr;
             gap: 56px;
             align-items: center;
         }
 
-        .split.rev {
-            grid-template-columns: 1.14fr .86fr;
+        .split-mirror {
+            grid-template-columns: 1.1fr .9fr;
         }
 
-        .win {
-            background: #0A0B0E;
-            border: 1px solid var(--line-2);
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 46px 96px -46px rgba(0, 0, 0, 1);
-            will-change: transform;
-        }
-
-        .win img {
-            display: block;
-            width: 100%;
-            height: auto;
-        }
-
-        .win-float {
-            will-change: transform;
-        }
-
-        ul.ticks {
+        .ticks {
             list-style: none;
-            margin-top: 28px;
+            margin: 28px 0 0;
+            padding: 0;
             display: flex;
             flex-direction: column;
             gap: 14px;
         }
 
-        ul.ticks li {
+        .ticks li {
             display: flex;
             gap: 13px;
-            align-items: flex-start;
-            color: var(--muted);
-            font-size: .97rem;
-            line-height: 1.55;
+            align-items: baseline;
+            font-size: 1rem;
         }
 
-        ul.ticks li b {
-            color: var(--text);
-            font-weight: 500;
-        }
-
-        .tickmark {
+        .ticks li::before {
+            content: '';
             flex-shrink: 0;
-            width: 19px;
-            height: 19px;
-            border-radius: 50%;
-            background: rgba(255, 140, 26, .14);
-            border: 1px solid rgba(255, 140, 26, .42);
+            width: 7px;
+            height: 7px;
+            background: var(--pine);
+            border-radius: 2px;
+            transform: translateY(-1px);
+        }
+
+        .ticks b {
+            font-weight: 600;
+        }
+
+        .sec-cta {
+            margin-top: 30px;
+        }
+
+        /* ── Screenshot frames: flat, opposite band colour ───────── */
+        .frame {
+            display: block;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .frame img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* ── Gallery cards ───────────────────────────────────────── */
+        .games {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .gcard {
+            display: block;
+            background: var(--cream);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--ink);
+            transition: border-color .2s ease;
+        }
+
+        .gcard:hover {
+            border-color: rgba(31, 29, 26, .4);
+        }
+
+        .gthumb {
+            aspect-ratio: 16 / 10;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-top: 2px;
         }
 
-        .tickmark svg {
-            width: 11px;
-            height: 11px;
-            stroke: var(--ember);
-            stroke-width: 2.4;
+        .gthumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gthumb svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--stone);
+            stroke-width: 1.4;
             fill: none;
             stroke-linecap: round;
             stroke-linejoin: round;
         }
 
-        .sec-cta {
-            margin-top: 34px;
+        .gmeta {
+            padding: 16px 18px 18px;
         }
 
-        /* ── Final CTA ───────────────────────────────────────────── */
+        .gtitle {
+            font-weight: 500;
+            font-size: 1rem;
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grow {
+            margin-top: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .gcreator {
+            color: var(--stone);
+            font-size: .85rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .gpub {
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            color: var(--pine);
+            flex-shrink: 0;
+        }
+
+        .games-empty {
+            margin-top: 48px;
+            color: var(--stone);
+        }
+
+        /* ── Final call to action ────────────────────────────────── */
         .finale {
             text-align: center;
-            padding: 128px 32px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .finale::before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 0;
-            width: min(900px, 92vw);
-            height: 100%;
-            transform: translateX(-50%);
-            background-image: linear-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .05) 1px, transparent 1px);
-            background-size: 40px 40px;
-            -webkit-mask-image: radial-gradient(ellipse 50% 58% at 50% 42%, #000, transparent 74%);
-            mask-image: radial-gradient(ellipse 50% 58% at 50% 42%, #000, transparent 74%);
-            pointer-events: none;
-        }
-
-        .finale-in {
-            position: relative;
-            max-width: 760px;
-            margin: 0 auto;
+            padding-top: 128px;
+            padding-bottom: 128px;
         }
 
         .finale h2 {
-            font-size: clamp(2.1rem, 4.6vw, 3.4rem);
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            max-width: 18ch;
+            margin: 0 auto;
         }
 
         .finale p {
-            margin: 18px auto 0;
-            color: var(--muted);
-            font-size: 1.05rem;
-            line-height: 1.65;
-            max-width: 50ch;
+            margin: 22px auto 0;
+            color: var(--stone);
+            max-width: 52ch;
         }
 
         .finale .hero-actions {
-            justify-content: center;
             margin-top: 36px;
-        }
-
-        .btn-ring {
-            position: relative;
-        }
-
-        .btn-ring::after {
-            content: '';
-            position: absolute;
-            inset: -1px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--ember);
-            animation: ring 2.6s ease-out infinite;
-            pointer-events: none;
-        }
-
-        @keyframes ring {
-            0% {
-                opacity: .7;
-                transform: scale(1);
-            }
-
-            70%,
-            100% {
-                opacity: 0;
-                transform: scale(1.14);
-            }
         }
 
         /* ── Footer ──────────────────────────────────────────────── */
         footer {
             border-top: 1px solid var(--line);
-            background: var(--bg-2);
         }
 
         .foot-in {
-            max-width: 1240px;
+            max-width: 1080px;
             margin: 0 auto;
-            padding: 40px 32px;
+            padding: 40px 24px;
             display: flex;
             flex-wrap: wrap;
             gap: 22px;
@@ -829,61 +597,72 @@
         }
 
         .foot-links a {
-            color: var(--muted);
-            font-size: .88rem;
-            text-decoration: none;
-            transition: color .2s;
+            color: var(--ink);
+            font-size: .9rem;
         }
 
         .foot-links a:hover {
-            color: var(--ember);
+            color: var(--vermilion);
+            background-size: 100% 1px;
         }
 
         .foot-note {
-            color: var(--dim);
-            font-size: .82rem;
+            color: var(--stone);
+            font-size: .85rem;
+        }
+
+        /* ── Scroll reveal: fade and rise 12px, 400ms ────────────── */
+        .js [data-rv] {
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity .4s ease, transform .4s ease;
+        }
+
+        .js [data-rv].in {
+            opacity: 1;
+            transform: none;
         }
 
         /* ── Responsive ──────────────────────────────────────────── */
         @media (max-width: 980px) {
-            .hero-in,
-            .split,
-            .split.rev {
-                grid-template-columns: 1fr;
-                gap: 44px;
-            }
-
-            .hero {
-                padding-top: 122px;
-            }
-
-            .trio {
-                grid-template-columns: 1fr;
-            }
-
             .nav-links {
                 display: none;
             }
 
+            .split,
+            .split-mirror {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .split-mirror .frame {
+                order: -1;
+            }
+
+            .cards,
+            .games {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
             .sec {
-                padding: 76px 24px;
+                padding-top: 64px;
+                padding-bottom: 64px;
             }
 
-            .hero-in {
-                padding: 0 24px;
-            }
-
-            .nav-in {
-                padding: 14px 24px;
+            .hero {
+                padding: 76px 0 68px;
             }
 
             .finale {
-                padding: 88px 24px;
+                padding-top: 80px;
+                padding-bottom: 80px;
             }
         }
 
         @media (max-width: 560px) {
-            .nav-cta .btn-ghost {
+            .nav-signin {
                 display: none;
             }
 
@@ -897,24 +676,22 @@
             *,
             *::before,
             *::after {
-                animation-duration: .001ms !important;
-                animation-iteration-count: 1 !important;
                 transition-duration: .001ms !important;
+                animation-duration: .001ms !important;
             }
 
-            .mq-track {
-                animation: none;
+            .js [data-rv] {
+                opacity: 1;
+                transform: none;
             }
         }
     </style>
 </head>
 
 <body>
-    <div class="progress" id="progress"></div>
-
-    <header class="nav" id="nav">
+    <header class="nav">
         <div class="nav-in">
-            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="25" height="25"><span class="word">cudic<i>.</i></span></a>
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic<i>.</i></span></a>
             <nav class="nav-links">
                 <a class="navlink" href="/games">Gallery</a>
                 <a class="navlink" href="/themes">Themes</a>
@@ -922,8 +699,8 @@
                 <a class="navlink" href="/studio">Studio</a>
             </nav>
             <div class="nav-cta">
-                <a class="btn btn-ghost btn-sm" href="/login">Sign in</a>
-                <a class="btn btn-ember btn-sm" href="/studio">Open Studio</a>
+                <a class="navlink nav-signin" href="/login">Sign in</a>
+                <a class="btn btn-primary" href="/studio">Open Studio</a>
             </div>
         </div>
     </header>
@@ -931,213 +708,124 @@
     <main>
         <!-- ── Hero ─────────────────────────────────────────────── -->
         <section class="hero">
-            <div class="hero-in">
-                <div class="hero-copy">
-                    <span class="chip" data-h="chip"><span class="dot"></span> Free, in the browser, no install</span>
-                    <h1><span class="w"><i>Build</i></span> <span class="w"><i>small</i></span>
-                        <span class="w"><i>games.</i></span> <span class="w"><i>Play</i></span>
-                        <span class="w"><i>them</i></span> <span class="w hl"><i>instantly.</i></span></h1>
-                    <p class="lede" data-h="lede">Cudic is a browser studio for games, sites, and themes. Open
-                        Studio, drop in your files, hit publish — you get a page, a link, and somewhere to play it.</p>
-                    <div class="hero-actions" data-h="acts">
-                        <a class="btn btn-ember" href="/studio">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M6 4l14 8-14 8V4Z" />
-                            </svg>
-                            Open Studio
-                        </a>
-                        <a class="btn btn-ghost" href="/games">Browse the gallery</a>
-                    </div>
-                    <p class="hero-note" data-h="note">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                        Write HTML, CSS and JavaScript — nothing to install, nothing to configure.
-                    </p>
-                </div>
-
-                <div class="graphwin" id="graphwin">
-                    <div class="gw-bar">
-                        <span class="gw-dot"></span><span class="gw-dot"></span><span class="gw-dot"></span>
-                        <span class="gw-title">graph.js — live preview</span>
-                    </div>
-                    <div class="gw-body">
-                        <svg id="graph" viewBox="0 0 640 460" aria-hidden="true" focusable="false">
-                            <g id="grid"></g>
-                            <g id="axes">
-                                <line class="axis" x1="40" y1="240" x2="612" y2="240" />
-                                <line class="axis" x1="320" y1="24" x2="320" y2="436" />
-                                <path class="axis" d="M612 240 l-9 -5 M612 240 l-9 5" fill="none" />
-                                <path class="axis" d="M320 24 l-5 9 M320 24 l5 9" fill="none" />
-                                <text class="axis-name" x="622" y="245">x</text>
-                                <text class="axis-name" x="330" y="34">y</text>
-                            </g>
-                            <g id="ticks"></g>
-                            <!-- y = 0.5x - 1 : from x=-7 to x=7 -->
-                            <line class="plot plot-a" id="lineA" x1="40" y1="420" x2="600" y2="140" />
-                            <!-- y = 2x + 6 : clipped to the visible y range -->
-                            <line class="plot plot-b" id="lineB" x1="102" y1="436" x2="308" y2="24" />
-                            <text class="eq eq-a" id="eqA" x="596" y="130" text-anchor="end">y = 0.5x - 1</text>
-                            <text class="eq eq-b" id="eqB" x="316" y="66">y = 2x + 6</text>
-                            <circle class="pt pt-a" id="pA" cx="320" cy="280" r="7" />
-                            <circle class="pt pt-b" id="pB" cx="200" cy="240" r="7" />
-                            <circle class="pt pt-b" id="pC" cx="133" cy="374" r="7" />
-                        </svg>
-                    </div>
+            <div class="wrap">
+                <h1>Build <em>small</em> games. Play them <mark>instantly</mark>.</h1>
+                <p class="lede">A browser studio for games, sites and themes. Open Studio, drop in your files,
+                    publish, and share a playable link.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="/studio">Open Studio</a>
+                    <a class="btn btn-secondary" href="/games">Browse the gallery</a>
                 </div>
             </div>
         </section>
 
-        <!-- ── Marquee ──────────────────────────────────────────── -->
-        <div class="marquee" aria-hidden="true">
-            <div class="mq-track">
-                <div class="mq-group">
-                    <span class="mq-item">Scene editor</span><span class="mq-item">Live preview</span><span
-                        class="mq-item">Chat lobbies</span><span class="mq-item">Theme packs</span><span
-                        class="mq-item">Game gallery</span><span class="mq-item">One-click publish</span><span
-                        class="mq-item">Fork and remix</span><span class="mq-item">Custom thumbnails</span>
-                </div>
-                <div class="mq-group">
-                    <span class="mq-item">Scene editor</span><span class="mq-item">Live preview</span><span
-                        class="mq-item">Chat lobbies</span><span class="mq-item">Theme packs</span><span
-                        class="mq-item">Game gallery</span><span class="mq-item">One-click publish</span><span
-                        class="mq-item">Fork and remix</span><span class="mq-item">Custom thumbnails</span>
-                </div>
+        <!-- ── Feature strip ────────────────────────────────────── -->
+        <div class="strip">
+            <div class="strip-in">
+                <span>Scene editor</span><span>Live preview</span><span>Chat lobbies</span><span>Theme packs</span><span>Game gallery</span><span>One-click publish</span><span>Fork and remix</span><span>Custom thumbnails</span>
             </div>
         </div>
 
-        <!-- ── Feature trio ─────────────────────────────────────── -->
+        <!-- ── Three things, one tab ────────────────────────────── -->
         <section class="sec">
-            <div class="sec-head">
-                <p class="kicker" data-rv>// three things, one tab</p>
-                <h2 data-rv>Everything you need to go from a blank file to a playable link.</h2>
-            </div>
-            <div class="trio">
-                <article class="fcard" data-rv>
-                    <div class="ficon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M14 4 20 10 8 22H4v-4L16 6Z" />
-                        </svg>
-                    </div>
-                    <h3>Build in Studio</h3>
-                    <p>A full workbench in the browser tab — file explorer, editor, live preview and console, side
-                        by side. No local server, no setup.</p>
-                </article>
-                <article class="fcard" data-rv>
-                    <div class="ficon">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="3" y="8" width="18" height="9" rx="3" />
-                            <path d="M8 11v3M6.5 12.5h3M16 12h.01M18 14h.01" />
-                        </svg>
-                    </div>
-                    <h3>Publish to the gallery</h3>
-                    <p>One click gives your game a page, a link and comments. Take any published game, fork it, and
-                        start from someone else's code.</p>
-                </article>
-                <article class="fcard" data-rv>
-                    <div class="ficon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M4 5h16v11H9l-4 4V5Z" />
-                        </svg>
-                    </div>
-                    <h3>Chat while you play</h3>
-                    <p>Spin up a lobby, drop the link in a call, and keep the history if you want it. Servers with
-                        membership are there when you need them.</p>
-                </article>
+            <div class="wrap">
+                <div class="sec-head">
+                    <span class="label" data-rv>// three things, one tab</span>
+                    <h2 data-rv>From a blank file to a playable link.</h2>
+                    <p class="sub" data-rv>Three things happen in one browser tab. You write it, you publish it,
+                        people play it.</p>
+                </div>
+                <div class="cards">
+                    <article class="card" data-rv>
+                        <h3>Build in Studio</h3>
+                        <p>A file tree, a tabbed editor, a running preview and a console, side by side in one tab. No
+                            local server, no setup.</p>
+                    </article>
+                    <article class="card" data-rv>
+                        <h3>Publish in one move</h3>
+                        <p>One click gives your game a page, a thumbnail and a comment thread. Fork any published game
+                            straight back into your Studio.</p>
+                    </article>
+                    <article class="card" data-rv>
+                        <h3>Chat while you play</h3>
+                        <p>Open a lobby, drop the link in a call, keep the history if you want it. Servers with
+                            membership are there when you need them.</p>
+                    </article>
+                </div>
             </div>
         </section>
 
-        <!-- ── Studio showcase ──────────────────────────────────── -->
-        <section class="showcase">
-            <div class="sec split">
+        <!-- ── Editor (cream band) ──────────────────────────────── -->
+        <section class="band">
+            <div class="sec wrap split">
                 <div>
-                    <p class="kicker" data-rv>// the editor</p>
-                    <h2 data-rv>A real workbench, in a browser tab.</h2>
-                    <p class="sec-sub" data-rv>Open a project and you get the thing you already know: a file tree, a
-                        tabbed editor, a running preview and a console that tells you what broke.</p>
-                    <ul class="ticks">
-                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg></span><span><b>Plain files.</b> HTML, CSS and JavaScript — export it and it
-                            still works anywhere.</span></li>
-                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg></span><span><b>Preview beside the code.</b> Save and the running page updates
-                            next to what you typed.</span></li>
-                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg></span><span><b>Publish in one move.</b> Set a thumbnail, hit publish, and it
-                            lands in the gallery.</span></li>
+                    <span class="label" data-rv>// the editor</span>
+                    <h2 data-rv>Write it where it <em>runs</em>.</h2>
+                    <ul class="ticks" data-rv>
+                        <li>File tree, editor and status bar, side by side.</li>
+                        <li>The preview updates next to what you typed.</li>
+                        <li>The console sits in the same tab.</li>
                     </ul>
-                    <div class="sec-cta" data-rv>
-                        <a class="btn btn-ember" href="/studio">Open Studio</a>
-                    </div>
+                    <p class="sec-cta" data-rv><a class="tlink" href="/studio">Open Studio</a></p>
                 </div>
-                <div class="win" data-rv>
-                    <div class="win-float" id="shotStudio">
-                        <img src="/shots/studio.png" width="1600" height="1000" loading="lazy"
+                <div data-rv>
+                    <div class="frame">
+                        <img src="/shots/studio.png" width="1280" height="800" loading="lazy"
                             alt="The Cudic Studio workbench showing a file explorer, an HTML file open in the editor and a status bar">
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ── Gallery ──────────────────────────────────────────── -->
+        <!-- ── Gallery (paper) ──────────────────────────────────── -->
         <section class="sec">
-            <div class="sec-head" style="max-width:640px">
-                <p class="kicker" data-rv>// the gallery</p>
-                <h2 data-rv>Every published game gets a home.</h2>
-                <p class="sec-sub" data-rv>A page of its own with a thumbnail, credits and comments — and a fork button
-                    that pulls the whole thing back into your Studio.</p>
-            </div>
-            <div class="win" data-rv style="margin-top:44px;max-width:880px">
-                <div class="win-float" id="shotGames">
-                    <img src="/shots/games.png" width="1040" height="430" loading="lazy"
-                        alt="The Cudic game gallery with a published game card showing its thumbnail, title and creator">
+            <div class="wrap">
+                <div class="sec-head">
+                    <span class="label" data-rv>// the gallery</span>
+                    <h2 data-rv>Every game gets a <em>page</em>.</h2>
+                    <p class="sub" data-rv>A published game gets a thumbnail, a comment thread and a fork button that
+                        opens it straight back in your Studio.</p>
                 </div>
+                <div class="games" id="gameGrid" hidden></div>
+                <p class="games-empty" id="gameEmpty" hidden>No games published yet. Publish the first one from
+                    Studio.</p>
+                <p class="sec-cta" data-rv><a class="tlink" href="/games">Browse the gallery</a></p>
             </div>
         </section>
 
-        <!-- ── Themes ───────────────────────────────────────────── -->
-        <section class="showcase">
-            <div class="sec split rev">
-                <div class="win" data-rv>
-                    <div class="win-float" id="shotThemes">
+        <!-- ── Theme packs (cream band, mirrored) ───────────────── -->
+        <section class="band">
+            <div class="sec wrap split split-mirror">
+                <div data-rv>
+                    <div class="frame">
                         <img src="/shots/themes.png" width="660" height="625" loading="lazy"
                             alt="The Cudic theme pack store showing the Anime City Night pack with an install button">
                     </div>
                 </div>
                 <div>
-                    <p class="kicker" data-rv>// theme packs</p>
-                    <h2 data-rv>Change the whole look in one click.</h2>
-                    <p class="sec-sub" data-rv>A pack re-skins the rail, the scenes and the icons together. Install one
-                        and everything you open afterwards picks it up.</p>
-                    <ul class="ticks">
-                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg></span><span><b>Background art, not just a swatch.</b> Packs ship real scenes
-                            that sit behind your work.</span></li>
-                        <li data-rv><span class="tickmark"><svg viewBox="0 0 24 24">
-                                    <path d="M20 6 9 17l-5-5" />
-                                </svg></span><span><b>Icons and motion come along.</b> The set stays coherent instead
-                            of half-changed.</span></li>
+                    <span class="label" data-rv>// theme packs</span>
+                    <h2 data-rv>Change the whole look in <em>one click</em>.</h2>
+                    <p class="sub" data-rv>A pack re-skins the rail, the scenes and the icons together. Install one and
+                        everything you open afterwards picks it up.</p>
+                    <ul class="ticks" data-rv>
+                        <li><span><b>Background art, not just a swatch.</b> Packs ship real scenes that sit behind your
+                                work.</span></li>
+                        <li><span><b>Icons and motion come along.</b> The set stays coherent instead of
+                                half-changed.</span></li>
                     </ul>
-                    <div class="sec-cta" data-rv>
-                        <a class="btn btn-ghost" href="/themes">Browse theme packs</a>
-                    </div>
+                    <p class="sec-cta" data-rv><a class="tlink" href="/themes">Browse theme packs</a></p>
                 </div>
             </div>
         </section>
 
-        <!-- ── Final CTA ────────────────────────────────────────── -->
+        <!-- ── Final call to action ─────────────────────────────── -->
         <section class="finale">
-            <div class="finale-in">
-                <h2 data-rv>Start with an empty file.</h2>
-                <p data-rv>Studio opens straight into a new project. Write three lines, hit preview, and something is
-                    running. Publishing takes one more click.</p>
+            <div class="wrap">
+                <h2 data-rv>Start with an <em>empty</em> file.</h2>
+                <p data-rv>Studio opens into a new project. Write three lines, hit preview, and something is running.
+                    Publishing takes one more click.</p>
                 <div class="hero-actions" data-rv>
-                    <a class="btn btn-ember btn-ring" href="/studio">Open Studio</a>
-                    <a class="btn btn-ghost" href="/login">Create an account</a>
+                    <a class="btn btn-primary" href="/studio">Open Studio</a>
                 </div>
             </div>
         </section>
@@ -1145,7 +833,7 @@
 
     <footer>
         <div class="foot-in">
-            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="25" height="25"><span class="word">cudic<i>.</i></span></a>
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic<i>.</i></span></a>
             <nav class="foot-links">
                 <a href="/games">Gallery</a>
                 <a href="/themes">Themes</a>
@@ -1157,174 +845,98 @@
         </div>
     </footer>
 
+    <script src="/config.js"></script>
     <script>
         (function () {
-            var RM = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            var hasGSAP = typeof window.gsap !== 'undefined';
+            /* ── Scroll reveals: fade and rise 12px over 400ms ─────── */
+            var els = document.querySelectorAll('[data-rv]');
+            if ('IntersectionObserver' in window) {
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (e.isIntersecting) {
+                            e.target.classList.add('in');
+                            io.unobserve(e.target);
+                        }
+                    });
+                }, { rootMargin: '0px 0px -8% 0px' });
+                els.forEach(function (el) { io.observe(el); });
+            } else {
+                els.forEach(function (el) { el.classList.add('in'); });
+            }
 
-            /* ── Build the coordinate grid from JS (one loop, not markup) ── */
-            var SVGNS = 'http://www.w3.org/2000/svg';
-            var grid = document.getElementById('grid');
-            var ticks = document.getElementById('ticks');
-            if (grid) {
-                for (var k = -7; k <= 7; k++) {
-                    var x = 320 + k * 40;
-                    if (x >= 40 && x <= 600) {
-                        var v = document.createElementNS(SVGNS, 'line');
-                        v.setAttribute('class', 'gridline');
-                        v.setAttribute('x1', x); v.setAttribute('x2', x);
-                        v.setAttribute('y1', 24); v.setAttribute('y2', 436);
-                        grid.appendChild(v);
-                    }
-                    var y = 240 + k * 40;
-                    if (y >= 40 && y <= 436) {
-                        var h = document.createElementNS(SVGNS, 'line');
-                        h.setAttribute('class', 'gridline');
-                        h.setAttribute('x1', 40); h.setAttribute('x2', 600);
-                        h.setAttribute('y1', y); h.setAttribute('y2', y);
-                        grid.appendChild(h);
-                    }
+            /* ── Gallery: live published games ────────────────────── */
+            var grid = document.getElementById('gameGrid');
+            var empty = document.getElementById('gameEmpty');
+            var apiBase = (typeof WS_URL !== 'undefined' && WS_URL)
+                ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+            var CUBE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>';
+
+            function card(g) {
+                var a = document.createElement('a');
+                a.className = 'gcard';
+                a.href = '/view.html?id=' + encodeURIComponent(g.id);
+
+                var th = document.createElement('div');
+                th.className = 'gthumb';
+                if (g.thumbnail) {
+                    var im = document.createElement('img');
+                    im.src = g.thumbnail;
+                    im.alt = '';
+                    im.loading = 'lazy';
+                    th.appendChild(im);
+                } else {
+                    th.innerHTML = CUBE;
                 }
-                /* axis tick labels — mono, because these are literal values */
-                var labels = [[-4, '4', 'x'], [-2, '2', 'x'], [2, '2', 'x'], [4, '4', 'x'],
-                [2, '2', 'y'], [4, '4', 'y'], [-2, '-2', 'y'], [-4, '-4', 'y']];
-                for (var i = 0; i < labels.length; i++) {
-                    var t = document.createElementNS(SVGNS, 'text');
-                    t.setAttribute('class', 'tick');
-                    if (labels[i][2] === 'x') {
-                        t.setAttribute('x', 320 + labels[i][0] * 40);
-                        t.setAttribute('y', 258);
-                        t.setAttribute('text-anchor', 'middle');
-                    } else {
-                        t.setAttribute('x', 332);
-                        t.setAttribute('y', 244 - labels[i][0] * 40);
-                    }
-                    t.textContent = labels[i][1];
-                    ticks.appendChild(t);
+
+                var meta = document.createElement('div');
+                meta.className = 'gmeta';
+                var title = document.createElement('span');
+                title.className = 'gtitle';
+                title.textContent = g.title || 'Untitled';
+                var row = document.createElement('div');
+                row.className = 'grow';
+                var who = document.createElement('span');
+                who.className = 'gcreator';
+                var owner = g.users || {};
+                who.textContent = owner.display_name || 'Unknown';
+                var pub = document.createElement('span');
+                pub.className = 'gpub';
+                pub.textContent = 'published';
+                row.appendChild(who);
+                row.appendChild(pub);
+                meta.appendChild(title);
+                meta.appendChild(row);
+                a.appendChild(th);
+                a.appendChild(meta);
+                return a;
+            }
+
+            fetch(apiBase + '/api/games')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var list = (d.games || []).slice(0, 3);
+                    if (!list.length) { empty.hidden = false; return; }
+                    list.forEach(function (g) { grid.appendChild(card(g)); });
+                    grid.hidden = false;
+                })
+                .catch(function () { empty.hidden = false; });
+
+            /* ── Split button labels into letters for the serif hover ── */
+            document.querySelectorAll('.btn').forEach(function (b) {
+                var txt = b.textContent;
+                b.setAttribute('aria-label', txt);
+                b.textContent = '';
+                for (var i = 0; i < txt.length; i++) {
+                    var s = document.createElement('span');
+                    s.className = 'ch';
+                    s.style.setProperty('--i', i);
+                    s.textContent = txt[i];
+                    var f = document.createElement('i');
+                    f.setAttribute('aria-hidden', 'true');
+                    f.textContent = txt[i];
+                    s.appendChild(f);
+                    b.appendChild(s);
                 }
-            }
-
-            if (!hasGSAP) return;
-            if (window.ScrollTrigger) gsap.registerPlugin(ScrollTrigger);
-
-            /* ── Scroll progress + nav state ─────────────────────── */
-            var bar = document.getElementById('progress');
-            var nav = document.getElementById('nav');
-            function onScroll() {
-                var max = document.documentElement.scrollHeight - window.innerHeight;
-                var p = max > 0 ? window.scrollY / max : 0;
-                if (bar) bar.style.transform = 'scaleX(' + p + ')';
-                if (nav) nav.classList.toggle('scrolled', window.scrollY > 24);
-            }
-            window.addEventListener('scroll', onScroll, { passive: true });
-            onScroll();
-
-            if (RM) return;
-
-            /* ── Hero entrance ───────────────────────────────────── */
-            var tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
-            tl.from('[data-h="chip"]', { y: 16, opacity: 0, duration: .7 })
-                .from('.w > i', { yPercent: 118, duration: 1.05, stagger: .055 }, '-=.42')
-                .from('[data-h="lede"]', { y: 18, opacity: 0, duration: .8 }, '-=.68')
-                .from('[data-h="acts"] > *', { y: 16, opacity: 0, duration: .7, stagger: .08 }, '-=.6')
-                .from('[data-h="note"]', { y: 12, opacity: 0, duration: .7 }, '-=.5')
-                .from('#graphwin', { y: 46, opacity: 0, scale: .965, duration: 1.15 }, '-=1.05');
-
-            /* ── Graph drawing sequence ──────────────────────────── */
-            var gt = gsap.timeline({ defaults: { ease: 'power2.out' }, delay: .55 });
-            gt.from('#grid line', {
-                scaleY: 0, scaleX: 0, transformOrigin: '50% 50%',
-                duration: .5, stagger: { each: .012, from: 'center' }
-            })
-                .from('#axes', { opacity: 0, scale: .86, transformOrigin: '320px 240px', duration: .55 }, '-=.2')
-                .from('#ticks text, #axes text', { opacity: 0, duration: .4, stagger: .02 }, '-=.2');
-
-            ['lineA', 'lineB'].forEach(function (id, n) {
-                var el = document.getElementById(id);
-                if (!el) return;
-                var len = Math.ceil(el.getTotalLength ? el.getTotalLength() : 700);
-                gt.fromTo(el, { strokeDasharray: len, strokeDashoffset: len },
-                    { strokeDashoffset: 0, duration: .95, ease: 'power2.inOut' }, n === 0 ? '-=.15' : '-=.55');
-            });
-
-            gt.from('#eqA, #eqB', { opacity: 0, y: 8, duration: .5, stagger: .12 }, '-=.35')
-                .from('#pA, #pB, #pC', { scale: 0, transformOrigin: '50% 50%', duration: .75, ease: 'elastic.out(1,.5)', stagger: .1 }, '-=.45');
-
-            /* ── Hero pointer spotlight + graph parallax ─────────── */
-            var hero = document.querySelector('.hero');
-            if (hero) {
-                hero.addEventListener('pointermove', function (e) {
-                    var r = hero.getBoundingClientRect();
-                    hero.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
-                    hero.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
-                });
-            }
-            var gw = document.getElementById('graphwin');
-            if (gw && window.matchMedia('(hover:hover)').matches) {
-                var gx = gsap.quickTo(gw, 'rotationY', { duration: .7, ease: 'power3' });
-                var gy = gsap.quickTo(gw, 'rotationX', { duration: .7, ease: 'power3' });
-                gw.addEventListener('pointermove', function (e) {
-                    var r = gw.getBoundingClientRect();
-                    gx(((e.clientX - r.left) / r.width - .5) * 9);
-                    gy(-((e.clientY - r.top) / r.height - .5) * 9);
-                });
-                gw.addEventListener('pointerleave', function () { gx(0); gy(0); });
-                gsap.set(gw, { transformPerspective: 1100 });
-            }
-
-            /* ── Scroll reveals ──────────────────────────────────── */
-            gsap.utils.toArray('[data-rv]').forEach(function (el, i) {
-                gsap.from(el, {
-                    y: 34, opacity: 0, duration: .9, ease: 'expo.out',
-                    delay: (i % 3) * .07,
-                    scrollTrigger: { trigger: el, start: 'top 88%', once: true }
-                });
-            });
-
-            /* ── Screenshot motion: float + scroll parallax ──────── */
-            gsap.utils.toArray('.win-float').forEach(function (el, i) {
-                gsap.to(el, {
-                    y: i % 2 ? 14 : -14,
-                    duration: 3.6 + i * .5,
-                    ease: 'sine.inOut',
-                    yoyo: true,
-                    repeat: -1
-                });
-                gsap.fromTo(el, { yPercent: 5 }, {
-                    yPercent: -5, ease: 'none',
-                    scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: .7 }
-                });
-            });
-
-            /* Straighten the studio shot as it scrolls into view */
-            var s = document.getElementById('shotStudio');
-            if (s) {
-                gsap.fromTo(s, { rotateX: 13, scale: .95, transformPerspective: 1400 },
-                {
-                    rotateX: 0, scale: 1, ease: 'none',
-                    scrollTrigger: { trigger: s, start: 'top 92%', end: 'center 55%', scrub: .6 }
-                });
-            }
-
-            /* ── Feature card hover: spotlight follow + tilt ─────── */
-            gsap.utils.toArray('.fcard').forEach(function (card) {
-                card.addEventListener('pointermove', function (e) {
-                    var r = card.getBoundingClientRect();
-                    card.style.setProperty('--cx', (e.clientX - r.left) + 'px');
-                    card.style.setProperty('--cy', (e.clientY - r.top) + 'px');
-                    if (window.matchMedia('(hover:hover)').matches) {
-                        gsap.to(card, {
-                            y: -6,
-                            rotationY: ((e.clientX - r.left) / r.width - .5) * 7,
-                            rotationX: -((e.clientY - r.top) / r.height - .5) * 7,
-                            transformPerspective: 800,
-                            duration: .45, ease: 'power3.out', overwrite: 'auto'
-                        });
-                    }
-                });
-                card.addEventListener('pointerleave', function () {
-                    gsap.to(card, { y: 0, rotationX: 0, rotationY: 0, duration: .7, ease: 'elastic.out(1,.55)', overwrite: 'auto' });
-                });
             });
         })();
     </script>
