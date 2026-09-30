@@ -302,13 +302,13 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
         console.error('Auth callback error:', error.message);
       }
       if (data && data.session) {
-        const frontend = 'https://glox-two.vercel.app';
+        const frontend = 'https://cudic.vercel.app';
         res.writeHead(302, { Location: frontend + '/?token=' + data.session.access_token });
         res.end();
         return;
       }
     }
-    const frontend = 'https://glox-two.vercel.app';
+    const frontend = 'https://cudic.vercel.app';
     res.writeHead(302, { Location: frontend + '/' });
     res.end();
     return;

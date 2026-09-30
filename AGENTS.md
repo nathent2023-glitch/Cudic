@@ -436,7 +436,7 @@ Read it before building any classic-page screen. Headlines:
 
 | | |
 |---|---|
-| Frontend | Vercel → `https://glox-two.vercel.app` |
+| Frontend | Vercel → `https://cudic.vercel.app` |
 | Backend | Render → `https://glox-o7rr.onrender.com` (service `glox-server`, `PORT=10000`) |
 | Build | `cd studio && npm ci && npm run build`, output `public/` |
 | Install | `null` (Vercel default) |

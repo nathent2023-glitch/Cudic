@@ -6,7 +6,7 @@
 - GitHub repo: `nathent2023-glitch/Cudic` (branch: `master`)
 
 ## Deployment URLs
-- Frontend (Vercel): `https://glox-two.vercel.app`
+- Frontend (Vercel): `https://cudic.vercel.app`
 - Backend (Render): `https://glox-o7rr.onrender.com`
 
 ## Supabase

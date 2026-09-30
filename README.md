@@ -8,6 +8,6 @@ Any unauthorized use will be treated as a violation of copyright.
 
 - Private development by **nathent2023-glitch**
 - Font `Nine Circles` used under free commercial license (included in `/public/fonts`)
-- Deployed at `https://glox-two.vercel.app`
+- Deployed at `https://cudic.vercel.app`
 
 For permission inquiries, contact the owner via GitHub.
