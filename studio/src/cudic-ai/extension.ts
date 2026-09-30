@@ -23,7 +23,8 @@ import {
 } from '@codingame/monaco-vscode-workbench-service-override';
 import chatHtmlRaw from './chat.html?raw';
 import { PROVIDERS, presetById, ProviderPreset } from './providers';
-import { streamChat, fetchModels, setSupaToken, friendlyError, suggestModels, ChatMessage } from './llm';
+import { streamChat, fetchModels, setSupaToken, friendlyError, suggestModels, ChatMessage, ToolDef, ToolCall } from './llm';
+import { SKILLS } from './skills';
 
 export { setSupaToken };
 
@@ -35,13 +36,15 @@ export interface AiSettings {
   completeModel: string;
   keys: Record<string, string>;
   modelLists: Record<string, string[]>;
+  // Selected premade skill ids appended to the system prompt.
+  skills: string[];
 }
 
 const STORE_KEY = 'cudic-ai';
 const TEXT_EXT = /\.(html|css|js|ts|tsx|jsx|json|md|txt|svg|xml)$/i;
 
 function loadSettings(): AiSettings {
-  const d: AiSettings = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', keys: {}, modelLists: {} };
+  const d: AiSettings = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', keys: {}, modelLists: {}, skills: ['cudic'] };
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return { ...d, ...(JSON.parse(raw) as Partial<AiSettings>) };
@@ -57,6 +60,7 @@ function publicSettings(s: AiSettings) {
   return {
     provider: s.provider, model: s.model, baseOverride: s.baseOverride,
     completeOn: s.completeOn, completeModel: s.completeModel,
+    skills: s.skills,
     hasKey: !!(s.keys[s.provider] || presetById(s.provider).keyOptional),
     // Presence only (never values) so the list screen knows which
     // companies can load their full catalog.
@@ -92,13 +96,78 @@ async function gatherContext(attachActive: boolean): Promise<{ tree: string; act
   return { tree, activePath, activeText, selection };
 }
 
-function systemPrompt(ctx: { tree: string; activePath: string | null; activeText: string; selection: string }): string {
+function systemPrompt(
+  ctx: { tree: string; activePath: string | null; activeText: string; selection: string },
+  skillIds: string[],
+  withTools: boolean
+): string {
   let s = 'You are Cudic AI, a coding assistant inside Cudic Studio (a browser VS Code for small web games). Be concise. ';
   s += 'When you provide a complete file, open its fence as ```lang:/workspace/path so the user can Apply it.';
+  if (withTools) {
+    s += '\n\nTools you can call on the open project:\n' +
+      '- save_file(path, content): create or overwrite a project file (path is project-root relative, e.g. index.html or src/game.js). When the user asks you to create, edit, or save files, call it with the complete new file content instead of only showing code, then reply briefly with what you saved.\n' +
+      '- read_file(path): inspect any project file, not just the attached active file.\n' +
+      'After writing files, tell the user to save their project. Use fences when the user wants to review before applying.';
+  }
+  for (const id of skillIds) {
+    const sk = SKILLS.find((x) => x.id === id);
+    if (sk) s += '\n\n' + sk.text;
+  }
   if (ctx.tree) s += '\n\nProject files:\n' + ctx.tree;
   if (ctx.activePath) s += '\n\nActive file ' + ctx.activePath + ':\n```\n' + ctx.activeText + '\n```';
   if (ctx.selection) s += '\n\nUser selection:\n```\n' + ctx.selection + '\n```';
   return s;
+}
+
+// Tools the chat can invoke directly. Paths go through the same
+// normalizeApplyPath guard as the Apply button.
+const TOOL_DEFS: ToolDef[] = [
+  {
+    name: 'save_file',
+    description: 'Create or overwrite a file in the open project. Path is project-root relative.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Project-relative path, e.g. index.html or src/game.js' },
+        content: { type: 'string', description: 'The complete new file content' }
+      },
+      required: ['path', 'content']
+    }
+  },
+  {
+    name: 'read_file',
+    description: 'Read a text file from the open project to inspect its current contents.',
+    parameters: {
+      type: 'object',
+      properties: { path: { type: 'string', description: 'Project-relative path' } },
+      required: ['path']
+    }
+  }
+];
+
+async function runTool(call: ToolCall): Promise<{ ok: boolean; summary: string; payload: string }> {
+  try {
+    const args = JSON.parse(call.args || '{}') as Record<string, unknown>;
+    const target = normalizeApplyPath(String(args.path ?? ''));
+    if (!target) {
+      const p = String(args.path ?? '');
+      return { ok: false, summary: 'unsafe or unsupported path "' + p + '"', payload: JSON.stringify({ error: 'Unsafe or unsupported path: ' + p }) };
+    }
+    const rel = target.replace(/^\/workspace\//, '');
+    if (call.name === 'save_file') {
+      await vscode.workspace.fs.writeFile(vscode.Uri.file(target), new TextEncoder().encode(String(args.content ?? '')));
+      return { ok: true, summary: 'saved ' + rel, payload: JSON.stringify({ ok: true, path: rel }) };
+    }
+    if (call.name === 'read_file') {
+      const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(target));
+      const text = new TextDecoder().decode(bytes).slice(0, 30000);
+      return { ok: true, summary: 'read ' + rel, payload: JSON.stringify({ path: rel, content: text }) };
+    }
+    return { ok: false, summary: 'unknown tool ' + call.name, payload: JSON.stringify({ error: 'Unknown tool: ' + call.name }) };
+  } catch (e) {
+    const msg = (e as Error).message || String(e);
+    return { ok: false, summary: msg.slice(0, 120), payload: JSON.stringify({ error: msg }) };
+  }
 }
 
 function normalizeApplyPath(p: string): string | null {
@@ -121,7 +190,10 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
   const preset: ProviderPreset = presetById(st.provider);
   const key = st.keys[st.provider] ?? '';
   if (m.type === 'ai:ready') {
-    postToPanel({ type: 'ai:init', presets: PROVIDERS, settings: publicSettings(st) });
+    postToPanel({
+      type: 'ai:init', presets: PROVIDERS, settings: publicSettings(st),
+      skills: SKILLS.map((s) => ({ id: s.id, label: s.label, blurb: s.blurb }))
+    });
     return;
   }
   if (m.type === 'ai:saveSettings') {
@@ -131,7 +203,10 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
       baseOverride: String(m.baseOverride || ''),
       completeOn: m.completeOn !== false,
       completeModel: String(m.completeModel || ''),
-      keys: { ...st.keys }
+      keys: { ...st.keys },
+      skills: Array.isArray(m.skills)
+        ? (m.skills as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 8)
+        : st.skills
     };
     if (typeof m.key === 'string' && m.key) next.keys[next.provider] = m.key;
     saveSettings(next);
@@ -191,16 +266,35 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
     try {
       const model = resolveModel();
       const ctx = await gatherContext(m.attachActive !== false);
+      const skillIds = Array.isArray(m.skills)
+        ? (m.skills as unknown[]).filter((x): x is string => typeof x === 'string')
+        : st.skills;
+      // Tools ride only the openai-chat wire format (llm.ts gates them too).
+      const withTools = preset.format === 'openai-chat';
       const messages: ChatMessage[] = [
-        { role: 'system', content: systemPrompt(ctx) },
+        { role: 'system', content: systemPrompt(ctx, skillIds, withTools) },
         { role: 'user', content: String(m.text || '') }
       ];
-      await streamChat({
-        preset, baseOverride: st.baseOverride || undefined, key,
-        model,
-        messages, signal: ctl.signal,
-        onToken: (t) => postToPanel({ type: 'ai:chunk', id, token: t })
-      });
+      // Tool rounds: the model may act on the project, then continue
+      // chatting with the results. Bounded so a confused model can't loop.
+      for (let round = 0; round < 4; round++) {
+        const toolCalls: ToolCall[] = [];
+        const out = await streamChat({
+          preset, baseOverride: st.baseOverride || undefined, key,
+          model, messages, signal: ctl.signal,
+          tools: withTools ? TOOL_DEFS : undefined,
+          onTools: (calls) => { toolCalls.push(...calls); },
+          onToken: (t) => postToPanel({ type: 'ai:chunk', id, token: t })
+        });
+        if (!toolCalls.length) break;
+        messages.push({ role: 'assistant', content: out, toolCalls });
+        for (const tc of toolCalls) {
+          const r = await runTool(tc);
+          postToPanel({ type: 'ai:tool', id, name: tc.name, ok: r.ok, summary: r.summary });
+          messages.push({ role: 'tool', toolCallId: tc.id, content: r.payload });
+        }
+        if (ctl.signal.aborted) throw new Error('Stopped.');
+      }
       postToPanel({ type: 'ai:done', id, q: String(m.text || '') });
     } catch (e) {
       postToPanel({ type: 'ai:error', id, error: friendlyError(preset.name, (e as Error).message) });

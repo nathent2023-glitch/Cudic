@@ -214,6 +214,11 @@
     cursor: pointer;
   }
   .chip.off { opacity: 0.4; text-decoration: line-through; }
+  .toolnote {
+    font-size: 11.5px; color: var(--vscode-descriptionForeground, #a1a1aa);
+    font-family: var(--vscode-editor-font-family, monospace); padding: 1px 0;
+  }
+  .toolnote.bad { color: var(--vscode-errorForeground, #f48771); }
   #sendBtn {
     width: 30px; height: 30px; border-radius: 50%; padding: 0; border: none;
     background: #fafafa; color: #111;
@@ -333,7 +338,7 @@
     provNote = $('provNote'), msgs = $('msgs'), q = $('q'), chips = $('chips'),
     sendBtn = $('sendBtn'), stopBtn = $('stopBtn'),
     modelPill = $('modelPill'), keyHint = null;
-  var PRESETS = [], SETTINGS = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', hasKey: false, keyed: [] };
+  var PRESETS = [], SETTINGS = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', hasKey: false, keyed: [], skills: [] }, SKILLCAT = [];
   var history = [], streaming = null, attachActive = true, chatted = false, fetchedFor = {}, lastQ = '', baseOverrideVal = '', justSavedKey = false;
 
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -354,13 +359,16 @@
     if (name === 'gate') Noise.start(); else Noise.stop();
   }
   // Route: chat only when usable, otherwise the gate. Never yank the user
-  // out of the providers/key/options screens mid-setup.
+  // out of the providers/key/options screens mid-setup (ai:state/ai:init).
+  function exitSetup() {
+    if (chatted || !needsKey()) show('chatwrap');
+    else show('gate');
+  }
   function decide() {
     var cur = null;
     SCREENS.forEach(function (id) { if (!$(id).classList.contains('hidden')) cur = id; });
     if (cur === 'providersScreen' || cur === 'keyScreen' || cur === 'optionsScreen') return;
-    if (chatted || !needsKey()) show('chatwrap');
-    else show('gate');
+    exitSetup();
   }
 
   function refreshCfg() {
@@ -398,15 +406,31 @@
     api.postMessage({ type: 'ai:models' });
   }
   function saveAll(withKey) {
-    var msg = { type: 'ai:saveSettings', provider: SETTINGS.provider, model: modelEl.value.trim(), baseOverride: baseOverrideVal, completeOn: completeOn.checked, completeModel: completeModel.value.trim() };
+    var msg = { type: 'ai:saveSettings', provider: SETTINGS.provider, model: modelEl.value.trim(), baseOverride: baseOverrideVal, completeOn: completeOn.checked, completeModel: completeModel.value.trim(), skills: (SETTINGS.skills || []).slice() };
     if (withKey) msg.key = keyEl.value;
     api.postMessage(msg);
     if (withKey) keyEl.value = '';
   }
 
   function chipHtml() {
-    chips.innerHTML = '<span class="chip' + (attachActive ? '' : ' off') + '" id="chipFile" title="Include the active file as context">📄 active file</span>';
+    var html = '<span class="chip' + (attachActive ? '' : ' off') + '" id="chipFile" title="Include the active file as context">📄 active file</span>';
+    SKILLCAT.forEach(function (s) {
+      var on = (SETTINGS.skills || []).indexOf(s.id) !== -1;
+      html += '<span class="chip' + (on ? '' : ' off') + '" data-sk="' + esc(s.id) + '" title="' + esc(s.blurb || '') + '">✦ ' + esc(s.label) + '</span>';
+    });
+    chips.innerHTML = html;
     $('chipFile').onclick = function () { attachActive = !attachActive; chipHtml(); };
+    chips.querySelectorAll('[data-sk]').forEach(function (c) {
+      c.onclick = function () {
+        var id = c.getAttribute('data-sk');
+        var arr = (SETTINGS.skills || []).slice();
+        var i = arr.indexOf(id);
+        if (i === -1) arr.push(id); else arr.splice(i, 1);
+        SETTINGS.skills = arr;
+        chipHtml();
+        saveAll(false);
+      };
+    });
   }
 
   /* ── ASCII fbm backdrop: value-noise fractal, quantized to glyphs ── */
@@ -629,7 +653,7 @@
     var id = 'm' + Date.now().toString(36);
     streaming = { id: id, row: slot.row, body: slot.body, footer: slot.footer, raw: '' };
     sendBtn.disabled = true; stopBtn.disabled = false;
-    api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive });
+    api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive, skills: (SETTINGS.skills || []).slice() });
   }
   sendBtn.onclick = send;
   stopBtn.onclick = function () { if (streaming) api.postMessage({ type: 'ai:stop', id: streaming.id }); };
@@ -650,7 +674,7 @@
   $('gateMore').onclick = function () { show('optionsScreen'); };
   // Providers list
   $('psearch').addEventListener('input', function () { renderPlist($('psearch').value); });
-  $('provBack').onclick = decide;
+  $('provBack').onclick = exitSetup;
   // Key screen
   $('keyBack').onclick = function () { renderPlist($('psearch').value); show('providersScreen'); };
   $('saveBtn').onclick = function () {
@@ -662,7 +686,7 @@
   $('testBtn').onclick = function () { api.postMessage({ type: 'ai:test' }); };
   $('modelsBtn').onclick = function () { api.postMessage({ type: 'ai:models' }); };
   // Options screen
-  $('optBack').onclick = decide;
+  $('optBack').onclick = exitSetup;
   function saveOpts() {
     baseOverrideVal = baseUrlEl.value.trim();
     saveAll(false);
@@ -674,7 +698,7 @@
   window.addEventListener('message', function (e) {
     var m = e.data || {};
     if (m.type === 'ai:init') {
-      PRESETS = m.presets || []; SETTINGS = Object.assign(SETTINGS, m.settings || {});
+      PRESETS = m.presets || []; SETTINGS = Object.assign(SETTINGS, m.settings || {}); SKILLCAT = m.skills || [];
       refreshCfg(); chipHtml(); showEmpty(); decide(); maybeFetch();
     } else if (m.type === 'ai:state') {
       SETTINGS = Object.assign(SETTINGS, m.settings || {});
@@ -717,6 +741,14 @@
       else if (Array.isArray(m.models) && m.models.length && (!m.provider || m.provider === SETTINGS.provider)) {
         modelList.innerHTML = m.models.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
         keyState.innerHTML = '<span class="ok">✓ ' + m.models.length + ' models found — pick from the list</span>';
+      }
+    } else if (m.type === 'ai:tool') {
+      if (streaming && streaming.id === m.id) {
+        var note = document.createElement('div');
+        note.className = 'toolnote' + (m.ok ? '' : ' bad');
+        note.textContent = (m.ok ? '✎ ' : '⚠ ') + (m.summary || m.name || 'tool');
+        streaming.row.querySelector('.mcontent').insertBefore(note, streaming.row.querySelector('.mfooter'));
+        msgs.scrollTop = msgs.scrollHeight;
       }
     } else if (m.type === 'ai:applied') {
       keyState.innerHTML = m.ok ? '<span class="ok">✓ wrote ' + esc(m.path) + '</span>'

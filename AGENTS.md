@@ -219,11 +219,12 @@ happy, not because views are used.
 | `studio/src/cudic-ai/extension.ts` | main side: mount, message handlers, `resolveModel`, `friendlyError`, `gatherContext`/`systemPrompt`, autocomplete, `setSupaToken`, `publicSettings` |
 | `studio/src/cudic-ai/chat.html` | all UI: gate / providers / key / options / chat screens, ASCII noise, motion CSS |
 | `studio/src/cudic-ai/providers.ts` | **53 provider presets**, `publicModels` flag, `isLoopbackUrl` |
-| `studio/src/cudic-ai/llm.ts` | `streamChat` (openai-chat / anthropic / gemini SSE), `fetchModels`, `routedFetch`, `friendlyError`, `suggestModels` |
+| `studio/src/cudic-ai/llm.ts` | `streamChat` (openai-chat / anthropic / gemini SSE), `fetchModels`, `routedFetch`, `friendlyError`, `suggestModels`, tool-call defs + OAI tool delta parsing |
+| `studio/src/cudic-ai/skills.ts` | `SKILLS` — premade prompt packs (`cudic` on by default, `taste` opt-in), condensed from design docs |
 
 ### Settings & keys
 - Stored in page `localStorage['cudic-ai']` as
-  `AiSettings { provider, model, baseOverride, completeOn, completeModel, keys, modelLists }`.
+  `AiSettings { provider, model, baseOverride, completeOn, completeModel, keys, modelLists, skills }`.
 - `publicSettings()` returns a **safe projection**: `hasKey` boolean + `keyed[]`
   (which providers have keys — **presence only, never values**). Keys never leave
   the page except as an `Authorization` header on the outbound request.
@@ -267,6 +268,20 @@ isn't in that set will 403 at runtime** — that's the #1 integration bug here.
 ### Autocomplete
 Monaco `registerInlineCompletionsProvider` — ghost text, gated on `completeOn`
 and an active key.
+
+### Skills & tools
+- **Skills** are composer chips (`📄 active file` + `✦ <skill>`); selection
+  persists in `AiSettings.skills`, sent with every `ai:chat`, appended to the
+  system prompt. `cudic` (platform/design rules) defaults on, `taste` (design
+  mode) defaults off. Catalog ships in `ai:init`.
+- **Tools** (`save_file` / `read_file`) run as a ≤4-round loop inside `ai:chat`;
+  each call posts `ai:tool` → a `.toolnote` line in the streaming bubble.
+  `save_file` reuses `normalizeApplyPath` (same guard as Apply) + `TEXT_EXT`.
+- Tools are sent **only when `preset.format === 'openai-chat'`** (~50 presets);
+  anthropic/gemini get skills but no tool loop. Check `useTools` in `extension.ts`.
+- **Setup-screen navigation gotcha**: `decide()` early-returns while on
+  providers/key/options (by design — don't yank mid-setup), so those screens'
+  Back buttons route through `exitSetup()`, not `decide()` directly.
 
 ### UI design direction (user taste — follow it)
 - **Monochrome zinc/white, Codex-style.** The user explicitly rejected purple:

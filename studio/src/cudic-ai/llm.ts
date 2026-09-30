@@ -7,8 +7,24 @@
 import { ProviderPreset, isLoopbackUrl } from './providers';
 
 export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  // assistant -> tool calls it made; tool -> the result for this call id.
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+}
+
+export interface ToolDef {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  // Raw JSON arguments string, accumulated across stream deltas.
+  args: string;
 }
 
 export interface CallOpts {
@@ -21,6 +37,10 @@ export interface CallOpts {
   onToken: (t: string) => void;
   temperature?: number;
   maxTokens?: number;
+  // Function-calling tools. Only wired for the openai-chat format today -
+  // Anthropic/Gemini native tool shapes are deliberately not sent.
+  tools?: ToolDef[];
+  onTools?: (calls: ToolCall[]) => void;
 }
 
 let supaToken: string | null = null;
@@ -48,7 +68,7 @@ interface BuiltCall {
   body: unknown;
 }
 
-function buildChat(preset: ProviderPreset, model: string, messages: ChatMessage[], key: string, base: string, temperature?: number, maxTokens?: number): BuiltCall {
+function buildChat(preset: ProviderPreset, model: string, messages: ChatMessage[], key: string, base: string, temperature?: number, maxTokens?: number, tools?: ToolDef[]): BuiltCall {
   const temp = temperature ?? 0.3;
   if (!model.trim()) throw new Error('Pick a model first.');
   if (preset.format === 'anthropic') {
@@ -75,10 +95,37 @@ function buildChat(preset: ProviderPreset, model: string, messages: ChatMessage[
     };
   }
   if (!key && !preset.keyOptional) throw new Error('Paste your ' + preset.keyLabel + ' first.');
+  // Tool-carrying messages only ever exist in openai-chat conversations
+  // (extension gates tools by format), so map them here and pass the rest.
+  const wire = messages.map((m) => {
+    if (m.role === 'assistant' && m.toolCalls?.length) {
+      return {
+        role: 'assistant',
+        content: m.content || null,
+        tool_calls: m.toolCalls.map((c) => ({
+          id: c.id, type: 'function',
+          function: { name: c.name, arguments: c.args }
+        }))
+      };
+    }
+    if (m.role === 'tool') return { role: 'tool', tool_call_id: m.toolCallId, content: m.content };
+    return { role: m.role, content: m.content };
+  });
   return {
     url: base + '/chat/completions',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-    body: { model, stream: true, temperature: temp, ...(maxTokens ? { max_tokens: maxTokens } : {}), messages }
+    body: {
+      model, stream: true, temperature: temp, ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      messages: wire,
+      ...(tools && tools.length
+        ? {
+            tools: tools.map((t) => ({
+              type: 'function',
+              function: { name: t.name, description: t.description, parameters: t.parameters }
+            }))
+          }
+        : {})
+    }
   };
 }
 
@@ -173,12 +220,20 @@ async function routedFetch(url: string, headers: Record<string, string>, body: u
   });
 }
 
-async function pumpStream(res: Response, format: string, onToken: (t: string) => void, signal: AbortSignal): Promise<string> {
+async function pumpStream(
+  res: Response,
+  format: string,
+  onToken: (t: string) => void,
+  signal: AbortSignal
+): Promise<{ text: string; calls: ToolCall[] }> {
   if (!res.ok) throw new Error(await readError(res));
   const reader = res.body!.getReader();
   const dec = new TextDecoder();
   let buf = '';
   let full = '';
+  // Tool calls arrive as fragments (id/name once, arguments in pieces)
+  // keyed by index — accumulate them alongside the text stream.
+  const pending: Record<number, ToolCall> = {};
   for (;;) {
     if (signal.aborted) { try { await reader.cancel(); } catch { /* noop */ } throw new Error('Stopped.'); }
     const { done, value } = await reader.read();
@@ -192,19 +247,39 @@ async function pumpStream(res: Response, format: string, onToken: (t: string) =>
       const data = t.slice(5).trim();
       if (data === '[DONE]') continue;
       try {
-        const d = deltaOf(format, JSON.parse(data) as Record<string, unknown>);
-        if (d) { full += d; onToken(d); }
+        const d = JSON.parse(data) as Record<string, unknown>;
+        const textDelta = deltaOf(format, d);
+        if (textDelta) { full += textDelta; onToken(textDelta); }
+        if (format === 'openai-chat') {
+          const choices = d.choices as Array<Record<string, unknown>> | undefined;
+          const delta = choices?.[0]?.delta as Record<string, unknown> | undefined;
+          const parts = delta?.tool_calls as Array<Record<string, any>> | undefined;
+          if (Array.isArray(parts)) {
+            for (const p of parts) {
+              const idx = typeof p.index === 'number' ? p.index : 0;
+              const cur = pending[idx] || (pending[idx] = { id: '', name: '', args: '' });
+              if (typeof p.id === 'string' && p.id) cur.id = p.id;
+              if (typeof p.function?.name === 'string') cur.name += p.function.name;
+              if (typeof p.function?.arguments === 'string') cur.args += p.function.arguments;
+            }
+          }
+        }
       } catch { /* keep-alive / comment lines */ }
     }
   }
-  return full;
+  const calls = Object.keys(pending).map((k) => pending[Number(k)]).filter((c) => c.name);
+  return { text: full, calls };
 }
 
 export async function streamChat(opts: CallOpts): Promise<string> {
   const base = baseOf(opts.preset, opts.baseOverride);
-  const call = buildChat(opts.preset, opts.model, opts.messages, opts.key, base, opts.temperature, opts.maxTokens);
+  // Tools only ride along on the openai-chat wire format (see CallOpts).
+  const tools = opts.preset.format === 'openai-chat' ? opts.tools : undefined;
+  const call = buildChat(opts.preset, opts.model, opts.messages, opts.key, base, opts.temperature, opts.maxTokens, tools);
   const res = await routedFetch(call.url, call.headers, call.body, opts.signal);
-  return pumpStream(res, opts.preset.format, opts.onToken, opts.signal);
+  const out = await pumpStream(res, opts.preset.format, opts.onToken, opts.signal);
+  if (out.calls.length && opts.onTools) opts.onTools(out.calls);
+  return out.text;
 }
 
 export async function fetchModels(preset: ProviderPreset, key: string, baseOverride?: string): Promise<string[]> {
