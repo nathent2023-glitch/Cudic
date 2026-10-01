@@ -24,7 +24,7 @@
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400..700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=JetBrains+Mono&family=Nunito+Sans:wght@400..700&display=swap" rel="stylesheet">
     <script>document.documentElement.className = 'js';</script>
     <style>
         /* ── Cudic landing: light editorial, flat surfaces ──────────
@@ -41,8 +41,8 @@
             --butter: #F2C14E;
             --line: rgba(31, 29, 26, .16);
 
-            --font-head: 'Instrument Serif', Georgia, serif;
-            --font-body: 'Inter', system-ui, sans-serif;
+            --font-display: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
+            --font-body: 'Nunito Sans', system-ui, sans-serif;
             --font-mono: 'JetBrains Mono', ui-monospace, monospace;
         }
 
@@ -84,8 +84,8 @@
         h1,
         h2,
         h3 {
-            font-family: var(--font-head);
-            font-weight: 400;
+            font-family: var(--font-display);
+            font-weight: 600;
             letter-spacing: -.02em;
             margin: 0;
         }
@@ -114,15 +114,6 @@
             background: var(--butter);
             color: var(--ink);
             padding: 0 .15em;
-        }
-
-        .label {
-            font-family: var(--font-mono);
-            font-size: .75rem;
-            color: var(--stone);
-            text-transform: lowercase;
-            display: block;
-            margin-bottom: 18px;
         }
 
         .wrap {
@@ -193,7 +184,7 @@
             letter-spacing: .02em;
         }
 
-        /* ── Button labels morph letter-by-letter into serif italic ── */
+        /* ── Button labels morph letter-by-letter into the display face ── */
         .btn .ch {
             display: inline-block;
             position: relative;
@@ -211,9 +202,9 @@
             left: 50%;
             top: 50%;
             transform: translate(-50%, calc(-50% + 6px));
-            font-family: var(--font-head);
-            font-style: italic;
-            font-weight: 400;
+            font-family: var(--font-display);
+            font-style: normal;
+            font-weight: 600;
             font-size: 1.14em;
             line-height: 1;
             white-space: pre;
@@ -273,7 +264,8 @@
             gap: 8px;
             text-decoration: none;
             color: var(--ink);
-            font-family: var(--font-head);
+            font-family: var(--font-display);
+            font-weight: 600;
             font-size: 1.3rem;
             letter-spacing: -.01em;
         }
@@ -282,11 +274,6 @@
             width: 22px;
             height: 22px;
             display: block;
-        }
-
-        .brand i {
-            font-style: normal;
-            color: var(--vermilion);
         }
 
         .nav-links {
@@ -691,7 +678,7 @@
 <body>
     <header class="nav">
         <div class="nav-in">
-            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic<i>.</i></span></a>
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic</span></a>
             <nav class="nav-links">
                 <a class="navlink" href="/games">Gallery</a>
                 <a class="navlink" href="/themes">Themes</a>
@@ -730,7 +717,6 @@
         <section class="sec">
             <div class="wrap">
                 <div class="sec-head">
-                    <span class="label" data-rv>// three things, one tab</span>
                     <h2 data-rv>From a blank file to a playable link.</h2>
                     <p class="sub" data-rv>Three things happen in one browser tab. You write it, you publish it,
                         people play it.</p>
@@ -759,7 +745,6 @@
         <section class="band">
             <div class="sec wrap split">
                 <div>
-                    <span class="label" data-rv>// the editor</span>
                     <h2 data-rv>Write it where it <em>runs</em>.</h2>
                     <ul class="ticks" data-rv>
                         <li>File tree, editor and status bar, side by side.</li>
@@ -781,7 +766,6 @@
         <section class="sec">
             <div class="wrap">
                 <div class="sec-head">
-                    <span class="label" data-rv>// the gallery</span>
                     <h2 data-rv>Every game gets a <em>page</em>.</h2>
                     <p class="sub" data-rv>A published game gets a thumbnail, a comment thread and a fork button that
                         opens it straight back in your Studio.</p>
@@ -803,7 +787,6 @@
                     </div>
                 </div>
                 <div>
-                    <span class="label" data-rv>// theme packs</span>
                     <h2 data-rv>Change the whole look in <em>one click</em>.</h2>
                     <p class="sub" data-rv>A pack re-skins the rail, the scenes and the icons together. Install one and
                         everything you open afterwards picks it up.</p>
@@ -833,7 +816,7 @@
 
     <footer>
         <div class="foot-in">
-            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic<i>.</i></span></a>
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic</span></a>
             <nav class="foot-links">
                 <a href="/games">Gallery</a>
                 <a href="/themes">Themes</a>

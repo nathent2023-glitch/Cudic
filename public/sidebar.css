@@ -1,5 +1,5 @@
 /* ── Glox Design System ─────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @font-face { font-family: 'NineCircles'; src: url('/fonts/NineCirclesReg.otf') format('opentype'), url('/fonts/NineCirclesReg.ttf') format('truetype'); font-display: swap; }
 @font-face { font-family: 'NineCirclesBook'; src: url('/fonts/nine-circles.book.otf') format('opentype'), url('/fonts/nine-circles.book.ttf') format('truetype'); font-display: swap; }
 
@@ -51,44 +51,24 @@ body {
   z-index: 0;
 }
 
-/* Rail brand: raw logo art, nothing around it. The artwork is inlined so the
-   letterforms animate: on expand the chip area grows and each letter slides
-   in from the C with a stagger, then the mark breathes a soft neon glow. */
+/* Rail brand: the plain Baloo 2 wordmark — same logo the sign-in page uses. */
 .rail-brand {
   position: relative;
   height: 40px;
-  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 0 auto 10px;
   flex-shrink: 0;
-  transition: width 0.22s ease;
 }
-.rail-brand .rail-logo, .rail-brand .rail-wordmark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: block;
+.rail-word {
+  font: 800 17px/1 'Baloo 2', var(--font-head), sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  transition: font-size 0.22s ease;
 }
-.rail-brand .rail-logo { width: 26px; height: 26px; opacity: 1; transition: opacity 0.15s ease, transform 0.15s ease; }
-.rail-brand .rail-logo svg { width: 100%; height: 100%; display: block; }
-.rail-brand .rail-wordmark { width: 142px; opacity: 0; }
-.rail-brand .rail-wordmark svg { width: 100%; height: auto; display: block; overflow: visible; }
-.sidebar:hover .rail-brand { width: 164px; }
-.sidebar:hover .rail-brand .rail-logo { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
-.sidebar:hover .rail-brand .rail-wordmark { opacity: 1; }
-.sidebar:hover .rail-brand .rail-wordmark svg { animation: railGlow 2.6s ease-in-out 0.7s infinite; }
-.sidebar:hover .rail-brand .rail-wordmark path {
-  animation: railIn 0.28s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  animation-delay: var(--d, 0s);
-}
-@keyframes railIn {
-  from { opacity: 0; transform: translateX(-14px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-@keyframes railGlow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(119, 77, 203, 0)); }
-  50% { filter: drop-shadow(0 0 7px rgba(119, 77, 203, 0.45)); }
-}
+.sidebar:hover .rail-word { font-size: 26px; }
 
 /* Single sidebar card - nav + servers + profile, fills full height */
 .sidebar-nav-card {

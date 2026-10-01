@@ -1,453 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
-    <title>Sign in — Cudic</title>
-  <meta name="description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Cudic">
-  <meta property="og:title" content="Cudic — build and play small games in your browser">
-  <meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
-  <meta property="og:url" content="https://cudic.vercel.app/login">
-  <meta property="og:image" content="https://cudic.vercel.app/og.png">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Cudic — build and play small games in your browser">
-  <meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
-  <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
-  <link rel="canonical" content="https://cudic.vercel.app/login">
-    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=9">
-    <style>
-        /* ── Auth layout (no sidebar, full screen) ──────────────── */
-        body {
-            display: block;
-            overflow: auto;
-        }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
+<title>Sign in — Cudic</title>
+<meta name="description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cudic">
+<meta property="og:title" content="Cudic — build and play small games in your browser">
+<meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta property="og:url" content="https://cudic.vercel.app/login">
+<meta property="og:image" content="https://cudic.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cudic — build and play small games in your browser">
+<meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta name="twitter:image" content="https://cudic.vercel.app/og.png">
+<link rel="canonical" content="https://cudic.vercel.app/login">
+<link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Baloo+2:wght@800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg-l:#e9eefc;--bg-r:#fbfbff;--ink:#1d1a3a;--mute:#6b6990;--line:#d6d9f0;--field:#eef1fd;--field-b:#cfd5f2;
+  --brand:#6d45d9;--brand-2:#8a5cf0;--card:#ffffff;--dot:#b9c0e6;--shadow:0 20px 50px -24px rgba(60,40,140,.35);
+  --display:'Bricolage Grotesque',system-ui,sans-serif;--body:'Figtree',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg-l:#15132b;--bg-r:#0e0d1d;--ink:#eeedff;--mute:#9b98c4;--line:#2d2a52;--field:#1a1836;--field-b:#363264;
+  --card:#14122a;--dot:#38356a;--shadow:0 20px 50px -24px rgba(0,0,0,.8);--brand:#8a64f2;--brand-2:#a785ff}}
+:root[data-theme="dark"]{--bg-l:#15132b;--bg-r:#0e0d1d;--ink:#eeedff;--mute:#9b98c4;--line:#2d2a52;--field:#1a1836;--field-b:#363264;--card:#14122a;--dot:#38356a;--shadow:0 20px 50px -24px rgba(0,0,0,.8);--brand:#8a64f2;--brand-2:#a785ff}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+:root{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:var(--body);color:var(--ink);background:var(--bg-r);display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh}
+.stage{position:relative;background:var(--bg-l);overflow:hidden;min-height:100vh;cursor:crosshair}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.logo{position:absolute;top:26px;left:36px;font:800 40px/1 'Baloo 2',var(--display);letter-spacing:-.01em;z-index:2}
+.logo i{font-style:normal;color:var(--brand)}
+.copy{position:absolute;left:36px;right:36px;bottom:40px;z-index:2;pointer-events:none}
+.copy h1{font:800 clamp(34px,4.6vw,64px)/.98 var(--display);letter-spacing:-.035em;margin:0 0 16px;max-width:11em}
+.tag{position:absolute;left:0;top:0;z-index:1;pointer-events:none;will-change:transform}
+.tag svg{display:block;width:18px;height:18px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+.tag span{position:absolute;left:14px;top:16px;font:600 12px/1 var(--body);color:#fff;padding:5px 9px;border-radius:99px;white-space:nowrap}
+.panel{display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.card{width:100%;max-width:400px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.tabs{position:relative;display:flex;gap:4px;background:var(--field);border:1px solid var(--field-b);border-radius:12px;padding:4px}
+.tabs button{position:relative;z-index:1;border:0;background:none;font:600 14px var(--body);color:var(--mute);padding:9px 18px;border-radius:9px;cursor:pointer;transition:color .2s}
+.tabs button[aria-selected=true]{color:var(--ink)}
+.pill{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;border-radius:9px;background:var(--card);box-shadow:0 2px 8px -2px rgba(60,40,140,.3);transition:transform .3s cubic-bezier(.5,1.4,.5,1),width .3s}
+.theme{border:1px solid var(--field-b);background:var(--field);color:var(--ink);width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:16px}
+h2{font:800 28px/1.1 var(--display);letter-spacing:-.025em;margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:14px}
+.gh{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--field-b);background:var(--card);color:var(--ink);font:600 14px var(--body);cursor:pointer;transition:transform .15s,box-shadow .2s}
+.gh:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.gh svg{width:18px;height:18px;fill:currentColor}
+label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+.f{position:relative}
+input[type=text],input[type=email],input[type=password]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--field-b);background:var(--field);color:var(--ink);font:500 15px var(--body);transition:border-color .2s,box-shadow .2s,background .2s}
+input::placeholder{color:var(--mute);opacity:.7}
+input:focus{outline:none;border-color:var(--brand);background:var(--card);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 22%,transparent)}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mute);cursor:pointer;padding:8px;font:600 12px var(--body)}
+.primary{width:100%;margin-top:18px;padding:13px;border:0;border-radius:12px;color:#fff;font:700 15px var(--body);cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 24px -10px var(--brand);transition:transform .15s,box-shadow .2s}
+.primary:hover{transform:translateY(-1px);box-shadow:0 14px 28px -10px var(--brand)}
+.primary:active{transform:translateY(1px)}
+.or{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:13px;margin:24px 0 4px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.guest{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.guest label{margin-top:10px}
+.guest .row{grid-column:1/-1}
+.ghost{grid-column:1/-1;margin-top:14px;padding:12px;border-radius:12px;border:1.5px solid var(--brand);background:transparent;color:var(--brand);font:700 14px var(--body);cursor:pointer;transition:background .2s,color .2s}
+.ghost:hover{background:var(--brand);color:#fff}
+.chk{display:flex;align-items:center;gap:8px;font-weight:500;color:var(--mute);margin:12px 0 0;cursor:pointer}
+.chk input{accent-color:var(--brand);width:16px;height:16px}
+.hide{display:none}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--bg-r);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;transition:.3s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+@media(max-width:860px){
+  body{grid-template-columns:1fr}
+  .stage{min-height:260px;height:260px}
+  .copy{bottom:22px}.copy h1{font-size:30px;margin-bottom:0}
+  .logo{top:22px;left:24px;font-size:28px}
+}
 
-        .auth-layout {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Left: brand panel */
-        .auth-brand {
-            flex: 1.3;
-            background: var(--ink);
-            padding: 56px 48px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-        }
-
-        .dotgrid-bg {
-            background-image: radial-gradient(circle, rgba(46, 42, 75, 0.12) 1px, transparent 1px);
-            background-size: 22px 22px;
-        }
-
-        .brand-mark {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-mark img {
-            height: 30px;
-            width: auto;
-            display: block;
-        }
-
-        .brand-word {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: 1.375rem;
-            color: var(--text-primary);
-        }
-
-        .brand-word .dot {
-            color: var(--signal);
-        }
-
-        .brand-tagline {
-            font-family: var(--font-head);
-            font-weight: 500;
-            font-size: 2rem;
-            line-height: 1.25;
-            max-width: 340px;
-            color: var(--text-primary);
-        }
-
-        .brand-caption {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            max-width: 320px;
-            line-height: 1.5;
-        }
-
-        /* Right: form panel */
-        .auth-form-panel {
-            flex: 1;
-            background: var(--panel);
-            padding: 56px 48px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .form-inner {
-            max-width: 340px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .auth-tabs {
-            display: flex;
-            gap: 24px;
-            border-bottom: 1px solid var(--line);
-            margin-bottom: 28px;
-        }
-
-        .auth-tab {
-            font-family: var(--font-body);
-            font-weight: 500;
-            font-size: 0.9375rem;
-            padding-bottom: 10px;
-            color: var(--text-secondary);
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            background: none;
-            border-top: none;
-            border-left: none;
-            border-right: none;
-        }
-
-        .auth-tab.active {
-            color: var(--text-primary);
-            border-bottom-color: var(--signal);
-        }
-
-        .field {
-            margin-bottom: 14px;
-        }
-
-        .field label {
-            display: block;
-            font-size: 0.8125rem;
-            color: var(--text-secondary);
-            margin-bottom: 6px;
-        }
-
-        .field input {
-            width: 100%;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            font-size: 0.9375rem;
-            padding: 10px 12px;
-            outline: none;
-            transition: border-color 0.15s;
-        }
-
-        .field input::placeholder {
-            color: var(--text-tertiary);
-        }
-
-        .field input:focus {
-            outline: 2px solid var(--signal);
-            outline-offset: 1px;
-        }
-
-        .auth-btn {
-            font-family: var(--font-head);
-            font-weight: 500;
-            font-size: 0.9375rem;
-            border-radius: var(--radius-sm);
-            padding: 10px 16px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            width: 100%;
-            transition: background 0.15s;
-        }
-
-        .auth-btn svg {
-            width: 18px;
-            height: 18px;
-            stroke: currentColor;
-            stroke-width: 1.5;
-            fill: none;
-        }
-
-        .auth-btn-primary {
-            background: var(--signal);
-            color: #fff;
-        }
-
-        .auth-btn-primary:hover {
-            background: var(--signal-hover);
-        }
-
-        .auth-btn-secondary {
-            background: transparent;
-            border-color: var(--line);
-            color: var(--text-primary);
-        }
-
-        .auth-btn-secondary:hover {
-            background: var(--panel-raised);
-        }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: var(--text-tertiary);
-            font-size: 0.8125rem;
-            margin: 22px 0;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background: var(--line);
-        }
-
-        .error-msg {
-            color: var(--danger);
-            font-size: 0.8rem;
-            text-align: center;
-            display: none;
-            padding: 8px 12px;
-            background: rgba(240, 101, 92, .08);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(240, 101, 92, .15);
-            margin-top: 8px;
-        }
-
-        .success-msg {
-            color: var(--success);
-            font-size: 0.8rem;
-            text-align: center;
-            display: none;
-            padding: 8px 12px;
-            background: rgba(79, 216, 151, .08);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(79, 216, 151, .15);
-            margin-top: 8px;
-        }
-
-        .lobbies-label {
-            color: var(--text-tertiary);
-            font-size: 0.75rem;
-            margin-top: 8px;
-            margin-bottom: 4px;
-        }
-
-        .lobby-list {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            max-height: 110px;
-            overflow-y: auto;
-        }
-
-        .lobby-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 14px;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: border-color 0.15s;
-            font-family: inherit;
-            color: var(--text-primary);
-            font-size: 0.84rem;
-        }
-
-        .lobby-item:hover {
-            border-color: var(--signal);
-        }
-
-        .lobby-item .name {
-            font-weight: 600;
-        }
-
-        .lobby-item .count {
-            color: var(--text-secondary);
-            font-size: 0.78rem;
-        }
-
-        /* ── Verify notice ──────────────────────────────────────── */
-        .verify-notice {
-            display: none;
-            text-align: center;
-            padding: 16px;
-            background: rgba(242, 166, 90, .06);
-            border: 1px solid rgba(242, 166, 90, .15);
-            border-radius: var(--radius-sm);
-            margin-bottom: 14px;
-        }
-
-        .verify-notice p {
-            color: var(--text-secondary);
-            font-size: 0.84rem;
-            line-height: 1.5;
-            margin-bottom: 12px;
-        }
-
-        .verify-notice .btn-resend {
-            padding: 8px 20px;
-            background: transparent;
-            border: 1px solid var(--signal);
-            border-radius: var(--radius-sm);
-            color: var(--signal);
-            font-size: 0.82rem;
-            cursor: pointer;
-            font-family: inherit;
-            transition: background 0.15s;
-        }
-
-        .verify-notice .btn-resend:hover {
-            background: var(--signal-tint);
-        }
-
-        /* ── User bar ───────────────────────────────────────────── */
-        .user-bar {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            background: var(--panel-raised);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            margin-bottom: 14px;
-        }
-
-        .user-bar span {
-            color: var(--signal);
-            font-size: 0.83rem;
-            font-weight: 600;
-        }
-
-        .btn-sm {
-            padding: 5px 12px;
-            background: transparent;
-            border: 1px solid var(--line);
-            border-radius: var(--radius-sm);
-            color: var(--text-secondary);
-            font-size: 0.78rem;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.15s;
-        }
-
-        .btn-sm:hover {
-            border-color: var(--danger);
-            color: var(--danger);
-        }
-
-        /* ── Responsive ─────────────────────────────────────────── */
-        @media (max-width: 800px) {
-            .auth-layout {
-                flex-direction: column;
-            }
-
-            .auth-brand {
-                padding: 32px 24px;
-                min-height: auto;
-            }
-
-            .brand-tagline {
-                font-size: 1.5rem;
-            }
-
-            .auth-form-panel {
-                padding: 32px 24px;
-            }
-        }
-    </style>
+/* signed-in state (added) */
+.userbar{display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--field);border:1px solid var(--field-b);border-radius:12px;padding:12px 14px;margin-bottom:18px;font:600 14px var(--body);overflow-wrap:anywhere}
+.userbar button{border:0;background:none;color:var(--brand);font:700 13px var(--body);cursor:pointer;padding:0;flex-shrink:0}
+.signed .top,.signed #title,.signed .sub,.signed .gh,.signed #auth,.signed .or{display:none}
+</style>
 </head>
-
 <body>
-    <div class="auth-layout">
-        <div class="auth-brand dotgrid-bg">
-            <div class="brand-mark"><img src="/cucid.svg" alt="cudic"></div>
-            <div>
-                <div class="brand-tagline">Build small 3D games, together.</div>
-                <p class="brand-caption" style="margin-top:14px;">Script a scene, invite friends into a lobby, and
-                    publish to the gallery — all from the browser.</p>
-            </div>
-            <div class="brand-caption">No install. No build step. Just a scene and a script.</div>
-        </div>
-        <div class="auth-form-panel">
-            <div class="form-inner">
-                <div class="user-bar" id="userBar"> <span id="userDisplay"></span> <button class="btn-sm"
-                        id="signOutBtn">Sign out</button> </div>
-                <div id="verifyNotice" class="verify-notice">
-                    <p><strong>Check your email</strong><br>We sent a verification link to <span
-                            id="verifyEmail"></span>. Click it to verify your account.</p> <button class="btn-resend"
-                        id="resendBtn">Resend email</button>
-                </div>
-                <div class="auth-tabs" id="authTabs"> <button class="auth-tab active" data-tab="login">Sign in</button>
-                    <button class="auth-tab" data-tab="signup">Create account</button> </div> <button
-                    class="auth-btn auth-btn-secondary" id="githubBtn" style="margin-bottom:20px;"> <svg
-                        viewBox="0 0 24 24" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="9" />
-                        <path
-                            d="M9 16v-2c-1.4 0-2-1-2-1.7 0-.6-.3-1.1-.7-1.4M9 16c-2 0-3-1-3-3.3 0-.8.3-1.5.8-2.1-.2-.6-.4-1.5.1-2.6 0 0 .7-.2 2.4.9a8 8 0 0 1 4.4 0c1.7-1.1 2.4-.9 2.4-.9.5 1.1.3 2 .1 2.6.5.6.8 1.3.8 2.1 0 2.3-1 3.3-3 3.3M9 16v2.3"
-                            stroke-linecap="round" stroke-linejoin="round" />
-                    </svg> Continue with GitHub </button>
-                <form id="loginForm" style="display:flex;flex-direction:column;">
-                    <div class="field"><label>Email</label><input type="email" id="loginEmail"
-                            placeholder="you@example.com" required></div>
-                    <div class="field"><label>Password</label><input type="password" id="loginPass"
-                            placeholder="••••••••" required minlength="6"></div> <button type="submit"
-                        class="auth-btn auth-btn-primary" id="loginBtn">Sign in</button>
-                    <div id="loginError" class="error-msg"></div>
-                </form>
-                <form id="signupForm" style="display:none;flex-direction:column;">
-                    <div class="field"><label>Display name</label><input type="text" id="signupName"
-                            placeholder="Nathen" maxlength="20" required></div>
-                    <div class="field"><label>Email</label><input type="email" id="signupEmail"
-                            placeholder="you@example.com" required></div>
-                    <div class="field"><label>Password</label><input type="password" id="signupPass"
-                            placeholder="••••••••" required minlength="6"></div> <button type="submit"
-                        class="auth-btn auth-btn-primary" id="signupBtn">Create account</button>
-                    <div id="signupError" class="error-msg"></div>
-                </form>
-                <div class="divider" id="orDivider">or join without an account</div>
-                <form id="guestForm" style="display:flex;flex-direction:column;gap:14px;">
-                    <div class="field"><label>Your name</label><input type="text" id="guestName" placeholder="Nathen"
-                            maxlength="20" required></div>
-                    <div class="field"><label>Lobby name</label><input type="text" id="lobbyName"
-                            placeholder="e.g. friday-jam" maxlength="30" required></div> <label
-                        style="display:flex;align-items:center;gap:8px;font-size:0.8125rem;color:var(--text-secondary);cursor:pointer">
-                        <input type="checkbox" id="persistentLobby"
-                            style="accent-color:var(--signal);width:16px;height:16px"> Save chat history (persistent)
-                    </label> <button type="submit" class="auth-btn auth-btn-secondary">Join lobby</button>
-                </form>
-                <p class="lobbies-label" id="lobbiesLabel" style="display:none;">Active lobbies</p>
-                <div id="lobbyList" class="lobby-list"></div>
-            </div>
-        </div>
-    </div>
-    <script src="/config.js"></script>
-    <script src="/auth.js"></script>
-    <script>  (function () { var loginForm = document.getElementById('loginForm'), signupForm = document.getElementById('signupForm'); var guestForm = document.getElementById('guestForm'), userBar = document.getElementById('userBar'); var userDisplay = document.getElementById('userDisplay'), lobbyList = document.getElementById('lobbyList'); var lobbiesLabel = document.getElementById('lobbiesLabel'), verifyNotice = document.getElementById('verifyNotice'); var verifyEmail = document.getElementById('verifyEmail'); var currentUser = null, currentToken = null, isVerified = false; document.addEventListener('visibilitychange', function () { if (!document.hidden && currentUser && !isVerified) initPage() });    /* Tab switching */ document.querySelectorAll('.auth-tab').forEach(function (t) { t.addEventListener('click', function () { var tab = t.getAttribute('data-tab'); document.querySelectorAll('.auth-tab').forEach(function (t2) { t2.classList.toggle('active', t2.getAttribute('data-tab') === tab); }); loginForm.style.display = tab === 'login' ? 'flex' : 'none'; signupForm.style.display = tab === 'signup' ? 'flex' : 'none'; }); }); async function initPage() { try { var session = await getSession(); if (session && session.user) { currentUser = session.user; currentToken = session.access_token; var name = currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email; document.getElementById('guestName').value = name; document.getElementById('guestName').disabled = true; document.getElementById('userBar').style.display = 'flex'; document.getElementById('authTabs').style.display = 'none'; document.getElementById('loginForm').style.display = 'none'; document.getElementById('signupForm').style.display = 'none'; document.getElementById('guestForm').style.display = 'flex'; return; } else { var saved = localStorage.getItem('glox_username'); if (saved) document.getElementById('guestName').value = saved } } catch (e) { var saved2 = localStorage.getItem('glox_username'); if (saved2) document.getElementById('guestName').value = saved2 } } document.getElementById('signOutBtn').addEventListener('click', async function () { await signOut(); localStorage.removeItem('glox_username'); window.location.href = '/' }); document.getElementById('resendBtn').addEventListener('click', async function () { if (!currentUser) return; var btn = document.getElementById('resendBtn'); btn.disabled = true; btn.textContent = 'Sending...'; try { var sb = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; await fetch(sb + '/auth/send-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: currentUser.email, userId: currentUser.id, displayName: currentUser.user_metadata?.full_name || currentUser.email }) }); btn.textContent = 'Sent!'; setTimeout(function () { btn.textContent = 'Resend email'; btn.disabled = false }, 3000); } catch (e) { btn.textContent = 'Failed'; btn.disabled = false } }); document.getElementById('loginForm').addEventListener('submit', async function (e) { e.preventDefault(); var btn = document.getElementById('loginBtn'), errEl = document.getElementById('loginError'); btn.disabled = true; btn.textContent = 'Signing in...'; errEl.style.display = 'none'; try { await signInWithEmail(document.getElementById('loginEmail').value, document.getElementById('loginPass').value); window.location.href = '/lobbies' } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block' } finally { btn.disabled = false; btn.textContent = 'Sign in' } }); document.getElementById('signupForm').addEventListener('submit', async function (e) { e.preventDefault(); var btn = document.getElementById('signupBtn'), errEl = document.getElementById('signupError'); btn.disabled = true; btn.textContent = 'Creating...'; errEl.style.display = 'none'; try { var signupRes = await signUpWithEmail(document.getElementById('signupEmail').value, document.getElementById('signupPass').value, document.getElementById('signupName').value); if (signupRes && signupRes.session) { window.location.href = '/lobbies'; return; } errEl.textContent = (signupRes && signupRes.verifyEmail === 'none') ? 'Account created! You can sign in now.' : 'Account created! Check your email.'; errEl.style.color = 'var(--success)'; errEl.style.display = 'block'; setTimeout(function () { document.querySelector('.auth-tab[data-tab="login"]').click() }, 2500); } catch (err) { errEl.textContent = err.message; errEl.style.display = 'block'; errEl.style.color = 'var(--danger)' } finally { btn.disabled = false; btn.textContent = 'Create account' } }); document.getElementById('guestForm').addEventListener('submit', function (e) { e.preventDefault(); var name = document.getElementById('guestName').value.trim(), lobby = document.getElementById('lobbyName').value.trim(); var persistent = document.getElementById('persistentLobby').checked; if (!name || !lobby) return; localStorage.setItem('glox_username', name); listWs.close(); var url = '/chat?lobby=' + encodeURIComponent(lobby) + '&username=' + encodeURIComponent(name); if (persistent) url += '&persistent=1'; if (currentToken) url += '&token=' + currentToken; window.location.href = url; }); document.getElementById('githubBtn').addEventListener('click', function () { signInWithGitHub() });    /* Lobby list WebSocket */ var wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host; var proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws'; var listWs = new WebSocket(proto + '://' + wsHost); listWs.onmessage = function (e) { var msg = JSON.parse(e.data); if (msg.type === 'lobby_list') { if (msg.lobbies.length) { lobbiesLabel.style.display = 'block'; lobbyList.innerHTML = msg.lobbies.map(function (l) { return '<button class="lobby-item" data-name="' + l.name + '"><span class="name">#' + l.name + '</span><span class="count">' + l.count + (l.count === 1 ? ' person' : ' people') + '</span></button>' }).join(''); lobbyList.querySelectorAll('.lobby-item').forEach(function (btn) { btn.addEventListener('click', function () { document.getElementById('lobbyName').value = btn.dataset.name; guestForm.dispatchEvent(new Event('submit', { cancelable: true })) }); }); } else { lobbiesLabel.style.display = 'none'; lobbyList.innerHTML = '' } } }; if (typeof handleAuthCallback === "function") { try { handleAuthCallback().then(function () { initPage() }).catch(function () { initPage() }) } catch (e) { initPage() } } else { initPage() }; })();  </script>
-</body>
+<section class="stage" id="stage" aria-label="Interactive lobby preview">
+  <canvas id="cv"></canvas>
+  <div class="logo">cudic</div>
+  <div class="copy">
+    <h1>Make it your way. Share the link, and anyone can play.</h1>
+  </div>
+</section>
 
+<main class="panel">
+  <div class="card">
+    <div class="userbar" id="userBar"><span id="userDisplay"></span><button type="button" id="signOutBtn">Sign out</button></div>
+    <div class="top">
+      <div class="tabs" role="tablist" id="tabs">
+        <span class="pill" id="pill"></span>
+        <button role="tab" aria-selected="true" data-m="in">Sign in</button>
+        <button role="tab" aria-selected="false" data-m="up">Create account</button>
+      </div>
+      <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+    </div>
+
+    <h2 id="title">Welcome back</h2>
+    <p class="sub" id="sub">Pick up where you left off.</p>
+
+    <button class="gh" type="button">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      Continue with GitHub
+    </button>
+
+    <form id="auth" autocomplete="on">
+      <div id="nameWrap" class="hide">
+        <label for="dn">Display name</label>
+        <input id="dn" type="text" placeholder="What should people call you?">
+      </div>
+      <label for="em">Email</label>
+      <input id="em" type="email" placeholder="you@example.com" autocomplete="email" required>
+      <label for="pw">Password</label>
+      <div class="f">
+        <input id="pw" type="password" placeholder="At least 8 characters" autocomplete="current-password" required>
+        <button type="button" class="eye" id="eye">Show</button>
+      </div>
+      <button class="primary" id="go" type="submit">Sign in</button>
+    </form>
+
+    <div class="or">or jump in without an account</div>
+
+    <form class="guest" id="guest">
+      <div class="row"><label for="gn">Your name</label>
+      <input id="gn" type="text" placeholder="Nathen"></div>
+      <div class="row"><label for="ln">Lobby name</label>
+      <input id="ln" type="text" placeholder="e.g. friday-jam"></div>
+      <label class="chk row"><input type="checkbox" id="persistentLobby"> Save chat history</label>
+      <button class="ghost" type="submit">Join lobby</button>
+    </form>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script>
+(function(){
+  // ---------- tabs ----------
+  var tabs=document.getElementById('tabs'),pill=document.getElementById('pill'),btns=tabs.querySelectorAll('button');
+  var title=document.getElementById('title'),sub=document.getElementById('sub'),go=document.getElementById('go'),nameWrap=document.getElementById('nameWrap'),pw=document.getElementById('pw');
+  var mode='in';
+  function movePill(b){pill.style.width=b.offsetWidth+'px';pill.style.transform='translateX('+(b.offsetLeft-4)+'px)'}
+  function setMode(m){
+    mode=m;
+    btns.forEach(function(b){var on=b.dataset.m===m;b.setAttribute('aria-selected',on);if(on)movePill(b)});
+    var up=m==='up';
+    title.textContent=up?'Make an account':'Welcome back';
+    sub.textContent=up?'Save your games and lobbies.':'Pick up where you left off.';
+    go.textContent=up?'Create account':'Sign in';
+    nameWrap.classList.toggle('hide',!up);
+    pw.autocomplete=up?'new-password':'current-password';
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m)})});
+  window.addEventListener('load',function(){movePill(btns[0])});
+  document.fonts&&document.fonts.ready.then(function(){movePill(tabs.querySelector('[aria-selected=true]'))});
+  window.addEventListener('resize',function(){movePill(tabs.querySelector('[aria-selected=true]'))});
+
+  // ---------- misc ----------
+  var toast=document.getElementById('toast'),tt;
+  function say(t){toast.textContent=t;toast.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){toast.classList.remove('on')},2600)}
+  document.getElementById('eye').addEventListener('click',function(){var s=pw.type==='password';pw.type=s?'text':'password';this.textContent=s?'Hide':'Show'});
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
+    r.dataset.theme=dark?'light':'dark';
+  });
+
+  window.__login={say:say,setMode:setMode,mode:function(){return mode}};
+
+  // ---------- living lobby ----------
+  var stage=document.getElementById('stage'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+  var W,H,dpr,GAP=26,still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var cur='<svg viewBox="0 0 18 18"><path d="M2 1l13 7-6 2-2 6z" fill="COL" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  var src=[
+    {n:'you',c:'#6d45d9',x:-999,y:-999,you:1},
+    {n:'maya',c:'#f0507a',a:.7,b:1.1,p:0,s:.00031},
+    {n:'jo',c:'#16a37f',a:.9,b:.6,p:2,s:.00024},
+    {n:'sam',c:'#f09a1a',a:.55,b:.85,p:4,s:.00037}
+  ];
+  src.forEach(function(o){
+    var d=document.createElement('div');d.className='tag';
+    d.innerHTML=cur.replace('COL',o.c)+'<span style="background:'+o.c+'">'+o.n+'</span>';
+    stage.appendChild(d);o.el=d;
+  });
+  function size(){
+    dpr=Math.min(devicePixelRatio||1,2);W=stage.clientWidth;H=stage.clientHeight;
+    cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  size();addEventListener('resize',size);
+  var tgt={x:W*.6,y:H*.45},moved=false;
+  stage.addEventListener('pointermove',function(e){
+    var r=stage.getBoundingClientRect();tgt.x=e.clientX-r.left;tgt.y=e.clientY-r.top;moved=true;
+  });
+  stage.addEventListener('pointerleave',function(){moved=false});
+  stage.addEventListener('pointerdown',function(e){
+    var r=stage.getBoundingClientRect();pulses.push({x:e.clientX-r.left,y:e.clientY-r.top,t:0,c:src[0].c});
+  });
+  var pulses=[],dot=getComputedStyle(document.documentElement).getPropertyValue('--dot');
+  function hex(c){return c}
+  function frame(t){
+    dot=getComputedStyle(document.documentElement).getPropertyValue('--dot').trim();
+    var me=src[0];
+    if(!moved&&me.x<-900){me.x=tgt.x;me.y=tgt.y}
+    if(moved||me.x>-900){me.x+=(tgt.x-me.x)*.18;me.y+=(tgt.y-me.y)*.18}
+    for(var i=1;i<src.length;i++){var o=src[i];
+      o.x=W*(.5+.38*Math.sin(t*o.s*2+o.p)*o.a+.1*Math.sin(t*o.s*5.3));
+      o.y=H*(.46+.36*Math.cos(t*o.s*2.6+o.p*1.3)*o.b);
+    }
+    src.forEach(function(o){o.el.style.transform='translate('+o.x+'px,'+o.y+'px)'});
+    ctx.clearRect(0,0,W,H);
+    var R=130;
+    for(var x=GAP/2;x<W;x+=GAP)for(var y=GAP/2;y<H;y+=GAP){
+      var best=0,bc=null;
+      for(var k=0;k<src.length;k++){var s=src[k],dx=x-s.x,dy=y-s.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<R){var f=1-d/R;f*=f;if(f>best){best=f;bc=s.c}}}
+      for(var p=0;p<pulses.length;p++){var q=pulses[p],pd=Math.abs(Math.hypot(x-q.x,y-q.y)-q.t*420);
+        if(pd<40){var pf=(1-pd/40)*(1-q.t);if(pf>best){best=pf;bc=q.c}}}
+      if(bc){ctx.fillStyle=bc;ctx.globalAlpha=.25+.75*best;ctx.beginPath();ctx.arc(x,y,1.4+4.2*best,0,6.283);ctx.fill()}
+      else{ctx.fillStyle=dot;ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(x,y,1.3,0,6.283);ctx.fill()}
+    }
+    ctx.globalAlpha=1;
+    pulses=pulses.filter(function(q){q.t+=.018;return q.t<1});
+    if(!still)requestAnimationFrame(frame);
+  }
+  if(still){src[0].x=W*.55;src[0].y=H*.4;[1,2,3].forEach(function(i){src[i].s=0});frame(1000)}
+  else requestAnimationFrame(frame);
+  src[0].el.style.opacity=0;
+  stage.addEventListener('pointermove',function(){src[0].el.style.opacity=1},{once:true});
+})();
+</script>
+<script>
+(function(){
+  var L=window.__login;
+  var go=document.getElementById('go'),em=document.getElementById('em'),pw=document.getElementById('pw'),dn=document.getElementById('dn');
+  var gn=document.getElementById('gn'),ln=document.getElementById('ln'),chk=document.getElementById('persistentLobby');
+  var card=document.querySelector('.card');
+  var currentToken=null;
+
+  document.querySelector('.gh').addEventListener('click',function(){signInWithGitHub()});
+
+  document.getElementById('auth').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var up=L.mode()==='up',label=go.textContent;
+    go.disabled=true;go.textContent=up?'Creating…':'Signing in…';
+    try{
+      if(up){
+        var res=await signUpWithEmail(em.value.trim(),pw.value,dn.value.trim());
+        if(res&&res.session){location.href='/lobbies';return}
+        L.say((res&&res.verifyEmail==='none')?'Account created! You can sign in now.':'Account created! Check your email.');
+        setTimeout(function(){L.setMode('in')},2500);
+      }else{
+        await signInWithEmail(em.value.trim(),pw.value);
+        location.href='/lobbies';
+      }
+    }catch(err){L.say(err&&err.message?err.message:'Something went wrong')}
+    finally{go.disabled=false;go.textContent=label}
+  });
+
+  document.getElementById('guest').addEventListener('submit',function(e){
+    e.preventDefault();
+    var name=gn.value.trim(),lobby=ln.value.trim();
+    if(!name||!lobby){L.say('Enter your name and a lobby name');return}
+    localStorage.setItem('glox_username',name);
+    var url='/chat?lobby='+encodeURIComponent(lobby)+'&username='+encodeURIComponent(name);
+    if(chk.checked)url+='&persistent=1';
+    if(currentToken)url+='&token='+currentToken;
+    location.href=url;
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click',async function(){
+    try{await signOut()}catch(e){}
+    localStorage.removeItem('glox_username');location.href='/';
+  });
+
+  async function initPage(){
+    var session=null;
+    try{session=await getSession()}catch(e){}
+    if(session&&session.user){
+      currentToken=session.access_token;
+      var u=session.user;
+      var name=(u.user_metadata&&(u.user_metadata.full_name||u.user_metadata.name))||u.email;
+      gn.value=name;gn.disabled=true;
+      document.getElementById('userDisplay').textContent=name;
+      document.getElementById('userBar').style.display='flex';
+      card.classList.add('signed');
+    }else{
+      var saved=localStorage.getItem('glox_username');
+      if(saved)gn.value=saved;
+    }
+  }
+
+  if(typeof handleAuthCallback==='function'){
+    handleAuthCallback().then(initPage).catch(initPage);
+  }else{initPage()}
+})();
+</script>
+</body>
 </html>

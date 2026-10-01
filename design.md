@@ -1,6 +1,6 @@
 # Cudic Design System
 
-Cudic is a browser tool for building and playing small 3D games — a scene
+Cudic is a browser tool for building and playing small games — a scene
 editor with live scripting, chat lobbies, and a public gallery. The UI
 should feel like a **workshop for builders**, not a generic SaaS dashboard:
 technical but warm, confident, a little playful. It should NOT feel like a
@@ -151,7 +151,7 @@ Replace the single centered card floating on a starfield with a
 **two-panel split**:
 - Left panel (60%): `--ink` background with the dot-grid texture, the
   logomark, the wordmark, and one short line of product copy (e.g. "Build
-  small 3D games, together.") — this is the hero, it should look like the
+  small games, together.") — this is the hero, it should look like the
   product, not a marketing stock photo.
 - Right panel (40%): the actual form, on `--panel`. Sign in / Create
   account as an underline tab pair (not two competing filled buttons).

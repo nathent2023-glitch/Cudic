@@ -68,7 +68,7 @@
   nav.className='sidebar';
   nav.innerHTML=''
     +'<div class="sidebar-nav-card">'
-      +'<div class="rail-brand"><span class="rail-logo" data-svg="/cudic_sfsvg.svg"></span><span class="rail-wordmark" data-svg="/cucid.svg"></span></div>'
+      +'<div class="rail-brand"><span class="rail-word">cudic</span></div>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
@@ -96,22 +96,6 @@
   // content right so the open card never covers page text.
   nav.addEventListener('mouseenter',function(){document.body.classList.add('sb-open')});
   nav.addEventListener('mouseleave',function(){document.body.classList.remove('sb-open')});
-  // Rail brand: inline the SVGs so the letterforms can animate (per-path
-  // stagger delays). Falls back to plain <img> if the fetch fails.
-  nav.querySelectorAll('[data-svg]').forEach(function (slot) {
-    fetch(slot.getAttribute('data-svg')).then(function (r) { if (!r.ok) throw 0; return r.text(); }).then(function (svg) {
-      slot.innerHTML = svg;
-      var root = slot.querySelector('svg');
-      if (root) { root.removeAttribute('width'); root.removeAttribute('height'); root.style.width = '100%'; root.style.height = '100%'; root.style.display = 'block'; }
-      var shapes = slot.querySelectorAll('path');
-      shapes.forEach(function (p, i) { p.style.setProperty('--d', (i / Math.max(1, shapes.length) * 0.4).toFixed(3) + 's'); });
-    }).catch(function () {
-      var img = document.createElement('img');
-      img.src = slot.getAttribute('data-svg'); img.alt = 'cudic';
-      img.style.cssText = 'width:100%;height:100%';
-      slot.appendChild(img);
-    });
-  });
   // Theme engine hook: let packs mount rail art + icon sets on this nav.
   try{window.dispatchEvent(new Event('cudic:sidebar-ready'));}catch(e){}
 
