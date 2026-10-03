@@ -423,14 +423,11 @@ Read it before building any classic-page screen. Headlines:
    both branches. If you see modified `public/*.html` or `server.js`, something
    new is in flight: confirm with `git status` before assuming it is stale.
 5. **The OneDrive copy** (`C:\Users\sophi\OneDrive\Desktop\Glox`) is a *separate*
-   checkout with `master` checked out. Real work happens in
-   `C:\Users\sophi\Glox` on `fix-inline-scripts`. Pull before using it.
-   It was fast-forwarded to `d3cb2dc` on 2026-09-27, so it is no longer stale.
-   Because it holds `master`, **you cannot `git checkout master` in the main
-   worktree** — merge there, or `git -C <OneDrive path> merge --ff-only <branch>`.
-6. **Branch**: `fix-inline-scripts` (current) and `master` are both at
-   `d3cb2dc`, matching `origin`. `fix-live-auth` exists. Pushing `master`
-   deploys Vercel + Render.
+   worktree parked on a **detached HEAD** (it used to hold `master`). It's only
+   a mirror — do real work in `C:\Users\sophi\Glox`, directly on `master`.
+6. **Branch**: `master` only (local = origin). `fix-inline-scripts` was
+   merged and deleted on 2026-10-03; `fix-live-auth` still exists. Pushing
+   `master` deploys Vercel + Render.
 7. **New AI provider ⇒ add its host to `AI_HOSTS`** (`server.js:726`) or the proxy
    403s. Loopback hosts are intentionally *blocked* there and called directly.
 8. **`public/studio/` is gitignored** — a fresh clone has no `/studio` until
@@ -491,8 +488,8 @@ Pushing to `master` deploys both. Verify locally first.
 
 ## 16. Work state at time of writing
 
-**Clean tree.** `fix-inline-scripts` = `master` = `origin` = `d3cb2dc`, pushed
-2026-09-27. Verify with `git status` before assuming this still holds.
+**Clean tree.** `master` = `origin` = `4c0128d`, pushed 2026-10-03.
+Verify with `git status` before assuming this still holds.
 
 **Shipped in `d3cb2dc`**: marketing landing at `/` (animated: coordinate-graph
 hero, marquee, feature trio, Studio/gallery/themes sections, real product
