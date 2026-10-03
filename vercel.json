@@ -7,6 +7,7 @@
     { "source": "/games", "destination": "/games.html" },
     { "source": "/themes", "destination": "/themes.html" },
     { "source": "/editor", "destination": "/editor.html" },
+    { "source": "/music", "destination": "/music.html" },
     { "source": "/servers", "destination": "/servers.html" },
     { "source": "/lobbies", "destination": "/lobbies.html" },
     { "source": "/studio", "destination": "/studio/index.html" }

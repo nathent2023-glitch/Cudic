@@ -189,3 +189,10 @@ Three.js games as plain `index.html` / `style.css` / `main.js` projects.
 It stays **dark-only** (exempt from the light palette) like a real IDE.
 New editor work adopts the product voice and radius scale, but keeps its
 dark chrome: `#0d0e10` surfaces, `#855CD6` accents, `#FF8C1A` publish.
+
+**`/music` follows the standard palette** — no exceptions, no scoped tokens.
+The only layout note: Music Lab is a fixed-height workstation. The page never
+scrolls as a whole (`overflow: hidden` on the layout), the stage columns scroll
+internally when needed, and the sequencer gets its own horizontal scroll. Play
+is the one ember control; active steps, voices and meters use `--signal`.
+

@@ -394,6 +394,7 @@ html[data-pack-bg] nav.sidebar + .profile-layout,
 html[data-pack-bg] nav.sidebar + .servers-layout,
 html[data-pack-bg] nav.sidebar + .game-layout,
 html[data-pack-bg] nav.sidebar + .themes-layout,
+html[data-pack-bg] nav.sidebar + .music-layout,
 html[data-pack-bg] nav.sidebar + .auth-layout { background: transparent; }
 html[data-pack-bg] .topbar {
   background: color-mix(in srgb, var(--panel) 78%, transparent);

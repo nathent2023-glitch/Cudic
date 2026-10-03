@@ -22,16 +22,28 @@
   }
   window.getAuthToken=getAuthToken;
 
-  // Apply saved prefs (personalization + performance) on every page
-  try{
-    var _acc=localStorage.getItem('glox_accent');
-    if(_acc&&/^#[0-9a-fA-F]{6}$/.test(_acc)){
-      var _c=[parseInt(_acc.slice(1,3),16),parseInt(_acc.slice(3,5),16),parseInt(_acc.slice(5,7),16)];
-      var _hovers={'#774DCB':'#643BAD','#FF8C1A':'#E67A00','#2E9EDB':'#1F7FB8','#14A468':'#0E7A4E'};
-      document.documentElement.style.setProperty('--signal',_acc);
-      document.documentElement.style.setProperty('--signal-hover',_hovers[_acc]||_acc);
-      document.documentElement.style.setProperty('--signal-tint','rgba('+_c[0]+','+_c[1]+','+_c[2]+',0.12)');
+  // Apply saved prefs (personalization + performance) on every page.
+  // Re-applied on bfcache restore (back/forward nav) and on cross-tab
+  // storage changes — otherwise a page frozen before an accent change
+  // keeps showing the old colour after you leave profile.
+  function applyAccentPref(){
+    var acc=localStorage.getItem('glox_accent');
+    if(!acc||!/^#[0-9a-fA-F]{6}$/.test(acc))return;
+    var c=[parseInt(acc.slice(1,3),16),parseInt(acc.slice(3,5),16),parseInt(acc.slice(5,7),16)];
+    var hovers={'#774DCB':'#643BAD','#FF8C1A':'#E67A00','#2E9EDB':'#1F7FB8','#14A468':'#0E7A4E'};
+    var hover=hovers[acc];
+    if(!hover){
+      var d=c.map(function(v){return Math.max(0,v-22)});
+      hover='#'+d.map(function(v){var s=v.toString(16);return s.length<2?'0'+s:s}).join('');
     }
+    document.documentElement.style.setProperty('--signal',acc);
+    document.documentElement.style.setProperty('--signal-hover',hover);
+    document.documentElement.style.setProperty('--signal-tint','rgba('+c[0]+','+c[1]+','+c[2]+',0.12)');
+  }
+  try{
+    applyAccentPref();
+    window.addEventListener('pageshow',function(e){if(e.persisted){try{applyAccentPref();}catch(x){}}});
+    window.addEventListener('storage',function(e){if(e.key==='glox_accent'){try{applyAccentPref();}catch(x){}}});
     if(localStorage.getItem('glox_reduce_motion')==='1'){
       document.documentElement.classList.add('reduce-motion');
       var _st=document.createElement('style');
@@ -61,6 +73,9 @@
   // Themes icon (palette)
   icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
 
+  // Music icon (double note)
+  icons.music='<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
+
   // Theme packs engine (real feature — loads on every page)
   (function(){var s=document.createElement('script');s.src='/theme-engine.js';document.head.appendChild(s);})();
 
@@ -74,6 +89,7 @@
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
       +sbItem('/themes','themes','palette','Themes')
+      +sbItem('/music','music','music','Music')
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'

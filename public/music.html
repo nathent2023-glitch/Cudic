@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cudic Music Lab</title>
+  <meta name="description" content="Play instruments, build a beat and watch the sound move. Cudic Music Lab runs in your browser with no install.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cudic">
+  <meta property="og:title" content="Cudic Music Lab">
+  <meta property="og:description" content="Play instruments, build a beat and watch the sound move. Cudic Music Lab runs in your browser with no install.">
+  <meta property="og:url" content="https://cudic.vercel.app/music">
+  <meta property="og:image" content="https://cudic.vercel.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Cudic Music Lab">
+  <meta name="twitter:description" content="Play instruments, build a beat and watch the sound move.">
+  <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
+  <link rel="canonical" content="https://cudic.vercel.app/music">
+  <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+  <link rel="stylesheet" href="/sidebar.css?v=11">
+  <style>
+    /* Everything below inherits design.md tokens from sidebar.css.
+       No local palette: this page must look like the rest of Cudic. */
+    .music-layout {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--ink);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      flex-wrap: wrap;
+    }
+
+    .topbar h1 {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 1.25rem;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .m-tools {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .m-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .m-stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(340px, 1fr);
+      gap: 16px;
+    }
+
+    .m-col {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .m-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 0.875rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 150ms, border-color 150ms, color 150ms;
+    }
+
+    .m-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    .m-btn-ghost {
+      background: transparent;
+      border: 1px solid var(--line);
+      color: var(--text-primary);
+    }
+
+    .m-btn-ghost:hover { background: var(--panel-raised); }
+
+    /* Ember is reserved for literal Play actions (design.md section 6). */
+    .m-btn-play {
+      background: var(--ember);
+      border: 1px solid var(--ember);
+      color: var(--ink);
+      font-weight: 600;
+      padding: 0 20px;
+    }
+
+    .m-btn-play:hover {
+      background: var(--ember-deep);
+      border-color: var(--ember-deep);
+      color: var(--panel);
+    }
+
+    /* ── Sliders ───────────────────────────────────────────── */
+    .m-ctl {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+    }
+
+    .m-ctl-name {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      width: 46px;
+      flex-shrink: 0;
+    }
+
+    .m-val {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-primary);
+      min-width: 40px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 104px;
+      height: 40px;
+      background: transparent;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: var(--line);
+      border-radius: var(--radius-sm);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      margin-top: -6px;
+      background: var(--signal);
+      border: 1px solid var(--signal-hover);
+      border-radius: var(--radius-sm);
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      background: var(--line);
+      border-radius: var(--radius-sm);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: var(--signal);
+      border: 1px solid var(--signal-hover);
+      border-radius: var(--radius-sm);
+    }
+
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--signal);
+      outline-offset: 2px;
+    }
+
+    /* ── Cards ─────────────────────────────────────────────── */
+    .m-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .m-card-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .m-card-head h2 {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+    }
+
+    .m-hint {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-secondary);
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--signal);
+      outline-offset: 2px;
+    }
+
+    /* ── Voice chips ───────────────────────────────────────── */
+    .m-voices { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .m-chip {
+      height: 36px;
+      padding: 0 14px;
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 150ms, border-color 150ms, color 150ms;
+    }
+
+    .m-chip:hover { background: var(--panel-raised); }
+
+    .m-chip[aria-pressed="true"] {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--panel);
+    }
+
+    /* ── Pads ──────────────────────────────────────────────── */
+    .m-pads {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
+    }
+
+    .m-pad {
+      height: 64px;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.9375rem;
+      color: var(--text-primary);
+      background: var(--panel-raised);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      touch-action: none;
+      transition: background-color 150ms, border-color 150ms, color 150ms;
+    }
+
+    .m-pad:hover { border-color: var(--signal); }
+
+    .m-pad.on {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--panel);
+    }
+
+    /* ── Keyboard ──────────────────────────────────────────── */
+    .m-keys-scroll { overflow-x: auto; }
+
+    .m-keys {
+      position: relative;
+      display: flex;
+      min-width: 660px;
+      height: 160px;
+      user-select: none;
+    }
+
+    .m-key {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      touch-action: none;
+      transition: background-color 150ms, border-color 150ms, color 150ms;
+    }
+
+    .m-key + .m-key { border-left: none; }
+
+    .m-key:hover { background: var(--panel-raised); }
+
+    .m-key.on {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--panel);
+    }
+
+    .m-key-black {
+      position: absolute;
+      top: 0;
+      height: 100px;
+      z-index: 2;
+      background: var(--text-primary);
+      border: 1px solid var(--text-primary);
+      color: var(--panel);
+      font-size: 0.625rem;
+      padding-bottom: 6px;
+    }
+
+    .m-key-black:hover { background: var(--text-secondary); }
+
+    .m-key-black.on {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--panel);
+    }
+
+    /* ── Visualizer ────────────────────────────────────────── */
+    .m-viz {
+      width: 100%;
+      height: 132px;
+      display: block;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ── Mixer ─────────────────────────────────────────────── */
+    .m-mixer { display: flex; flex-direction: column; gap: 8px; }
+
+    .m-row {
+      display: grid;
+      grid-template-columns: minmax(54px, 76px) minmax(60px, 1fr) minmax(52px, 0.75fr) auto auto;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 8px;
+      background: var(--panel-raised);
+      border-radius: var(--radius-sm);
+    }
+
+    .m-row-name {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 0.75rem;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: opacity 150ms;
+    }
+
+    .m-row.muted .m-row-name { opacity: 0.45; }
+
+    .m-row input[type="range"] { width: 100%; height: 32px; }
+
+    .m-tog {
+      width: 28px;
+      height: 28px;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 150ms, border-color 150ms, color 150ms;
+    }
+
+    .m-tog:hover { border-color: var(--signal); }
+
+    .m-tog[aria-pressed="true"] {
+      background: var(--signal);
+      border-color: var(--signal);
+      color: var(--panel);
+    }
+
+    /* ── Sequencer ─────────────────────────────────────────── */
+    .m-seq { flex: 0 0 auto; }
+
+    .m-seq-scroll { overflow-x: auto; }
+
+    .m-seq-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 740px;
+    }
+
+    .m-seq-row { display: flex; align-items: center; gap: 8px; }
+
+    .m-seq-label {
+      width: 76px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .m-seq-oct {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      color: var(--text-tertiary);
+    }
+
+    .m-seq-cells { display: flex; gap: 4px; flex: 1; }
+
+    .m-cell {
+      flex: 1;
+      min-width: 36px;
+      height: 36px;
+      padding: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 150ms, border-color 150ms;
+    }
+
+    .m-cell:nth-child(4n + 1) { margin-left: 8px; }
+
+    .m-cell:first-child { margin-left: 0; }
+
+    .m-cell:hover { border-color: var(--signal); }
+
+    .m-cell[aria-pressed="true"] {
+      background: var(--signal);
+      border-color: var(--signal-hover);
+    }
+
+    .m-cell.head { outline: 2px solid var(--ember); outline-offset: 1px; }
+
+    .m-step-n {
+      flex: 1;
+      min-width: 36px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-tertiary);
+      transition: color 150ms;
+    }
+
+    .m-step-n:nth-child(4n + 1) { margin-left: 8px; }
+
+    .m-step-n:first-child { margin-left: 0; }
+
+    .m-step-n.head {
+      color: var(--ember-deep);
+      font-weight: 700;
+    }
+
+    /* ── Self-test banner ──────────────────────────────────── */
+    .m-fail {
+      background: var(--panel);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+      font-size: 0.75rem;
+      color: var(--danger);
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 1024px) {
+      .m-stage { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .music-layout *,
+      .music-layout *::before,
+      .music-layout *::after {
+        animation-duration: 0.001s !important;
+        transition-duration: 0.001s !important;
+      }
+    }
+  </style>
+</head>
+
+<body data-page="music">
+  <div class="music-layout">
+    <header class="topbar">
+      <h1>Music Lab</h1>
+      <div class="m-tools">
+        <button class="m-btn m-btn-play" id="playBtn" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5-13-7.5Z" /></svg>
+          <span id="playLabel">Play</span>
+        </button>
+
+        <label class="m-ctl">
+          <span class="m-ctl-name">Tempo</span>
+          <input type="range" id="bpm" min="60" max="180" value="110" aria-label="Tempo in beats per minute">
+          <span class="m-val" id="bpmVal">110</span>
+        </label>
+
+        <label class="m-ctl">
+          <span class="m-ctl-name">Swing</span>
+          <input type="range" id="swing" min="0" max="60" value="0" aria-label="Swing percentage">
+          <span class="m-val" id="swingVal">0%</span>
+        </label>
+
+        <label class="m-ctl">
+          <span class="m-ctl-name">Volume</span>
+          <input type="range" id="master" min="0" max="100" value="80" aria-label="Master volume">
+          <span class="m-val" id="masterVal">80</span>
+        </label>
+
+        <button class="m-btn m-btn-ghost" id="panicBtn" title="Release every held note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          <span>All notes off</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="m-body">
+      <main class="m-stage">
+        <div class="m-col">
+          <section class="m-card">
+            <div class="m-card-head">
+              <h2>Sound</h2>
+              <span class="m-hint">One voice at a time</span>
+            </div>
+            <div class="m-voices" id="voices"></div>
+          </section>
+
+          <section class="m-card">
+            <div class="m-card-head">
+              <h2>Pads</h2>
+              <span class="m-hint">Hold a pad to keep it ringing</span>
+            </div>
+            <div class="m-pads" id="pads"></div>
+          </section>
+
+          <section class="m-card">
+            <div class="m-card-head">
+              <h2>Keyboard</h2>
+              <span class="m-hint">Click a key, or use A to L and W E T Y U O P</span>
+            </div>
+            <div class="m-keys-scroll">
+              <div class="m-keys" id="keys"></div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="m-col">
+          <section class="m-card">
+            <div class="m-card-head">
+              <h2>Visualizer</h2>
+              <span class="m-hint">Levels from the master output</span>
+            </div>
+            <canvas class="m-viz" id="viz"></canvas>
+          </section>
+
+          <section class="m-card">
+            <div class="m-card-head">
+              <h2>Mixer</h2>
+              <span class="m-hint">Volume, pan, mute and solo per sound</span>
+            </div>
+            <div class="m-mixer" id="mixer"></div>
+          </section>
+        </aside>
+      </main>
+
+      <section class="m-card m-seq">
+        <div class="m-card-head">
+          <h2>Step sequencer</h2>
+          <span class="m-hint">Tap a step to switch it on</span>
+        </div>
+        <div class="m-seq-scroll">
+          <div class="m-seq-grid" id="seq"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/sidebar.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var $ = function (s) { return document.getElementById(s); };
+    var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    /* ── Note maths ─────────────────────────────────────────── */
+    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+    function stepDur() { return 60 / S.bpm / 4; }
+    function swingOffset(step, dur) { return step % 2 === 1 ? S.swing * dur : 0; }
+
+    /* ── State ──────────────────────────────────────────────── */
+    var S = { voice: 'piano', bpm: 110, swing: 0, master: 0.8, pattern: {}, mix: {} };
+
+    function mixRow(k) {
+      if (!S.mix[k]) S.mix[k] = { v: 80, p: 0, m: 0, s: 0 };
+      return S.mix[k];
+    }
+
+    /* ── Voices ─────────────────────────────────────────────── */
+    // One envelope builder. cfg.sustain decides whether the note holds until
+    // stop() is called or runs its decay on its own.
+    function voice(cfg) {
+      var a = cfg.a != null ? cfg.a : 0.01;
+      var r = cfg.r != null ? cfg.r : 0.2;
+      var peak0 = cfg.gain != null ? cfg.gain : 0.3;
+      var partials = cfg.partials || [[1, 'sine', 1]];
+      return function (midi, t, dur, vel, dest) {
+        var peak = Math.max(0.002, peak0 * clamp(vel == null ? 1 : vel, 0.1, 1));
+        var stopT = t + Math.max(0.05, dur);
+        var g = ac.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(peak, t + a);
+        if (cfg.sustain && stopT < t + a + 0.02) stopT = t + a + 0.02;
+        if (cfg.sustain) g.gain.setValueAtTime(peak, stopT);
+        g.gain.exponentialRampToValueAtTime(0.0001, stopT + r);
+        var out = g;
+        if (cfg.lp) {
+          var bq = ac.createBiquadFilter();
+          bq.type = 'lowpass';
+          bq.frequency.value = cfg.lp;
+          g.connect(bq);
+          out = bq;
+        }
+        out.connect(dest);
+        var oscs = [], i, p;
+        for (i = 0; i < partials.length; i++) {
+          p = partials[i];
+          var o = ac.createOscillator();
+          o.type = p[1];
+          o.frequency.setValueAtTime(mtof(midi) * p[0], t);
+          var pg = ac.createGain();
+          pg.gain.value = p[2];
+          o.connect(pg);
+          pg.connect(g);
+          o.start(t);
+          o.stop(stopT + r + 0.08);
+          o.onended = (function (oo, pp) {
+            return function () { try { oo.disconnect(); pp.disconnect(); } catch (e) {} };
+          })(o, pg);
+          oscs.push(o);
+        }
+        var released = false;
+        return {
+          stop: function () {
+            if (released || !cfg.sustain) return;
+            released = true;
+            var now = ac.currentTime;
+            try {
+              if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
+              else { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); }
+              g.gain.exponentialRampToValueAtTime(0.0001, now + r);
+              for (var k = 0; k < oscs.length; k++) oscs[k].stop(now + r + 0.05);
+            } catch (e) {}
+          }
+        };
+      };
+    }
+
+    function inst(label, cfg) { return { label: label, note: voice(cfg) }; }
+
+    // Adding a voice is one entry: it shows up in the chip row and the mixer.
+    var INSTRUMENTS = {
+      piano: inst('Piano', { gain: 0.30, a: 0.005, r: 0.35, sustain: true, lp: 5200,
+        partials: [[1, 'triangle', 1], [2, 'sine', 0.4], [3, 'sine', 0.16], [4.02, 'sine', 0.07]] }),
+      pad: inst('Pad', { gain: 0.24, a: 0.16, r: 0.6, sustain: true, lp: 1500,
+        partials: [[1, 'sawtooth', 0.5], [1.007, 'sawtooth', 0.5], [2, 'sine', 0.2]] }),
+      bass: inst('Bass', { gain: 0.42, a: 0.008, r: 0.22, sustain: true, lp: 900,
+        partials: [[1, 'triangle', 1], [2, 'sine', 0.3]] }),
+      pluck: inst('Pluck', { gain: 0.34, a: 0.003, r: 0.42, sustain: false, lp: 3400,
+        partials: [[1, 'triangle', 1], [2, 'sine', 0.25]] }),
+      bell: inst('Bell', { gain: 0.26, a: 0.004, r: 0.9, sustain: false, lp: 6000,
+        partials: [[1, 'sine', 1], [2.76, 'sine', 0.4], [5.4, 'sine', 0.15]] }),
+      lead: inst('Lead', { gain: 0.26, a: 0.03, r: 0.3, sustain: true, lp: 2600,
+        partials: [[1, 'sawtooth', 0.7], [2, 'square', 0.2]] })
+    };
+
+    /* ── Drums ──────────────────────────────────────────────── */
+    var NOISE = null;
+    function noiseBuf() {
+      if (NOISE) return NOISE;
+      var b = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.5), ac.sampleRate);
+      var d = b.getChannelData(0);
+      for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      NOISE = b;
+      return b;
+    }
+
+    function burst(t, type, freq, q, dur, gain, dest) {
+      var s = ac.createBufferSource();
+      s.buffer = noiseBuf();
+      s.loop = true;
+      var f = ac.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      if (q) f.Q.value = q;
+      var g = ac.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(g); g.connect(dest);
+      s.start(t);
+      s.stop(t + dur + 0.02);
+      s.onended = (function (ss, ff, gg) {
+        return function () { try { ss.disconnect(); ff.disconnect(); gg.disconnect(); } catch (e) {} };
+      })(s, f, g);
+    }
+
+    function blip(t, f0, f1, dur, type, gain, dest) {
+      var o = ac.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(f0, t);
+      o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur * 0.9);
+      var g = ac.createGain();
+      g.gain.setValueAtTime(gain, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(dest);
+      o.start(t);
+      o.stop(t + dur + 0.02);
+      o.onended = (function (oo, gg) {
+        return function () { try { oo.disconnect(); gg.disconnect(); } catch (e) {} };
+      })(o, g);
+    }
+
+    var DRUMS = {
+      kick: function (t, dest) { blip(t, 150, 45, 0.36, 'sine', 1, dest); },
+      snare: function (t, dest) {
+        burst(t, 'bandpass', 1800, 0.8, 0.18, 0.55, dest);
+        blip(t, 220, 140, 0.1, 'triangle', 0.3, dest);
+      },
+      hat: function (t, dest) { burst(t, 'highpass', 7000, 1, 0.05, 0.35, dest); },
+      clap: function (t, dest) {
+        burst(t, 'bandpass', 1400, 1.2, 0.1, 0.4, dest);
+        burst(t + 0.012, 'bandpass', 1400, 1.2, 0.1, 0.4, dest);
+        burst(t + 0.024, 'bandpass', 1400, 1.2, 0.1, 0.4, dest);
+      },
+      tom: function (t, dest) { blip(t, 260, 110, 0.3, 'sine', 0.7, dest); }
+    };
+
+    /* ── Sequencer rows: drums first, then the scale notes ──── */
+    var ROWS = [
+      { id: 'kick', kind: 'drum', label: 'Kick' },
+      { id: 'snare', kind: 'drum', label: 'Snare' },
+      { id: 'hat', kind: 'drum', label: 'Hi-hat' },
+      { id: 'clap', kind: 'drum', label: 'Clap' },
+      { id: 'tom', kind: 'drum', label: 'Tom' },
+      { id: 'n60', kind: 'note', midi: 60, label: 'C' },
+      { id: 'n64', kind: 'note', midi: 64, label: 'E' },
+      { id: 'n67', kind: 'note', midi: 67, label: 'G' },
+      { id: 'n72', kind: 'note', midi: 72, label: 'C' }
+    ];
+    var STEPS = 16;
+
+    function emptyPattern() {
+      var p = {};
+      for (var i = 0; i < ROWS.length; i++) {
+        p[ROWS[i].id] = [];
+        for (var s = 0; s < STEPS; s++) p[ROWS[i].id].push(false);
+      }
+      return p;
+    }
+
+    // A starter beat, so Play makes sound the first time.
+    function seedPattern() {
+      var p = emptyPattern();
+      var on = function (id, steps) { for (var i = 0; i < steps.length; i++) p[id][steps[i]] = true; };
+      on('kick', [0, 6, 8, 14]);
+      on('snare', [4, 12]);
+      on('hat', [0, 2, 4, 6, 8, 10, 12, 14]);
+      on('n60', [0, 8]);
+      on('n64', [6]);
+      on('n67', [12]);
+      return p;
+    }
+
+    function sanitizePattern(raw) {
+      var p = emptyPattern();
+      if (!raw || typeof raw !== 'object') return p;
+      for (var i = 0; i < ROWS.length; i++) {
+        var id = ROWS[i].id, row = raw[id];
+        if (!row || typeof row.length !== 'number') continue;
+        for (var s = 0; s < STEPS; s++) p[id][s] = !!row[s];
+      }
+      return p;
+    }
+
+    /* ── Audio graph (built on first gesture) ───────────────── */
+    var ac = null, G = null, held = {};
+
+    function ensure() {
+      if (ac) {
+        if (ac.state === 'suspended') ac.resume();
+        return ac;
+      }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC();
+      var master = ac.createGain();
+      master.gain.value = S.master;
+      var an = ac.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.75;
+      master.connect(an);
+      an.connect(ac.destination);
+      G = { master: master, analyser: an, tracks: {} };
+      var keys = Object.keys(INSTRUMENTS).concat(['drums']);
+      for (var i = 0; i < keys.length; i++) {
+        var g = ac.createGain();
+        var p = ac.createStereoPanner ? ac.createStereoPanner() : null;
+        if (p) { g.connect(p); p.connect(master); } else { g.connect(master); }
+        G.tracks[keys[i]] = { gain: g, pan: p };
+      }
+      applyMix();
+      return ac;
+    }
+
+    function trackOf(k) { return G.tracks[k].gain; }
+
+    function applyMix() {
+      if (!G) return;
+      var anySolo = false, k;
+      for (k in S.mix) if (S.mix[k] && S.mix[k].s) anySolo = true;
+      for (k in G.tracks) {
+        var m = mixRow(k), t = G.tracks[k];
+        var on = !m.m && (!anySolo || m.s);
+        t.gain.gain.setTargetAtTime(on ? m.v / 100 : 0, ac.currentTime, 0.01);
+        if (t.pan) t.pan.pan.setTargetAtTime(m.p / 100, ac.currentTime, 0.01);
+      }
+    }
+
+    function noteOn(id, midi, vel) {
+      if (!ensure()) return;
+      if (held[id]) held[id].stop();
+      held[id] = INSTRUMENTS[S.voice].note(midi, ac.currentTime, 6, vel, trackOf(S.voice));
+      var el = document.querySelector('[data-note="' + id + '"]');
+      if (el) el.classList.add('on');
+    }
+
+    function noteOff(id) {
+      if (held[id]) { held[id].stop(); delete held[id]; }
+      var el = document.querySelector('[data-note="' + id + '"]');
+      if (el) el.classList.remove('on');
+    }
+
+    function panic() {
+      for (var id in held) noteOff(id);
+      var on = document.querySelectorAll('.on');
+      for (var i = 0; i < on.length; i++) on[i].classList.remove('on');
+    }
+
+    /* ── Lookahead scheduler ────────────────────────────────── */
+    var seq = { on: false, step: 0, next: 0, timer: 0, heads: [] };
+    var lastHead = -1;
+
+    function fireRow(row, t) {
+      if (row.kind === 'drum') DRUMS[row.id](t, trackOf('drums'));
+      else INSTRUMENTS[S.voice].note(row.midi, t, 0.42, 0.9, trackOf(S.voice));
+    }
+
+    function scheduleStep(i, t) {
+      for (var n = 0; n < ROWS.length; n++) {
+        var row = ROWS[n];
+        if (S.pattern[row.id] && S.pattern[row.id][i]) fireRow(row, t);
+      }
+    }
+
+    function tick() {
+      if (!seq.on || !ac) return;
+      var dur = stepDur(), horizon = ac.currentTime + 0.1;
+      while (seq.next < horizon) {
+        var t = seq.next + swingOffset(seq.step, dur);
+        scheduleStep(seq.step, t);
+        seq.heads.push({ i: seq.step, t: t });
+        seq.next += dur;
+        seq.step = (seq.step + 1) % STEPS;
+      }
+    }
+
+    function startSeq() {
+      if (!ensure()) return;
+      panic();
+      seq.on = true;
+      seq.step = 0;
+      seq.heads = [];
+      seq.next = ac.currentTime + 0.08;
+      clearInterval(seq.timer);
+      seq.timer = setInterval(tick, 25);
+      tick();
+      setPlay(true);
+    }
+
+    function stopSeq() {
+      seq.on = false;
+      clearInterval(seq.timer);
+      seq.heads = [];
+      clearHead();
+      setPlay(false);
+    }
+
+    function setPlay(on) {
+      var b = $('playBtn');
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      $('playLabel').textContent = on ? 'Stop' : 'Play';
+      b.querySelector('svg').innerHTML = on
+        ? '<path d="M7 5v14M17 5v14"/>'
+        : '<path d="M7 4.5v15l13-7.5-13-7.5Z"/>';
+    }
+
+    function clearHead() {
+      lastHead = -1;
+      var h = document.querySelectorAll('.head');
+      for (var i = 0; i < h.length; i++) h[i].classList.remove('head');
+    }
+
+    function setHead(step) {
+      if (step === lastHead) return;
+      clearHead();
+      lastHead = step;
+      if (step < 0) return;
+      var c = document.querySelectorAll('.m-cell[data-i="' + step + '"]');
+      for (var i = 0; i < c.length; i++) c[i].classList.add('head');
+      var n = document.querySelector('.m-step-n[data-i="' + step + '"]');
+      if (n) n.classList.add('head');
+    }
+
+    /* ── Visualizer + playhead: the one motion moment ───────── */
+    // Read once from the live tokens so theme packs recolour this too.
+    var T = (function () {
+      var cs = getComputedStyle(document.body);
+      var pick = function (name, fallback) {
+        var v = (cs.getPropertyValue(name) || '').trim();
+        return v || fallback;
+      };
+      return {
+        signal: pick('--signal', '#774DCB'),
+        ember: pick('--ember', '#FF8C1A'),
+        line: pick('--line', '#C9D5F0')
+      };
+    })();
+
+    var disp = null;
+
+    function fit(cv) {
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      var w = cv.clientWidth || 300, h = cv.clientHeight || 130;
+      cv.width = Math.max(2, Math.round(w * dpr));
+      cv.height = Math.max(2, Math.round(h * dpr));
+      return dpr;
+    }
+
+    function draw() {
+      var cv = $('viz');
+      if (!cv || !cv.clientWidth) return;
+      var dpr = fit(cv), W = cv.width, H = cv.height;
+      var g = cv.getContext('2d');
+      g.clearRect(0, 0, W, H);
+
+      if (G) {
+        var an = G.analyser;
+        if (!disp || disp.length !== an.frequencyBinCount) disp = new Float32Array(an.frequencyBinCount);
+        var raw = new Uint8Array(an.frequencyBinCount);
+        an.getByteFrequencyData(raw);
+        var n = 44, bw = W / n;
+        for (var i = 0; i < n; i++) {
+          var v = raw[Math.floor(i * raw.length / n)] / 255;
+          var target = v * v;
+          disp[i] = reduceMotion ? target : disp[i] + (target - disp[i]) * 0.35;
+          var h = Math.max(2 * dpr, disp[i] * H * 0.94);
+          g.fillStyle = T.signal;
+          g.fillRect(i * bw + bw * 0.16, H - h, bw * 0.68, h);
+          if (h > H * 0.6) {
+            g.fillStyle = T.ember;
+            g.fillRect(i * bw + bw * 0.16, H - h, bw * 0.68, 3 * dpr);
+          }
+        }
+        g.fillStyle = T.line;
+        g.fillRect(0, H - 2 * dpr, W, 2 * dpr);
+      } else {
+        g.fillStyle = T.line;
+        g.fillRect(0, H - 2 * dpr, W, 2 * dpr);
+      }
+
+      if (seq.on && ac) {
+        var now = ac.currentTime;
+        while (seq.heads.length > 1 && seq.heads[1].t <= now) seq.heads.shift();
+        if (seq.heads.length && seq.heads[0].t <= now) setHead(seq.heads[0].i);
+        else if (seq.heads.length === 0) setHead(-1);
+      }
+    }
+
+    var raf = 0, running = false;
+    function loop() {
+      if (!running) return;
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+    function startLoop() {
+      if (running) return;
+      running = true;
+      loop();
+      document.addEventListener('visibilitychange', onVis);
+    }
+    function onVis() {
+      if (document.hidden) {
+        running = false;
+        cancelAnimationFrame(raf);
+      } else if (!running) {
+        running = true;
+        loop();
+      }
+    }
+    startLoop();
+
+    /* ── UI: voice chips ────────────────────────────────────── */
+    function buildVoices() {
+      var box = $('voices'), html = '';
+      var keys = Object.keys(INSTRUMENTS);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i], on = k === S.voice;
+        html += '<button class="m-chip" data-v="' + k + '" aria-pressed="' + on + '">'
+          + INSTRUMENTS[k].label + '</button>';
+      }
+      box.innerHTML = html;
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-v]');
+        if (!b) return;
+        panic();
+        S.voice = b.getAttribute('data-v');
+        var all = box.querySelectorAll('[data-v]');
+        for (var i = 0; i < all.length; i++) {
+          all[i].setAttribute('aria-pressed', all[i].getAttribute('data-v') === S.voice ? 'true' : 'false');
+        }
+        save();
+      });
+    }
+
+    /* ── UI: pads ───────────────────────────────────────────── */
+    var PAD_NOTES = [60, 62, 64, 65, 67, 69, 71, 72];
+    var PAD_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'];
+
+    function velFrom(e, el) {
+      var r = el.getBoundingClientRect();
+      var y = (e.clientY - r.top) / Math.max(1, r.height);
+      return clamp(0.4 + 0.6 * y, 0.3, 1);
+    }
+
+    function buildPads() {
+      var box = $('pads'), html = '';
+      for (var i = 0; i < PAD_NOTES.length; i++) {
+        html += '<button class="m-pad" data-pad="' + i + '" data-note="pad' + i + '">'
+          + PAD_NAMES[i] + '</button>';
+      }
+      box.innerHTML = html;
+      box.addEventListener('pointerdown', function (e) {
+        var b = e.target.closest('[data-pad]');
+        if (!b) return;
+        e.preventDefault();
+        var i = +b.getAttribute('data-pad');
+        noteOn('pad' + i, PAD_NOTES[i], velFrom(e, b));
+        b.setPointerCapture && b.setPointerCapture(e.pointerId);
+      });
+      var up = function (e) {
+        var b = e.target.closest('[data-pad]');
+        if (b) noteOff('pad' + b.getAttribute('data-pad'));
+      };
+      box.addEventListener('pointerup', up);
+      box.addEventListener('pointercancel', up);
+      box.addEventListener('pointerleave', up);
+    }
+
+    /* ── UI: keyboard ───────────────────────────────────────── */
+    var WHITES = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84];
+    var BLACKS = [
+      { m: 61, w: 0 }, { m: 63, w: 1 },
+      { m: 66, w: 3 }, { m: 68, w: 4 }, { m: 70, w: 5 },
+      { m: 73, w: 7 }, { m: 75, w: 8 },
+      { m: 78, w: 10 }, { m: 80, w: 11 }, { m: 82, w: 12 }
+    ];
+    var KEYMAP = {
+      KeyA: 60, KeyS: 62, KeyD: 64, KeyF: 65, KeyG: 67, KeyH: 69, KeyJ: 71,
+      KeyK: 72, KeyL: 74, Semicolon: 76,
+      KeyW: 61, KeyE: 63, KeyT: 66, KeyY: 68, KeyU: 70, KeyO: 73, KeyP: 75
+    };
+
+    function keyLabel(m) {
+      var names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      return names[m % 12] + (Math.floor(m / 12) - 1);
+    }
+
+    function buildKeys() {
+      var box = $('keys'), html = '', i;
+      for (i = 0; i < WHITES.length; i++) {
+        html += '<button class="m-key" data-key="' + WHITES[i] + '" data-note="w' + WHITES[i] + '">'
+          + keyLabel(WHITES[i]) + '</button>';
+      }
+      for (i = 0; i < BLACKS.length; i++) {
+        var left = ((BLACKS[i].w + 1) / WHITES.length) * 100;
+        html += '<button class="m-key m-key-black" data-key="' + BLACKS[i].m
+          + '" data-note="b' + BLACKS[i].m + '" style="left:calc(' + left + '% - 14px);width:28px">'
+          + keyLabel(BLACKS[i].m) + '</button>';
+      }
+      box.innerHTML = html;
+
+      box.addEventListener('pointerdown', function (e) {
+        var b = e.target.closest('[data-key]');
+        if (!b) return;
+        e.preventDefault();
+        noteOn('w' + b.getAttribute('data-key'), +b.getAttribute('data-key'), velFrom(e, b));
+        b.setPointerCapture && b.setPointerCapture(e.pointerId);
+      });
+      var up = function (e) {
+        var b = e.target.closest('[data-key]');
+        if (b) noteOff('w' + b.getAttribute('data-key'));
+      };
+      box.addEventListener('pointerup', up);
+      box.addEventListener('pointercancel', up);
+      box.addEventListener('pointerleave', up);
+    }
+
+    // Computer keyboard. Ignores typing in form fields and key auto-repeat.
+    document.addEventListener('keydown', function (e) {
+      var t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      var m = KEYMAP[e.code];
+      if (m == null) return;
+      e.preventDefault();
+      noteOn('k' + m, m, 0.85);
+    });
+    document.addEventListener('keyup', function (e) {
+      var m = KEYMAP[e.code];
+      if (m == null) return;
+      noteOff('k' + m);
+    });
+
+    /* ── UI: mixer ──────────────────────────────────────────── */
+    function buildMixer() {
+      var box = $('mixer'), html = '';
+      var keys = Object.keys(INSTRUMENTS).concat(['drums']);
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i];
+        var name = k === 'drums' ? 'Drums' : INSTRUMENTS[k].label;
+        var m = mixRow(k);
+        html += '<div class="m-row' + (m.m ? ' muted' : '') + '" data-k="' + k + '">'
+          + '<span class="m-row-name">' + name + '</span>'
+          + '<input type="range" data-t="v" min="0" max="100" value="' + m.v
+          + '" aria-label="' + name + ' volume">'
+          + '<input type="range" data-t="p" min="-100" max="100" value="' + m.p
+          + '" aria-label="' + name + ' pan">'
+          + '<button class="m-tog" data-t="m" aria-pressed="' + (m.m ? 'true' : 'false')
+          + '" title="Mute ' + name + '" aria-label="Mute ' + name + '">M</button>'
+          + '<button class="m-tog" data-t="s" aria-pressed="' + (m.s ? 'true' : 'false')
+          + '" title="Solo ' + name + '" aria-label="Solo ' + name + '">S</button>'
+          + '</div>';
+      }
+      box.innerHTML = html;
+      box.addEventListener('input', function (e) {
+        var el = e.target;
+        if (el.tagName !== 'INPUT') return;
+        var row = el.closest('[data-k]');
+        if (!row) return;
+        var m = mixRow(row.getAttribute('data-k'));
+        m[el.getAttribute('data-t')] = +el.value;
+        applyMix();
+        save();
+      });
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('[data-t]');
+        if (!b || b.tagName !== 'BUTTON') return;
+        var row = b.closest('[data-k]');
+        var m = mixRow(row.getAttribute('data-k'));
+        var t = b.getAttribute('data-t');
+        m[t] = m[t] ? 0 : 1;
+        b.setAttribute('aria-pressed', m[t] ? 'true' : 'false');
+        if (t === 'm') row.classList.toggle('muted', !!m.m);
+        applyMix();
+        save();
+      });
+    }
+
+    /* ── UI: sequencer ──────────────────────────────────────── */
+    function buildSeq() {
+      var box = $('seq'), html = '', i, n;
+      html += '<div class="m-seq-row"><div class="m-seq-label">Step</div>'
+        + '<div class="m-seq-cells">';
+      for (i = 0; i < STEPS; i++) {
+        html += '<span class="m-step-n" data-i="' + i + '">' + (i + 1) + '</span>';
+      }
+      html += '</div></div>';
+
+      for (n = 0; n < ROWS.length; n++) {
+        var row = ROWS[n];
+        html += '<div class="m-seq-row" data-r="' + row.id + '">'
+          + '<div class="m-seq-label">' + row.label
+          + (row.kind === 'note' ? '<span class="m-seq-oct">' + (Math.floor(row.midi / 12) - 1) + '</span>' : '')
+          + '</div><div class="m-seq-cells">';
+        for (i = 0; i < STEPS; i++) {
+          var on = !!(S.pattern[row.id] && S.pattern[row.id][i]);
+          html += '<button class="m-cell" data-r="' + row.id + '" data-i="' + i
+            + '" aria-pressed="' + on + '" aria-label="' + row.label + ' step ' + (i + 1) + '"></button>';
+        }
+        html += '</div></div>';
+      }
+      box.innerHTML = html;
+
+      box.addEventListener('click', function (e) {
+        var b = e.target.closest('.m-cell');
+        if (!b) return;
+        var id = b.getAttribute('data-r'), i = +b.getAttribute('data-i');
+        S.pattern[id][i] = !S.pattern[id][i];
+        b.setAttribute('aria-pressed', S.pattern[id][i] ? 'true' : 'false');
+        if (S.pattern[id][i]) {
+          if (!ensure()) return;
+          var row = null;
+          for (var n = 0; n < ROWS.length; n++) if (ROWS[n].id === id) row = ROWS[n];
+          if (row) fireRow(row, ac.currentTime);
+        }
+        save();
+      });
+    }
+
+    /* ── Transport controls ─────────────────────────────────── */
+    function bindTransport() {
+      $('playBtn').addEventListener('click', function () {
+        if (seq.on) stopSeq(); else startSeq();
+      });
+      $('panicBtn').addEventListener('click', panic);
+      $('bpm').addEventListener('input', function () {
+        S.bpm = clamp(+this.value, 60, 180);
+        $('bpmVal').textContent = S.bpm;
+        save();
+      });
+      $('swing').addEventListener('input', function () {
+        S.swing = clamp(+this.value, 0, 60) / 100;
+        $('swingVal').textContent = Math.round(S.swing * 100) + '%';
+        save();
+      });
+      $('master').addEventListener('input', function () {
+        S.master = clamp(+this.value, 0, 100) / 100;
+        $('masterVal').textContent = this.value;
+        if (G) G.master.gain.setTargetAtTime(S.master, ac.currentTime, 0.02);
+        save();
+      });
+      // Browsers block audio before a gesture, so unlock on the first one.
+      document.addEventListener('pointerdown', function unlock() {
+        ensure();
+        document.removeEventListener('pointerdown', unlock);
+      });
+    }
+
+    /* ── Persistence ────────────────────────────────────────── */
+    // Every access is guarded, and nothing here ever calls .clear().
+    function save() {
+      try {
+        localStorage.setItem('cudic-music', JSON.stringify({
+          v: S.voice, bpm: S.bpm, swing: S.swing, master: S.master, pattern: S.pattern, mix: S.mix
+        }));
+      } catch (e) {}
+    }
+
+    function load() {
+      try {
+        var raw = localStorage.getItem('cudic-music');
+        if (!raw) return false;
+        var d = JSON.parse(raw);
+        if (!d || typeof d !== 'object') return false;
+        if (d.v && INSTRUMENTS[d.v]) S.voice = d.v;
+        if (typeof d.bpm === 'number') S.bpm = clamp(d.bpm, 60, 180);
+        if (typeof d.swing === 'number') S.swing = clamp(d.swing, 0, 0.6);
+        if (typeof d.master === 'number') S.master = clamp(d.master, 0, 1);
+        if (d.pattern) S.pattern = sanitizePattern(d.pattern);
+        if (d.mix && typeof d.mix === 'object') {
+          for (var k in d.mix) {
+            var m = d.mix[k];
+            if (!m || typeof m !== 'object') continue;
+            S.mix[k] = {
+              v: clamp(typeof m.v === 'number' ? m.v : 80, 0, 100),
+              p: clamp(typeof m.p === 'number' ? m.p : 0, -100, 100),
+              m: m.m ? 1 : 0, s: m.s ? 1 : 0
+            };
+          }
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function syncControls() {
+      $('bpm').value = S.bpm;
+      $('bpmVal').textContent = S.bpm;
+      $('swing').value = Math.round(S.swing * 100);
+      $('swingVal').textContent = Math.round(S.swing * 100) + '%';
+      $('master').value = Math.round(S.master * 100);
+      $('masterVal').textContent = Math.round(S.master * 100);
+    }
+
+    /* ── Self-test: ?selftest=1, no audio device needed ─────── */
+    function selftest() {
+      var pass = 0, fails = [];
+      var ok = function (c, m) { if (c) pass++; else fails.push(m); };
+
+      ok(Math.abs(mtof(69) - 440) < 1e-9, 'mtof(69) must be 440');
+      ok(Math.abs(mtof(81) - 880) < 1e-6, 'mtof(81) must be 880');
+      ok(Math.abs(mtof(57) - 220) < 1e-9, 'mtof(57) must be 220');
+
+      var sd = 60 / 120 / 4;
+      ok(Math.abs(sd - 0.125) < 1e-9, 'a 16th at 120bpm must be 0.125s');
+      ok(Math.abs(sd * 16 - 2) < 1e-9, '16 steps at 120bpm must be 2s');
+      ok(Math.abs(stepDur() - (60 / S.bpm / 4)) < 1e-12, 'stepDur must follow S.bpm');
+
+      var keepSwing = S.swing;
+      S.swing = 0.5;
+      ok(Math.abs(swingOffset(1, 0.25) - 0.125) < 1e-9, 'odd step must be offset by swing * dur');
+      ok(swingOffset(0, 0.25) === 0, 'even step must not swing');
+      ok(swingOffset(2, 0.25) === 0, 'every other step must not swing');
+      S.swing = keepSwing;
+
+      var seeded = seedPattern();
+      var round = sanitizePattern(JSON.parse(JSON.stringify(seeded)));
+      ok(JSON.stringify(round) === JSON.stringify(seeded), 'pattern must survive serialize and parse');
+      ok(sanitizePattern(null)[ROWS[0].id].length === STEPS, 'a missing pattern must come back empty');
+      ok(sanitizePattern({ kick: [true] })[ROWS[0].id][1] === false, 'a short row must be padded');
+
+      var i;
+      for (i in INSTRUMENTS) ok(typeof INSTRUMENTS[i].note === 'function', 'voice ' + i + ' needs a note()');
+      for (i in DRUMS) ok(typeof DRUMS[i] === 'function', 'drum ' + i + ' is missing');
+      ok(Object.keys(INSTRUMENTS).length >= 6, 'expected at least 6 voices');
+      ok(Object.keys(DRUMS).length === 5, 'expected 5 drums');
+
+      for (i = 0; i < ROWS.length; i++) {
+        var r = ROWS[i];
+        ok(r.kind === 'drum' ? !!DRUMS[r.id] : typeof r.midi === 'number', 'row ' + r.id + ' points at nothing');
+        ok(!!S.pattern[r.id] && S.pattern[r.id].length === STEPS, 'row ' + r.id + ' needs 16 steps');
+      }
+
+      ok(clamp(5, 0, 3) === 3 && clamp(-1, 0, 3) === 0, 'clamp must bound both ends');
+
+      var msg = 'music selftest: ' + pass + ' passed, ' + fails.length + ' failed';
+      if (fails.length) {
+        console.error(msg);
+        for (i = 0; i < fails.length; i++) console.error('FAIL: ' + fails[i]);
+        var banner = document.createElement('div');
+        banner.className = 'm-fail';
+        banner.textContent = msg + '\n' + fails.map(function (f) { return 'FAIL: ' + f; }).join('\n');
+        document.querySelector('.m-body').insertBefore(banner, document.querySelector('.m-body').firstChild);
+      } else {
+        console.log(msg);
+      }
+    }
+
+    /* ── Boot ───────────────────────────────────────────────── */
+    if (!load()) S.pattern = seedPattern();
+    else if (!S.pattern[ROWS[0].id]) S.pattern = seedPattern();
+
+    buildVoices();
+    buildPads();
+    buildKeys();
+    buildMixer();
+    buildSeq();
+    bindTransport();
+    syncControls();
+
+    if (location.search.indexOf('selftest=1') !== -1) selftest();
+  })();
+  </script>
+</body>
+
+</html>

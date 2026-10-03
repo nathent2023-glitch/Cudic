@@ -1064,6 +1064,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/editor.html';
   }
 
+  // ── Redirect /music to /music.html ───────────────────────────
+  if (url.pathname === '/music') {
+    url.pathname = '/music.html';
+  }
+
   let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   const ext = path.extname(filePath);
 
