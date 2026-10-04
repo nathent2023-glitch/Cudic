@@ -10,8 +10,8 @@ const { Resend } = require('resend');
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 // ── Input validation ──────────────────────────────────────────
-// Lobby/username allowlist: blocks tag injection at the source for every client,
-// including stale cached pages. Colon allowed for internal server:xxx lobbies.
+// Room-name allowlist: blocks tag injection at the source for every client,
+// including stale cached pages. Colon allowed for internal chan:/dm: rooms.
 function validName(s) {
   return typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _\-:]{0,47}$/.test(s);
 }
@@ -398,6 +398,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   // ── API: get message history ───────────────────────────────────
   if (url.pathname === '/api/messages') {
     cors(res);
+    const user = await requireUser(req, res); if (!user) return;
     const lobbyName = url.searchParams.get('lobby');
     if (!lobbyName) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -410,104 +411,29 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       return;
     }
 
-    // Get or create lobby
-    let { data: lobby } = await supabase
+    // No creation here: conversations are opened via /api/dm or channel create.
+    const { data: lobby } = await supabase
       .from('lobbies')
-      .select('id, persistent')
+      .select('id, name, kind, server_id, is_private')
       .eq('name', lobbyName)
       .single();
 
-    if (!lobby) {
-      const isDefault = ['welcome','hello'].includes(lobbyName);
-      const { data: newLobby } = await supabase
-        .from('lobbies')
-        .insert({ name: lobbyName, persistent: isDefault })
-        .select('id, persistent')
-        .single();
-      lobby = newLobby;
-    }
-
-    if (!lobby) {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ messages: [], persistent: false }));
+    // Deliberately 404 (not 403) so room names can't be probed.
+    if (!lobby || !(await canSeeLobby(user.id, lobby))) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found.' }));
       return;
     }
 
-    let query = supabase
+    const { data: messages } = await supabase
       .from('messages')
       .select('display_name, text, created_at')
       .eq('lobby_id', lobby.id)
       .order('created_at', { ascending: true })
       .limit(100);
 
-    // Non-persistent lobbies: only show last 24h of messages
-    if (!lobby.persistent) {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      query = query.gte('created_at', yesterday);
-    }
-
-    const { data: messages } = await query;
-
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages: messages || [], persistent: lobby.persistent }));
-    return;
-  }
-
-  // ── API: set lobby persistence (only for owned servers/lobbies) ─
-  if (url.pathname === '/api/lobby/persistent' && req.method === 'POST') {
-    cors(res);
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) { res.writeHead(401); res.end(); return; }
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (!user) { res.writeHead(401); res.end(); return; }
-    const body = await readBody(req);
-    const { lobbyName, persistent } = body;
-    if (!lobbyName) { res.writeHead(400); res.end(); return; }
-
-    // If it's a server lobby (server:<id>), check server owner
-    if (lobbyName.startsWith('server:')) {
-      const serverId = lobbyName.slice(7);
-      const { data: server } = await supabase.from('servers').select('owner_id').eq('id', serverId).single();
-      if (!server || server.owner_id !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only server owner can change persistence' })); return; }
-      // For servers, persistence is always true — but allow toggle for lobby part
-    } else {
-      // Regular lobby: check if it's welcome/hello (always persistent) or owned
-      if (['welcome','hello'].includes(lobbyName)) {
-        // Keep persistent true for defaults
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, persistent: true }));
-        return;
-      }
-      const { data: lobby } = await supabase.from('lobbies').select('id, created_by').eq('name', lobbyName).single();
-      if (!lobby) { res.writeHead(404); res.end(); return; }
-      // For random public lobbies with no owner, allow cleanup but not persist toggle
-      if (!lobby.created_by) {
-        res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the lobby owner can make it persistent' })); return;
-      }
-      if (lobby.created_by !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only lobby owner can change persistence' })); return; }
-    }
-
-    const { data: lobby } = await supabase.from('lobbies').select('id').eq('name', lobbyName).single();
-    if (!lobby) { res.writeHead(404); res.end(); return; }
-    await supabase.from('lobbies').update({ persistent: !!persistent }).eq('id', lobby.id);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, persistent: !!persistent }));
-    return;
-  }
-
-  // ── API: get lobby info ────────────────────────────────────────
-  if (url.pathname === '/api/lobby') {
-    cors(res);
-    const lobbyName = url.searchParams.get('name');
-    if (!lobbyName) { res.writeHead(400); res.end(); return; }
-    const { data: lobby } = await supabase
-      .from('lobbies')
-      .select('name, persistent, created_by, created_at')
-      .eq('name', lobbyName)
-      .single();
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ lobby: lobby || null }));
+    res.end(JSON.stringify({ messages: messages || [], persistent: true }));
     return;
   }
 
@@ -535,8 +461,25 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     } else {
       filtered = filtered.filter(s => s.visibility === 'public');
     }
+    // Liveness per server: member counts (one query) + online now
+    // (sum of live sockets across the server's channels, same process).
+    const sids = filtered.map(s => s.id);
+    var memberCount = {};
+    if (sids.length) {
+      const { data: mems } = await supabase.from('server_members').select('server_id').in('server_id', sids);
+      (mems || []).forEach(m => { memberCount[m.server_id] = (memberCount[m.server_id] || 0) + 1; });
+    }
+    const withLive = filtered.map(s => {
+      var online = 0;
+      try {
+        for (const entry of lobbies) {
+          if (typeof entry[0] === 'string' && entry[0].startsWith('chan:' + s.id + ':')) online += entry[1].size;
+        }
+      } catch (e) {}
+      return Object.assign({}, s, { member_count: memberCount[s.id] || 0, online });
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ servers: filtered }));
+    res.end(JSON.stringify({ servers: withLive }));
     return;
   }
 
@@ -564,7 +507,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     // Check limit
     const { count } = await supabase.from('servers').select('id', { count: 'exact', head: true }).eq('owner_id', user.id);
-    if (count !== null && count >= 3) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You can own at most 3 servers.' })); return; }
+    if (count !== null && count >= 50) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You can own at most 50 servers.' })); return; }
     const body = await readBody(req);
     const name = (body.name || '').trim().replace(/[^a-zA-Z0-9-_]/g, '').substring(0, 20);
     if (!name || name.length < 2) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Server name 2-20 chars (letters, numbers, -,_)' })); return; }
@@ -578,10 +521,14 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       owner_id: user.id,
     }).select().single();
     if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
-    // Add owner as member
-    await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id });
-    // Also ensure a lobby exists for chat
-    await supabase.from('lobbies').insert({ name: 'server:' + data.id, created_by: user.id, persistent: true }).select();
+    // Add owner as member with the owner role
+    await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id, role: 'owner' });
+    // Default channels for the new server
+    await supabase.from('lobbies').insert([
+      { name: 'chan:' + data.id + ':general', kind: 'channel', server_id: data.id, created_by: user.id },
+      { name: 'chan:' + data.id + ':random', kind: 'channel', server_id: data.id, created_by: user.id },
+    ]);
+    sendConversationsDirty();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ server: data }));
     return;
@@ -645,6 +592,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid invite code' })); return;
     }
     await supabase.from('server_members').upsert({ server_id: server.id, user_id: user.id }, { onConflict: 'server_id,user_id' });
+    sendConversationsDirty();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;
@@ -678,6 +626,357 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const { data } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', id).eq('owner_id', user.id).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ server: data }));
+    return;
+  }
+
+  // ── Chat rebuild: conversations, DMs, friends, channels ─────────
+  // Every endpoint here requires a signed-in user. The WS layer below
+  // enforces the same membership rules on join.
+  async function requireUser(req, res) {
+    const t = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!t) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return null; }
+    const { data: { user }, error } = await supabase.auth.getUser(t);
+    if (error || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return null; }
+    return user;
+  }
+  function dmRoomName(a, b) { return 'dm:' + [a, b].sort().join('-'); }
+  function chanRoomName(serverId, slug) { return 'chan:' + serverId + ':' + slug; }
+  function chanSlug(s) { return String(s || '').toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').substring(0, 30); }
+  function chanDisplay(name) { var p = String(name || '').split(':'); return '#' + (p[p.length - 1] || name); }
+  function isUuid(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || '')); }
+
+  // ── API: my conversations (chat sidebar) ───────────────────────
+  if (url.pathname === '/api/conversations' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const { data: memberRows } = await supabase.from('server_members').select('server_id').eq('user_id', me);
+    const serverIds = [...new Set((memberRows || []).map(r => r.server_id))];
+    const { data: ownedRows } = await supabase.from('servers').select('id').eq('owner_id', me);
+    const ownedIds = (ownedRows || []).map(r => r.id);
+    ownedIds.forEach(id => { if (!serverIds.includes(id)) serverIds.push(id); });
+    const { data: myRows } = await supabase.from('conversation_members').select('lobby_id').eq('user_id', me);
+    const myIds = (myRows || []).map(r => r.lobby_id);
+    var lobbyRows = [];
+    if (myIds.length) {
+      const { data } = await supabase.from('lobbies').select('id, name, kind, server_id, topic, is_private, created_at').in('id', myIds);
+      (data || []).forEach(r => lobbyRows.push(r));
+    }
+    if (serverIds.length) {
+      const { data } = await supabase.from('lobbies').select('id, name, kind, server_id, topic, is_private, created_at').eq('kind', 'channel').in('server_id', serverIds).eq('is_private', false);
+      (data || []).forEach(r => { if (!lobbyRows.some(x => x.id === r.id)) lobbyRows.push(r); });
+    }
+    if (ownedIds.length) {
+      const { data } = await supabase.from('lobbies').select('id, name, kind, server_id, topic, is_private, created_at').eq('kind', 'channel').in('server_id', ownedIds);
+      (data || []).forEach(r => { if (!lobbyRows.some(x => x.id === r.id)) lobbyRows.push(r); });
+    }
+    if (!lobbyRows.length) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ conversations: [] })); return; }
+    const lobbyIds = lobbyRows.map(r => r.id);
+    const srvIds = [...new Set(lobbyRows.map(r => r.server_id).filter(Boolean))];
+    var srvById = {};
+    if (srvIds.length) {
+      const { data: srvs } = await supabase.from('servers').select('id, name').in('id', srvIds);
+      (srvs || []).forEach(s => { srvById[s.id] = s.name; });
+    }
+    const dmIds = lobbyRows.filter(r => r.kind === 'dm').map(r => r.id);
+    var peerByLobby = {};
+    if (dmIds.length) {
+      const { data: parts } = await supabase.from('conversation_members').select('lobby_id, user_id').in('lobby_id', dmIds).neq('user_id', me);
+      const peerIds = [...new Set((parts || []).map(p => p.user_id))];
+      var peerById = {};
+      if (peerIds.length) {
+        const { data: peers } = await supabase.from('users').select('id, display_name, avatar_url, user_id').in('id', peerIds);
+        (peers || []).forEach(p => { peerById[p.id] = p; });
+      }
+      (parts || []).forEach(p => { if (!peerByLobby[p.lobby_id] && peerById[p.user_id]) peerByLobby[p.lobby_id] = peerById[p.user_id]; });
+    }
+    const { data: stateRows } = await supabase.from('conversation_state').select('lobby_id, last_read_at').eq('user_id', me).in('lobby_id', lobbyIds);
+    var readByLobby = {};
+    (stateRows || []).forEach(s => { readByLobby[s.lobby_id] = s.last_read_at; });
+    var out = [];
+    for (const row of lobbyRows) {
+      const { data: lastRows } = await supabase.from('messages').select('text, display_name, created_at, user_id').eq('lobby_id', row.id).order('created_at', { ascending: false }).limit(1);
+      const last = (lastRows && lastRows[0]) || null;
+      var unread = 0;
+      if (last) {
+        var uq = supabase.from('messages').select('id', { count: 'exact', head: true }).eq('lobby_id', row.id).neq('user_id', me);
+        if (readByLobby[row.id]) uq = uq.gt('created_at', readByLobby[row.id]);
+        const { count } = await uq;
+        unread = count || 0;
+      }
+      var online = 0;
+      try { const rm = lobbies.get(row.name); if (rm) online = rm.size; } catch (e) {}
+      const item = { id: row.id, name: row.name, kind: row.kind, topic: row.topic || '', is_private: !!row.is_private, last, unread, online };
+      if (row.kind === 'dm') {
+        const peer = peerByLobby[row.id] || null;
+        item.display = peer ? peer.display_name : 'Direct message';
+        item.peer = peer;
+      } else {
+        item.server_id = row.server_id;
+        item.server_name = srvById[row.server_id] || '';
+        item.display = chanDisplay(row.name);
+      }
+      item.sortKey = (last && last.created_at) || row.created_at;
+      out.push(item);
+    }
+    out.sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1));
+    out.forEach(o => delete o.sortKey);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ conversations: out }));
+    return;
+  }
+
+  // ── API: find people (start a DM) ──────────────────────────────
+  if (url.pathname === '/api/people' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const q = (url.searchParams.get('q') || '').trim();
+    if (q.length < 2) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ people: [] })); return; }
+    var pq = supabase.from('users').select('id, display_name, avatar_url, user_id').neq('id', me).limit(20);
+    if (/^\d+$/.test(q)) pq = pq.eq('user_id', parseInt(q, 10));
+    else pq = pq.ilike('display_name', '%' + q.replace(/[%_\\]/g, '') + '%');
+    const { data: people } = await pq;
+    const { data: myFr } = await supabase.from('friendships').select('user_id, friend_id, status').or('user_id.eq.' + me + ',friend_id.eq.' + me);
+    var fmap = {};
+    (myFr || []).forEach(f => {
+      const other = f.user_id === me ? f.friend_id : f.user_id;
+      if (f.status === 'accepted') fmap[other] = 'accepted';
+      else if (!fmap[other]) fmap[other] = (f.user_id === me ? 'pending_out' : 'pending_in');
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ people: (people || []).map(p => ({ id: p.id, display_name: p.display_name, avatar_url: p.avatar_url, user_id: p.user_id, friendship: fmap[p.id] || 'none' })) }));
+    return;
+  }
+
+  // ── API: friends (accepted + pending both ways) ────────────────
+  if (url.pathname === '/api/friends' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const { data: rows } = await supabase.from('friendships').select('user_id, friend_id, status, created_at').or('user_id.eq.' + me + ',friend_id.eq.' + me);
+    const ids = [...new Set((rows || []).map(f => (f.user_id === me ? f.friend_id : f.user_id)))];
+    var byId = {};
+    if (ids.length) {
+      const { data: us } = await supabase.from('users').select('id, display_name, avatar_url, user_id').in('id', ids);
+      (us || []).forEach(u => { byId[u.id] = u; });
+    }
+    var friends = [], incoming = [], outgoing = [];
+    var seen = {};
+    (rows || []).forEach(f => {
+      const other = f.user_id === me ? f.friend_id : f.user_id;
+      const u = byId[other];
+      if (!u) return;
+      const entry = { id: u.id, display_name: u.display_name, avatar_url: u.avatar_url, user_id: u.user_id, since: f.created_at };
+      if (f.status === 'accepted') { if (!seen[other]) { seen[other] = 1; friends.push(entry); } }
+      else if (f.user_id === me) outgoing.push(entry);
+      else incoming.push(entry);
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ friends, incoming, outgoing }));
+    return;
+  }
+
+  // ── API: request a friend ──────────────────────────────────────
+  if (url.pathname === '/api/friends' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    if (!isUuid(targetId) || targetId === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const { data: target } = await supabase.from('users').select('id').eq('id', targetId).single();
+    if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+    const { data: mine } = await supabase.from('friendships').select('status').eq('user_id', me).eq('friend_id', targetId).single();
+    const { data: theirs } = await supabase.from('friendships').select('status').eq('user_id', targetId).eq('friend_id', me).single();
+    if (mine || theirs) {
+      if (theirs && theirs.status === 'pending' && !mine) {
+        // They already asked: accept on the spot instead of deadlocking.
+        await supabase.from('friendships').update({ status: 'accepted' }).eq('user_id', targetId).eq('friend_id', me);
+        await supabase.from('friendships').upsert({ user_id: me, friend_id: targetId, status: 'accepted' }, { onConflict: 'user_id,friend_id' });
+        res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ status: 'accepted' })); return;
+      }
+      res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Already friends or requested.' })); return;
+    }
+    await supabase.from('friendships').insert({ user_id: me, friend_id: targetId, status: 'pending' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'pending' }));
+    return;
+  }
+
+  // ── API: accept / decline a friend request ─────────────────────
+  if (url.pathname.startsWith('/api/friends/') && (req.method === 'POST') && (url.pathname.endsWith('/accept') || url.pathname.endsWith('/decline'))) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const parts = url.pathname.split('/');
+    const otherId = parts[3];
+    const accept = url.pathname.endsWith('/accept');
+    if (!isUuid(otherId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const { data: req1 } = await supabase.from('friendships').select('user_id').eq('user_id', otherId).eq('friend_id', me).eq('status', 'pending').single();
+    if (!req1) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'No pending request.' })); return; }
+    if (accept) {
+      await supabase.from('friendships').update({ status: 'accepted' }).eq('user_id', otherId).eq('friend_id', me);
+      await supabase.from('friendships').upsert({ user_id: me, friend_id: otherId, status: 'accepted' }, { onConflict: 'user_id,friend_id' });
+    } else {
+      await supabase.from('friendships').delete().eq('user_id', otherId).eq('friend_id', me);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: remove a friend ───────────────────────────────────────
+  if (url.pathname.startsWith('/api/friends/') && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const otherId = url.pathname.split('/')[3];
+    if (!isUuid(otherId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    await supabase.from('friendships').delete().eq('user_id', me).eq('friend_id', otherId);
+    await supabase.from('friendships').delete().eq('user_id', otherId).eq('friend_id', me);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: open a DM (any signed-in user) ────────────────────────
+  if (url.pathname === '/api/dm' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    if (!isUuid(targetId) || targetId === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const { data: target } = await supabase.from('users').select('id').eq('id', targetId).single();
+    if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+    // Open DMs: any signed-in user can message anyone. (Friendship is
+    // social, not a gate. Block/mute is the follow-up for abuse.)
+    const name = dmRoomName(me, targetId);
+    let { data: lobby } = await supabase.from('lobbies').select('id, name').eq('name', name).single();
+    if (!lobby) {
+      const { data: created } = await supabase.from('lobbies').insert({ name, kind: 'dm', is_private: true, created_by: me }).select('id, name').single();
+      lobby = created;
+    }
+    if (!lobby) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not open conversation.' })); return; }
+    await supabase.from('conversation_members').upsert([{ user_id: me, lobby_id: lobby.id }, { user_id: targetId, lobby_id: lobby.id }], { onConflict: 'user_id,lobby_id' });
+    sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ id: lobby.id, name: lobby.name }));
+    return;
+  }
+
+  // ── API: list a server's channels ──────────────────────────────
+  if (url.pathname.startsWith('/api/servers/') && url.pathname.endsWith('/channels') && (req.method === 'GET' || req.method === 'POST')) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const sid = url.pathname.split('/')[3];
+    if (!isUuid(sid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid server.' })); return; }
+    const { server, role } = await serverRole(me, sid);
+    if (!server) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Server not found.' })); return; }
+    if (req.method === 'GET') {
+      if (server.visibility !== 'public' && !role) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Join this server first.' })); return; }
+      let q = supabase.from('lobbies').select('id, name, topic, is_private, created_at').eq('kind', 'channel').eq('server_id', sid).order('created_at', { ascending: true });
+      const { data } = await q;
+      var chans = data || [];
+      if (role !== 'owner') {
+        const { data: mine } = await supabase.from('conversation_members').select('lobby_id').eq('user_id', me);
+        var mineSet = {};
+        (mine || []).forEach(r => { mineSet[r.lobby_id] = 1; });
+        chans = chans.filter(c => !c.is_private || mineSet[c.id]);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ channels: chans.map(c => ({ id: c.id, name: c.name, slug: c.name.split(':').pop(), display: chanDisplay(c.name), topic: c.topic || '', is_private: !!c.is_private, created_at: c.created_at })) }));
+      return;
+    }
+    // POST: create channel (owner only)
+    if (role !== 'owner') { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the server owner can add channels.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const slug = chanSlug(body.name);
+    if (slug.length < 2) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel name 2-30 chars (letters, numbers, -, _).' })); return; }
+    const { data, error } = await supabase.from('lobbies').insert({ name: chanRoomName(sid, slug), kind: 'channel', server_id: sid, topic: String(body.topic || '').substring(0, 200), is_private: !!body.is_private, created_by: me }).select('id, name').single();
+    if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel exists.' })); return; }
+    sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ channel: data }));
+    return;
+  }
+
+  // ── API: edit a channel (owner only) ───────────────────────────
+  if (url.pathname.startsWith('/api/channels/') && req.method === 'PATCH' && url.pathname.split('/').length === 4) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const cid = url.pathname.split('/')[3];
+    if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid channel.' })); return; }
+    const { data: lobby } = await supabase.from('lobbies').select('id, name, kind, server_id').eq('id', cid).single();
+    if (!lobby || lobby.kind !== 'channel') { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel not found.' })); return; }
+    const { role } = await serverRole(me, lobby.server_id);
+    if (role !== 'owner') { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the server owner can edit channels.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    var updates = {};
+    if (body.name !== undefined) {
+      const slug = chanSlug(body.name);
+      if (slug.length < 2) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel name 2-30 chars (letters, numbers, -, _).' })); return; }
+      updates.name = chanRoomName(lobby.server_id, slug);
+    }
+    if (body.topic !== undefined) updates.topic = String(body.topic || '').substring(0, 200);
+    if (body.is_private !== undefined) updates.is_private = !!body.is_private;
+    if (!Object.keys(updates).length) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Nothing to update.' })); return; }
+    const { data, error } = await supabase.from('lobbies').update(updates).eq('id', cid).select('id, name').single();
+    if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel exists.' })); return; }
+    sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ channel: data }));
+    return;
+  }
+
+  // ── API: private-channel membership (owner only) ────────────────
+  if (url.pathname.startsWith('/api/channels/') && url.pathname.split('/')[4] === 'members' && (req.method === 'POST' || req.method === 'DELETE')) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const parts = url.pathname.split('/');
+    const cid = parts[3];
+    if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid channel.' })); return; }
+    const { data: lobby } = await supabase.from('lobbies').select('id, kind, server_id').eq('id', cid).single();
+    if (!lobby || lobby.kind !== 'channel') { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel not found.' })); return; }
+    const { role } = await serverRole(me, lobby.server_id);
+    if (role !== 'owner') { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the server owner can manage members.' })); return; }
+    var targetId;
+    if (req.method === 'POST') {
+      const body = await readBody(req).catch(() => ({}));
+      targetId = String(body.userId || '').trim();
+    } else {
+      targetId = String(parts[5] || '').trim();
+    }
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    if (req.method === 'POST') {
+      const { role: tr } = await serverRole(targetId, lobby.server_id);
+      if (!tr) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'They must join the server first.' })); return; }
+      await supabase.from('conversation_members').upsert({ user_id: targetId, lobby_id: cid }, { onConflict: 'user_id,lobby_id' });
+    } else {
+      await supabase.from('conversation_members').delete().eq('user_id', targetId).eq('lobby_id', cid);
+    }
+    sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: mark a conversation read ─────────────────────────────
+  if (url.pathname.startsWith('/api/conversations/') && url.pathname.endsWith('/read') && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const cid = url.pathname.split('/')[3];
+    if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid conversation.' })); return; }
+    const { data: lobby } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('id', cid).single();
+    if (!lobby || !(await canSeeLobby(me, lobby))) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found.' })); return; }
+    await supabase.from('conversation_state').upsert({ user_id: me, lobby_id: cid, last_read_at: new Date().toISOString() }, { onConflict: 'user_id,lobby_id' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -1044,9 +1343,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/servers.html';
   }
 
-  // ── Redirect /lobbies to /lobbies.html ─────────────────────────
+  // ── /lobbies is gone: send everyone to chat ────────────────────
   if (url.pathname === '/lobbies') {
-    url.pathname = '/lobbies.html';
+    res.writeHead(302, { Location: '/chat' });
+    res.end();
+    return;
   }
 
   // ── Redirect /games to /games.html ────────────────────────────
@@ -1168,6 +1469,44 @@ async function saveMessage(lobbyName, userId, displayName, text) {
   }
 }
 
+// owner | member | null for a server (module scope: used by HTTP + WS)
+async function serverRole(me, serverId) {
+  const { data: srv } = await supabase.from('servers').select('id, visibility, owner_id').eq('id', serverId).single();
+  if (!srv) return { server: null, role: null };
+  if (srv.owner_id === me) return { server: srv, role: 'owner' };
+  const { data: m } = await supabase.from('server_members').select('role').eq('server_id', serverId).eq('user_id', me).single();
+  return { server: srv, role: m ? m.role : null };
+}
+
+// can this user open this conversation? (module scope: used by HTTP + WS)
+async function canSeeLobby(me, lobby) {
+  if (!lobby) return false;
+  if (lobby.kind === 'dm') {
+    const { data } = await supabase.from('conversation_members').select('user_id').eq('lobby_id', lobby.id).eq('user_id', me).single();
+    return !!data;
+  }
+  if (lobby.kind === 'channel') {
+    const { server, role } = await serverRole(me, lobby.server_id);
+    if (!server) return false;
+    if (role === 'owner') return true;
+    if (!lobby.is_private) {
+      if (server.visibility === 'public') return true;
+      return !!role;
+    }
+    const { data } = await supabase.from('conversation_members').select('user_id').eq('lobby_id', lobby.id).eq('user_id', me).single();
+    return !!data;
+  }
+  return true;
+}
+
+// Tell every open client its conversation list may be stale.
+function sendConversationsDirty() {
+  const data = JSON.stringify({ type: 'conversation_dirty' });
+  for (const ws of allConnections) {
+    if (ws.readyState === 1) { try { ws.send(data); } catch (e) {} }
+  }
+}
+
 wss.on('connection', (ws) => {
   // Track all connections for lobby list broadcasts
   allConnections.add(ws);
@@ -1175,7 +1514,7 @@ wss.on('connection', (ws) => {
   // Send current lobby list immediately
   ws.send(JSON.stringify({ type: 'lobby_list', lobbies: getLobbyList() }));
 
-  ws.on('message', (raw) => {
+  ws.on('message', async (raw) => {
     let msg;
     try {
       msg = JSON.parse(raw);
@@ -1186,17 +1525,34 @@ wss.on('connection', (ws) => {
     // ── Join a lobby ──────────────────────────────────────────────
     if (msg.type === 'join') {
       const lobby = (msg.lobby || '').trim();
-      const username = (msg.username || '').trim();
-      const userId = msg.userId || null;
-
-      if (!lobby || !username) {
-        ws.send(JSON.stringify({ type: 'error', text: 'Lobby and username are required.' }));
+      if (!lobby || !validName(lobby)) {
+        ws.send(JSON.stringify({ type: 'error', text: 'Invalid conversation.' }));
         return;
       }
-      if (!validName(lobby) || !validName(username)) {
-        ws.send(JSON.stringify({ type: 'error', text: 'Letters, numbers, spaces, - _ : only (max 48 chars).' }));
+      // Strict sign-in: verify the session, then derive identity server-side.
+      // Client-supplied username/userId are ignored (no impersonation).
+      var authed = null;
+      try {
+        const tok = String(msg.token || '').replace('Bearer ', '');
+        if (tok) {
+          const { data: { user: u }, error: uerr } = await supabase.auth.getUser(tok);
+          if (!uerr && u) {
+            const { data: prof } = await supabase.from('users').select('display_name').eq('id', u.id).single();
+            authed = { id: u.id, name: (prof && prof.display_name) || String(u.email || 'Someone').split('@')[0] };
+          }
+        }
+      } catch (e) {}
+      if (!authed) {
+        ws.send(JSON.stringify({ type: 'error', text: 'Sign in required.' }));
         return;
       }
+      const { data: lobbyRow } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('name', lobby).single();
+      if (!lobbyRow || !(await canSeeLobby(authed.id, lobbyRow))) {
+        ws.send(JSON.stringify({ type: 'error', text: 'Conversation not found.' }));
+        return;
+      }
+      const username = authed.name;
+      const userId = authed.id;
 
       // Leave current lobby if any
       const prev = clients.get(ws);
@@ -1255,6 +1611,7 @@ wss.on('connection', (ws) => {
 
       broadcast(info.lobby, {
         type: 'message',
+        lobby: info.lobby,
         username: info.username,
         text,
         time,
@@ -1262,6 +1619,8 @@ wss.on('connection', (ws) => {
 
       // Persist to database
       saveMessage(info.lobby, info.userId, info.username, text);
+      // Everyone else's sidebar (previews, unread, order) may be stale
+      sendConversationsDirty();
       return;
     }
 
@@ -1269,7 +1628,7 @@ wss.on('connection', (ws) => {
     if (msg.type === 'typing') {
       const info = clients.get(ws);
       if (!info) return;
-      broadcast(info.lobby, { type: 'typing', username: info.username }, ws);
+      broadcast(info.lobby, { type: 'typing', lobby: info.lobby, username: info.username }, ws);
       return;
     }
 

@@ -60,7 +60,7 @@ async function signInWithGitHub() {
   if (!db) { alert('Supabase not configured'); return; }
 
   // Redirect back to the app hub after auth
-  const redirectTo = window.location.origin + '/lobbies';
+  const redirectTo = window.location.origin + '/chat';
 
   const { error } = await db.auth.signInWithOAuth({
     provider: 'github',

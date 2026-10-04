@@ -1,7 +1,9 @@
 // ── Glox config ────────────────────────────────────────────────────
-// Set WS_URL to your Render backend URL (e.g. wss://glox-o7rr.onrender.com)
-// Leave empty to use the same host (for local development)
-const WS_URL = 'wss://glox-o7rr.onrender.com';
+// Local dev (localhost) talks to the local backend (same host) so new
+// endpoints work before they deploy. Production uses the Render backend.
+const WS_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? ''
+  : 'wss://glox-o7rr.onrender.com';
 
 // Supabase credentials (for client-side auth)
 const SUPABASE_URL = 'https://opimjwmgmzwapkzgxvhk.supabase.co';

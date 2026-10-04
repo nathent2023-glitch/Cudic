@@ -9,8 +9,10 @@
     { "source": "/editor", "destination": "/editor.html" },
     { "source": "/music", "destination": "/music.html" },
     { "source": "/servers", "destination": "/servers.html" },
-    { "source": "/lobbies", "destination": "/lobbies.html" },
     { "source": "/studio", "destination": "/studio/index.html" }
+  ],
+  "redirects": [
+    { "source": "/lobbies", "destination": "/chat", "permanent": false }
   ],
   "headers": [
     {

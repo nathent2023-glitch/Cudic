@@ -27,7 +27,7 @@
 :root{
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
   --bg-l:#e9eefc;--bg-r:#fbfbff;--ink:#1d1a3a;--mute:#6b6990;--line:#d6d9f0;--field:#eef1fd;--field-b:#cfd5f2;
-  --brand:#6d45d9;--brand-2:#8a5cf0;--card:#ffffff;--dot:#b9c0e6;--shadow:0 20px 50px -24px rgba(60,40,140,.35);
+   --brand:#774DCB;--brand-2:#643BAD;--card:#ffffff;--dot:#b9c0e6;--shadow:0 20px 50px -24px rgba(60,40,140,.35);
   --display:'Bricolage Grotesque',system-ui,sans-serif;--body:'Figtree',system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -69,15 +69,6 @@ input:focus{outline:none;border-color:var(--brand);background:var(--card);box-sh
 .primary{width:100%;margin-top:18px;padding:13px;border:0;border-radius:12px;color:#fff;font:700 15px var(--body);cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 24px -10px var(--brand);transition:transform .15s,box-shadow .2s}
 .primary:hover{transform:translateY(-1px);box-shadow:0 14px 28px -10px var(--brand)}
 .primary:active{transform:translateY(1px)}
-.or{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:13px;margin:24px 0 4px}
-.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
-.guest{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.guest label{margin-top:10px}
-.guest .row{grid-column:1/-1}
-.ghost{grid-column:1/-1;margin-top:14px;padding:12px;border-radius:12px;border:1.5px solid var(--brand);background:transparent;color:var(--brand);font:700 14px var(--body);cursor:pointer;transition:background .2s,color .2s}
-.ghost:hover{background:var(--brand);color:#fff}
-.chk{display:flex;align-items:center;gap:8px;font-weight:500;color:var(--mute);margin:12px 0 0;cursor:pointer}
-.chk input{accent-color:var(--brand);width:16px;height:16px}
 .hide{display:none}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--bg-r);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;transition:.3s;pointer-events:none;z-index:9}
 .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -89,10 +80,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
   .logo{top:22px;left:24px;font-size:28px}
 }
 
-/* signed-in state (added) */
-.userbar{display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--field);border:1px solid var(--field-b);border-radius:12px;padding:12px 14px;margin-bottom:18px;font:600 14px var(--body);overflow-wrap:anywhere}
-.userbar button{border:0;background:none;color:var(--brand);font:700 13px var(--body);cursor:pointer;padding:0;flex-shrink:0}
-.signed .top,.signed #title,.signed .sub,.signed .gh,.signed #auth,.signed .or{display:none}
 </style>
 </head>
 <body>
@@ -106,7 +93,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
 
 <main class="panel">
   <div class="card">
-    <div class="userbar" id="userBar"><span id="userDisplay"></span><button type="button" id="signOutBtn">Sign out</button></div>
     <div class="top">
       <div class="tabs" role="tablist" id="tabs">
         <span class="pill" id="pill"></span>
@@ -138,17 +124,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
       </div>
       <button class="primary" id="go" type="submit">Sign in</button>
     </form>
-
-    <div class="or">or jump in without an account</div>
-
-    <form class="guest" id="guest">
-      <div class="row"><label for="gn">Your name</label>
-      <input id="gn" type="text" placeholder="Nathen"></div>
-      <div class="row"><label for="ln">Lobby name</label>
-      <input id="ln" type="text" placeholder="e.g. friday-jam"></div>
-      <label class="chk row"><input type="checkbox" id="persistentLobby"> Save chat history</label>
-      <button class="ghost" type="submit">Join lobby</button>
-    </form>
   </div>
 </main>
 <div class="toast" id="toast"></div>
@@ -167,7 +142,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
     btns.forEach(function(b){var on=b.dataset.m===m;b.setAttribute('aria-selected',on);if(on)movePill(b)});
     var up=m==='up';
     title.textContent=up?'Make an account':'Welcome back';
-    sub.textContent=up?'Save your games and lobbies.':'Pick up where you left off.';
+    sub.textContent=up?'Save your games and chats.':'Pick up where you left off.';
     go.textContent=up?'Create account':'Sign in';
     nameWrap.classList.toggle('hide',!up);
     pw.autocomplete=up?'new-password':'current-password';
@@ -253,9 +228,6 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
 (function(){
   var L=window.__login;
   var go=document.getElementById('go'),em=document.getElementById('em'),pw=document.getElementById('pw'),dn=document.getElementById('dn');
-  var gn=document.getElementById('gn'),ln=document.getElementById('ln'),chk=document.getElementById('persistentLobby');
-  var card=document.querySelector('.card');
-  var currentToken=null;
 
   document.querySelector('.gh').addEventListener('click',function(){signInWithGitHub()});
 
@@ -266,48 +238,22 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
     try{
       if(up){
         var res=await signUpWithEmail(em.value.trim(),pw.value,dn.value.trim());
-        if(res&&res.session){location.href='/lobbies';return}
+        if(res&&res.session){location.href='/chat';return}
         L.say((res&&res.verifyEmail==='none')?'Account created! You can sign in now.':'Account created! Check your email.');
         setTimeout(function(){L.setMode('in')},2500);
       }else{
         await signInWithEmail(em.value.trim(),pw.value);
-        location.href='/lobbies';
+        location.href='/chat';
       }
     }catch(err){L.say(err&&err.message?err.message:'Something went wrong')}
     finally{go.disabled=false;go.textContent=label}
   });
 
-  document.getElementById('guest').addEventListener('submit',function(e){
-    e.preventDefault();
-    var name=gn.value.trim(),lobby=ln.value.trim();
-    if(!name||!lobby){L.say('Enter your name and a lobby name');return}
-    localStorage.setItem('glox_username',name);
-    var url='/chat?lobby='+encodeURIComponent(lobby)+'&username='+encodeURIComponent(name);
-    if(chk.checked)url+='&persistent=1';
-    if(currentToken)url+='&token='+currentToken;
-    location.href=url;
-  });
-
-  document.getElementById('signOutBtn').addEventListener('click',async function(){
-    try{await signOut()}catch(e){}
-    localStorage.removeItem('glox_username');location.href='/';
-  });
-
   async function initPage(){
     var session=null;
     try{session=await getSession()}catch(e){}
-    if(session&&session.user){
-      currentToken=session.access_token;
-      var u=session.user;
-      var name=(u.user_metadata&&(u.user_metadata.full_name||u.user_metadata.name))||u.email;
-      gn.value=name;gn.disabled=true;
-      document.getElementById('userDisplay').textContent=name;
-      document.getElementById('userBar').style.display='flex';
-      card.classList.add('signed');
-    }else{
-      var saved=localStorage.getItem('glox_username');
-      if(saved)gn.value=saved;
-    }
+    // Signed in already: straight to chat (no guest flow anymore).
+    if(session&&session.user){location.href='/chat';return;}
   }
 
   if(typeof handleAuthCallback==='function'){
