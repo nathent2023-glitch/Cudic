@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html><html lang="en"><head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cudic — Play</title>
@@ -15,7 +15,7 @@
 <meta name="twitter:description" content="Play this game instantly in your browser. Built with Cudic Studio — fork it and make your own version.">
 <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-  <link rel="stylesheet" href="/sidebar.css?v=11">
+  <link rel="stylesheet" href="/sidebar.css?v=13">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .game-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -25,10 +25,6 @@
     .author { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); }
     .author-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 600; font-size: 0.7rem; flex-shrink: 0; }
     .spacer { flex: 1; }
-    .btn { display: inline-block; padding: 9px 18px; background: var(--signal); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.83rem; font-family: inherit; cursor: pointer; text-decoration: none; }
-    .btn:hover { background: var(--signal-hover); }
-    .btn-ghost { display: inline-block; padding: 9px 18px; background: transparent; color: var(--text-primary); border: 1px solid var(--line); border-radius: 8px; font-weight: 600; font-size: 0.83rem; font-family: inherit; cursor: pointer; text-decoration: none; }
-    .btn-ghost:hover { border-color: var(--signal); }
     .game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
     .game-grid > * { min-width: 0; }
     @media (max-width: 900px) { .game-grid { grid-template-columns: 1fr; } }
@@ -38,7 +34,7 @@
     .player-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #000; color: var(--text-secondary); font-size: 0.9rem; }
     .side-card { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; }
     .side-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; }
-    .side-card h3 { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin: 14px 0 6px; }
+    .side-card h3 { font-size: var(--text-xs); font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; }
     .side-card p { font-size: 0.85rem; line-height: 1.6; color: var(--text-primary); white-space: pre-wrap; word-break: break-word; }
     .side-card .dim { color: var(--text-tertiary); }
     .meta { font-size: 0.78rem; color: var(--text-tertiary); margin-top: 14px; }
@@ -47,28 +43,39 @@
     .comment-head { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 4px; }
     .comment-head strong { color: var(--text-primary); font-size: 0.8rem; }
     .comment-del { margin-left: auto; background: none; border: none; color: var(--text-tertiary); cursor: pointer; font-size: 0.72rem; font-family: inherit; }
-    .comment-del:hover { color: #ff5c5c; }
+    .comment-del:hover { color: var(--danger); }
     .comment-body { font-size: 0.85rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
-    #commentBox { width: 100%; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; color: var(--text-primary); font-size: 0.83rem; font-family: inherit; padding: 9px 12px; margin: 12px 0 8px; outline: none; resize: vertical; }
+    #commentBox { width: 100%; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.83rem; font-family: inherit; padding: 9px 12px; margin: 12px 0 8px; outline: none; resize: vertical; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 9999; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; width: 400px; max-width: 90vw; }
+    .modal h2 { font-family: var(--font-head); font-weight: 600; margin-bottom: 16px; }
+    .modal label { display: block; font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: 4px; }
+    .modal input, .modal textarea { width: 100%; box-sizing: border-box; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; margin-bottom: 12px; outline: none; resize: vertical; }
+    .modal input:focus, .modal textarea:focus { border-color: var(--signal); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   </style></head>
 <body data-page="games">
-  <div class="game-layout"><div class="game-content" id="content" style="display:none">
+  <div class="game-layout page-panel"><div class="game-content" id="content" style="display:none">
     <div class="game-head">
-      <a class="btn-ghost" href="/games" style="padding:9px 14px">&larr; Gallery</a>
+      <a class="btn-secondary" href="/games" style="padding:9px 14px">&larr; Gallery</a>
       <h1 id="gameTitle">Loading…</h1>
       <div class="author"><div class="author-avatar" id="authorAvatar">?</div><span id="authorName"></span></div>
       <div class="spacer"></div>
-      <button class="btn-ghost" id="scrollBtn" title="Allow the game page to scroll (for website-style games)">Scroll: off</button>
-      <button class="btn-ghost" id="fsBtn">Fullscreen</button>
-      <a class="btn" id="studioBtn" href="#" style="display:none">Open in Studio</a>
-      <button class="btn-ghost" id="forkBtn" style="display:none">Fork</button>
-      <button class="btn-ghost" id="shareBtn">Share</button>
+      <button class="btn-secondary" id="scrollBtn" title="Allow the game page to scroll (for website-style games)">Scroll: off</button>
+      <button class="btn-secondary" id="fsBtn">Fullscreen</button>
+      <a class="btn-primary" id="studioBtn" href="#" style="display:none">Open in Studio</a>
+      <button class="btn-secondary" id="forkBtn" style="display:none">Fork</button>
+      <button class="btn-secondary" id="shareBtn">Share</button>
     </div>
     <div class="game-grid">
       <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
       <div id="playerErr" style="display:none;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:0.8rem;color:#ff7b7b;background:var(--panel-raised)"></div>
       <div class="side-card">
-        <h2>Notes and Credits</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <h2 style="margin:0">Notes and Credits</h2>
+          <button class="btn-secondary" id="editGameBtn" style="display:none;padding:6px 12px;font-size:0.75rem">Edit</button>
+        </div>
         <h3>Notes</h3>
         <p id="gameDesc" class="dim">No notes yet.</p>
         <h3>Credits</h3>
@@ -81,9 +88,24 @@
       <div id="commentList"><p class="dim">Loading…</p></div>
       <div id="commentForm" style="display:none">
         <textarea id="commentBox" rows="2" maxlength="2000" placeholder="Say something…"></textarea>
-        <button class="btn" id="commentPost">Post</button>
+        <button class="btn-primary" id="commentPost">Post</button>
       </div>
       <p id="commentSignin" class="dim" style="display:none;margin-top:12px">Sign in to comment.</p>
+    </div>
+    <div class="modal-overlay" id="editModal">
+      <div class="modal">
+        <h2>Edit game</h2>
+        <label for="editTitle">Title</label>
+        <input type="text" id="editTitle" maxlength="60">
+        <label for="editDesc">Notes</label>
+        <textarea id="editDesc" rows="4" maxlength="2000" placeholder="What is this game? How do you play?"></textarea>
+        <label for="editCredits">Credits</label>
+        <textarea id="editCredits" rows="3" maxlength="1000" placeholder="Who made it? What did you use?"></textarea>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="editCancel">Cancel</button>
+          <button class="btn-primary" id="editSave">Save</button>
+        </div>
+      </div>
     </div>
   </div></div>
   <script src="/config.js"></script>
@@ -93,6 +115,7 @@
   (function(){
     var id = new URLSearchParams(location.search).get('id');
     var api = '';
+    var game = null;
     function apiBase(){
       if (api) return api;
       api = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
@@ -126,17 +149,55 @@
       } else legacy();
     });
     // Owner check: only the owner gets the Studio button (server still enforces on save)
+    var isOwner = false;
     function checkOwner(ownerId) {
       try {
         getSupabase().then(function(db){
           if (!db) return;
           db.auth.getSession().then(function(r){
             var uid = (r.data && r.data.session && r.data.session.user && r.data.session.user.id) || null;
-            if (uid && ownerId && uid === ownerId) document.getElementById('studioBtn').style.display = '';
+            if (uid && ownerId && uid === ownerId) {
+              isOwner = true;
+              document.getElementById('studioBtn').style.display = '';
+              document.getElementById('editGameBtn').style.display = '';
+            }
           });
         }).catch(function(){});
       } catch (e) {}
     }
+    // Edit game modal
+    var editModal = document.getElementById('editModal');
+    document.getElementById('editGameBtn').addEventListener('click', function(){
+      document.getElementById('editTitle').value = game.title || '';
+      document.getElementById('editDesc').value = game.description || '';
+      document.getElementById('editCredits').value = game.credits || '';
+      editModal.classList.add('open');
+    });
+    document.getElementById('editCancel').addEventListener('click', function(){ editModal.classList.remove('open'); });
+    editModal.addEventListener('click', function(e){ if (e.target === editModal) editModal.classList.remove('open'); });
+    document.getElementById('editSave').addEventListener('click', function(){
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      getSession().then(function(s){
+        if (!s) { btn.disabled = false; btn.textContent = 'Save'; return; }
+        fetch(apiBase() + '/api/games/' + encodeURIComponent(id), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.token },
+          body: JSON.stringify({
+            title: document.getElementById('editTitle').value.trim(),
+            description: document.getElementById('editDesc').value.trim(),
+            credits: document.getElementById('editCredits').value.trim()
+          })
+        }).then(function(r){ return r.json(); }).then(function(d){
+          btn.disabled = false;
+          btn.textContent = 'Save';
+          if (d.error && !d.game) { alert('Save failed: ' + d.error); return; }
+          editModal.classList.remove('open');
+          location.reload();
+        }).catch(function(){ btn.disabled = false; btn.textContent = 'Save'; alert('Save failed.'); });
+      });
+    });
     var session = null;
     function getSession() {
       if (session) return Promise.resolve(session);
@@ -215,7 +276,7 @@
     fetch(apiBase() + '/api/games/' + encodeURIComponent(id))
       .then(function(r){ return r.json(); })
       .then(function(d){
-        var game = d.game || null;
+        game = d.game || null;
         if (!game) { document.getElementById('overlayText').textContent = 'Game not found'; return; }
         var files = game.files;
         if (typeof files === 'string') { try { files = JSON.parse(files); } catch (e) { files = null; } }

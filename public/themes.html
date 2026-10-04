@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cudic — Theme Packs</title>
@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=11">
+    <link rel="stylesheet" href="/sidebar.css?v=13">
     <style>
         body {
             display: flex;
@@ -118,7 +118,7 @@
         .pack-install {
             flex: 1; font-family: var(--font-head); font-weight: 600; font-size: 0.85rem;
             padding: 9px; border-radius: 10px; border: none; cursor: pointer;
-            background: var(--signal); color: #fff;
+            background: var(--signal); color: var(--on-signal, #fff);
         }
         .pack-install.installed { background: var(--panel-raised); color: var(--signal); border: 1px solid var(--signal); cursor: default; }
 
@@ -134,13 +134,32 @@
 </head>
 
 <body data-page="themes">
-    <div class="themes-layout">
+    <div class="themes-layout page-panel">
         <div class="topbar">
             <h1>Theme packs</h1>
             <button id="resetPack" class="btn btn-secondary" style="display:none;width:auto">Reset to default</button>
         </div>
         <div class="themes-content">
-            <div class="pack-grid" id="packGrid"></div>
+            <section class="hero">
+                <h1>Dress up Cudic.</h1>
+                <p>Theme packs reskin the rail, the palette, and the mood. One click to try, one click to go back.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" id="browsePacksBtn">Browse packs</button>
+                </div>
+            </section>
+            <div class="sec-head">
+                <h2 id="packTitle">Theme packs</h2>
+                <select class="sortsel" id="packSort" aria-label="Sort packs">
+                    <option value="featured">Featured</option>
+                    <option value="installed">Installed first</option>
+                    <option value="az">A–Z</option>
+                </select>
+            </div>
+            <div class="pack-grid" id="packGrid">
+                <div class="pack-card" aria-hidden="true"><div class="pack-preview sk"></div><div class="pack-info"><div class="sk" style="height:15px;width:55%;border-radius:4px;margin-bottom:8px"></div><div class="sk" style="height:11px;border-radius:4px;margin-bottom:10px"></div><div class="sk" style="height:36px;border-radius:10px"></div></div></div>
+                <div class="pack-card" aria-hidden="true"><div class="pack-preview sk"></div><div class="pack-info"><div class="sk" style="height:15px;width:45%;border-radius:4px;margin-bottom:8px"></div><div class="sk" style="height:11px;border-radius:4px;margin-bottom:10px"></div><div class="sk" style="height:36px;border-radius:10px"></div></div></div>
+                <div class="pack-card" aria-hidden="true"><div class="pack-preview sk"></div><div class="pack-info"><div class="sk" style="height:15px;width:60%;border-radius:4px;margin-bottom:8px"></div><div class="sk" style="height:11px;border-radius:4px;margin-bottom:10px"></div><div class="sk" style="height:36px;border-radius:10px"></div></div></div>
+            </div>
         </div>
     </div>
     <div id="packToast"></div>
@@ -215,6 +234,27 @@
         refreshButtons();
         toast('Back to the default look.');
       });
+      var packSortMode = 'featured';
+      var packOrder = [];
+      function renderPacks() {
+        var keys = packOrder.slice();
+        var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
+        if (packSortMode === 'az') keys.sort(function (a, b) { return String((manifests[a] && manifests[a].name) || '').localeCompare(String((manifests[b] && manifests[b].name) || '')); });
+        else if (packSortMode === 'installed') keys.sort(function (a, b) { return ((b === cur) ? 1 : 0) - ((a === cur) ? 1 : 0); });
+        grid.innerHTML = keys.map(function (k) { return cardHtml(manifests[k], manifests[k].slug === cur); }).join('');
+        var title = document.getElementById('packTitle');
+        if (title) title.textContent = 'Theme packs (' + keys.length + ')';
+        resetBtn.style.display = cur ? '' : 'none';
+        // Start live scene previews on the cards
+        if (window.CudicTheme) grid.querySelectorAll('canvas[data-scene]').forEach(function (cv) {
+          var card = cv.closest('.pack-card');
+          var slug = card.querySelector('.pack-install').getAttribute('data-slug');
+          var m = manifests[slug];
+          CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
+        });
+      }
+      document.getElementById('packSort').addEventListener('change', function () { packSortMode = this.value; renderPacks(); });
+      document.getElementById('browsePacksBtn').addEventListener('click', function () { document.getElementById('packGrid').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       async function boot() {
         try {
           var idx = await (await fetch('/packs/index.json', { cache: 'no-store' })).json();
@@ -225,16 +265,8 @@
               manifests[m.slug] = m;
             } catch (e) {}
           }
-          var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
-          grid.innerHTML = Object.keys(manifests).map(function (k) { return cardHtml(manifests[k], manifests[k].slug === cur); }).join('');
-          resetBtn.style.display = cur ? '' : 'none';
-          // Start live scene previews on the cards
-          if (window.CudicTheme) grid.querySelectorAll('canvas[data-scene]').forEach(function (cv) {
-            var card = cv.closest('.pack-card');
-            var slug = card.querySelector('.pack-install').getAttribute('data-slug');
-            var m = manifests[slug];
-            CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
-          });
+          packOrder = Object.keys(manifests);
+          renderPacks();
         } catch (e) {
           grid.innerHTML = '<div style="color:var(--text-tertiary)">Could not load theme packs.</div>';
         }

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head>
+<!DOCTYPE html><html lang="en"><head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cudic — Profile</title>
@@ -17,7 +17,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/profile">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-  <link rel="stylesheet" href="/sidebar.css?v=11">
+  <link rel="stylesheet" href="/sidebar.css?v=13">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .profile-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -26,21 +26,8 @@
     .profile-card { width: 100%; max-width: 560px; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
     .profile-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
     .profile-card p.sub { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 18px; }
-    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .field label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-    .field input { background: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; color: var(--text-primary); font-size: 0.9rem; font-family: inherit; outline: none; }
-    .field input:focus { border-color: var(--signal); }
-    .field input[readonly] { opacity: 0.6; }
     .row { display: flex; gap: 10px; align-items: center; }
     .row .field { flex: 1; margin-bottom: 0; }
-    .btn { display: inline-block; padding: 10px 20px; background: var(--signal); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 0.85rem; font-family: inherit; cursor: pointer; }
-    .btn:hover { background: var(--signal-hover); }
-    .btn:disabled { opacity: 0.6; cursor: default; }
-    .btn-ghost { display: inline-block; padding: 10px 20px; background: transparent; color: var(--danger); border: 1px solid var(--line); border-radius: 8px; font-weight: 600; font-size: 0.85rem; font-family: inherit; cursor: pointer; }
-    .btn-ghost:hover { border-color: var(--danger); }
-    .msg { font-size: 0.82rem; margin-top: 10px; display: none; }
-    .msg.ok { color: var(--success); display: block; }
-    .msg.err { color: var(--danger); display: block; }
     .avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: 1.4rem; flex-shrink: 0; }
     .meta { font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; }
     .meta b { color: var(--text-primary); }
@@ -54,6 +41,9 @@
     .pref-row:first-of-type { border-top: none; }
     .pref-row .label { font-size: 0.88rem; font-weight: 600; }
     .pref-row .desc { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+    .seg { display: flex; gap: 8px; }
+    .seg button { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--panel); color: var(--text-primary); font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+    .seg button.on { border-color: var(--signal); background: var(--signal-tint); color: var(--signal); }
     .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; cursor: pointer; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .track { position: absolute; inset: 0; background: var(--line); border-radius: 12px; transition: background 0.15s; }
@@ -62,12 +52,12 @@
     .switch input:checked + .track::before { transform: translateX(18px); }
   </style></head>
 <body data-page="profile">
-  <div class="profile-layout"><div class="profile-content">
+  <div class="profile-layout page-panel"><div class="profile-content">
     <h1>Profile</h1>
     <div id="guestNotice" class="profile-card" style="display:none">
       <h2>You're browsing as a guest</h2>
       <p class="sub">Sign in to edit your profile.</p>
-      <a class="btn" href="/" style="text-decoration:none">Sign in</a>
+        <a class="btn-primary" href="/" style="text-decoration:none">Sign in</a>
     </div>
     <div id="profileBody" style="display:none;width:100%;max-width:560px">
       <div class="profile-card">
@@ -81,8 +71,8 @@
           </div>
         </div>
         <div class="field"><label>Display name</label><input type="text" id="displayName" maxlength="24"></div>
-        <button class="btn" id="saveName">Save changes</button>
-        <div class="msg" id="nameMsg"></div>
+        <button class="btn-primary" id="saveName">Save changes</button>
+        <div class="status-msg" id="nameMsg"></div>
       </div>
       <div class="profile-card">
         <h2>Private settings</h2>
@@ -90,13 +80,21 @@
         <div class="field"><label>Email</label><input type="text" id="emailField" readonly></div>
         <div class="field"><label>New password</label><input type="password" id="newPass" autocomplete="new-password"></div>
         <div class="field"><label>Confirm new password</label><input type="password" id="newPass2" autocomplete="new-password"></div>
-        <button class="btn" id="savePass">Change password</button>
-        <div class="msg" id="passMsg"></div>
+        <button class="btn-secondary" id="savePass">Change password</button>
+        <div class="status-msg" id="passMsg"></div>
       </div>
       <div class="profile-card">
         <h2>Personalization</h2>
         <p class="sub">Your accent color, applied across the app.</p>
         <div class="swatches" id="swatches"></div>
+      </div>
+      <div class="profile-card">
+        <h2>Appearance</h2>
+        <p class="sub">Dark surfaces with a teal accent.</p>
+        <div class="seg" id="themeSeg">
+          <button data-theme-val="light">Light</button>
+          <button data-theme-val="dark">Dark</button>
+        </div>
       </div>
       <div class="profile-card">
         <h2>Performance</h2>
@@ -107,7 +105,7 @@
         </div>
       </div>
       <div class="profile-card">
-        <button class="btn-ghost" id="signOutBtn">Sign out</button>
+        <button class="btn-danger" id="signOutBtn">Sign out</button>
       </div>
     </div>
   </div></div>
@@ -119,7 +117,7 @@
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
     function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
-    function msg(el, text, ok){ el.textContent = text; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+    function msg(el, text, ok){ el.textContent = text; el.className = 'status-msg ' + (ok ? 'ok' : 'err'); }
     function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
 
     /* Prefs (shared with sidebar.js) */
@@ -130,7 +128,7 @@
       { name: 'Mint', main: '#14A468', hover: '#0E7A4E' }
     ];
     function hexRgb(hex){ return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)]; }
-    function applyAccent(a){ var c = hexRgb(a.main); document.documentElement.style.setProperty('--signal', a.main); document.documentElement.style.setProperty('--signal-hover', a.hover); document.documentElement.style.setProperty('--signal-tint', 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.12)'); }
+    function applyAccent(a){ var c = hexRgb(a.main); document.documentElement.style.setProperty('--signal', a.main); document.documentElement.style.setProperty('--signal-hover', a.hover); document.documentElement.style.setProperty('--signal-tint', 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.12)'); var lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; document.documentElement.style.setProperty('--on-signal', lum >= 150 ? '#141414' : '#fff'); }
     function shade(hex, amt){ var c = hexRgb(hex).map(function(v){ return Math.max(0, Math.min(255, v + amt)); }); return '#' + c.map(function(v){ var s = v.toString(16); return s.length < 2 ? '0' + s : s; }).join(''); }
     function applyMotion(off){ document.documentElement.classList.toggle('reduce-motion', !!off); }
 
@@ -219,6 +217,24 @@
       sw.appendChild(b);
     });
     sw.appendChild(ci);
+
+    /* Appearance: system / light / dark */
+    var seg = document.getElementById('themeSeg');
+    function paintThemeSeg(){
+      var v = 'dark';
+      try { v = localStorage.getItem('glox_theme') || 'dark'; } catch (e) {}
+      seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-theme-val') === v); });
+    }
+    function applyThemeVal(v){
+      try { localStorage.setItem('glox_theme', v); } catch (e) {}
+      if (v !== 'light') document.documentElement.dataset.theme = 'dark';
+      else delete document.documentElement.dataset.theme;
+      paintThemeSeg();
+    }
+    seg.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){ applyThemeVal(b.getAttribute('data-theme-val')); });
+    });
+    paintThemeSeg();
 
     /* Performance: reduce motion */
     var rm = document.getElementById('reduceMotion');
