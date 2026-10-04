@@ -94,7 +94,8 @@ uppercase tracking.
   list only — no arbitrary values.
 - Radius: **two sizes only** — `6px` for controls (buttons, inputs, chips),
   `12px` for containers (cards, panels, modals). Dividers and hairlines
-  have no radius.
+  have no radius. One exception: the page-level `.page-panel` surface is
+  `16px`, so main content reads as an isolated rounded rectangle.
 - No drop shadows. Elevation is communicated with a `1px solid var(--line)`
   border and a background step up to `--panel-raised` — flatter, more
   "workbench," avoids the generic soft-shadow-card look.
@@ -109,10 +110,9 @@ uppercase tracking.
 - Logomark (new): a simple isometric cube outline — a nod to the 3D scene
   the editor builds. Used as the favicon and loading state; a single
   reusable SVG, not a photo/gradient blob.
-- A subtle **dot-grid** (matching the editor's floor grid) is the one
-  recurring background texture, used only on: the auth screen's brand
-  panel, and empty states. It's the visual thread that ties the rest of
-  the app back to the editor. Don't use it as decoration everywhere —
+- A subtle **dot-grid** (matching the editor's floor grid) lives only on the
+  auth screen's brand panel (the login canvas). Empty states are plain —
+  no dot texture anywhere else. Don't use it as decoration everywhere —
   restraint is the point.
 
 ## 6. Components
@@ -144,7 +144,6 @@ Use one consistent pattern:
 3. One line of guidance in `--text-secondary`, written as an instruction:
    "Join or create a lobby from Home to start chatting."
 4. One primary button that does the actual next step.
-Optionally show the dot-grid texture behind the icon at low opacity.
 
 **Auth / Home screen**
 Replace the single centered card floating on a starfield with a

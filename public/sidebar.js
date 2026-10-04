@@ -1,6 +1,7 @@
 // ── Glox Sidebar Component ──────────────────────────────
 (function(){
   if(window._gloxSidebar) return; window._gloxSidebar=true;
+  if(document.querySelector('nav.sidebar'))return;
 
   var page=document.body.getAttribute('data-page')||'home';
 
@@ -39,11 +40,19 @@
     document.documentElement.style.setProperty('--signal',acc);
     document.documentElement.style.setProperty('--signal-hover',hover);
     document.documentElement.style.setProperty('--signal-tint','rgba('+c[0]+','+c[1]+','+c[2]+',0.12)');
+    var _lum=0.2126*c[0]+0.7152*c[1]+0.0722*c[2];
+    document.documentElement.style.setProperty('--on-signal',_lum>=150?'#141414':'#fff');
   }
   try{
     applyAccentPref();
     window.addEventListener('pageshow',function(e){if(e.persisted){try{applyAccentPref();}catch(x){}}});
-    window.addEventListener('storage',function(e){if(e.key==='glox_accent'){try{applyAccentPref();}catch(x){}}});
+    window.addEventListener('storage',function(e){
+      if(e.key==='glox_accent'){try{applyAccentPref();}catch(x){}}
+      if(e.key==='glox_theme'){try{
+        if(e.newValue==='light')delete document.documentElement.dataset.theme;
+        else document.documentElement.dataset.theme='dark';
+      }catch(x){}}
+    });
     if(localStorage.getItem('glox_reduce_motion')==='1'){
       document.documentElement.classList.add('reduce-motion');
       var _st=document.createElement('style');
@@ -73,11 +82,20 @@
   // Themes icon (palette)
   icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
 
-  // Music icon (double note)
-  icons.music='<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>';
-
   // Theme packs engine (real feature — loads on every page)
   (function(){var s=document.createElement('script');s.src='/theme-engine.js';document.head.appendChild(s);})();
+
+  // Web Awesome 3.14.0: default theme + lazy component loader (CDN, pinned).
+  // Components load on demand only when a <wa-*> tag is present, so this is
+  // ~free until used. Dark theme file (+wa-dark class) lands with dark mode.
+  (function(){
+    var l=document.createElement('link');l.rel='stylesheet';
+    l.href='https://ka-f.webawesome.com/webawesome@3.14.0/styles/themes/default.css';
+    document.head.appendChild(l);
+    var s=document.createElement('script');s.type='module';
+    s.src='https://ka-f.webawesome.com/webawesome@3.14.0/webawesome.loader.js';
+    document.head.appendChild(s);
+  })();
 
   var nav=document.createElement('nav');
   nav.className='sidebar';
@@ -89,7 +107,6 @@
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
       +sbItem('/themes','themes','palette','Themes')
-      +sbItem('/music','music','music','Music')
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
         +'<div id="serverList"></div>'
@@ -108,10 +125,40 @@
 
   document.body.insertBefore(nav,document.body.firstChild);
 
-  // Push-aside: hovering the rail flags the body; CSS slides the page
-  // content right so the open card never covers page text.
-  nav.addEventListener('mouseenter',function(){document.body.classList.add('sb-open')});
-  nav.addEventListener('mouseleave',function(){document.body.classList.remove('sb-open')});
+  // Rail tooltip: one floating pill, positioned fixed so rail scrolling
+  // never clips it. Shows on hover AND focus (keyboard users get it too).
+  // Delegated so server rows added later by loadServers() get tips too.
+  var railTip=document.createElement('div');
+  railTip.id='railTip';
+  document.body.appendChild(railTip);
+  function railLabel(item){
+    var s=item.querySelector('span:last-child');
+    return s?s.textContent.trim():'';
+  }
+  function showRailTip(el,text){
+    if(!text)return;
+    railTip.textContent=text;
+    railTip.style.display='block';
+    var r=el.getBoundingClientRect();
+    railTip.style.top=Math.max(8,r.top+r.height/2-railTip.offsetHeight/2)+'px';
+    railTip.style.left=(r.right+10)+'px';
+  }
+  function hideRailTip(){railTip.style.display='none';}
+  var railCard=nav.querySelector('.sidebar-nav-card');
+  railCard.addEventListener('mouseover',function(e){
+    var item=e.target&&e.target.closest?e.target.closest('.sidebar-item'):null;
+    if(item&&railCard.contains(item))showRailTip(item,railLabel(item));
+  });
+  railCard.addEventListener('mouseout',function(e){
+    var to=e.relatedTarget&&e.relatedTarget.closest?e.relatedTarget.closest('.sidebar-item'):null;
+    if(!to)hideRailTip();
+  });
+  railCard.addEventListener('focusin',function(e){
+    var item=e.target&&e.target.closest?e.target.closest('.sidebar-item'):null;
+    if(item&&railCard.contains(item))showRailTip(item,railLabel(item));
+  });
+  railCard.addEventListener('focusout',hideRailTip);
+  railCard.addEventListener('scroll',hideRailTip);
   // Theme engine hook: let packs mount rail art + icon sets on this nav.
   try{window.dispatchEvent(new Event('cudic:sidebar-ready'));}catch(e){}
 
@@ -119,11 +166,10 @@
     if(el.getAttribute('data-p')===page) el.classList.add('active');
   });
 
-  // Light-only theme: drop any legacy dark/light override
-  document.documentElement.classList.remove('light-theme');
-  try { localStorage.removeItem('glox-theme'); } catch (e) {}
+  // Theme default is dark; an explicit 'light' choice opts out.
+  // (localStorage['glox_theme']: 'dark' | 'light'.)
 
-  // Boot: finish OAuth callback first (GitHub lands on /lobbies with ?code=
+  // Boot: finish OAuth callback first (GitHub lands on /chat with ?code=
   // or #access_token), then load user + servers so the session is visible
   // immediately. A failed handshake shows a toast instead of silent guest.
   (async function bootSidebar(){
@@ -203,17 +249,12 @@
         var res=await fetch(apiHost+'/api/servers/mine',{headers:headers});
         var data=await res.json();
         var myServers=data.servers||[];
-        document.getElementById('serverCount').textContent=myServers.length+'/3';
+        document.getElementById('serverCount').textContent=myServers.length+'/50';
         var list=document.getElementById('serverList');
         if(myServers.length){
-          // Need username for lobby join
-          var qs2=window.location.search;
-          var up=new URLSearchParams(qs2);
-          var uname=up.get('username')||(window.currentUser&&window.currentUser.name)||'';
           list.innerHTML=myServers.map(function(s){
-            var lobby='server:'+s.id;
-            var href='/chat?lobby='+encodeURIComponent(lobby)+(uname?'&username='+encodeURIComponent(uname):'');
-            var active=(window.location.search.includes(lobby))?' active':'';
+            var href='/chat?server='+encodeURIComponent(s.id);
+            var active=(window.location.search.indexOf(s.id)!==-1)?' active':'';
             return '<a class="sidebar-item'+active+'" href="'+href+'" style="font-size:0.85rem"><span style="width:20px;height:20px;border-radius:4px;background:var(--signal-tint);color:var(--signal);display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0">'+s.name.substring(0,2).toUpperCase()+'</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.name+'</span></a>';
           }).join('');
         } else {
@@ -227,19 +268,35 @@
 
   window._reloadSidebarUser=loadSidebarUser;
 
-  // Show/hide logout on hover; click account row opens profile
+  // Show/hide auth button on hover; click account row opens profile
   var accountRow=document.getElementById('accountRow');
   var logoutBtn=document.getElementById('logoutBtn');
   if(accountRow&&logoutBtn){
-    accountRow.addEventListener('mouseenter',function(){logoutBtn.style.display='block'});
+    accountRow.addEventListener('mouseenter',function(){
+      var loggedIn=false;
+      try{var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');if(raw){var s=JSON.parse(raw);loggedIn=!!(s&&s.access_token);}}catch(e){}
+      if(loggedIn){
+        logoutBtn.textContent='Logout';
+        logoutBtn.onclick=function(e){
+          e.stopPropagation();
+          try{if(typeof getSupabase==='function'){getSupabase().then(function(db){if(db){try{db.auth.signOut();}catch(x){}}}).catch(function(){});}}catch(x){}
+          localStorage.removeItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+          window.location.href='/';
+        };
+      }else{
+        logoutBtn.textContent='Login';
+        logoutBtn.onclick=function(e){e.stopPropagation();window.location.href='/login';};
+      }
+      logoutBtn.style.display='block';
+    });
     accountRow.addEventListener('mouseleave',function(){logoutBtn.style.display='none'});
     accountRow.style.cursor='pointer';
     accountRow.addEventListener('click',function(){window.location.href='/profile'});
-    logoutBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      try{if(typeof getSupabase==='function'){getSupabase().then(function(db){if(db){try{db.auth.signOut();}catch(x){}}}).catch(function(){});}}catch(x){}
-      localStorage.removeItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-      window.location.href='/';
+    accountRow.addEventListener('mouseenter',function(){
+      var n='Account';
+      try{if(window.currentUser&&window.currentUser.name)n=window.currentUser.name;}catch(e){}
+      showRailTip(accountRow,n);
     });
+    accountRow.addEventListener('mouseleave',hideRailTip);
   }
 })();

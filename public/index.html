@@ -24,7 +24,7 @@
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=JetBrains+Mono&family=Nunito+Sans:wght@400..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Baloo+2:wght@800&family=Figtree:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <script>document.documentElement.className = 'js';</script>
     <style>
         /* ── Cudic landing: light editorial, flat surfaces ──────────
@@ -41,9 +41,10 @@
             --butter: #F2C14E;
             --line: rgba(31, 29, 26, .16);
 
-            --font-display: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
-            --font-body: 'Nunito Sans', system-ui, sans-serif;
+            --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+            --font-body: 'Figtree', system-ui, sans-serif;
             --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            --font-logo: 'Baloo 2', var(--font-display);
         }
 
         *,
@@ -264,7 +265,7 @@
             gap: 8px;
             text-decoration: none;
             color: var(--ink);
-            font-family: var(--font-display);
+            font-family: var(--font-logo);
             font-weight: 600;
             font-size: 1.3rem;
             letter-spacing: -.01em;
@@ -325,36 +326,6 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 14px;
-        }
-
-        /* ── Feature strip (static, line above and below) ────────── */
-        .strip {
-            border-top: 1px solid var(--line);
-            border-bottom: 1px solid var(--line);
-            padding: 16px 0;
-        }
-
-        .strip-in {
-            max-width: 1080px;
-            margin: 0 auto;
-            padding: 0 24px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px 0;
-        }
-
-        .strip-in span {
-            font-family: var(--font-mono);
-            font-size: .78rem;
-            color: var(--stone);
-            white-space: nowrap;
-        }
-
-        .strip-in span + span::before {
-            content: '·';
-            color: var(--vermilion);
-            margin: 0 10px;
         }
 
         /* ── Cards: three things, one tab ────────────────────────── */
@@ -705,13 +676,6 @@
                 </div>
             </div>
         </section>
-
-        <!-- ── Feature strip ────────────────────────────────────── -->
-        <div class="strip">
-            <div class="strip-in">
-                <span>Scene editor</span><span>Live preview</span><span>Chat lobbies</span><span>Theme packs</span><span>Game gallery</span><span>One-click publish</span><span>Fork and remix</span><span>Custom thumbnails</span>
-            </div>
-        </div>
 
         <!-- ── Three things, one tab ────────────────────────────── -->
         <section class="sec">

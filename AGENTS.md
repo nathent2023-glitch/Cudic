@@ -44,6 +44,12 @@ Both routes exist and are served.
 `ws`, `@supabase/supabase-js`, `dotenv`, `nodemailer`, `resend` (root).
 Studio: `@codingame/monaco-vscode-*` (~40 override packages), `monaco-editor`,
 `vscode` (alias to the extension API), `gsap`, `jszip`, `mammoth`.
+Classic pages: **Web Awesome 3.14.0** via pinned CDN (`sidebar.js` injects default
+theme + `webawesome.loader.js`; components load on demand only when a `<wa-*>`
+tag exists). No build step, no framework — do not add one. Hand-roll visuals to
+`design.md`; use `wa-*` only for behavioural widgets (dialog, dropdown, tooltip,
+toast, tabs). Dark mode is our own token block (`:root[data-theme="dark"]`,
+`glox_theme` = dark/light, dark default) — `wa-dark` unused.
 
 ---
 
@@ -356,10 +362,10 @@ list endpoints already supported it; **only Studio lacked a control**.
 ## 9. Sidebar (shared chrome)
 
 - `public/sidebar.css` + `public/sidebar.js` on every page.
-- **Push-aside on hover**: fixed 72px spacer card, hover width **196px**,
-  left 12 → right edge 208; body gets `.sb-open` → page content
-  `translateX(148px)` giving a **12px gap**. Gated behind `@media (hover:hover)`
-  so touch devices don't get stuck. `sb-open` toggled by listeners in `sidebar.js`.
+- **Fixed 60px icon rail, always collapsed**: flush full-height rectangle
+  (no gaps, no rounded corners, `border-right` only). Labels never expand —
+  hovering/focusing an item shows a `#railTip` tooltip pill (JS-positioned
+  `fixed`, delegated so later-added server rows get tips too).
 - Rail brand `.rail-brand`: **no white chip** (user removed it — wants raw art).
   Logo fetched as inline SVG via `[data-svg]` so per-path `--d` stagger can animate:
   `railIn` (slide from C) + `railGlow` (pulse). `<img>` fallback.
