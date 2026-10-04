@@ -317,13 +317,19 @@
       var res = await fetch('/packs/' + encodeURIComponent(slug) + '/manifest.json', { cache: 'no-store' });
       if (!res.ok) throw 0;
       applyPack(await res.json(), slug);
-    } catch (e) {
-      try {
-        var cached = JSON.parse(localStorage.getItem(MANIFEST_KEY) || 'null');
-        if (cached) { applyPack(cached, slug); return; }
-      } catch (e2) {}
-      persist(null);
-    }
+      return;
+    } catch (e) {}
+    // Community packs live in the database, not in /packs — try the API
+    // (free packs boot signed-out; entitled ones boot from cache below).
+    try {
+      var api = await fetch('/api/packs/' + encodeURIComponent(slug) + '/manifest', { cache: 'no-store' });
+      if (api.ok) { var jm = await api.json(); applyPack(jm.manifest, jm.slug || slug); return; }
+    } catch (e2) {}
+    try {
+      var cached = JSON.parse(localStorage.getItem(MANIFEST_KEY) || 'null');
+      if (cached) { applyPack(cached, slug); return; }
+    } catch (e3) {}
+    persist(null);
   }
 
   window.addEventListener('cudic:sidebar-ready', mountSidebar);

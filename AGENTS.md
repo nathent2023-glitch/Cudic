@@ -71,7 +71,8 @@ npm run dev          # vite dev server
 - **Rebuild Studio after editing anything under `studio/src/`** — `public/studio/`
   is gitignored, so what you see in the browser is always the last build.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
-  (currently **v9**) — pages cache CSS aggressively.
+  (currently **v16**) — pages cache CSS aggressively. Same for
+  `sidebar.js?v=N` / `client.js?v=N` (currently **v3**) after editing those.
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
   and check the console. Playwright MCP is **disabled**; the browser tools that
   work here are `chrome-devtools` (screenshots return media inline when no
@@ -183,6 +184,9 @@ Migrations:
 - `20260921182000_lobby_creator_set_null.sql` — FK `ON DELETE SET NULL`
 - `20260923120000_studio_assets.sql` — `games.assets jsonb`
 - `20260924120000_game_comments.sql` — comments table + RLS policies
+- `20261003120000_chat_channels_dm.sql` — lobbies get `kind`/`server_id`/`topic`/`is_private`, `server_members.role`, `conversation_members` (access), `conversation_state` (read receipts), `friendships`; legacy rooms deleted
+- `20261003130000_avatars.sql` — public `avatars` storage bucket + policies
+- `20261003140000_server_rules.sql` — `servers.rules`, `server_members.rules_accepted_at` (grandfathered); server create endpoint reads channel bundles from the `SERVER_TEMPLATES` map in `server.js` (`GET /api/server-templates` serves the picker)
 
 RLS: read-for-all on most, insert for authenticated, delete for owner.
 Storage policies let anyone read game assets, authenticated upload, owners manage/delete.
@@ -397,7 +401,7 @@ Read it before building any classic-page screen. Headlines:
 
 - **Light-only** for classic pages: ice-blue `--ink #E8EEFA`, white panels,
   hairline `--line #C9D5F0`, ink text `#2E2A4B`.
-- **`--signal #774DCB` (purple)** is the *classic app's* primary — this is a
+- **`--signal #7300FF` (electric violet)** is the *classic app's* primary — this is a
   different context from the AI panel. **`--ember #FF8C1A`** is reserved strictly
   for live/play moments (never nav, never structure).
 - Type: **Space Grotesk** headings/buttons (500/600 only), **Inter** body (400/500),
@@ -439,7 +443,8 @@ Read it before building any classic-page screen. Headlines:
 8. **`public/studio/` is gitignored** — a fresh clone has no `/studio` until
    `cd studio && npm run build` (or Vercel's `buildCommand` runs).
 9. **No `&&`** — PowerShell 5.1. Use `;` and `if ($?) { }`.
-10. **CSS cache** — bump `sidebar.css?v=N` on every page after editing it.
+10. **CSS/JS cache** — bump `sidebar.css?v=N` (v16) on every page after editing it;
+  same for versioned `sidebar.js` / `client.js` (v3).
 11. **Restart the server** after any `server.js` edit; **rebuild Studio** after any
     `studio/src` edit. Neither auto-reloads.
 12. **Command IDs keep the `glox.` prefix** — storage keys and IDs were not renamed.

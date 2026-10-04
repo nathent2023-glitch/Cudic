@@ -17,7 +17,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/profile">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-  <link rel="stylesheet" href="/sidebar.css?v=13">
+  <link rel="stylesheet" href="/sidebar.css?v=18">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .profile-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -28,7 +28,8 @@
     .profile-card p.sub { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 18px; }
     .row { display: flex; gap: 10px; align-items: center; }
     .row .field { flex: 1; margin-bottom: 0; }
-    .avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: 1.4rem; flex-shrink: 0; }
+    .avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 700; font-size: 1.4rem; flex-shrink: 0; overflow: hidden; }
+    .avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
     .meta { font-size: 0.82rem; color: var(--text-secondary); margin-top: 6px; }
     .meta b { color: var(--text-primary); }
     .swatches { display: flex; gap: 10px; }
@@ -68,6 +69,11 @@
           <div>
             <div id="publicName" style="font-weight:700;font-size:1.05rem">—</div>
             <div class="meta">cudic id <b id="publicId">—</b> · joined <b id="publicSince">—</b></div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <label for="avatarFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Change picture</label>
+              <input type="file" id="avatarFile" accept="image/*" style="display:none">
+              <button class="btn btn-danger" id="avatarRemove" style="padding:6px 12px;font-size:0.78rem;display:none">Remove</button>
+            </div>
           </div>
         </div>
         <div class="field"><label>Display name</label><input type="text" id="displayName" maxlength="24"></div>
@@ -92,9 +98,21 @@
         <h2>Appearance</h2>
         <p class="sub">Dark surfaces with a teal accent.</p>
         <div class="seg" id="themeSeg">
-          <button data-theme-val="light">Light</button>
-          <button data-theme-val="dark">Dark</button>
+          <button type="button" data-theme-val="light">Light</button>
+          <button type="button" data-theme-val="dark">Dark</button>
         </div>
+        <div class="status-msg" id="themeMsg"></div>
+      </div>
+      <div class="profile-card">
+        <h2>Coins</h2>
+        <p class="sub">Play money for theme packs. Earn it by using Cudic.</p>
+        <div class="meta" style="margin-bottom:12px">Balance <b id="coinBalance" style="font-size:1.1rem">—</b></div>
+        <div class="pref-row">
+          <div><div class="label">Daily visit</div><div class="desc">+10 coins, once a day.</div></div>
+          <button class="btn-secondary" id="dailyClaim" style="padding:6px 12px;font-size:0.78rem">Claim</button>
+        </div>
+        <div id="questList"></div>
+        <div class="status-msg" id="coinMsg"></div>
       </div>
       <div class="profile-card">
         <h2>Performance</h2>
@@ -111,7 +129,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js"></script>
+  <script src="/sidebar.js?v=2"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
@@ -122,7 +140,7 @@
 
     /* Prefs (shared with sidebar.js) */
     var ACCENTS = [
-      { name: 'Cudic', main: '#774DCB', hover: '#643BAD' },
+      { name: 'Cudic', main: '#7300FF', hover: '#5D00E9' },
       { name: 'Ember', main: '#FF8C1A', hover: '#E67A00' },
       { name: 'Glacier', main: '#2E9EDB', hover: '#1F7FB8' },
       { name: 'Mint', main: '#14A468', hover: '#0E7A4E' }
@@ -143,7 +161,8 @@
         if (!d.profile) return;
         document.getElementById('displayName').value = d.profile.display_name;
         document.getElementById('publicName').textContent = d.profile.display_name;
-        document.getElementById('avatarLg').textContent = initials(d.profile.display_name);
+        myNumericId = d.profile.user_id;
+        paintAvatar(d.profile.avatar_url, d.profile.display_name);
         document.getElementById('publicId').textContent = '#' + d.profile.user_id;
         if (d.profile.created_at) document.getElementById('publicSince').textContent = new Date(d.profile.created_at).toLocaleDateString();
         if (d.email) document.getElementById('emailField').value = d.email;
@@ -187,6 +206,82 @@
       }).catch(function(e){ btn.disabled = false; msg(m, e.message || 'Change failed.', false); });
     });
 
+    /* Avatar: paint, upload (client-downscaled), remove */
+    var myNumericId = null;
+    function paintAvatar(url, name){
+      var el = document.getElementById('avatarLg');
+      if (url) el.innerHTML = '<img src="' + String(url).replace(/"/g, '') + '" alt="">';
+      else el.textContent = initials(name || '?');
+      document.getElementById('avatarRemove').style.display = url ? '' : 'none';
+    }
+    function downscaleImage(file, maxSize){
+      return new Promise(function(resolve, reject){
+        var img = new Image();
+        img.onload = function(){
+          try {
+            var scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+            var cv = document.createElement('canvas');
+            cv.width = Math.max(1, Math.round(img.width * scale));
+            cv.height = Math.max(1, Math.round(img.height * scale));
+            cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+            cv.toBlob(function(b){ b ? resolve(b) : reject(new Error('encode')); }, 'image/jpeg', 0.85);
+          } catch (e) { reject(e); }
+        };
+        img.onerror = function(){ reject(new Error('load')); };
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    function saveAvatarUrl(url){
+      return fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ avatar_url: url || '' }) })
+        .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); });
+    }
+    document.getElementById('avatarFile').addEventListener('change', function(){
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      var m = document.getElementById('nameMsg');
+      if (!file.type || file.type.indexOf('image/') !== 0) { msg(m, 'Pick an image file.', false); return; }
+      if (file.size > 10 * 1024 * 1024) { msg(m, 'Image must be under 10MB.', false); return; }
+      if (!myNumericId) { msg(m, 'Reload and try again.', false); return; }
+      msg(m, 'Uploading…', true);
+      downscaleImage(file, 1000).then(function(blob){
+        return getSupabase().then(function(db){
+          if (!db) throw new Error('Auth unavailable');
+          return db.storage.from('avatars').upload(myNumericId + '/avatar.jpg', blob, { upsert: true, contentType: 'image/jpeg' })
+            .then(function(up){
+              if (up.error) throw up.error;
+              return db.storage.from('avatars').getPublicUrl(myNumericId + '/avatar.jpg');
+            });
+        });
+      }).then(function(pub){
+        var url = pub.data && pub.data.publicUrl;
+        if (!url) throw new Error('Upload failed');
+        return saveAvatarUrl(url).then(function(res){
+          if (!res.ok) throw new Error((res.d && res.d.error) || 'Save failed');
+          paintAvatar(url, document.getElementById('displayName').value);
+          if (window._reloadSidebarUser) window._reloadSidebarUser();
+          msg(m, 'Profile picture updated.', true);
+        });
+      }).catch(function(e){ msg(m, (e && e.message) || 'Upload failed.', false); });
+    });
+    document.getElementById('avatarRemove').addEventListener('click', function(){
+      var m = document.getElementById('nameMsg');
+      var btn = this;
+      btn.disabled = true;
+      getSupabase().then(function(db){
+        if (db && myNumericId) {
+          try { var p = db.storage.from('avatars').remove([myNumericId + '/avatar.jpg']); if (p && p.catch) p.catch(function(){}); } catch (e) {}
+        }
+        return saveAvatarUrl('');
+      }).then(function(res){
+        if (!res.ok) throw new Error((res.d && res.d.error) || 'Save failed');
+        paintAvatar(null, document.getElementById('displayName').value);
+        if (window._reloadSidebarUser) window._reloadSidebarUser();
+        btn.disabled = false;
+        msg(m, 'Profile picture removed.', true);
+      }).catch(function(e){ btn.disabled = false; msg(m, (e && e.message) || 'Remove failed.', false); });
+    });
+
     /* Personalization: accent swatches + custom color */
     var sw = document.getElementById('swatches');
     var current = localStorage.getItem('glox_accent') || ACCENTS[0].main;
@@ -218,6 +313,65 @@
     });
     sw.appendChild(ci);
 
+    /* Coins: balance, daily claim, quests */
+    function paintBalance(b){ document.getElementById('coinBalance').textContent = b; }
+    fetch(apiHost() + '/api/coins', { headers: { 'Authorization': 'Bearer ' + t } })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (typeof d.balance === 'number') paintBalance(d.balance); })
+      .catch(function(){});
+    fetch(apiHost() + '/api/quests', { headers: { 'Authorization': 'Bearer ' + t } })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var list = document.getElementById('questList');
+        (d.quests || []).forEach(function(q){
+          var row = document.createElement('div');
+          row.className = 'pref-row';
+          var left = document.createElement('div');
+          var lab = document.createElement('div'); lab.className = 'label'; lab.textContent = q.label;
+          var desc = document.createElement('div'); desc.className = 'desc'; desc.textContent = '+' + q.coins + ' coins';
+          left.appendChild(lab); left.appendChild(desc);
+          row.appendChild(left);
+          if (q.done) {
+            var done = document.createElement('div');
+            done.className = 'desc'; done.textContent = 'Claimed ✓';
+            row.appendChild(done);
+          } else {
+            var btn = document.createElement('button');
+            btn.className = 'btn-secondary'; btn.style.cssText = 'padding:6px 12px;font-size:0.78rem';
+            btn.textContent = 'Claim';
+            btn.addEventListener('click', function(){
+              btn.disabled = true;
+              var m = document.getElementById('coinMsg');
+              fetch(apiHost() + '/api/quests/claim', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ quest: q.id }) })
+                .then(function(r){ return r.json().then(function(x){ return { ok: r.ok, x: x }; }); })
+                .then(function(res){
+                  if (!res.ok) { btn.disabled = false; msg(m, (res.x && res.x.error) || 'Claim failed.', false); return; }
+                  paintBalance(res.x.balance);
+                  btn.remove();
+                  var done = document.createElement('div');
+                  done.className = 'desc'; done.textContent = 'Claimed ✓';
+                  row.appendChild(done);
+                  msg(m, '+' + q.coins + ' coins.', true);
+                }).catch(function(){ btn.disabled = false; msg(m, 'Claim failed.', false); });
+            });
+            row.appendChild(btn);
+          }
+          list.appendChild(row);
+        });
+      }).catch(function(){});
+    document.getElementById('dailyClaim').addEventListener('click', function(){
+      var btn = this, m = document.getElementById('coinMsg');
+      btn.disabled = true;
+      fetch(apiHost() + '/api/daily/claim', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function(r){ return r.json().then(function(x){ return { ok: r.ok, x: x }; }); })
+        .then(function(res){
+          if (!res.ok) { btn.disabled = false; msg(m, (res.x && res.x.error) || 'Claim failed.', false); return; }
+          paintBalance(res.x.balance);
+          btn.textContent = res.x.already ? 'Claimed today' : 'Claimed ✓';
+          msg(m, res.x.already ? 'Already claimed — come back tomorrow.' : '+10 coins.', true);
+        }).catch(function(){ btn.disabled = false; msg(m, 'Claim failed.', false); });
+    });
+
     /* Appearance: system / light / dark */
     var seg = document.getElementById('themeSeg');
     function paintThemeSeg(){
@@ -230,6 +384,7 @@
       if (v !== 'light') document.documentElement.dataset.theme = 'dark';
       else delete document.documentElement.dataset.theme;
       paintThemeSeg();
+      msg(document.getElementById('themeMsg'), v === 'light' ? 'Light mode on.' : 'Dark mode on.', true);
     }
     seg.querySelectorAll('button').forEach(function(b){
       b.addEventListener('click', function(){ applyThemeVal(b.getAttribute('data-theme-val')); });

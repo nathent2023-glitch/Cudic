@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/music">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-  <link rel="stylesheet" href="/sidebar.css?v=13">
+  <link rel="stylesheet" href="/sidebar.css?v=18">
   <style>
     /* Everything below inherits design.md tokens from sidebar.css.
        No local palette: this page must look like the rest of Cudic. */
@@ -509,6 +509,11 @@
       .m-stage { grid-template-columns: 1fr; }
     }
 
+    /* Dark mode readability on the lightsteelblue page. */
+    :root[data-theme="dark"] .music-layout { background: #222222; }
+    :root[data-theme="dark"] .m-btn-play,
+    :root[data-theme="dark"] .m-btn-play:hover { color: #141414; }
+
     @media (prefers-reduced-motion: reduce) {
       .music-layout *,
       .music-layout *::before,
@@ -616,7 +621,7 @@
     </div>
   </div>
 
-  <script src="/sidebar.js"></script>
+  <script src="/sidebar.js?v=2"></script>
   <script>
   (function () {
     'use strict';
@@ -972,7 +977,7 @@
         return v || fallback;
       };
       return {
-        signal: pick('--signal', '#774DCB'),
+        signal: pick('--signal', '#7300FF'),
         ember: pick('--ember', '#FF8C1A'),
         line: pick('--line', '#C9D5F0')
       };

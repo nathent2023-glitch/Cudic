@@ -31,7 +31,7 @@
     var acc=localStorage.getItem('glox_accent');
     if(!acc||!/^#[0-9a-fA-F]{6}$/.test(acc))return;
     var c=[parseInt(acc.slice(1,3),16),parseInt(acc.slice(3,5),16),parseInt(acc.slice(5,7),16)];
-    var hovers={'#774DCB':'#643BAD','#FF8C1A':'#E67A00','#2E9EDB':'#1F7FB8','#14A468':'#0E7A4E'};
+    var hovers={'#7300FF':'#5D00E9','#FF8C1A':'#E67A00','#2E9EDB':'#1F7FB8','#14A468':'#0E7A4E'};
     var hover=hovers[acc];
     if(!hover){
       var d=c.map(function(v){return Math.max(0,v-22)});
@@ -49,8 +49,13 @@
     window.addEventListener('storage',function(e){
       if(e.key==='glox_accent'){try{applyAccentPref();}catch(x){}}
       if(e.key==='glox_theme'){try{
+        var darkT = e.newValue !== 'light';
         if(e.newValue==='light')delete document.documentElement.dataset.theme;
         else document.documentElement.dataset.theme='dark';
+        var sunE=document.getElementById('themeSun'),moonE=document.getElementById('themeMoon'),btnE=document.getElementById('themeBtn');
+        if(sunE)sunE.style.display=darkT?'':'none';
+        if(moonE)moonE.style.display=darkT?'none':'';
+        if(btnE)btnE.title=darkT?'Switch to light mode':'Switch to dark mode';
       }catch(x){}}
     });
     if(localStorage.getItem('glox_reduce_motion')==='1'){
@@ -112,18 +117,23 @@
         +'<div id="serverList"></div>'
       +'</div>'
       +'<div style="flex:1"></div>'
-      +'<div class="sidebar-bottom">'
-      +'<div class="account-row" id="accountRow" style="position:relative;cursor:pointer">'
-        +'<div class="avatar" id="sbAvatar">?</div>'
-        +'<div>'
-          +'<div class="account-name" id="sbName">Guest</div>'
-          +'<div class="account-status" id="sbStatus">Not signed in</div>'
-        +'</div>'
-        +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 14px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
-      +'</div>'
     +'</div></div>';
 
   document.body.insertBefore(nav,document.body.firstChild);
+
+  // Floating account button: bottom-left of the main panel. Same IDs as
+  // before, so the login/logout hover, tooltip, and profile wiring below
+  // keep working unchanged.
+  var accountHtml='<div class="account-row" id="accountRow" style="position:fixed;cursor:pointer">'
+    +'<div class="ava-wrap"><div class="avatar" id="sbAvatar">?</div><span id="sbDot"></span></div>'
+    +'<div>'
+      +'<div class="account-name" id="sbName">Guest</div>'
+      +'<div class="account-status" id="sbStatus">Not signed in</div>'
+    +'</div>'
+    +'<button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeSun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg><svg id="themeMoon" viewBox="0 0 24 24" style="display:none"><path d="M20 13.2A8 8 0 1 1 10.8 4 6.6 6.6 0 0 0 20 13.2Z" fill="currentColor" stroke="none"/></svg></button>'
+    +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 14px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
+  +'</div>';
+  document.body.insertAdjacentHTML('beforeend',accountHtml);
 
   // Rail tooltip: one floating pill, positioned fixed so rail scrolling
   // never clips it. Shows on hover AND focus (keyboard users get it too).
@@ -216,6 +226,7 @@
       document.getElementById('sbStatus').textContent='Signed in';
       window.currentToken=access_token;
       window.currentUser={id:payload.sub,email:payload.email,name:name};
+      var sbDot=document.getElementById('sbDot');if(sbDot)sbDot.classList.add('on');
 
       // Fetch profile for user_id
       fetchProfile(access_token);
@@ -234,6 +245,11 @@
         var statusEl=document.getElementById('sbStatus');
         nameEl.textContent=data.profile.display_name;
         statusEl.textContent='#'+data.profile.user_id;
+        var avEl=document.getElementById('sbAvatar');
+        if(avEl){
+          if(data.profile.avatar_url){avEl.innerHTML='<img src="'+String(data.profile.avatar_url).replace(/"/g,'')+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';}
+          else{avEl.textContent=initials(data.profile.display_name);}
+        }
       }
     }catch(e){}
   }
@@ -292,6 +308,24 @@
     accountRow.addEventListener('mouseleave',function(){logoutBtn.style.display='none'});
     accountRow.style.cursor='pointer';
     accountRow.addEventListener('click',function(){window.location.href='/profile'});
+    function isDarkTheme(){ try { return localStorage.getItem('glox_theme') !== 'light'; } catch (e) { return true; } }
+    function paintThemeIcon(){
+      var dark = isDarkTheme();
+      var sun = document.getElementById('themeSun'), moon = document.getElementById('themeMoon'), btn = document.getElementById('themeBtn');
+      if (sun) sun.style.display = dark ? '' : 'none';
+      if (moon) moon.style.display = dark ? 'none' : '';
+      if (btn) btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+    var themeBtn = document.getElementById('themeBtn');
+    if (themeBtn) themeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var dark = isDarkTheme();
+      try { localStorage.setItem('glox_theme', dark ? 'light' : 'dark'); } catch (x) {}
+      if (dark) delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = 'dark';
+      paintThemeIcon();
+    });
+    paintThemeIcon();
     accountRow.addEventListener('mouseenter',function(){
       var n='Account';
       try{if(window.currentUser&&window.currentUser.name)n=window.currentUser.name;}catch(e){}

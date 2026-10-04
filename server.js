@@ -13,7 +13,9 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 // Room-name allowlist: blocks tag injection at the source for every client,
 // including stale cached pages. Colon allowed for internal chan:/dm: rooms.
 function validName(s) {
-  return typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _\-:]{0,47}$/.test(s);
+  // Max 96: system room names run long (chan:<uuid>:<slug> is ~50,
+  // dm:<uuid>-<uuid> is 76). User input is validated tighter at creation.
+  return typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _\-:]{0,95}$/.test(s);
 }
 
 // ── Rate limiting (in-memory; single instance, resets on restart) ──
@@ -373,20 +375,43 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const { display_name } = JSON.parse(body);
-        if (!display_name || display_name.trim().length < 1) {
+        const { display_name, avatar_url } = JSON.parse(body);
+        var updates = {};
+        if (display_name !== undefined) {
+          if (!display_name || display_name.trim().length < 1) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Display name required' }));
+            return;
+          }
+          updates.display_name = display_name.trim().substring(0, 24);
+        }
+        if (avatar_url !== undefined) {
+          const a = String(avatar_url || '').trim().substring(0, 500);
+          if (a) {
+            // Only our own avatars bucket: no hotlinking, no data URLs in the row.
+            const prefix = (process.env.SUPABASE_URL || '') + '/storage/v1/object/public/avatars/';
+            if (!a.startsWith(prefix)) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid avatar URL.' }));
+              return;
+            }
+            updates.avatar_url = a;
+          } else {
+            updates.avatar_url = null;
+          }
+        }
+        if (!Object.keys(updates).length) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Display name required' }));
+          res.end(JSON.stringify({ error: 'Nothing to update.' }));
           return;
         }
-        const trimmed = display_name.trim().substring(0, 24);
         const { error: updErr } = await supabase
           .from('users')
-          .update({ display_name: trimmed })
+          .update(updates)
           .eq('id', user.id);
         if (updErr) throw updErr;
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ display_name: trimmed }));
+        res.end(JSON.stringify(Object.assign({ ok: true }, updates)));
       } catch (e) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: e.message }));
@@ -427,7 +452,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
 
     const { data: messages } = await supabase
       .from('messages')
-      .select('display_name, text, created_at')
+      .select('display_name, text, created_at, user_id, users!messages_user_id_fkey(avatar_url)')
       .eq('lobby_id', lobby.id)
       .order('created_at', { ascending: true })
       .limit(100);
@@ -449,7 +474,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       const { data: { user } } = await supabase.auth.getUser(token);
       if (user) userId = user.id;
     }
-    let query = supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, owner_id, created_at, users!owner_id(display_name)').order('created_at', { ascending: false });
+    let query = supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, owner_id, rules, created_at, users!owner_id(display_name)').order('created_at', { ascending: false });
     const { data, error } = await query.limit(50);
     // Filter: show public or owned/member
     let filtered = data || [];
@@ -491,9 +516,65 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
-    const { data } = await supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, created_at').eq('owner_id', user.id).order('created_at', { ascending: true });
+    const { data } = await supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, rules, created_at').eq('owner_id', user.id).order('created_at', { ascending: true });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ servers: data || [] }));
+    return;
+  }
+
+  // ── Server templates: preset channel bundles picked at creation ──
+  // (Discord-style: Gaming, School, Study, Friends, Local Community).
+  // Single source of truth — the create-server picker reads these.
+  const SERVER_TEMPLATES = {
+    blank: { name: 'Blank', description: 'Just the basics.', channels: [
+      { slug: 'general', topic: '' },
+      { slug: 'random', topic: '' } ] },
+    gaming: { name: 'Gaming', description: 'Coordinate sessions and share clips.', channels: [
+      { slug: 'general', topic: 'Home base' },
+      { slug: 'clips', topic: 'Screenshots and clips' },
+      { slug: 'lfg', topic: 'Find players' },
+      { slug: 'off-topic', topic: '' } ] },
+    school: { name: 'School', description: 'Classes, homework help, resources.', channels: [
+      { slug: 'general', topic: 'Home base' },
+      { slug: 'homework-help', topic: 'Ask and answer' },
+      { slug: 'resources', topic: 'Notes and links' },
+      { slug: 'off-topic', topic: '' } ] },
+    study: { name: 'Study Group', description: 'Goals, questions, shared resources.', channels: [
+      { slug: 'general', topic: 'Home base' },
+      { slug: 'goals', topic: 'Daily goals' },
+      { slug: 'questions', topic: 'Ask anything' },
+      { slug: 'resources', topic: 'Shared notes and links' } ] },
+    friends: { name: 'Friends', description: 'Your circle, nothing formal.', channels: [
+      { slug: 'general', topic: 'Home base' },
+      { slug: 'plans', topic: 'Make plans' },
+      { slug: 'media', topic: 'Photos and clips' },
+      { slug: 'random', topic: '' } ] },
+    community: { name: 'Local Community', description: 'Neighborhood hub: events and tips.', channels: [
+      { slug: 'general', topic: 'Home base' },
+      { slug: 'announcements', topic: 'Official updates' },
+      { slug: 'events', topic: 'What is happening' },
+      { slug: 'recommendations', topic: 'Tips and finds' } ] },
+  };
+  const STARTER_RULES = [
+    'Be kind — no harassment, hate speech, or slurs.',
+    'No spam, ads, or NSFW.',
+    'Keep channels on topic.',
+    'Respect other members and their DMs.',
+    'Follow community guidelines.',
+  ].join('\n');
+
+  // ── API: list server templates (public, static data) ────────────
+  if (url.pathname === '/api/server-templates' && req.method === 'GET') {
+    cors(res);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      templates: Object.keys(SERVER_TEMPLATES).map(k => ({
+        slug: k, name: SERVER_TEMPLATES[k].name,
+        description: SERVER_TEMPLATES[k].description,
+        channels: SERVER_TEMPLATES[k].channels,
+      })),
+      starterRules: STARTER_RULES,
+    }));
     return;
   }
 
@@ -519,15 +600,17 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       visibility: body.visibility === 'private' ? 'private' : 'public',
       invite_code: invite,
       owner_id: user.id,
+      rules: String(body.rules || '').substring(0, 2000),
     }).select().single();
     if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
     // Add owner as member with the owner role
     await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id, role: 'owner' });
-    // Default channels for the new server
-    await supabase.from('lobbies').insert([
-      { name: 'chan:' + data.id + ':general', kind: 'channel', server_id: data.id, created_by: user.id },
-      { name: 'chan:' + data.id + ':random', kind: 'channel', server_id: data.id, created_by: user.id },
-    ]);
+    // Channels from the picked template (blank = general + random)
+    const tpl = SERVER_TEMPLATES[body.template] || SERVER_TEMPLATES.blank;
+    await supabase.from('lobbies').insert(tpl.channels.map(c => ({
+      name: 'chan:' + data.id + ':' + c.slug, kind: 'channel',
+      server_id: data.id, topic: c.topic || '', created_by: user.id,
+    })));
     sendConversationsDirty();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ server: data }));
@@ -552,9 +635,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (body.description !== undefined) updates.description = body.description.substring(0, 200);
     if (body.icon_url !== undefined) updates.icon_url = body.icon_url.substring(0, 500);
     if (body.visibility !== undefined && ['public','private'].includes(body.visibility)) updates.visibility = body.visibility;
+    if (body.rules !== undefined) updates.rules = String(body.rules || '').substring(0, 2000);
     if (Object.keys(updates).length === 0) { res.writeHead(400); res.end(); return; }
     const { data, error } = await supabase.from('servers').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
     if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
+    sendConversationsDirty();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ server: data }));
     return;
@@ -626,6 +711,41 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const { data } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', id).eq('owner_id', user.id).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ server: data }));
+    return;
+  }
+
+  // My membership in a server (role + rules acceptance)
+  if (url.pathname.startsWith('/api/servers/') && url.pathname.endsWith('/membership') && req.method === 'GET') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    if (!isUuid(id)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid server.' })); return; }
+    const { data: m } = await supabase.from('server_members').select('role, rules_accepted_at').eq('server_id', id).eq('user_id', user.id).single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ member: !!m, role: m ? m.role : null, accepted: !!(m && m.rules_accepted_at) }));
+    return;
+  }
+
+  // Accept a server's rules (must already be a member)
+  if (url.pathname.startsWith('/api/servers/') && url.pathname.endsWith('/rules/accept') && req.method === 'POST') {
+    cors(res);
+    const id = url.pathname.split('/')[3];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401); res.end(); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(401); res.end(); return; }
+    if (!isUuid(id)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid server.' })); return; }
+    const { data: m } = await supabase.from('server_members').select('server_id').eq('server_id', id).eq('user_id', user.id).single();
+    if (!m) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Join this server first.' })); return; }
+    await supabase.from('server_members').update({ rules_accepted_at: new Date().toISOString() }).eq('server_id', id).eq('user_id', user.id);
+    sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -975,6 +1095,447 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const { data: lobby } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('id', cid).single();
     if (!lobby || !(await canSeeLobby(me, lobby))) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found.' })); return; }
     await supabase.from('conversation_state').upsert({ user_id: me, lobby_id: cid, last_read_at: new Date().toISOString() }, { onConflict: 'user_id,lobby_id' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: peer read state (DMs only) ──────────────────────────
+  // Returns the other participant's last_read_at so own messages can
+  // render sent (✓) vs seen (✓✓). Only visible to DM participants.
+  if (url.pathname.startsWith('/api/conversations/') && url.pathname.endsWith('/peer') && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const cid = url.pathname.split('/')[3];
+    if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid conversation.' })); return; }
+    const { data: lobby } = await supabase.from('lobbies').select('id, name, kind').eq('id', cid).single();
+    if (!lobby || lobby.kind !== 'dm' || !(await canSeeLobby(me, lobby))) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found.' }));
+      return;
+    }
+    const { data: parts } = await supabase.from('conversation_members').select('user_id').eq('lobby_id', cid).neq('user_id', me).limit(1);
+    const peerId = parts && parts[0] && parts[0].user_id;
+    var lastRead = null;
+    if (peerId) {
+      const { data: st } = await supabase.from('conversation_state').select('last_read_at').eq('user_id', peerId).eq('lobby_id', cid).single();
+      if (st) lastRead = st.last_read_at;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ last_read_at: lastRead }));
+    return;
+  }
+
+  // ── Virtual coins: balance, quests, daily, trickle ─────────────
+  // Play money only (no cash-out). Every movement lands in coin_ledger
+  // through the atomic grant/spend RPCs; quest and daily claims check
+  // the ledger first, and a partial unique index backs the once-only
+  // rule against double-clicks from two tabs.
+  var QUESTS = {
+    publish_first:     { coins: 100, label: 'Publish your first game' },
+    first_dm:          { coins: 25,  label: 'Send your first DM' },
+    profile_complete:  { coins: 25,  label: 'Complete your profile' },
+    join_first_server: { coins: 25,  label: 'Join your first server' },
+    first_friend:      { coins: 25,  label: 'Add your first friend' },
+  };
+  async function coinBalance(me) {
+    const { data } = await supabase.from('users').select('balance').eq('id', me).single();
+    return (data && data.balance) || 0;
+  }
+  async function earnCount(me, reason) {
+    const { count } = await supabase.from('coin_ledger').select('id', { count: 'exact', head: true }).eq('user_id', me).eq('reason', reason);
+    return count || 0;
+  }
+
+  // ── API: coin balance + recent receipts ────────────────────────
+  if (url.pathname === '/api/coins' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data: rows } = await supabase.from('coin_ledger').select('delta, reason, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ balance: await coinBalance(user.id), receipts: rows || [] }));
+    return;
+  }
+
+  // ── API: quest list (done state read from the ledger) ─────────
+  if (url.pathname === '/api/quests' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data: rows } = await supabase.from('coin_ledger').select('reason').eq('user_id', user.id).like('reason', 'quest:%');
+    const done = {};
+    (rows || []).forEach(r => { done[String(r.reason).slice(6)] = true; });
+    const quests = Object.keys(QUESTS).map(k => ({ id: k, label: QUESTS[k].label, coins: QUESTS[k].coins, done: !!done[k] }));
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ quests }));
+    return;
+  }
+
+  // ── API: claim a quest (verifies the deed, once-only) ─────────
+  if (url.pathname === '/api/quests/claim' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const body = await readBody(req).catch(() => ({}));
+    const q = QUESTS[body && body.quest];
+    if (!q) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown quest.' })); return; }
+    if (await earnCount(me, 'quest:' + body.quest)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, already: true, balance: await coinBalance(me) }));
+      return;
+    }
+    var earned = false;
+    if (body.quest === 'publish_first') {
+      const { count } = await supabase.from('games').select('id', { count: 'exact', head: true }).eq('owner_id', me).eq('published', true);
+      earned = (count || 0) > 0;
+    } else if (body.quest === 'first_dm') {
+      const { data: dmRows } = await supabase.from('conversation_members').select('lobby_id, lobbies!inner(kind)').eq('user_id', me).eq('lobbies.kind', 'dm');
+      if (dmRows && dmRows.length) {
+        const { count } = await supabase.from('messages').select('id', { count: 'exact', head: true }).eq('user_id', me).in('lobby_id', dmRows.map(r => r.lobby_id));
+        earned = (count || 0) > 0;
+      }
+    } else if (body.quest === 'profile_complete') {
+      const { data: prof } = await supabase.from('users').select('display_name, avatar_url').eq('id', me).single();
+      earned = !!(prof && prof.display_name && prof.avatar_url);
+    } else if (body.quest === 'join_first_server') {
+      const { count: m } = await supabase.from('server_members').select('server_id', { count: 'exact', head: true }).eq('user_id', me);
+      const { count: o } = await supabase.from('servers').select('id', { count: 'exact', head: true }).eq('owner_id', me);
+      earned = ((m || 0) + (o || 0)) > 0;
+    } else if (body.quest === 'first_friend') {
+      const { count } = await supabase.from('friendships').select('user_id', { count: 'exact', head: true }).eq('status', 'accepted').or('user_id.eq.' + me + ',friend_id.eq.' + me);
+      earned = (count || 0) > 0;
+    }
+    if (!earned) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Quest not completed yet.' })); return; }
+    try {
+      const { data: bal, error } = await supabase.rpc('grant_coins', { p_user: me, p_delta: q.coins, p_reason: 'quest:' + body.quest, p_ref: null });
+      if (error) throw error;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, balance: bal }));
+    } catch (e) {
+      if (String((e && e.message) || '').includes('duplicate key')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, already: true, balance: await coinBalance(me) }));
+        return;
+      }
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Claim failed.' }));
+    }
+    return;
+  }
+
+  // ── API: daily login claim (10 coins, once per UTC day) ────────
+  if (url.pathname === '/api/daily/claim' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const reason = 'daily:' + new Date().toISOString().slice(0, 10);
+    if (await earnCount(me, reason)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, already: true, balance: await coinBalance(me) }));
+      return;
+    }
+    try {
+      const { data: bal, error } = await supabase.rpc('grant_coins', { p_user: me, p_delta: 10, p_reason: reason, p_ref: null });
+      if (error) throw error;
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, balance: bal }));
+    } catch (e) {
+      if (String((e && e.message) || '').includes('duplicate key')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, already: true, balance: await coinBalance(me) }));
+        return;
+      }
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Claim failed.' }));
+    }
+    return;
+  }
+
+  // ── Community theme packs ─────────────────────────────────────
+  // Manifests are pure data (see theme-engine.js): the server validates
+  // every field against the engine's allowlists and serves manifests
+  // only to entitled users — that gate is the purchase enforcement.
+  var PACK_FONTS = ['Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
+  var PACK_SCENES = ['city-night', 'ember-field'];
+  var PACK_COLOR_KEYS = ['ink', 'panel', 'raised', 'line', 'signal', 'tp', 'ts', 'tt'];
+  var RESERVED_PACK_SLUGS = ['anime-city-night'];
+  try {
+    const idx = JSON.parse(fs.readFileSync('public/packs/index.json', 'utf8'));
+    (idx.packs || []).forEach(p => { if (p.slug) RESERVED_PACK_SLUGS.push(p.slug); });
+  } catch {}
+  function validatePack(name, description, price, m) {
+    if (!name || String(name).trim().length < 2 || String(name).trim().length > 40) return 'Pack name must be 2–40 characters.';
+    if (String(description || '').length > 500) return 'Description is too long (500 max).';
+    if (!Number.isInteger(price) || price < 0 || price > 100000) return 'Price must be 0–100000 coins.';
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return 'Invalid manifest.';
+    const top = ['colors', 'fonts', 'background', 'icons', 'motion', 'radius', 'tags', 'sidebar'];
+    for (const k of Object.keys(m)) if (!top.includes(k)) return 'Unknown manifest section: ' + k + '.';
+    const c = m.colors || {};
+    if (typeof c !== 'object') return 'Invalid colors.';
+    for (const k of Object.keys(c)) {
+      if (!PACK_COLOR_KEYS.includes(k)) return 'Unknown color: ' + k + '.';
+      if (!/^#[0-9a-fA-F]{6}$/.test(String(c[k]))) return 'Color ' + k + ' must be #rrggbb.';
+    }
+    if (m.fonts !== undefined) {
+      if (!m.fonts || typeof m.fonts !== 'object') return 'Invalid fonts.';
+      if (m.fonts.head !== undefined && !PACK_FONTS.includes(m.fonts.head)) return 'Unknown head font.';
+      if (m.fonts.body !== undefined && !PACK_FONTS.includes(m.fonts.body)) return 'Unknown body font.';
+    }
+    if (m.background !== undefined) {
+      const bg = m.background;
+      if (!bg || typeof bg !== 'object') return 'Invalid background.';
+      if (!['none', 'image', 'scene'].includes(bg.type)) return 'Unknown background type.';
+      if (bg.type === 'scene' && !PACK_SCENES.includes(bg.scene)) return 'Unknown scene.';
+      if (bg.type === 'image' && (typeof bg.src !== 'string' || !bg.src.startsWith('https://') || bg.src.length > 500)) return 'Background image must be an https URL.';
+      if (bg.opacity !== undefined && (typeof bg.opacity !== 'number' || bg.opacity < 0 || bg.opacity > 1)) return 'Opacity must be 0–1.';
+      if (bg.params !== undefined) {
+        if (!bg.params || typeof bg.params !== 'object') return 'Invalid scene params.';
+        const ks = Object.keys(bg.params);
+        if (ks.length > 8) return 'Too many scene params.';
+        for (const k of ks) if (typeof bg.params[k] !== 'number') return 'Scene params must be numbers.';
+      }
+    }
+    if (m.icons !== undefined && !['default', 'neon'].includes(m.icons)) return 'Unknown icon set.';
+    if (m.motion !== undefined) {
+      if (!m.motion || typeof m.motion !== 'object') return 'Invalid motion.';
+      if (m.motion.preset !== undefined && !['calm', 'playful'].includes(m.motion.preset)) return 'Unknown motion preset.';
+    }
+    if (m.radius !== undefined && (!Number.isInteger(m.radius) || m.radius < 0 || m.radius > 24)) return 'Radius must be 0–24.';
+    if (m.tags !== undefined) {
+      if (!Array.isArray(m.tags) || m.tags.length > 8) return 'Up to 8 tags.';
+      for (const t of m.tags) if (typeof t !== 'string' || !t.trim() || t.length > 24) return 'Tags must be short text.';
+    }
+    if (m.sidebar !== undefined) {
+      if (!m.sidebar || typeof m.sidebar !== 'object') return 'Invalid sidebar.';
+      if (m.sidebar.background !== undefined && (typeof m.sidebar.background !== 'string' || !m.sidebar.background.startsWith('https://') || m.sidebar.background.length > 500)) return 'Sidebar background must be an https URL.';
+    }
+    return null;
+  }
+  function packSlug(name) {
+    const base = String(name).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 24) || 'pack';
+    return base + '-' + Math.random().toString(36).slice(2, 6);
+  }
+  async function packByKey(key) {
+    const sel = 'id, slug, name, description, manifest, price, downloads, featured, published, owner_id, created_at';
+    const q = isUuid(key)
+      ? supabase.from('theme_packs').select(sel).eq('id', key)
+      : supabase.from('theme_packs').select(sel).eq('slug', key);
+    const { data } = await q.single();
+    return data || null;
+  }
+  async function ownsPack(me, packId) {
+    if (!me) return false;
+    const { data } = await supabase.from('pack_ownership').select('pack_id').eq('user_id', me).eq('pack_id', packId).single();
+    return !!data;
+  }
+
+  // ── API: list published packs (public; owned flag when signed in)
+  // ?mine=1 returns the caller's own packs, drafts included.
+  if (url.pathname === '/api/packs' && req.method === 'GET') {
+    cors(res);
+    const t = (req.headers.authorization || '').replace('Bearer ', '');
+    var me = null;
+    if (t) { const { data: { user } } = await supabase.auth.getUser(t); if (user) me = user.id; }
+    const mineOnly = url.searchParams.get('mine') === '1';
+    if (mineOnly && !me) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return; }
+    var pq = supabase.from('theme_packs').select('id, slug, name, description, price, downloads, featured, published, owner_id, created_at');
+    pq = mineOnly ? pq.eq('owner_id', me) : pq.eq('published', true);
+    const { data: packs } = await pq.order('featured', { ascending: false }).order('created_at', { ascending: false }).limit(100);
+    var owned = {};
+    if (me && packs && packs.length) {
+      const { data: rows } = await supabase.from('pack_ownership').select('pack_id').eq('user_id', me).in('pack_id', packs.map(p => p.id));
+      (rows || []).forEach(r => { owned[r.pack_id] = true; });
+    }
+    var authorById = {};
+    const ownerIds = [...new Set((packs || []).map(p => p.owner_id))];
+    if (ownerIds.length) {
+      const { data: users } = await supabase.from('users').select('id, display_name').in('id', ownerIds);
+      (users || []).forEach(u => { authorById[u.id] = u.display_name; });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ packs: (packs || []).map(p => ({
+      id: p.id, slug: p.slug, name: p.name, description: p.description,
+      price: p.price, downloads: p.downloads, featured: p.featured,
+      published: p.published,
+      author: authorById[p.owner_id] || 'unknown',
+      mine: me === p.owner_id,
+      owned: p.price === 0 || me === p.owner_id || !!owned[p.id],
+    })) }));
+    return;
+  }
+
+  // ── API: fetch a pack manifest (gated: free, owned, or owner) ──
+  if (url.pathname.startsWith('/api/packs/') && url.pathname.endsWith('/manifest') && req.method === 'GET') {
+    cors(res);
+    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const pack = await packByKey(key);
+    if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    const t = (req.headers.authorization || '').replace('Bearer ', '');
+    var me = null;
+    if (t) { const { data: { user } } = await supabase.auth.getUser(t); if (user) me = user.id; }
+    const entitled = pack.price === 0 || me === pack.owner_id || await ownsPack(me, pack.id);
+    if (!entitled) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'This pack costs ' + pack.price + ' coins.', price: pack.price })); return; }
+    if (url.searchParams.get('install') === '1') {
+      await supabase.from('theme_packs').update({ downloads: (pack.downloads || 0) + 1 }).eq('id', pack.id);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ slug: pack.slug, name: pack.name, description: pack.description, manifest: pack.manifest, price: pack.price }));
+    return;
+  }
+
+  // ── API: create a pack (draft or published) ────────────────────
+  if (url.pathname === '/api/packs' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const price = body.price === undefined ? 0 : body.price;
+    const err = validatePack(body.name, body.description || '', price, body.manifest);
+    if (err) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: err })); return; }
+    var slug = packSlug(body.name);
+    for (let i = 0; i < 3; i++) {
+      if (RESERVED_PACK_SLUGS.includes(slug)) { slug = packSlug(body.name); continue; }
+      const { data: clash } = await supabase.from('theme_packs').select('id').eq('slug', slug).single();
+      if (!clash) break;
+      slug = packSlug(body.name);
+    }
+    if (RESERVED_PACK_SLUGS.includes(slug)) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Try a different name.' })); return; }
+    const { data: pack, error } = await supabase.from('theme_packs').insert({
+      slug, owner_id: user.id,
+      name: String(body.name).trim(),
+      description: String(body.description || '').trim().substring(0, 500),
+      manifest: body.manifest, price, published: !!body.published,
+    }).select('id, slug, name, description, price, published').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Create failed.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ pack }));
+    return;
+  }
+
+  // ── API: update a pack (owner only) ────────────────────────────
+  if (url.pathname.startsWith('/api/packs/') && !url.pathname.endsWith('/manifest') && !url.pathname.endsWith('/buy') && req.method === 'PATCH') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const pack = await packByKey(key);
+    if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const name = body.name === undefined ? pack.name : body.name;
+    const description = body.description === undefined ? pack.description : body.description;
+    const price = body.price === undefined ? pack.price : body.price;
+    const manifest = body.manifest === undefined ? pack.manifest : body.manifest;
+    const err = validatePack(name, description, price, manifest);
+    if (err) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: err })); return; }
+    const updates = {
+      name: String(name).trim(),
+      description: String(description || '').trim().substring(0, 500),
+      manifest, price, updated_at: new Date().toISOString(),
+    };
+    if (body.published !== undefined) updates.published = !!body.published;
+    const { error } = await supabase.from('theme_packs').update(updates).eq('id', pack.id);
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Update failed.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: delete a pack (owner only; ownership rows cascade) ───
+  if (url.pathname.startsWith('/api/packs/') && !url.pathname.endsWith('/manifest') && !url.pathname.endsWith('/buy') && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const pack = await packByKey(key);
+    if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    await supabase.from('theme_packs').delete().eq('id', pack.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: buy a pack (buyer pays, creator gets 100%) ────────────
+  if (url.pathname.startsWith('/api/packs/') && url.pathname.endsWith('/buy') && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const pack = await packByKey(key);
+    if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    if (pack.owner_id === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You own this pack.' })); return; }
+    if (pack.price === 0 || await ownsPack(me, pack.id)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, already: true, manifest: pack.manifest, slug: pack.slug }));
+      return;
+    }
+    // Claim ownership first: a concurrent second buy hits the PK and
+    // gets the manifest free instead of charging twice.
+    const { error: ownErr } = await supabase.from('pack_ownership').insert({ user_id: me, pack_id: pack.id });
+    if (ownErr) {
+      if (String(ownErr.message || '').includes('duplicate key')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, already: true, manifest: pack.manifest, slug: pack.slug }));
+        return;
+      }
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Buy failed.' }));
+      return;
+    }
+    const { data: bal, error: spendErr } = await supabase.rpc('spend_coins', { p_user: me, p_delta: pack.price, p_reason: 'pack_buy', p_ref: pack.id });
+    if (spendErr) {
+      await supabase.from('pack_ownership').delete().eq('user_id', me).eq('pack_id', pack.id);
+      const short = String(spendErr.message || '').includes('insufficient funds');
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(short ? { error: 'Not enough coins.', need: pack.price - (await coinBalance(me)) } : { error: 'Buy failed.' }));
+      return;
+    }
+    const { error: grantErr } = await supabase.rpc('grant_coins', { p_user: pack.owner_id, p_delta: pack.price, p_reason: 'pack_sale', p_ref: pack.id });
+    if (grantErr) {
+      await supabase.rpc('grant_coins', { p_user: me, p_delta: pack.price, p_reason: 'pack_refund', p_ref: pack.id });
+      await supabase.from('pack_ownership').delete().eq('user_id', me).eq('pack_id', pack.id);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Buy failed.' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, manifest: pack.manifest, slug: pack.slug, balance: bal }));
+    return;
+  }
+
+  // ── API: file a report (reason required, picture optional) ────
+  // Evidence uploads go to the private report-evidence bucket; the client
+  // sends the storage path (not a URL) and review happens in the dashboard.
+  var REPORT_REASONS = ['inappropriate', 'stolen', 'broken', 'spam', 'other'];
+  if (url.pathname === '/api/reports' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    if (body.content_type !== 'pack') { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown content.' })); return; }
+    if (!REPORT_REASONS.includes(body.reason)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pick a reason.' })); return; }
+    const details = String(body.details || '').trim().substring(0, 1000);
+    var contentId = null, contentSlug = null;
+    if (body.content_id && isUuid(body.content_id)) {
+      const pack = await packByKey(body.content_id);
+      if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+      contentId = pack.id;
+    } else if (body.content_slug && typeof body.content_slug === 'string') {
+      const slug = body.content_slug.substring(0, 60);
+      const known = RESERVED_PACK_SLUGS.includes(slug) || await packByKey(slug);
+      if (!known) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+      contentSlug = slug;
+    } else {
+      res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown pack.' })); return;
+    }
+    var evidencePath = null;
+    if (body.evidence_path) {
+      if (typeof body.evidence_path !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9/_.-]{0,199}$/.test(body.evidence_path)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad evidence file.' })); return;
+      }
+      evidencePath = body.evidence_path;
+    }
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id, content_type: 'pack',
+      content_id: contentId, content_slug: contentSlug,
+      reason: body.reason, details, evidence_url: evidencePath, status: 'open',
+    });
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Report failed.' })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;
@@ -1463,6 +2024,15 @@ async function saveMessage(lobbyName, userId, displayName, text) {
         display_name: displayName,
         text,
       });
+      // Activity trickle: first 10 messages each UTC day earn 1 coin.
+      // Best-effort only — never blocks or breaks the save above.
+      if (userId) {
+        try {
+          const dayStart = new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z';
+          const { count } = await supabase.from('coin_ledger').select('id', { count: 'exact', head: true }).eq('user_id', userId).eq('reason', 'activity').gte('created_at', dayStart);
+          if ((count || 0) < 10) await supabase.rpc('grant_coins', { p_user: userId, p_delta: 1, p_reason: 'activity', p_ref: null });
+        } catch {}
+      }
     }
   } catch (err) {
     console.error('Failed to save message:', err.message);
@@ -1471,7 +2041,7 @@ async function saveMessage(lobbyName, userId, displayName, text) {
 
 // owner | member | null for a server (module scope: used by HTTP + WS)
 async function serverRole(me, serverId) {
-  const { data: srv } = await supabase.from('servers').select('id, visibility, owner_id').eq('id', serverId).single();
+  const { data: srv } = await supabase.from('servers').select('id, visibility, owner_id, rules').eq('id', serverId).single();
   if (!srv) return { server: null, role: null };
   if (srv.owner_id === me) return { server: srv, role: 'owner' };
   const { data: m } = await supabase.from('server_members').select('role').eq('server_id', serverId).eq('user_id', me).single();
@@ -1489,6 +2059,11 @@ async function canSeeLobby(me, lobby) {
     const { server, role } = await serverRole(me, lobby.server_id);
     if (!server) return false;
     if (role === 'owner') return true;
+    // Rules screening: members who haven't accepted see nothing until they do.
+    if (server.rules) {
+      const { data: mem } = await supabase.from('server_members').select('rules_accepted_at').eq('server_id', server.id).eq('user_id', me).single();
+      if (!mem || !mem.rules_accepted_at) return false;
+    }
     if (!lobby.is_private) {
       if (server.visibility === 'public') return true;
       return !!role;
@@ -1497,6 +2072,16 @@ async function canSeeLobby(me, lobby) {
     return !!data;
   }
   return true;
+}
+
+// Does this user owe a rules-accept for this conversation's server?
+// (module scope: lets the WS join reply with a actionable code, not just 404)
+async function needsRulesAccept(me, lobby) {
+  if (!lobby || lobby.kind !== 'channel' || !lobby.server_id) return false;
+  const { data: srv } = await supabase.from('servers').select('id, rules, owner_id').eq('id', lobby.server_id).single();
+  if (!srv || !srv.rules || srv.owner_id === me) return false;
+  const { data: mem } = await supabase.from('server_members').select('rules_accepted_at').eq('server_id', srv.id).eq('user_id', me).single();
+  return !mem || !mem.rules_accepted_at;
 }
 
 // Tell every open client its conversation list may be stale.
@@ -1537,8 +2122,8 @@ wss.on('connection', (ws) => {
         if (tok) {
           const { data: { user: u }, error: uerr } = await supabase.auth.getUser(tok);
           if (!uerr && u) {
-            const { data: prof } = await supabase.from('users').select('display_name').eq('id', u.id).single();
-            authed = { id: u.id, name: (prof && prof.display_name) || String(u.email || 'Someone').split('@')[0] };
+            const { data: prof } = await supabase.from('users').select('display_name, avatar_url').eq('id', u.id).single();
+            authed = { id: u.id, name: (prof && prof.display_name) || String(u.email || 'Someone').split('@')[0], avatar: (prof && prof.avatar_url) || null };
           }
         }
       } catch (e) {}
@@ -1548,7 +2133,11 @@ wss.on('connection', (ws) => {
       }
       const { data: lobbyRow } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('name', lobby).single();
       if (!lobbyRow || !(await canSeeLobby(authed.id, lobbyRow))) {
-        ws.send(JSON.stringify({ type: 'error', text: 'Conversation not found.' }));
+        if (lobbyRow && await needsRulesAccept(authed.id, lobbyRow)) {
+          ws.send(JSON.stringify({ type: 'error', code: 'rules_required', serverId: lobbyRow.server_id, text: 'Accept the server rules first.' }));
+        } else {
+          ws.send(JSON.stringify({ type: 'error', text: 'Conversation not found.' }));
+        }
         return;
       }
       const username = authed.name;
@@ -1565,8 +2154,7 @@ wss.on('connection', (ws) => {
               break;
             }
           }
-          broadcast(prev.lobby, { type: 'user_leave', username: prev.username });
-          if (prevRoom.size === 0) lobbies.delete(prev.lobby);
+                    if (prevRoom.size === 0) lobbies.delete(prev.lobby);
         }
       }
 
@@ -1581,9 +2169,9 @@ wss.on('connection', (ws) => {
           try { existing.ws.close(); } catch {}
         }
       }
-      const entry = { username, ws, userId };
+      const entry = { username, ws, userId, avatar: authed.avatar };
       room.add(entry);
-      clients.set(ws, { username, lobby, userId });
+      clients.set(ws, { username, lobby, userId, avatar: authed.avatar });
 
       // Confirm join to this client
       ws.send(JSON.stringify({ type: 'joined', lobby, username }));
@@ -1613,8 +2201,11 @@ wss.on('connection', (ws) => {
         type: 'message',
         lobby: info.lobby,
         username: info.username,
+        user_id: info.userId,
+        avatar_url: info.avatar || null,
         text,
         time,
+        ts: new Date().toISOString(),
       });
 
       // Persist to database
@@ -1654,8 +2245,7 @@ wss.on('connection', (ws) => {
             break;
           }
         }
-        broadcast(info.lobby, { type: 'user_leave', username: info.username });
-
+        
         const users = [...room].map(c => c.username);
         broadcast(info.lobby, { type: 'user_list', users });
 
@@ -1682,8 +2272,7 @@ setInterval(() => {
               break;
             }
           }
-          broadcast(info.lobby, { type: 'user_leave', username: info.username });
-          const users = [...room].map(c => c.username);
+                    const users = [...room].map(c => c.username);
           broadcast(info.lobby, { type: 'user_list', users });
           if (room.size === 0) lobbies.delete(info.lobby);
         }

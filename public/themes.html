@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=13">
+    <link rel="stylesheet" href="/sidebar.css?v=18">
     <style>
         body {
             display: flex;
@@ -121,6 +121,28 @@
             background: var(--signal); color: var(--on-signal, #fff);
         }
         .pack-install.installed { background: var(--panel-raised); color: var(--signal); border: 1px solid var(--signal); cursor: default; }
+        .price-badge { font-size: 0.75rem; font-weight: 700; color: var(--signal); margin-left: 8px; }
+        .pack-report { background: none; border: none; color: var(--text-tertiary); font-size: 0.72rem; cursor: pointer; padding: 6px 0 0; align-self: flex-start; }
+        .pack-report:hover { color: var(--text-secondary); text-decoration: underline; }
+
+        .builder { margin-top: 28px; }
+        .builder-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+        @media (max-width: 900px) { .builder-grid { grid-template-columns: 1fr; } }
+        .builder-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .builder-form .colors { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+        .colorpick { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-secondary); }
+        .colorpick input[type=color] { width: 38px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; cursor: pointer; }
+        .builder-form textarea.code { font-family: var(--font-mono, monospace); font-size: 0.72rem; min-height: 110px; }
+        .builder-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+        .mypack-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 0.85rem; }
+        .mypack-row:first-child { border-top: none; }
+        .mypack-row .grow { flex: 1; min-width: 0; }
+        .mypack-row .meta { font-size: 0.72rem; color: var(--text-tertiary); }
+        .mypack-row button { padding: 5px 10px; font-size: 0.75rem; }
+        #buyModal, #reportModal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 10000; }
+        #buyModal .box, #reportModal .box { background: var(--panel-raised); border: 1px solid var(--line); border-radius: 14px; padding: 22px; width: min(360px, 90vw); }
+        #buyModal h3, #reportModal h3 { font-family: var(--font-head); font-size: 1rem; margin-bottom: 6px; }
+        #buyModal p, #reportModal p { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 16px; }
 
         #packToast {
             position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -162,31 +184,148 @@
             </div>
         </div>
     </div>
+            <section class="builder">
+                <div class="sec-head"><h2>Make your own pack</h2></div>
+                <div id="builderGate" class="pack-card"><div class="pack-info">
+                    <div class="pack-desc">Sign in to create packs, set a price in coins, and sell them to everyone.</div>
+                    <a class="btn btn-primary" href="/login" style="text-decoration:none;display:inline-block">Sign in</a>
+                </div></div>
+                <div id="builderBody" style="display:none">
+                    <div class="builder-grid">
+                        <div class="pack-card"><div class="pack-info builder-form">
+                            <div class="field"><label>Pack name</label><input type="text" id="bName" maxlength="40" placeholder="Midnight Diner"></div>
+                            <div class="field"><label>Description</label><input type="text" id="bDesc" maxlength="500" placeholder="What mood is this?"></div>
+                            <div class="row2">
+                                <div class="field"><label>Tags (comma separated, up to 8)</label><input type="text" id="bTags" placeholder="Calm, Neon"></div>
+                                <div class="field"><label>Price in coins (0 = free)</label><input type="number" id="bPrice" min="0" max="100000" step="1" value="0"></div>
+                            </div>
+                            <div class="field"><label>Colors</label><div class="colors" id="bColors"></div></div>
+                            <div class="row2">
+                                <div class="field"><label>Corner radius (<span id="bRadiusVal">12</span>px)</label><input type="range" id="bRadius" min="0" max="24" step="1" value="12"></div>
+                                <div class="field"><label>Background opacity (<span id="bOpacityVal">55</span>%)</label><input type="range" id="bOpacity" min="10" max="100" step="5" value="55"></div>
+                            </div>
+                            <div class="row2">
+                                <div class="field"><label>Heading font</label><select id="bFontHead"></select></div>
+                                <div class="field"><label>Body font</label><select id="bFontBody"></select></div>
+                            </div>
+                            <div class="row2">
+                                <div class="field"><label>Rail icons</label><select id="bIcons"><option value="default">Default</option><option value="neon">Neon glow</option></select></div>
+                                <div class="field"><label>Motion</label><select id="bMotion"><option value="calm">Calm</option><option value="playful">Playful</option></select></div>
+                            </div>
+                            <div class="row2">
+                                <div class="field"><label>Background</label><select id="bBgType"><option value="none">None</option><option value="scene">Live scene</option><option value="image">Image</option></select></div>
+                                <div class="field" id="bSceneWrap" style="display:none"><label>Scene</label><select id="bScene"><option value="city-night">Anime city night</option><option value="ember-field">Ember field</option></select></div>
+                            </div>
+                            <div class="field" id="bParamsWrap" style="display:none"><label>Scene settings</label><div id="bParams" class="row2"></div></div>
+                            <div class="field" id="bImgWrap" style="display:none"><label>Background image</label><input type="text" id="bImgUrl" placeholder="https://…">
+                                <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                                    <label for="bImgFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Upload image</label>
+                                    <input type="file" id="bImgFile" accept="image/*" style="display:none">
+                                </div></div>
+                            <div class="field"><label>Rail background (optional)</label>
+                                <div style="display:flex;gap:8px;align-items:center">
+                                    <label for="bRailFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Upload art</label>
+                                    <input type="file" id="bRailFile" accept="image/*" style="display:none">
+                                    <button type="button" class="btn btn-secondary" id="bRailClear" style="padding:6px 12px;font-size:0.78rem">Remove</button>
+                                </div></div>
+                            <div class="field"><label>Advanced: manifest JSON</label><textarea class="code" id="bJson" spellcheck="false" placeholder='{"colors":{…}}'></textarea>
+                                <div style="display:flex;gap:8px;margin-top:8px">
+                                    <button type="button" class="btn btn-secondary" id="bToJson" style="padding:6px 12px;font-size:0.78rem">Form → JSON</button>
+                                    <button type="button" class="btn btn-secondary" id="bFromJson" style="padding:6px 12px;font-size:0.78rem">JSON → form</button>
+                                </div></div>
+                            <div class="builder-actions">
+                                <button type="button" class="btn btn-secondary" id="bSave">Save draft</button>
+                                <button type="button" class="btn btn-primary" id="bPublish">Publish</button>
+                                <button type="button" class="btn btn-secondary" id="bCancelEdit" style="display:none">Cancel edit</button>
+                            </div>
+                            <div class="status-msg" id="builderMsg"></div>
+                        </div></div>
+                        <div>
+                            <div id="builderPreview"></div>
+                            <div style="margin-top:10px"><button type="button" class="btn btn-secondary" id="bTryLive" style="width:100%">Try it live</button></div>
+                        </div>
+                    </div>
+                    <div class="sec-head" style="margin-top:20px"><h2>My packs</h2></div>
+                    <div class="pack-card"><div class="pack-info" id="myPacksBody"><div class="pack-desc">Nothing here yet.</div></div></div>
+                </div>
+            </section>
+    <div id="buyModal" style="display:none"><div class="box">
+        <h3 id="buyTitle">Buy pack</h3>
+        <p id="buyText"></p>
+        <div class="status-msg" id="buyMsg"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-secondary" id="buyCancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="buyConfirm">Buy</button>
+        </div>
+    </div></div>
+    <div id="reportModal" style="display:none"><div class="box">
+        <h3 id="reportTitle">Report pack</h3>
+        <p>Flagged packs go to a human for review.</p>
+        <div class="field"><label>Reason</label><select id="reportReason">
+            <option value="inappropriate">Inappropriate content</option>
+            <option value="stolen">Stolen or copied</option>
+            <option value="broken">Broken — doesn't work</option>
+            <option value="spam">Spam</option>
+            <option value="other">Something else</option>
+        </select></div>
+        <div class="field"><label>Details (optional)</label><input type="text" id="reportDetails" maxlength="1000" placeholder="What did you see?"></div>
+        <div class="field"><label>Picture evidence (optional)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <label for="reportFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Attach picture</label>
+                <input type="file" id="reportFile" accept="image/*" style="display:none">
+                <span class="meta" id="reportFileName"></span>
+            </div></div>
+        <div class="status-msg" id="reportMsg"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button type="button" class="btn btn-secondary" id="reportCancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="reportSubmit">Send report</button>
+        </div>
+    </div></div>
     <div id="packToast"></div>
     <script src="/config.js"></script>
-    <script src="/sidebar.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=2"></script>
     <script>
     (function () {
       var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
-      var manifests = {};
+      var manifests = {}, meta = {}, staticSlugs = [];
+      var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+      function apiHost() { return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+      async function token() {
+        var p = new URLSearchParams(window.location.search).get('token');
+        if (p) return p;
+        try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {}
+        try { var r = localStorage.getItem(TOKEN_KEY); return r ? JSON.parse(r).access_token : null; } catch (e) { return null; }
+      }
+      async function authHeaders() { var t = await token(); return t ? { 'Authorization': 'Bearer ' + t } : {}; }
+      function bmsg(text, ok) { var el = document.getElementById('builderMsg'); el.textContent = text; el.className = 'status-msg ' + (ok ? 'ok' : 'err'); }
       function toast(msg) {
         toastEl.textContent = msg; toastEl.classList.add('show');
         setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
       }
-      function waitEngine(tries, cb) {
-        if (window.CudicTheme) return cb();
-        if (tries <= 0) return cb();
-        setTimeout(function () { waitEngine(tries - 1, cb); }, 100);
+      /* ── XSS guards: community manifests are user content ── */
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function hexOk(h) { return /^#[0-9a-fA-F]{6}$/.test(String(h || '')) ? String(h) : null; }
+      function safeSrc(u) {
+        u = String(u || '');
+        if (u.length > 500 || /["'<>\s]/.test(u)) return null;
+        if (u.indexOf('https://') === 0 || u.indexOf('/packs/') === 0) return u;
+        return null;
       }
       function dotsHtml(m) {
-        var c = m.colors || {}, keys = ['signal', 'panel', 'raised', 'line', 'ink'];
+        var c = (m && m.colors) || {}, keys = ['signal', 'panel', 'raised', 'line', 'ink'];
         return '<div class="pack-dots">' + keys.map(function (k) {
-          return '<span style="background:' + (c[k] || 'transparent') + '"></span>';
+          return '<span style="background:' + (hexOk(c[k]) || 'transparent') + '"></span>';
         }).join('') + '</div>';
       }
       function chromeHtml(m) {
-        var c = m.colors || {};
-        var panel = c.panel || '#fff', line = c.line || '#ccc', signal = c.signal || '#774DCB', tp = c.tp || '#333';
+        var c = (m && m.colors) || {};
+        var panel = hexOk(c.panel) || '#fff', line = hexOk(c.line) || '#ccc',
+            signal = hexOk(c.signal) || '#7300FF', tp = hexOk(c.tp) || '#333';
         return '<div class="pack-chrome" style="background:' + panel + ';border-color:' + line + '">' +
           '<div class="bar" style="width:45%;background:' + tp + ';opacity:0.85"></div>' +
           '<div class="bar" style="width:80%;background:' + tp + ';opacity:0.3"></div>' +
@@ -194,39 +333,196 @@
           '<div class="pill" style="background:' + signal + '"></div></div>';
       }
       function previewHtml(m) {
-        var bg = m.background || {};
-        if (bg.type === 'image') return '<img src="' + bg.src + '" alt="">' + chromeHtml(m);
-        if (bg.type === 'video') return '<video src="' + bg.src + '" muted loop playsinline autoplay></video>' + chromeHtml(m);
-        if (bg.type === 'scene') return '<canvas data-scene="' + bg.scene + '"></canvas>' + chromeHtml(m);
+        var bg = (m && m.background) || {};
+        var src = safeSrc(bg.src);
+        if (bg.type === 'image' && src) return '<img src="' + src + '" alt="" loading="lazy">' + chromeHtml(m);
+        if (bg.type === 'video' && src) return '<video src="' + src + '" muted loop playsinline autoplay></video>' + chromeHtml(m);
+        if (bg.type === 'scene' && window.CudicTheme) return '<canvas data-scene="' + esc(bg.scene) + '"></canvas>' + chromeHtml(m);
         return chromeHtml(m);
       }
-      function cardHtml(m, installed) {
-        var tags = (m.tags || []).map(function (t) { return '<span>' + t + '</span>'; }).join('');
+      function cardHtml(m, mt, installed) {
+        var name = esc((m && m.name) || (mt && mt.name) || 'Untitled');
+        var author = esc((m && m.author) || (mt && mt.author) || 'cudic');
+        var desc = esc((m && m.description) || (mt && mt.description) || '');
+        var tags = (m && m.tags) || [];
+        var tagsHtml = tags.map(function (t) { return '<span>' + esc(t) + '</span>'; }).join('');
+        var slug = esc((m && m.slug) || (mt && mt.slug) || '');
+        var price = (mt && mt.price) ? mt.price : 0;
+        var owned = !mt || price === 0 || !!mt.owned;
+        var btn;
+        if (installed) btn = '<button class="pack-install installed" data-action="install" data-slug="' + slug + '" disabled>✓ Installed</button>';
+        else if (price > 0 && !owned) btn = '<button class="pack-install" data-action="buy" data-slug="' + slug + '">Buy · ' + price + ' coins</button>';
+        else btn = '<button class="pack-install" data-action="install" data-slug="' + slug + '">Install</button>';
+        var dots = (m && m.colors) ? dotsHtml(m) : '';
         return '<div class="pack-card"><div class="pack-preview">' + previewHtml(m) + '</div>' +
-          '<div class="pack-info"><div class="pack-name">' + m.name + '</div>' +
-          '<div class="pack-author">by ' + (m.author || 'cudic') + '</div>' +
-          '<div class="pack-desc">' + (m.description || '') + '</div>' +
-          dotsHtml(m) + '<div class="pack-tags">' + tags + '</div>' +
-          '<div class="pack-actions"><button class="pack-install' + (installed ? ' installed' : '') + '" data-slug="' + m.slug + '"' +
-          (installed ? ' disabled' : '') + '>' + (installed ? '✓ Installed' : 'Install') + '</button></div></div></div>';
+          '<div class="pack-info"><div class="pack-name">' + name +
+          (price > 0 ? '<span class="price-badge">' + price + ' coins</span>' : '') + '</div>' +
+          '<div class="pack-author">by ' + author + '</div>' +
+          '<div class="pack-desc">' + desc + '</div>' +
+          dots + (tagsHtml ? '<div class="pack-tags">' + tagsHtml + '</div>' : '') +
+          '<div class="pack-actions">' + btn + '</div>' +
+          '<button class="pack-report" data-action="report" data-slug="' + slug + '">Report</button></div></div>';
       }
-      function refreshButtons() {
-        var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
-        grid.querySelectorAll('.pack-install').forEach(function (b) {
-          var on = b.getAttribute('data-slug') === cur;
-          b.classList.toggle('installed', on); b.disabled = on;
-          b.textContent = on ? '✓ Installed' : 'Install';
-        });
-        resetBtn.style.display = cur ? '' : 'none';
+      function waitEngine(tries, cb) {
+        if (window.CudicTheme) return cb();
+        if (tries <= 0) return cb();
+        setTimeout(function () { waitEngine(tries - 1, cb); }, 100);
       }
+      async function installSlug(slug) {
+        var m = manifests[slug];
+        if (!m) {
+          // Community pack whose manifest isn't loaded: fetch through the
+          // gate (counts one download). Priced packs reroute to Buy.
+          var r = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(slug) + '/manifest?install=1', { headers: await authHeaders() });
+          if (r.status === 403) { openBuy(slug); return; }
+          if (!r.ok) { toast('Could not load that pack.'); return; }
+          var d = await r.json();
+          m = d.manifest || {}; m.slug = d.slug; m.name = d.name; m.description = d.description;
+          manifests[slug] = m;
+          if (meta[slug]) meta[slug].owned = true;
+        }
+        CudicTheme.installPack(m, slug);
+        renderPacks();
+        toast('"' + (m.name || 'pack') + '" installed — looking sharp.');
+      }
+      var buySlug = null;
+      async function openBuy(slug) {
+        buySlug = slug;
+        var mt = meta[slug] || {}, m = manifests[slug];
+        var box = document.getElementById('buyModal');
+        var t = await token();
+        document.getElementById('buyMsg').textContent = '';
+        document.getElementById('buyMsg').className = 'status-msg';
+        if (!t) {
+          document.getElementById('buyTitle').textContent = 'Sign in to buy';
+          document.getElementById('buyText').innerHTML = '“' + esc((m && m.name) || mt.name || 'This pack') + '” costs <b>' + (mt.price || 0) + ' coins</b>. <a href="/login">Sign in</a> to buy it.';
+          document.getElementById('buyConfirm').style.display = 'none';
+          box.style.display = 'flex';
+          return;
+        }
+        document.getElementById('buyConfirm').style.display = '';
+        var bal = 0;
+        try {
+          var cr = await fetch(apiHost() + '/api/coins', { headers: { 'Authorization': 'Bearer ' + t } });
+          var cd = await cr.json();
+          bal = cd.balance || 0;
+        } catch (e) {}
+        document.getElementById('buyTitle').textContent = 'Buy "' + ((m && m.name) || mt.name || 'pack') + '"';
+        document.getElementById('buyText').innerHTML = 'Price <b>' + (mt.price || 0) + ' coins</b> · your balance <b>' + bal + '</b>. The creator gets the full price.';
+        box.style.display = 'flex';
+      }
+      document.getElementById('buyCancel').addEventListener('click', function () {
+        document.getElementById('buyModal').style.display = 'none';
+      });
+      document.getElementById('buyConfirm').addEventListener('click', async function () {
+        var btn = this, bm = document.getElementById('buyMsg');
+        var t = await token();
+        if (!t || !buySlug) return;
+        btn.disabled = true;
+        bm.textContent = '';
+        try {
+          var r = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(buySlug) + '/buy', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t } });
+          var d = await r.json();
+          if (!r.ok) {
+            bm.className = 'status-msg err';
+            bm.textContent = d.need != null
+              ? (d.error || 'Not enough coins.') + ' Earn more on your profile.'
+              : (d.error || 'Buy failed.');
+            btn.disabled = false;
+            return;
+          }
+          document.getElementById('buyModal').style.display = 'none';
+          btn.disabled = false;
+          var slug = buySlug;
+          var m = d.manifest || {}; m.slug = slug;
+          manifests[slug] = m;
+          if (meta[slug]) meta[slug].owned = true;
+          // Count the download, then install.
+          try { await fetch(apiHost() + '/api/packs/' + encodeURIComponent(slug) + '/manifest?install=1', { headers: { 'Authorization': 'Bearer ' + t } }); } catch (e) {}
+          CudicTheme.installPack(m, slug);
+          renderPacks();
+          toast('"' + (m.name || 'pack') + '" is yours — installed.');
+        } catch (e) {
+          bm.className = 'status-msg err';
+          bm.textContent = 'Buy failed.';
+          btn.disabled = false;
+        }
+      });
       grid.addEventListener('click', function (e) {
+        var rp = e.target.closest('.pack-report');
+        if (rp) { openReport(rp.getAttribute('data-slug')); return; }
         var b = e.target.closest('.pack-install');
         if (!b || b.disabled || !window.CudicTheme) return;
-        var m = manifests[b.getAttribute('data-slug')];
-        if (!m) return;
-        CudicTheme.installPack(m, m.slug);
-        refreshButtons();
-        toast('"' + m.name + '" installed — looking sharp.');
+        if (b.getAttribute('data-action') === 'buy') { openBuy(b.getAttribute('data-slug')); return; }
+        installSlug(b.getAttribute('data-slug'));
+      });
+      /* ── Reports: reason required, picture optional ── */
+      var reportSlug = null, reportFile = null;
+      async function openReport(slug) {
+        var t = await token();
+        if (!t) { toast('Sign in to report a pack.'); return; }
+        reportSlug = slug;
+        reportFile = null;
+        document.getElementById('reportFileName').textContent = '';
+        document.getElementById('reportDetails').value = '';
+        document.getElementById('reportReason').value = 'inappropriate';
+        var rm = document.getElementById('reportMsg');
+        rm.textContent = ''; rm.className = 'status-msg';
+        var mt = meta[slug] || {}, m = manifests[slug];
+        document.getElementById('reportTitle').textContent = 'Report "' + (((m && m.name) || mt.name) || 'pack') + '"';
+        document.getElementById('reportModal').style.display = 'flex';
+      }
+      document.getElementById('reportCancel').addEventListener('click', function () {
+        document.getElementById('reportModal').style.display = 'none';
+      });
+      document.getElementById('reportFile').addEventListener('change', function () {
+        reportFile = this.files && this.files[0];
+        this.value = '';
+        document.getElementById('reportFileName').textContent = reportFile ? reportFile.name : '';
+      });
+      document.getElementById('reportSubmit').addEventListener('click', async function () {
+        var btn = this, rm = document.getElementById('reportMsg');
+        var t = await token();
+        if (!t || !reportSlug) return;
+        btn.disabled = true;
+        rm.textContent = ''; rm.className = 'status-msg';
+        try {
+          var evidencePath = '';
+          if (reportFile) {
+            var f = reportFile;
+            if (!f.type || f.type.indexOf('image/') !== 0) throw new Error('Attach an image file.');
+            if (f.size > 10 * 1024 * 1024) throw new Error('Picture must be under 10MB.');
+            var db = await getSupabase();
+            if (!db) throw new Error('Auth unavailable');
+            var su = await db.auth.getUser();
+            var uid = su.data && su.data.user && su.data.user.id;
+            if (!uid) throw new Error('Sign in first.');
+            var blob = await downscale(f, 1200);
+            var path = uid + '/' + Date.now() + '.jpg';
+            var up = await db.storage.from('report-evidence').upload(path, blob, { contentType: 'image/jpeg' });
+            if (up.error) throw up.error;
+            evidencePath = path;
+          }
+          var mt = meta[reportSlug] || {};
+          var body = {
+            content_type: 'pack',
+            content_id: mt.id || null,
+            content_slug: mt.id ? null : reportSlug,
+            reason: document.getElementById('reportReason').value,
+            details: document.getElementById('reportDetails').value.trim(),
+            evidence_path: evidencePath || null
+          };
+          var r = await fetch(apiHost() + '/api/reports', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          var d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'Report failed.');
+          document.getElementById('reportModal').style.display = 'none';
+          btn.disabled = false;
+          toast('Report sent — a human will review it.');
+        } catch (e) {
+          rm.className = 'status-msg err';
+          rm.textContent = (e && e.message) || 'Report failed.';
+          btn.disabled = false;
+        }
       });
       resetBtn.addEventListener('click', function () {
         if (!window.CudicTheme) return;
@@ -236,12 +532,13 @@
       });
       var packSortMode = 'featured';
       var packOrder = [];
+      function packName(k) { return String(((manifests[k] && manifests[k].name) || (meta[k] && meta[k].name)) || ''); }
       function renderPacks() {
         var keys = packOrder.slice();
         var cur = window.CudicTheme ? CudicTheme.storedSlug() : null;
-        if (packSortMode === 'az') keys.sort(function (a, b) { return String((manifests[a] && manifests[a].name) || '').localeCompare(String((manifests[b] && manifests[b].name) || '')); });
+        if (packSortMode === 'az') keys.sort(function (a, b) { return packName(a).localeCompare(packName(b)); });
         else if (packSortMode === 'installed') keys.sort(function (a, b) { return ((b === cur) ? 1 : 0) - ((a === cur) ? 1 : 0); });
-        grid.innerHTML = keys.map(function (k) { return cardHtml(manifests[k], manifests[k].slug === cur); }).join('');
+        grid.innerHTML = keys.map(function (k) { return cardHtml(manifests[k] || null, meta[k], k === cur); }).join('');
         var title = document.getElementById('packTitle');
         if (title) title.textContent = 'Theme packs (' + keys.length + ')';
         resetBtn.style.display = cur ? '' : 'none';
@@ -250,12 +547,13 @@
           var card = cv.closest('.pack-card');
           var slug = card.querySelector('.pack-install').getAttribute('data-slug');
           var m = manifests[slug];
-          CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
+          if (m) CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
         });
       }
       document.getElementById('packSort').addEventListener('change', function () { packSortMode = this.value; renderPacks(); });
       document.getElementById('browsePacksBtn').addEventListener('click', function () { document.getElementById('packGrid').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       async function boot() {
+        manifests = {}; meta = {}; staticSlugs = [];
         try {
           var idx = await (await fetch('/packs/index.json', { cache: 'no-store' })).json();
           var slugs = idx.packs || [];
@@ -263,14 +561,343 @@
             try {
               var m = await (await fetch('/packs/' + encodeURIComponent(slugs[i]) + '/manifest.json', { cache: 'no-store' })).json();
               manifests[m.slug] = m;
+              staticSlugs.push(m.slug);
             } catch (e) {}
           }
-          packOrder = Object.keys(manifests);
-          renderPacks();
-        } catch (e) {
+        } catch (e) {}
+        try {
+          var h = await authHeaders();
+          var ld = await (await fetch(apiHost() + '/api/packs', { headers: h })).json();
+          var db = (ld && ld.packs) || [];
+          for (var j = 0; j < db.length; j++) {
+            var p = db[j];
+            if (manifests[p.slug]) continue;
+            meta[p.slug] = p;
+            if (!p.price || p.owned) {
+              try {
+                var mr = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.slug) + '/manifest', { headers: h });
+                if (mr.ok) {
+                  var md = await mr.json();
+                  var mm = md.manifest || {};
+                  mm.slug = md.slug; mm.name = md.name; mm.description = md.description; mm.author = p.author;
+                  manifests[p.slug] = mm;
+                }
+              } catch (e2) {}
+            }
+          }
+        } catch (e3) {}
+        packOrder = staticSlugs.concat(Object.keys(meta).filter(function (k) { return staticSlugs.indexOf(k) === -1; }));
+        if (!packOrder.length) {
           grid.innerHTML = '<div style="color:var(--text-tertiary)">Could not load theme packs.</div>';
+          return;
         }
+        renderPacks();
       }
+      /* ── Pack builder (signed-in only) ── */
+      var COLOR_FIELDS = [['ink', 'Ink'], ['panel', 'Panel'], ['raised', 'Raised'], ['line', 'Line'], ['signal', 'Signal'], ['tp', 'Text'], ['ts', 'Text dim'], ['tt', 'Text faint']];
+      var FONT_LIST = ['Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
+      var SCENE_PARAMS = {
+        'city-night': [['rain', 'Rain', 0, 300, 1, 130], ['hueA', 'Sky hue', 0, 360, 1, 315], ['hueB', 'Glow hue', 0, 360, 1, 190], ['windows', 'Lit windows', 0, 1, 0.05, 0.45]],
+        'ember-field': [['count', 'Sparks', 0, 200, 1, 70], ['hue', 'Hue', 0, 360, 1, 28]]
+      };
+      var DEFAULT_COLORS = { ink: '#E8EEFA', panel: '#FFFFFF', raised: '#F2F5FD', line: '#C9D5F0', signal: '#7300FF', tp: '#2E2A4B', ts: '#5A5578', tt: '#8B86A8' };
+      var editingId = null, railUrl = '', tryingLive = false, prevLive = null;
+      function buildBuilderForm() {
+        var cc = document.getElementById('bColors');
+        cc.innerHTML = '';
+        COLOR_FIELDS.forEach(function (f) {
+          var lab = document.createElement('label');
+          lab.className = 'colorpick';
+          var inp = document.createElement('input');
+          inp.type = 'color'; inp.id = 'bC-' + f[0]; inp.value = DEFAULT_COLORS[f[0]];
+          lab.appendChild(inp);
+          lab.appendChild(document.createTextNode(f[1]));
+          cc.appendChild(lab);
+        });
+        var fh = document.getElementById('bFontHead'), fb = document.getElementById('bFontBody');
+        FONT_LIST.forEach(function (fn) {
+          var o1 = document.createElement('option'); o1.value = fn; o1.textContent = fn; fh.appendChild(o1);
+          var o2 = document.createElement('option'); o2.value = fn; o2.textContent = fn; fb.appendChild(o2);
+        });
+        fh.value = 'Space Grotesk'; fb.value = 'Inter';
+        renderParams();
+      }
+      function renderParams() {
+        var box = document.getElementById('bParams');
+        var bgT = document.getElementById('bBgType').value;
+        var scene = document.getElementById('bScene').value;
+        box.innerHTML = '';
+        (SCENE_PARAMS[scene] || []).forEach(function (d) {
+          var f = document.createElement('div');
+          f.className = 'field';
+          var lab = document.createElement('label'); lab.textContent = d[1];
+          var inp = document.createElement('input');
+          inp.type = 'number'; inp.min = d[2]; inp.max = d[3]; inp.step = d[4]; inp.value = d[5];
+          inp.setAttribute('data-k', d[0]);
+          f.appendChild(lab); f.appendChild(inp);
+          box.appendChild(f);
+        });
+        document.getElementById('bParamsWrap').style.display = bgT === 'scene' ? '' : 'none';
+        document.getElementById('bSceneWrap').style.display = bgT === 'scene' ? '' : 'none';
+        document.getElementById('bImgWrap').style.display = bgT === 'image' ? '' : 'none';
+      }
+      function readParams() {
+        var p = {};
+        document.querySelectorAll('#bParams input[data-k]').forEach(function (inp) {
+          var v = parseFloat(inp.value);
+          if (isFinite(v)) p[inp.getAttribute('data-k')] = v;
+        });
+        return p;
+      }
+      function collect() {
+        var colors = {};
+        COLOR_FIELDS.forEach(function (f) { colors[f[0]] = document.getElementById('bC-' + f[0]).value; });
+        var m = {
+          colors: colors,
+          radius: parseInt(document.getElementById('bRadius').value, 10) || 0,
+          fonts: { head: document.getElementById('bFontHead').value, body: document.getElementById('bFontBody').value },
+          icons: document.getElementById('bIcons').value,
+          motion: { preset: document.getElementById('bMotion').value },
+          tags: document.getElementById('bTags').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 8)
+        };
+        var bgT = document.getElementById('bBgType').value;
+        var op = (parseInt(document.getElementById('bOpacity').value, 10) || 55) / 100;
+        if (bgT === 'scene') m.background = { type: 'scene', scene: document.getElementById('bScene').value, opacity: op, params: readParams() };
+        else if (bgT === 'image') m.background = { type: 'image', src: document.getElementById('bImgUrl').value.trim(), opacity: op };
+        else m.background = { type: 'none' };
+        if (railUrl) m.sidebar = { background: railUrl };
+        return m;
+      }
+      function draftPack() {
+        var m = collect();
+        m.slug = 'draft';
+        m.name = document.getElementById('bName').value.trim() || 'Untitled pack';
+        m.description = document.getElementById('bDesc').value.trim();
+        m.author = 'you';
+        return m;
+      }
+      function renderPreview() {
+        var el = document.getElementById('builderPreview');
+        if (!el) return;
+        el.innerHTML = cardHtml(draftPack(), null, false);
+        var act = el.querySelector('.pack-actions');
+        if (act) act.remove();
+        if (window.CudicTheme) el.querySelectorAll('canvas[data-scene]').forEach(function (cv) {
+          var m = draftPack();
+          CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
+        });
+      }
+      function setForm(pack) {
+        var m = (pack && pack.manifest) || {};
+        document.getElementById('bName').value = (pack && pack.name) || '';
+        document.getElementById('bDesc').value = (pack && pack.description) || '';
+        document.getElementById('bPrice').value = (pack && pack.price) || 0;
+        var c = m.colors || {};
+        COLOR_FIELDS.forEach(function (f) {
+          if (/^#[0-9a-fA-F]{6}$/.test(c[f[0]] || '')) document.getElementById('bC-' + f[0]).value = c[f[0]];
+        });
+        document.getElementById('bRadius').value = m.radius != null ? m.radius : 12;
+        document.getElementById('bRadiusVal').textContent = document.getElementById('bRadius').value;
+        if (m.fonts) {
+          if (m.fonts.head) document.getElementById('bFontHead').value = m.fonts.head;
+          if (m.fonts.body) document.getElementById('bFontBody').value = m.fonts.body;
+        }
+        if (m.icons) document.getElementById('bIcons').value = m.icons;
+        if (m.motion && m.motion.preset) document.getElementById('bMotion').value = m.motion.preset;
+        var bg = m.background || { type: 'none' };
+        document.getElementById('bBgType').value = ['none', 'scene', 'image'].indexOf(bg.type) !== -1 ? bg.type : 'none';
+        if (bg.scene) document.getElementById('bScene').value = bg.scene;
+        document.getElementById('bOpacity').value = bg.opacity != null ? Math.round(bg.opacity * 100) : 55;
+        document.getElementById('bOpacityVal').textContent = document.getElementById('bOpacity').value;
+        if (bg.src) document.getElementById('bImgUrl').value = bg.src;
+        railUrl = (m.sidebar && m.sidebar.background) || '';
+        renderParams();
+        if (bg.params) {
+          Object.keys(bg.params).forEach(function (k) {
+            var inp = document.querySelector('#bParams input[data-k="' + k + '"]');
+            if (inp) inp.value = bg.params[k];
+          });
+        }
+        if (m.tags) document.getElementById('bTags').value = m.tags.join(', ');
+        renderPreview();
+      }
+      function downscale(file, maxSize) {
+        return new Promise(function (resolve, reject) {
+          var img = new Image();
+          img.onload = function () {
+            try {
+              var s = Math.min(1, maxSize / Math.max(img.width, img.height));
+              var cv = document.createElement('canvas');
+              cv.width = Math.max(1, Math.round(img.width * s));
+              cv.height = Math.max(1, Math.round(img.height * s));
+              cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+              cv.toBlob(function (b) { b ? resolve(b) : reject(new Error('encode')); }, 'image/jpeg', 0.85);
+            } catch (e) { reject(e); }
+          };
+          img.onerror = function () { reject(new Error('load')); };
+          img.src = URL.createObjectURL(file);
+        });
+      }
+      async function uploadPackFile(file) {
+        if (!file || file.type.indexOf('image/') !== 0) throw new Error('Pick an image file.');
+        if (file.size > 10 * 1024 * 1024) throw new Error('Image must be under 10MB.');
+        var db = await getSupabase();
+        if (!db) throw new Error('Auth unavailable');
+        var su = await db.auth.getUser();
+        var uid = su.data && su.data.user && su.data.user.id;
+        if (!uid) throw new Error('Sign in first.');
+        var blob = await downscale(file, 1600);
+        var path = uid + '/' + Date.now() + '.jpg';
+        var up = await db.storage.from('pack-assets').upload(path, blob, { contentType: 'image/jpeg' });
+        if (up.error) throw up.error;
+        var pub = db.storage.from('pack-assets').getPublicUrl(path);
+        if (!pub.data || !pub.data.publicUrl) throw new Error('Upload failed');
+        return pub.data.publicUrl;
+      }
+      async function savePack(publish) {
+        var t = await token();
+        if (!t) { bmsg('Sign in first.', false); return; }
+        var price = parseInt(document.getElementById('bPrice').value, 10);
+        if (isNaN(price)) price = 0;
+        var body = {
+          name: document.getElementById('bName').value.trim(),
+          description: document.getElementById('bDesc').value.trim(),
+          price: price, manifest: collect()
+        };
+        if (publish) body.published = true;
+        else if (!editingId) body.published = false;
+        bmsg(publish ? 'Publishing…' : 'Saving…', true);
+        try {
+          var url = apiHost() + '/api/packs' + (editingId ? '/' + encodeURIComponent(editingId) : '');
+          var r = await fetch(url, { method: editingId ? 'PATCH' : 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          var d = await r.json();
+          if (!r.ok) { bmsg(d.error || 'Save failed.', false); return; }
+          bmsg(publish ? 'Published.' : 'Draft saved.', true);
+          editingId = null;
+          document.getElementById('bCancelEdit').style.display = 'none';
+          stopLive();
+          await boot();
+          await loadMyPacks();
+        } catch (e) { bmsg('Save failed.', false); }
+      }
+      async function loadMyPacks() {
+        var box = document.getElementById('myPacksBody');
+        var t = await token();
+        if (!t) return;
+        try {
+          var d = await (await fetch(apiHost() + '/api/packs?mine=1', { headers: { 'Authorization': 'Bearer ' + t } })).json();
+          var list = (d && d.packs) || [];
+          if (!list.length) { box.innerHTML = '<div class="pack-desc">Nothing here yet.</div>'; return; }
+          box.innerHTML = '';
+          list.forEach(function (p) {
+            var row = document.createElement('div');
+            row.className = 'mypack-row';
+            var grow = document.createElement('div');
+            grow.className = 'grow';
+            var nm = document.createElement('div'); nm.textContent = p.name;
+            var mt = document.createElement('div'); mt.className = 'meta';
+            mt.textContent = (p.published ? 'Published' : 'Draft') + ' · ' + (p.price ? p.price + ' coins' : 'free') + ' · ' + (p.downloads || 0) + ' downloads';
+            grow.appendChild(nm); grow.appendChild(mt);
+            row.appendChild(grow);
+            function mkBtn(label, fn) {
+              var b = document.createElement('button');
+              b.className = 'btn btn-secondary'; b.textContent = label;
+              b.addEventListener('click', fn);
+              row.appendChild(b);
+            }
+            mkBtn('Edit', async function () {
+              var t2 = await token();
+              var mr = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.id) + '/manifest', { headers: { 'Authorization': 'Bearer ' + t2 } });
+              var md = await mr.json();
+              if (!mr.ok) { bmsg(md.error || 'Load failed.', false); return; }
+              editingId = p.id;
+              setForm({ name: p.name, description: p.description, price: p.price, manifest: md.manifest });
+              document.getElementById('bCancelEdit').style.display = '';
+              bmsg('Editing "' + p.name + '".', true);
+            });
+            mkBtn(p.published ? 'Unpublish' : 'Publish', async function () {
+              var t2 = await token();
+              var r = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.id), { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + t2, 'Content-Type': 'application/json' }, body: JSON.stringify({ published: !p.published }) });
+              if (!r.ok) { bmsg('Update failed.', false); return; }
+              await boot(); await loadMyPacks();
+            });
+            mkBtn('Delete', async function () {
+              if (!confirm('Delete "' + p.name + '"? Buyers keep their installed copy.')) return;
+              var t2 = await token();
+              var r = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + t2 } });
+              if (!r.ok) { bmsg('Delete failed.', false); return; }
+              bmsg('Deleted.', true);
+              await boot(); await loadMyPacks();
+            });
+            box.appendChild(row);
+          });
+        } catch (e) { box.innerHTML = '<div class="pack-desc">Could not load your packs.</div>'; }
+      }
+      function stopLive() {
+        if (!tryingLive) return;
+        tryingLive = false;
+        document.getElementById('bTryLive').textContent = 'Try it live';
+        if (!window.CudicTheme) return;
+        if (prevLive && manifests[prevLive]) CudicTheme.applyPack(manifests[prevLive], prevLive);
+        else CudicTheme.clearPack();
+      }
+      document.getElementById('bTryLive').addEventListener('click', function () {
+        if (!window.CudicTheme) return;
+        if (tryingLive) { stopLive(); return; }
+        tryingLive = true;
+        prevLive = CudicTheme.storedSlug();
+        CudicTheme.applyPack(draftPack(), 'draft-preview');
+        document.getElementById('bTryLive').textContent = 'Stop preview';
+      });
+      document.getElementById('bRadius').addEventListener('input', function () { document.getElementById('bRadiusVal').textContent = this.value; renderPreview(); });
+      document.getElementById('bOpacity').addEventListener('input', function () { document.getElementById('bOpacityVal').textContent = this.value; renderPreview(); });
+      document.getElementById('bBgType').addEventListener('change', function () { renderParams(); renderPreview(); });
+      document.getElementById('bScene').addEventListener('change', function () { renderParams(); renderPreview(); });
+      document.getElementById('builderBody').addEventListener('input', function (e) { if (e.target && e.target.id !== 'bJson') renderPreview(); });
+      document.getElementById('builderBody').addEventListener('change', renderPreview);
+      document.getElementById('bSave').addEventListener('click', function () { savePack(false); });
+      document.getElementById('bPublish').addEventListener('click', function () { savePack(true); });
+      document.getElementById('bCancelEdit').addEventListener('click', function () { editingId = null; this.style.display = 'none'; bmsg('Edit cancelled.', true); });
+      document.getElementById('bToJson').addEventListener('click', function () { document.getElementById('bJson').value = JSON.stringify(collect(), null, 2); });
+      document.getElementById('bFromJson').addEventListener('click', function () {
+        try {
+          var m = JSON.parse(document.getElementById('bJson').value);
+          setForm({ name: document.getElementById('bName').value, description: document.getElementById('bDesc').value, price: parseInt(document.getElementById('bPrice').value, 10) || 0, manifest: m });
+          bmsg('JSON loaded into the form.', true);
+        } catch (e) { bmsg('Invalid JSON.', false); }
+      });
+      document.getElementById('bImgFile').addEventListener('change', async function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        if (!f) return;
+        bmsg('Uploading…', true);
+        try {
+          var u = await uploadPackFile(f);
+          document.getElementById('bImgUrl').value = u;
+          renderPreview();
+          bmsg('Image uploaded.', true);
+        } catch (e) { bmsg((e && e.message) || 'Upload failed.', false); }
+      });
+      document.getElementById('bRailFile').addEventListener('change', async function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        if (!f) return;
+        bmsg('Uploading…', true);
+        try {
+          railUrl = await uploadPackFile(f);
+          renderPreview();
+          bmsg('Rail art uploaded.', true);
+        } catch (e) { bmsg((e && e.message) || 'Upload failed.', false); }
+      });
+      document.getElementById('bRailClear').addEventListener('click', function () { railUrl = ''; renderPreview(); });
+      buildBuilderForm();
+      renderPreview();
+      token().then(function (t) {
+        if (!t) return;
+        document.getElementById('builderGate').style.display = 'none';
+        document.getElementById('builderBody').style.display = '';
+        loadMyPacks();
+      });
       waitEngine(50, boot);
     })();
     </script>

@@ -12,9 +12,9 @@
   --text-primary: #2E2A4B;
   --text-secondary: #5C5878;
   --text-tertiary: #9C97B8;
-  --signal: #774DCB;
-  --signal-hover: #643BAD;
-  --signal-tint: rgba(119, 77, 203, 0.12);
+  --signal: #7300FF;
+  --signal-hover: #5D00E9;
+  --signal-tint: rgba(115, 0, 255, 0.12);
   --ember: #FF8C1A;
   --ember-deep: #B25E00;
   --success: #14965F;
@@ -41,8 +41,8 @@
    picker write inline vars, which beat this block automatically. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --ink: #000000;
-  --panel: #141414;
+  --ink: #B0C4DE;
+  --panel: #222222;
   --panel-raised: #343434;
   --line: #343434;
   --text-primary: #FFFFFF;
@@ -64,10 +64,19 @@
 :root[data-theme="dark"] .empty-icon-circle,
 :root[data-theme="dark"] .pack-tags span,
 :root[data-theme="dark"] .pack-install.installed,
-:root[data-theme="dark"] .game-actions .ga-primary {
+:root[data-theme="dark"] .game-actions .ga-primary,
+:root[data-theme="dark"] .msg-ava {
   color: var(--text-primary);
 }
+/* Dark mode readability on the lightsteelblue page: text inputs keep a
+   dark surface so white text still reads. */
+:root[data-theme="dark"] .field input,
+:root[data-theme="dark"] .invite-code { background: #222222; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* Author display values beat the `hidden` attribute, so hidden elements
+   with a CSS display (flex bar, topbar, badge) would never hide.
+   This guard makes hidden mean hidden everywhere. */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 
 body {
@@ -127,16 +136,48 @@ body {
 }
 /* Rail is always collapsed: labels hidden, icons centered. Names appear
    as tooltips (#railTip) on hover/focus instead of an expanding card. */
-.sidebar .account-row { justify-content: center; gap: 0; }
-.sidebar #accountRow > div:nth-child(2) { display: none; }
 .sidebar .nav-section-label { display: block; height: 1px; background: var(--line); margin: 10px 16px 8px; padding: 0; font-size: 0; line-height: 0; overflow: hidden; border: none; }
 
-/* Servers + avatar stay visible as icons */
+/* Floating user bar: bottom-left of the main panel. */
+#accountRow {
+  position: fixed;
+  left: 76px;
+  bottom: 16px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 8px 6px 6px;
+}
+#accountRow .avatar { width: 40px; height: 40px; font-size: 1rem; }
+.ava-wrap { position: relative; width: 40px; height: 40px; flex-shrink: 0; }
+#sbDot {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--text-tertiary); border: 2px solid var(--panel-raised);
+}
+#sbDot.on { background: var(--success); }
+#accountRow .account-name {
+  max-width: 120px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+#accountRow .iconbtn {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: none; background: transparent; color: var(--text-secondary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0;
+}
+#accountRow .iconbtn:hover { color: var(--signal); background: var(--signal-tint); }
+#accountRow .iconbtn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+#logoutBtn { display: none; }
+
+/* Servers stay visible as icons */
 .sidebar #serversSection { opacity: 1; pointer-events: auto; }
 .sidebar .sidebar-item { justify-content: center; align-items: center; padding: 8px 0; border-left-width: 2px; gap: 0; width: 100%; }
 .sidebar .sidebar-item span { opacity: 0; max-width: 0; overflow: hidden; pointer-events: none; }
-.sidebar .sidebar-bottom { padding: 12px 6px 0; }
-.sidebar #logoutBtn { display: none; }
 .sidebar #serverList > div { display: none; }
 .sidebar #serverList .sidebar-item span:first-child { opacity: 1; max-width: none; }
 
@@ -201,15 +242,6 @@ body {
 }
 
 .sidebar-spacer { flex: 1; }
-
-.sidebar-bottom {
-  padding: 16px 20px 12px;
-  border-top: 1px solid var(--line);
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 
 .mode-row {
   display: flex;
@@ -306,7 +338,6 @@ body {
   min-width: 0;
   min-height: 0;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--line);

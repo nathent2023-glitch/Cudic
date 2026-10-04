@@ -2,6 +2,27 @@
 // Sign-in is required. Identity comes from the session; the server
 // derives display names (no client-supplied usernames).
 
+// Stale-page guard: if this script loads against older HTML or CSS
+// (missing elements, or layout rules not applied), force one fresh reload
+// instead of running broken.
+(function () {
+  try {
+    var need = ['convList', 'chatMain', 'searchView', 'chatEmpty', 'chatForm', 'msgInput'];
+    var missing = need.filter(function (id) { return !document.getElementById(id); });
+    var cssOk = false;
+    try {
+      var probe = document.querySelector('.chat-layout');
+      var sv = document.getElementById('searchView');
+      cssOk = !!probe && getComputedStyle(probe).display === 'flex' &&
+              !!sv && getComputedStyle(sv).display === 'none';
+    } catch (e) { cssOk = false; }
+    if ((missing.length || !cssOk) && !sessionStorage.getItem('cudic_reloaded')) {
+      sessionStorage.setItem('cudic_reloaded', '1');
+      location.reload();
+    }
+  } catch (e) {}
+})();
+
 var TOKEN = null;
 var ME = null;
 var convs = [];
@@ -24,7 +45,7 @@ var msgInput = document.getElementById('msgInput');
 var typingEl = document.getElementById('typingIndicator');
 var convListEl = document.getElementById('convList');
 var sidebar = document.querySelector('.chat-sidebar');
-var newMsgPanel = document.getElementById('newMsgPanel');
+var searchView = document.getElementById('searchView');
 var peopleSearch = document.getElementById('peopleSearch');
 var peopleResults = document.getElementById('peopleResults');
 var friendsListEl = document.getElementById('friendsList');
@@ -35,8 +56,17 @@ var panelStatus = document.getElementById('panelStatus');
 var emptyTitle = document.getElementById('emptyTitle');
 var emptyText = document.getElementById('emptyText');
 var emptyFind = document.getElementById('emptyFind');
+var rulesOverlay = document.getElementById('rulesOverlay');
+var pendingRulesServer = null;
 var convLoadFailed = false;
 var convFilter = '';
+var peerReadAt = null;
+var origTitle = document.title;
+var flashCount = 0;
+function flashTitle() {
+  if (flashCount > 0) document.title = '(' + flashCount + ') ' + origTitle;
+  else document.title = origTitle;
+}
 var convSearch = document.getElementById('convSearch');
 convSearch.addEventListener('input', () => { convFilter = convSearch.value; renderConvs(); });
 
@@ -50,7 +80,19 @@ async function api(path, opts) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────────
-boot();
+boot().catch(function (e) {
+  console.error('chat boot failed', e);
+  convLoadFailed = true;
+  try { showEmpty(); } catch (e2) {
+    console.error('chat empty-state failed', e2);
+    try {
+      var f = document.createElement('div');
+      f.style.cssText = 'margin:auto;max-width:420px;text-align:center;padding:32px;color:var(--text-primary);font-size:0.9rem;';
+      f.textContent = 'Chat failed to load. Reload the page — if it persists, open the console (F12) and send the red text.';
+      document.getElementById('chatMain').appendChild(f);
+    } catch (e3) {}
+  }
+});
 async function boot() {
   try {
     TOKEN = (typeof getAuthToken === 'function') ? await getAuthToken() : null;
@@ -74,6 +116,7 @@ async function boot() {
   }
   openConv(target || convs[0] || null);
   refreshPanel();
+  try { sessionStorage.removeItem('cudic_reloaded'); } catch (e) {}
 }
 
 // ── WebSocket ────────────────────────────────────────────────────
@@ -109,18 +152,19 @@ function onWs(e) {
       break;
     case 'message':
       if (current && msg.lobby === current.name) {
-        addChatMessage(msg.username, msg.text, msg.time);
+        addChatMessage(msg.username, msg.text, msg.time, msg.avatar_url, msg.user_id, msg.ts);
         markReadSoon();
+        if (document.hidden) { flashCount++; flashTitle(); }
+      } else {
+        flashCount++; flashTitle();
       }
       break;
     case 'conversation_dirty':
       refreshConvs();
+      if (current && current.kind === 'dm') fetchPeer();
       break;
     case 'user_join':
       addSystemMessage(msg.username + ' joined', 'join');
-      break;
-    case 'user_leave':
-      addSystemMessage(msg.username + ' left', 'leave');
       break;
     case 'user_list':
       onlineUsers = msg.users || [];
@@ -133,6 +177,7 @@ function onWs(e) {
       break;
     case 'error':
       if (msg.text === 'Sign in required.') { window.location.href = '/login'; return; }
+      if (msg.code === 'rules_required' && msg.serverId) { openRulesGate(msg.serverId); return; }
       addSystemMessage(msg.text);
       break;
   }
@@ -142,6 +187,7 @@ function onWs(e) {
 async function refreshConvs() {
   try {
     const d = await api('/api/conversations');
+    console.info('[chat] loaded conversations:', (d.conversations || []).length);
     convLoadFailed = false;
     convs = d.conversations || [];
     if (current && !convs.some(c => c.id === current.id)) {
@@ -207,6 +253,9 @@ function convRow(c) {
 async function openConv(conv) {
   messagesEl.innerHTML = '';
   current = conv;
+  searchView.hidden = true;
+  rulesOverlay.hidden = true;
+  pendingRulesServer = null;
   onlineUsers = [];
   if (!conv) { showEmpty(); return; }
   chatTopbar.hidden = false;
@@ -223,18 +272,21 @@ async function openConv(conv) {
     const d = await api('/api/messages?lobby=' + encodeURIComponent(conv.name));
     if (current !== conv) return;
     if (d.messages && d.messages.length) {
-      d.messages.forEach(m => addChatMessage(m.display_name, m.text, fmtTime(m.created_at)));
+      d.messages.forEach(m => addChatMessage(m.display_name, m.text, fmtTime(m.created_at), m.users && m.users.avatar_url, m.user_id, m.created_at));
     } else {
       addSystemMessage('No messages yet — say hello.');
     }
   } catch (e) {}
   markRead();
+  flashCount = 0; flashTitle();
+  fetchPeer();
 }
 
 function showEmpty() {
   chatTopbar.hidden = true;
   messagesEl.hidden = true;
-  chatEmpty.style.display = '';
+  searchView.hidden = true;
+  chatEmpty.style.display = 'flex';
   chatForm.hidden = true;
   if (convLoadFailed) {
     emptyTitle.textContent = "Couldn't load conversations";
@@ -245,12 +297,7 @@ function showEmpty() {
     emptyTitle.textContent = 'No conversations yet';
     emptyText.textContent = 'Message a friend or join a server to get started.';
     emptyFind.textContent = 'Find friends';
-    emptyFind.onclick = () => {
-      panelStatus.textContent = '';
-      newMsgPanel.hidden = false;
-      refreshPanel();
-      switchTab('chats');
-    };
+    emptyFind.onclick = () => showSearch();
   }
   try { history.replaceState(null, '', '/chat'); } catch (e) {}
 }
@@ -264,7 +311,32 @@ async function markRead() {
   const c = convs.find(x => x.id === id);
   if (c) { c.unread = 0; renderConvs(); }
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden && current) markReadSoon(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    flashCount = 0; flashTitle();
+    if (current) markReadSoon();
+  }
+});
+
+// ── Read receipts (DMs): peer's last_read_at paints ✓ → ✓✓ ─────────
+async function fetchPeer() {
+  peerReadAt = null;
+  if (!current || current.kind !== 'dm') return;
+  try {
+    const d = await api('/api/conversations/' + current.id + '/peer');
+    peerReadAt = (d && d.last_read_at) || null;
+  } catch (e) {}
+  paintTicks();
+}
+function paintTicks() {
+  if (!peerReadAt) return;
+  const pr = Date.parse(peerReadAt);
+  if (!pr) return;
+  messagesEl.querySelectorAll('.ticks[data-ts]').forEach(function (el) {
+    const t = Date.parse(el.getAttribute('data-ts'));
+    if (t && t <= pr) { el.textContent = '✓✓'; el.classList.add('seen'); }
+  });
+}
 
 // ── Presence in the header ───────────────────────────────────────
 function renderOnline() {
@@ -277,22 +349,28 @@ function renderOnline() {
   }
 }
 
-// ── New message panel: friends, requests, search ─────────────────
-document.getElementById('newMsgBtn').addEventListener('click', () => {
-  newMsgPanel.hidden = !newMsgPanel.hidden;
-  if (!newMsgPanel.hidden) { panelStatus.textContent = ''; refreshPanel(); }
-});
-document.getElementById('newMsgClose').addEventListener('click', () => {
-  newMsgPanel.hidden = true;
-});
-document.querySelectorAll('.newmsg-tabs button').forEach(b => {
-  b.addEventListener('click', () => switchTab(b.getAttribute('data-tab')));
-});
-function switchTab(which) {
-  document.querySelectorAll('.newmsg-tabs button').forEach(b => b.classList.toggle('on', b.getAttribute('data-tab') === which));
-  document.getElementById('tabChats').hidden = which !== 'chats';
-  document.getElementById('tabRequests').hidden = which !== 'requests';
+// ── Search view: find people in the main panel ───────────────────
+function showSearch() {
+  searchView.hidden = false;
+  chatTopbar.hidden = true;
+  messagesEl.hidden = true;
+  chatEmpty.style.display = 'none';
+  chatForm.hidden = true;
+  panelStatus.textContent = '';
+  refreshPanel();
+  setTimeout(() => peopleSearch.focus(), 0);
 }
+function hideSearch() {
+  searchView.hidden = true;
+  if (current) {
+    chatTopbar.hidden = false;
+    messagesEl.hidden = false;
+    chatEmpty.style.display = 'none';
+    chatForm.hidden = false;
+  } else showEmpty();
+}
+document.getElementById('newMsgBtn').addEventListener('click', showSearch);
+document.getElementById('searchClose').addEventListener('click', hideSearch);
 
 async function refreshPanel() {
   try {
@@ -430,7 +508,6 @@ async function openDm(userId, btn) {
   var d;
   try { d = await api('/api/dm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); }
   catch (e) { panelStatus.textContent = 'Could not start the conversation.'; if (btn) btn.disabled = false; return; }
-  newMsgPanel.hidden = true;
   await refreshConvs();
   const c = convs.find(x => x.id === d.id);
   if (c) openConv(c);
@@ -465,12 +542,49 @@ document.getElementById('chatMain').addEventListener('click', () => {
   sidebar.classList.remove('open');
 });
 
+// ── Rules gate: accept before talking ────────────────────────────
+async function openRulesGate(serverId) {
+  pendingRulesServer = serverId;
+  document.getElementById('rulesOverlayText').textContent = 'Loading rules…';
+  rulesOverlay.hidden = false;
+  try {
+    const d = await api('/api/servers');
+    const s = (d.servers || []).find(x => x.id === serverId);
+    document.getElementById('rulesOverlayText').textContent = (s && s.rules) || 'This server requires accepting its rules.';
+  } catch (e) {
+    document.getElementById('rulesOverlayText').textContent = 'Could not load the rules.';
+  }
+}
+document.getElementById('rulesOverlayLater').addEventListener('click', () => {
+  rulesOverlay.hidden = true;
+  pendingRulesServer = null;
+});
+document.getElementById('rulesOverlayAccept').addEventListener('click', async () => {
+  if (!pendingRulesServer) return;
+  const id = pendingRulesServer;
+  try {
+    await api('/api/servers/' + id + '/rules/accept', { method: 'POST' });
+    rulesOverlay.hidden = true;
+    pendingRulesServer = null;
+    if (current) sendJoin(current.name);
+    refreshConvs();
+  } catch (e) {}
+});
+
 // ── Render functions ─────────────────────────────────────────────
-function addChatMessage(author, text, time) {
+function addChatMessage(author, text, time, avatar, userId, ts) {
   const div = document.createElement('div');
-  div.className = 'msg';
-  div.innerHTML = `<span class="author" style="color:${nameColor(author)}">${escapeHtml(author)}</span>${escapeHtml(text)}<span class="time">${time}</span>`;
+  const mine = !!(userId && ME && userId === ME);
+  div.className = 'msg' + (mine ? ' mine' : '');
+  const av = avatar
+    ? '<img src="' + escapeHtml(avatar) + '" alt="">'
+    : escapeHtml(String(author || '?').substring(0, 1).toUpperCase());
+  div.innerHTML = '<div class="msg-ava">' + av + '</div>'
+    + '<div class="msg-main"><span class="author" style="color:' + nameColor(author) + '">' + escapeHtml(author) + '</span>'
+    + '<span class="time">' + time + '</span>'
+    + '<div class="msg-text">' + escapeHtml(text) + (mine ? ' <span class="ticks" data-ts="' + escapeHtml(ts || '') + '">✓</span>' : '') + '</div></div>';
   messagesEl.appendChild(div);
+  if (mine) paintTicks();
   scrollToBottom();
 }
 
@@ -529,8 +643,7 @@ function fmtAgo(iso) {
 // ── Keyboard shortcut ────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    msgInput.blur();
-    sidebar.classList.remove('open');
-    newMsgPanel.hidden = true;
+    if (!searchView.hidden) hideSearch();
+    else { msgInput.blur(); sidebar.classList.remove('open'); }
   }
 });

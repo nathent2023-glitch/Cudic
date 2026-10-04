@@ -47,8 +47,8 @@ theme toggle; the app is light-only.
 | `--text-primary` | `#2E2A4B` | Headings, primary text |
 | `--text-secondary` | `#5C5878` | Supporting text, labels |
 | `--text-tertiary` | `#9C97B8` | Disabled, placeholder |
-| `--signal` | `#774DCB` | Primary buttons, links, active nav, focus ring |
-| `--signal-hover` | `#643BAD` | Signal hover/pressed |
+| `--signal` | `#7300FF` | Primary buttons, links, active nav, focus ring |
+| `--signal-hover` | `#5D00E9` | Signal hover/pressed |
 | `--ember` | `#FF8C1A` | "Play", "Publish", live/online indicators only (solid fills, dark text) |
 | `--ember-deep` | `#B25E00` | Small ember-colored text on light backgrounds (badges) |
 | `--success` | `#14965F` | Success states |
