@@ -171,6 +171,12 @@ export function friendlyError(providerName: string, raw: string): string {
   if (/free tier.*within opencode|only be used from within opencode/i.test(raw))
     return 'Zen free models only work inside OpenCode\u2019s own apps — pick a paid Zen model or another provider.';
   if (/sign in on the cudic site/i.test(raw)) return raw;
+  // Our own proxy rejecting the login (dead/foreign session token).
+  if (/sign in to use cloud models/i.test(raw)) {
+    let where = 'this address';
+    try { where = window.location.origin; } catch { /* sandboxed */ }
+    return 'Cudic login missing or expired here — sign in again at ' + where + '/login (a login on localhost does not carry to the live site, or back), then retry.';
+  }
   const m = raw.toLowerCase();
   if (/401|invalid api key|invalid_api_key|unauthorized|incorrect api key|invalid x-api-key/i.test(m))
     return 'Key rejected by ' + providerName + ' — check the key, then Save again.';

@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=18">
+    <link rel="stylesheet" href="/sidebar.css?v=19">
     <style>
         body {
             display: flex;
@@ -125,7 +125,40 @@
         .pack-report { background: none; border: none; color: var(--text-tertiary); font-size: 0.72rem; cursor: pointer; padding: 6px 0 0; align-self: flex-start; }
         .pack-report:hover { color: var(--text-secondary); text-decoration: underline; }
 
+        /* ── Builder: tabbed combined panel ── */
+        .builder-panel { padding: 0; overflow: hidden; }
+        .ctabs { display: flex; gap: 4px; padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
+        .ctab { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; color: var(--text-tertiary); background: var(--panel); border: 1px solid var(--line); border-bottom: none; border-radius: 10px 10px 0 0; padding: 9px 18px; cursor: pointer; margin-bottom: -1px; }
+        .ctab:hover { color: var(--text-primary); }
+        .ctab.active { color: var(--signal); background: var(--panel-raised); border-bottom: 2px solid var(--signal); padding-bottom: 8px; }
+        .bpage { padding: 18px; }
+        .bpage[hidden] { display: none; }
+        .builder-grid { align-items: start; }
+        .builder-form { max-height: 62vh; overflow-y: auto; padding-right: 8px; min-width: 0; }
+        .builder-side { position: sticky; top: 0; min-width: 0; }
+        @media (max-width: 900px) {
+            .builder-form { max-height: none; overflow: visible; }
+            .builder-side { position: static; }
+        }
+        .code-ed { font-family: var(--font-mono, monospace); font-size: 0.75rem; min-height: 220px; tab-size: 2; }
+        #assetWell { display: flex; flex-wrap: wrap; gap: 8px; }
+        #assetWell .meta { font-size: 0.78rem; color: var(--text-tertiary); }
+        .asset-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 0.75rem; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 5px 6px 5px 10px; }
+        .asset-chip button { padding: 3px 8px; font-size: 0.72rem; }
+        .pref-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+        .pref-row .label { font-size: 0.88rem; font-weight: 600; }
+        .pref-row .desc { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
+        .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; cursor: pointer; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch .track { position: absolute; inset: 0; background: var(--line); border-radius: 12px; transition: background 0.15s; }
+        .switch .track::before { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform 0.15s; }
+        .switch input:checked + .track { background: var(--signal); }
+        .switch input:checked + .track::before { transform: translateX(18px); }
+        .themes-content { padding-bottom: 96px; }
+
         .builder { margin-top: 28px; }
+        .builder-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+        .builder-top h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.15rem; margin: 0; }
         .builder-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
         @media (max-width: 900px) { .builder-grid { grid-template-columns: 1fr; } }
         .builder-form .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -167,6 +200,7 @@
                 <p>Theme packs reskin the rail, the palette, and the mood. One click to try, one click to go back.</p>
                 <div class="hero-actions">
                     <button class="btn btn-primary" id="browsePacksBtn">Browse packs</button>
+                    <button class="btn btn-secondary" id="makePackBtn">Make a pack</button>
                 </div>
             </section>
             <div class="sec-head">
@@ -182,17 +216,23 @@
                 <div class="pack-card" aria-hidden="true"><div class="pack-preview sk"></div><div class="pack-info"><div class="sk" style="height:15px;width:45%;border-radius:4px;margin-bottom:8px"></div><div class="sk" style="height:11px;border-radius:4px;margin-bottom:10px"></div><div class="sk" style="height:36px;border-radius:10px"></div></div></div>
                 <div class="pack-card" aria-hidden="true"><div class="pack-preview sk"></div><div class="pack-info"><div class="sk" style="height:15px;width:60%;border-radius:4px;margin-bottom:8px"></div><div class="sk" style="height:11px;border-radius:4px;margin-bottom:10px"></div><div class="sk" style="height:36px;border-radius:10px"></div></div></div>
             </div>
-        </div>
-    </div>
             <section class="builder">
-                <div class="sec-head"><h2>Make your own pack</h2></div>
+                <div id="builderWrap" style="display:none">
+                <div class="builder-top"><button type="button" class="btn btn-secondary" id="builderBack" style="width:auto">← Back to packs</button><h2>New theme pack</h2></div>
                 <div id="builderGate" class="pack-card"><div class="pack-info">
                     <div class="pack-desc">Sign in to create packs, set a price in coins, and sell them to everyone.</div>
                     <a class="btn btn-primary" href="/login" style="text-decoration:none;display:inline-block">Sign in</a>
                 </div></div>
                 <div id="builderBody" style="display:none">
+                    <div class="pack-card builder-panel">
+                    <div class="ctabs" role="tablist" aria-label="Builder mode">
+                        <button type="button" class="ctab active" data-btab="design" role="tab" aria-selected="true">Design</button>
+                        <button type="button" class="ctab" data-btab="code" role="tab" aria-selected="false">.ctheme</button>
+                        <button type="button" class="ctab" data-btab="advanced" role="tab" aria-selected="false">Advanced</button>
+                    </div>
+                    <div class="bpage" data-bpage="design">
                     <div class="builder-grid">
-                        <div class="pack-card"><div class="pack-info builder-form">
+                        <div class="builder-form">
                             <div class="field"><label>Pack name</label><input type="text" id="bName" maxlength="40" placeholder="Midnight Diner"></div>
                             <div class="field"><label>Description</label><input type="text" id="bDesc" maxlength="500" placeholder="What mood is this?"></div>
                             <div class="row2">
@@ -228,27 +268,48 @@
                                     <input type="file" id="bRailFile" accept="image/*" style="display:none">
                                     <button type="button" class="btn btn-secondary" id="bRailClear" style="padding:6px 12px;font-size:0.78rem">Remove</button>
                                 </div></div>
-                            <div class="field"><label>Advanced: manifest JSON</label><textarea class="code" id="bJson" spellcheck="false" placeholder='{"colors":{…}}'></textarea>
-                                <div style="display:flex;gap:8px;margin-top:8px">
-                                    <button type="button" class="btn btn-secondary" id="bToJson" style="padding:6px 12px;font-size:0.78rem">Form → JSON</button>
-                                    <button type="button" class="btn btn-secondary" id="bFromJson" style="padding:6px 12px;font-size:0.78rem">JSON → form</button>
-                                </div></div>
-                            <div class="builder-actions">
-                                <button type="button" class="btn btn-secondary" id="bSave">Save draft</button>
-                                <button type="button" class="btn btn-primary" id="bPublish">Publish</button>
-                                <button type="button" class="btn btn-secondary" id="bCancelEdit" style="display:none">Cancel edit</button>
-                            </div>
-                            <div class="status-msg" id="builderMsg"></div>
-                        </div></div>
-                        <div>
+                        </div>
+                        <div class="builder-side">
                             <div id="builderPreview"></div>
                             <div style="margin-top:10px"><button type="button" class="btn btn-secondary" id="bTryLive" style="width:100%">Try it live</button></div>
                         </div>
                     </div>
+                    </div>
+                    <div class="bpage" data-bpage="code" hidden>
+                        <div class="field"><label>.ctheme source — compiles to your pack, live both ways</label><textarea id="codeEd" class="code-ed" spellcheck="false" placeholder="name &quot;Midnight Diner&quot;"></textarea></div>
+                        <div class="status-msg" id="codeErr"></div>
+                        <div class="field"><label>Assets — upload images, then reference them as asset("file.jpg")</label>
+                            <div id="assetWell"></div>
+                            <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                                <label for="assetFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Upload image</label>
+                                <input type="file" id="assetFile" accept="image/*" style="display:none">
+                            </div></div>
+                        <div style="display:flex;gap:8px;margin-top:4px">
+                            <button type="button" class="btn btn-secondary" id="codeReset" style="padding:6px 12px;font-size:0.78rem">Reset from Design</button>
+                        </div>
+                    </div>
+                    <div class="bpage" data-bpage="advanced" hidden>
+                        <div class="field"><label>Custom CSS — applied after pack variables, live</label><textarea id="advCss" class="code-ed" spellcheck="false" placeholder="/* your CSS */"></textarea></div>
+                        <div class="field"><label>Custom HTML — background layer, scripts stripped</label><textarea id="advHtml" class="code-ed" spellcheck="false" placeholder="&lt;div&gt;…&lt;/div&gt;"></textarea></div>
+                        <div class="pref-row">
+                            <div><div class="label">Live preview</div><div class="desc">Apply CSS and HTML to this page as you type.</div></div>
+                            <label class="switch"><input type="checkbox" id="advLive" checked><span class="track"></span></label>
+                        </div>
+                    </div>
+                    <div class="builder-actions">
+                        <button type="button" class="btn btn-secondary" id="bSave">Save draft</button>
+                        <button type="button" class="btn btn-primary" id="bPublish">Publish</button>
+                        <button type="button" class="btn btn-secondary" id="bCancelEdit" style="display:none">Cancel edit</button>
+                    </div>
+                    <div class="status-msg" id="builderMsg"></div>
+                    </div>
                     <div class="sec-head" style="margin-top:20px"><h2>My packs</h2></div>
                     <div class="pack-card"><div class="pack-info" id="myPacksBody"><div class="pack-desc">Nothing here yet.</div></div></div>
                 </div>
+                </div>
             </section>
+        </div>
+    </div>
     <div id="buyModal" style="display:none"><div class="box">
         <h3 id="buyTitle">Buy pack</h3>
         <p id="buyText"></p>
@@ -284,7 +345,9 @@
     <div id="packToast"></div>
     <script src="/config.js"></script>
     <script src="/auth.js"></script>
-    <script src="/sidebar.js?v=2"></script>
+    <script src="/ctheme.js?v=1"></script>
+    <script src="/csel.js?v=1"></script>
+    <script src="/sidebar.js?v=3"></script>
     <script>
     (function () {
       var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
@@ -666,6 +729,13 @@
         else if (bgT === 'image') m.background = { type: 'image', src: document.getElementById('bImgUrl').value.trim(), opacity: op };
         else m.background = { type: 'none' };
         if (railUrl) m.sidebar = { background: railUrl };
+        var acss = document.getElementById('advCss') ? document.getElementById('advCss').value : '';
+        var ahtml = document.getElementById('advHtml') ? document.getElementById('advHtml').value : '';
+        if (acss.trim() || ahtml.trim()) {
+          m.custom = {};
+          if (acss.trim()) m.custom.css = acss.slice(0, 8000);
+          if (ahtml.trim()) m.custom.html = ahtml.slice(0, 8000);
+        }
         return m;
       }
       function draftPack() {
@@ -686,6 +756,7 @@
           var m = draftPack();
           CudicTheme.previewScene(cv, cv.getAttribute('data-scene'), (m.background && m.background.params) || {});
         });
+        if (!codeDirty) syncCodeFromForm();
       }
       function setForm(pack) {
         var m = (pack && pack.manifest) || {};
@@ -712,13 +783,19 @@
         if (bg.src) document.getElementById('bImgUrl').value = bg.src;
         railUrl = (m.sidebar && m.sidebar.background) || '';
         renderParams();
+        if (m.tags) document.getElementById('bTags').value = m.tags.join(', ');
+        document.getElementById('advCss').value = (m.custom && m.custom.css) || '';
+        document.getElementById('advHtml').value = (m.custom && m.custom.html) || '';
+        ['bFontHead', 'bFontBody', 'bIcons', 'bMotion', 'bBgType', 'bScene'].forEach(function (id) {
+          var s = document.getElementById(id);
+          if (s) s.dispatchEvent(new Event('change', { bubbles: true }));
+        });
         if (bg.params) {
           Object.keys(bg.params).forEach(function (k) {
             var inp = document.querySelector('#bParams input[data-k="' + k + '"]');
             if (inp) inp.value = bg.params[k];
           });
         }
-        if (m.tags) document.getElementById('bTags').value = m.tags.join(', ');
         renderPreview();
       }
       function downscale(file, maxSize) {
@@ -853,19 +930,11 @@
       document.getElementById('bOpacity').addEventListener('input', function () { document.getElementById('bOpacityVal').textContent = this.value; renderPreview(); });
       document.getElementById('bBgType').addEventListener('change', function () { renderParams(); renderPreview(); });
       document.getElementById('bScene').addEventListener('change', function () { renderParams(); renderPreview(); });
-      document.getElementById('builderBody').addEventListener('input', function (e) { if (e.target && e.target.id !== 'bJson') renderPreview(); });
+      document.getElementById('builderBody').addEventListener('input', renderPreview);
       document.getElementById('builderBody').addEventListener('change', renderPreview);
       document.getElementById('bSave').addEventListener('click', function () { savePack(false); });
       document.getElementById('bPublish').addEventListener('click', function () { savePack(true); });
       document.getElementById('bCancelEdit').addEventListener('click', function () { editingId = null; this.style.display = 'none'; bmsg('Edit cancelled.', true); });
-      document.getElementById('bToJson').addEventListener('click', function () { document.getElementById('bJson').value = JSON.stringify(collect(), null, 2); });
-      document.getElementById('bFromJson').addEventListener('click', function () {
-        try {
-          var m = JSON.parse(document.getElementById('bJson').value);
-          setForm({ name: document.getElementById('bName').value, description: document.getElementById('bDesc').value, price: parseInt(document.getElementById('bPrice').value, 10) || 0, manifest: m });
-          bmsg('JSON loaded into the form.', true);
-        } catch (e) { bmsg('Invalid JSON.', false); }
-      });
       document.getElementById('bImgFile').addEventListener('change', async function () {
         var f = this.files && this.files[0];
         this.value = '';
@@ -890,8 +959,175 @@
         } catch (e) { bmsg((e && e.message) || 'Upload failed.', false); }
       });
       document.getElementById('bRailClear').addEventListener('click', function () { railUrl = ''; renderPreview(); });
+      function setStoreVisible(v) {
+        var hero = document.querySelector('.themes-content .hero');
+        var grid = document.getElementById('packGrid');
+        var head = document.getElementById('packTitle');
+        head = head ? head.closest('.sec-head') : null;
+        [hero, grid, head].forEach(function (el) { if (el) el.style.display = v ? '' : 'none'; });
+      }
+      function setBuilderOpen(open, scroll) {
+        document.getElementById('builderWrap').style.display = open ? '' : 'none';
+        setStoreVisible(!open);
+        var heroBtn = document.getElementById('makePackBtn');
+        if (heroBtn) heroBtn.textContent = open ? 'Close builder' : 'Make a pack';
+        if (!open) calmAdvanced();
+        if (open && scroll !== false) {
+          var sc = document.querySelector('.themes-content');
+          if (sc) sc.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+      function builderIsOpen() { return document.getElementById('builderWrap').style.display !== 'none'; }
+      document.getElementById('makePackBtn').addEventListener('click', function () {
+        setBuilderOpen(!builderIsOpen());
+      });
+      document.getElementById('builderBack').addEventListener('click', function () {
+        setBuilderOpen(false);
+      });
+      function openHashBuilder() {
+        if (window.location.hash === '#create') setBuilderOpen(true);
+      }
+      window.addEventListener('hashchange', openHashBuilder);
+      /* ── Builder tabs ── */
+      document.querySelectorAll('.ctab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var to = tab.getAttribute('data-btab');
+          var from = null;
+          document.querySelectorAll('.ctab').forEach(function (t) {
+            if (t.classList.contains('active') && t !== tab) from = t.getAttribute('data-btab');
+            var on = t === tab;
+            t.classList.toggle('active', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+          });
+          document.querySelectorAll('.bpage').forEach(function (p) {
+            p.hidden = p.getAttribute('data-bpage') !== to;
+          });
+          if (from === 'advanced' && to !== 'advanced') calmAdvanced();
+          if (to === 'code') { codeDirty = false; syncCodeFromForm(); }
+        });
+      });
+      /* ── .ctheme two-way sync ── */
+      var codeDirty = false, codeTimer = null;
+      var assetMap = {};
+      function syncCodeFromForm() {
+        if (!window.CTheme) return;
+        var ed = document.getElementById('codeEd');
+        if (!ed) return;
+        try {
+          ed.value = CTheme.generate({
+            name: document.getElementById('bName').value.trim() || 'Untitled pack',
+            description: document.getElementById('bDesc').value.trim(),
+            price: parseInt(document.getElementById('bPrice').value, 10) || 0,
+            manifest: collect()
+          });
+        } catch (e) {}
+      }
+      function applyCodeToForm() {
+        var ed = document.getElementById('codeEd'), err = document.getElementById('codeErr');
+        if (!window.CTheme || !ed || !err) return;
+        var r = CTheme.parse(ed.value, assetMap);
+        if (r.errors.length) {
+          err.className = 'status-msg err';
+          err.textContent = r.errors[0] + (r.errors.length > 1 ? ' (+' + (r.errors.length - 1) + ' more)' : '');
+          return;
+        }
+        err.textContent = ''; err.className = 'status-msg';
+        codeDirty = false;
+        var cur = collect();
+        if (cur.custom) r.pack.manifest.custom = cur.custom;
+        setForm({ name: r.pack.name, description: r.pack.description, price: r.pack.price, manifest: r.pack.manifest });
+      }
+      function scheduleCodeApply() {
+        clearTimeout(codeTimer);
+        codeTimer = setTimeout(applyCodeToForm, 600);
+      }
+      /* ── Assets well ── */
+      function renderAssets() {
+        var well = document.getElementById('assetWell');
+        if (!well) return;
+        well.innerHTML = '';
+        var names = Object.keys(assetMap);
+        if (!names.length) {
+          var none = document.createElement('span');
+          none.className = 'meta';
+          none.textContent = 'No images yet — upload one to reference it.';
+          well.appendChild(none);
+          return;
+        }
+        names.forEach(function (n) {
+          var chip = document.createElement('span');
+          chip.className = 'asset-chip';
+          var lab = document.createElement('span'); lab.textContent = n;
+          var ins = document.createElement('button');
+          ins.className = 'btn btn-secondary'; ins.textContent = 'Insert';
+          ins.addEventListener('click', function () {
+            var ed = document.getElementById('codeEd');
+            var tag = 'asset("' + n + '")';
+            try {
+              var s = ed.selectionStart == null ? ed.value.length : ed.selectionStart;
+              var e = ed.selectionEnd == null ? s : ed.selectionEnd;
+              ed.value = ed.value.slice(0, s) + tag + ed.value.slice(e);
+              ed.focus();
+            } catch (x) { ed.value += ((ed.value && !/\n$/.test(ed.value)) ? '\n' : '') + tag; }
+            codeDirty = true;
+            scheduleCodeApply();
+          });
+          chip.appendChild(lab); chip.appendChild(ins);
+          well.appendChild(chip);
+        });
+      }
+      /* ── Advanced live layer ── */
+      var advTimer = null;
+      function applyAdvanced() {
+        if (!document.getElementById('advLive').checked) return;
+        if (!window.CudicTheme) return;
+        try {
+          CudicTheme.applyCustom({
+            css: document.getElementById('advCss').value,
+            html: document.getElementById('advHtml').value
+          });
+        } catch (e) {}
+      }
+      function calmAdvanced() {
+        if (!window.CudicTheme) return;
+        try {
+          if (tryingLive) CudicTheme.applyCustom(collect().custom || null);
+          else {
+            CudicTheme.applyCustom(null);
+            var slug = CudicTheme.storedSlug();
+            if (slug && manifests[slug] && manifests[slug].custom) CudicTheme.applyCustom(manifests[slug].custom);
+          }
+        } catch (e) {}
+      }
+      function scheduleAdvanced() {
+        clearTimeout(advTimer);
+        advTimer = setTimeout(applyAdvanced, 400);
+      }
       buildBuilderForm();
+      document.querySelectorAll('#builderBody select, #reportReason, #packSort').forEach(enhanceSelect);
+      renderAssets();
       renderPreview();
+      openHashBuilder();
+      document.getElementById('codeEd').addEventListener('input', function () { codeDirty = true; scheduleCodeApply(); });
+      document.getElementById('codeReset').addEventListener('click', function () { codeDirty = false; syncCodeFromForm(); bmsg('Code reset from Design.', true); });
+      document.getElementById('assetFile').addEventListener('change', async function () {
+        var f = this.files && this.files[0];
+        this.value = '';
+        if (!f) return;
+        bmsg('Uploading…', true);
+        try {
+          var u = await uploadPackFile(f);
+          assetMap[f.name] = u;
+          renderAssets();
+          bmsg('Image imported — reference it from code.', true);
+        } catch (e) { bmsg((e && e.message) || 'Upload failed.', false); }
+      });
+      document.getElementById('advCss').addEventListener('input', scheduleAdvanced);
+      document.getElementById('advHtml').addEventListener('input', scheduleAdvanced);
+      document.getElementById('advLive').addEventListener('change', function () {
+        if (this.checked) applyAdvanced();
+        else calmAdvanced();
+      });
       token().then(function (t) {
         if (!t) return;
         document.getElementById('builderGate').style.display = 'none';

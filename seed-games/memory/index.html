@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory — made with Cudic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; }
+  h1 span { color: #855CD6; }
+  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
+  .hud b { color: #FF8C1A; }
+  #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: min(92vw, 420px); }
+  .card { aspect-ratio: 1; border-radius: 10px; border: 1px solid #2a2a33; background: #141318;
+    color: transparent; font-size: 2rem; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; transition: transform 0.12s, background 0.15s; }
+  .card:not(.done):hover { border-color: #855CD6; }
+  .card.open { background: #23232c; color: #dbe4ff; }
+  .card.done { background: #1d2b26; border-color: #4ec9b0; color: #4ec9b0; cursor: default; }
+  .card:active:not(.done) { transform: scale(0.95); }
+  #win { margin-top: 16px; display: none; flex-direction: column; gap: 10px;
+    align-items: center; text-align: center; }
+  #win.show { display: flex; }
+  #win p { color: #8b8b96; font-size: 0.9rem; }
+  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  button:hover { filter: brightness(1.1); }
+  #newBtn { margin-top: 16px; background: #23232c; }
+  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+</style>
+</head>
+<body>
+  <h1><span>◆</span> Memory</h1>
+  <div class="hud"><span>Moves <b id="moves">0</b></span><span>Pairs <b id="pairs">0/8</b></span><span>Time <b id="time">0s</b></span></div>
+  <div id="grid"></div>
+  <div id="win"><h2>You cleared it!</h2><p id="winSub"></p><button id="again">Play again</button></div>
+  <button id="newBtn">Shuffle new game</button>
+  <footer>Made with Cudic — fork it and make it yours.</footer>
+<script>
+(function () {
+  var GLYPHS = ['★', '♥', '●', '▲', '✚', '◆', '◉', '✖'];
+  var grid = document.getElementById('grid');
+  var movesEl = document.getElementById('moves'), pairsEl = document.getElementById('pairs'), timeEl = document.getElementById('time');
+  var win = document.getElementById('win'), winSub = document.getElementById('winSub');
+  var first, lock, moves, found, secs, clock;
+
+  function reset() {
+    var deck = GLYPHS.concat(GLYPHS);
+    for (var i = deck.length - 1; i > 0; i--) {
+      var j = (Math.random() * (i + 1)) | 0;
+      var t = deck[i]; deck[i] = deck[j]; deck[j] = t;
+    }
+    grid.innerHTML = '';
+    deck.forEach(function (g) {
+      var c = document.createElement('button');
+      c.className = 'card';
+      c.textContent = g;
+      c.setAttribute('aria-label', 'Hidden card');
+      c.addEventListener('click', function () { flip(c); });
+      grid.appendChild(c);
+    });
+    first = null; lock = false; moves = 0; found = 0; secs = 0;
+    movesEl.textContent = '0'; pairsEl.textContent = '0/8'; timeEl.textContent = '0s';
+    win.classList.remove('show');
+    clearInterval(clock);
+    clock = setInterval(function () {
+      secs++;
+      timeEl.textContent = secs + 's';
+    }, 1000);
+  }
+  function flip(c) {
+    if (lock || c.classList.contains('open') || c.classList.contains('done')) return;
+    c.classList.add('open');
+    c.setAttribute('aria-label', 'Card showing ' + c.textContent);
+    if (!first) { first = c; return; }
+    moves++;
+    movesEl.textContent = moves;
+    if (first.textContent === c.textContent) {
+      var a = first;
+      first = null;
+      setTimeout(function () {
+        a.classList.remove('open'); a.classList.add('done');
+        c.classList.remove('open'); c.classList.add('done');
+        found++;
+        pairsEl.textContent = found + '/8';
+        if (found === 8) {
+          clearInterval(clock);
+          winSub.textContent = moves + ' moves in ' + secs + ' seconds.';
+          win.classList.add('show');
+        }
+      }, 350);
+    } else {
+      var b = first, d = c;
+      first = null;
+      lock = true;
+      setTimeout(function () {
+        b.classList.remove('open');
+        d.classList.remove('open');
+        lock = false;
+      }, 750);
+    }
+  }
+  document.getElementById('again').addEventListener('click', reset);
+  document.getElementById('newBtn').addEventListener('click', reset);
+  reset();
+})();
+</script>
+</body>
+</html>

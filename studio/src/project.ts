@@ -11,6 +11,7 @@ import {
   type RegisteredFileSystemProvider
 } from '@codingame/monaco-vscode-files-service-override';
 import JSZip from 'jszip';
+import { sceneToFiles } from './npmutil';
 
 const DEMO: Record<string, string> = {
   'index.html':
@@ -261,6 +262,17 @@ export async function bootProject(): Promise<BootProject> {
             }
           }
           return { id: projectId, title: projectTitle, files: out };
+        }
+        // Legacy scene-JSON games (classic-editor era, no files): convert on
+        // the fly so old projects open with their real content instead of the
+        // demo template. The next save persists the files (one-time migration).
+        const converted = sceneToFiles(
+          (g as { scene?: unknown }).scene,
+          typeof g.title === 'string' ? g.title : 'Untitled Project'
+        );
+        if (converted != null) {
+          projectTitle = typeof g.title === 'string' && g.title ? g.title : 'Untitled Project';
+          return { id: projectId, title: projectTitle, files: converted };
         }
       }
     } catch {

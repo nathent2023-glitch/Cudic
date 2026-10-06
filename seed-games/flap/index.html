@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Flap — made with Cudic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; }
+  h1 span { color: #855CD6; }
+  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
+  .hud b { color: #FF8C1A; font-size: 1.3rem; }
+  #wrap { position: relative; width: min(94vw, 440px); }
+  canvas { width: 100%; aspect-ratio: 11/14; display: block; background: #141318;
+    border: 1px solid #2a2a33; border-radius: 12px; touch-action: none; }
+  #over { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: rgba(13,14,16,0.82);
+    border-radius: 12px; text-align: center; }
+  #over.show { display: flex; }
+  #over p { color: #8b8b96; font-size: 0.9rem; }
+  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  button:hover { filter: brightness(1.1); }
+  .hint { margin-top: 12px; font-size: 0.8rem; color: #55555f; }
+  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+</style>
+</head>
+<body>
+  <h1><span>◆</span> Flap</h1>
+  <div class="hud"><span>Score <b id="score">0</b></span><span>Best <b id="best">0</b></span></div>
+  <div id="wrap">
+    <canvas id="cv" width="440" height="560"></canvas>
+    <div id="over"><h2>Splat!</h2><p id="overSub"></p><button id="again">Try again</button></div>
+  </div>
+  <p class="hint">Click, tap, or Space to flap</p>
+  <footer>Made with Cudic — fork it and make it yours.</footer>
+<script>
+(function () {
+  var W = 440, H = 560, BX = 110, BR = 14, GRAV = 0.45, FLAP = -7.5;
+  var PW = 74, GAP = 158, SPEED = 2.6;
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
+  var over = document.getElementById('over'), overSub = document.getElementById('overSub');
+  var y, vy, pipes, score, best, state, frame;
+  try { best = parseInt(localStorage.getItem('cudic-flap-best') || '0', 10) || 0; } catch (e) { best = 0; }
+  bestEl.textContent = best;
+
+  function reset() {
+    y = H / 2; vy = 0; pipes = []; score = 0; frame = 0;
+    scoreEl.textContent = '0';
+    over.classList.remove('show');
+    state = 'ready';
+  }
+  function flap() {
+    if (state === 'over') return;
+    if (state === 'ready') state = 'play';
+    vy = FLAP;
+  }
+  function die() {
+    state = 'over';
+    if (score > best) {
+      best = score; bestEl.textContent = best;
+      try { localStorage.setItem('cudic-flap-best', String(best)); } catch (e) {}
+    }
+    overSub.textContent = 'You scored ' + score + ' point' + (score === 1 ? '' : 's') + '.';
+    over.classList.add('show');
+  }
+  function step() {
+    frame++;
+    ctx.fillStyle = '#141318';
+    ctx.fillRect(0, 0, W, H);
+
+    if (state === 'play') {
+      vy += GRAV;
+      if (vy > 10) vy = 10;
+      y += vy;
+      if (frame % 105 === 0) {
+        var margin = 70;
+        var gy = margin + Math.random() * (H - GAP - margin * 2);
+        pipes.push({ x: W + 10, gapY: gy, scored: false });
+      }
+      for (var i = pipes.length - 1; i >= 0; i--) {
+        var p = pipes[i];
+        p.x -= SPEED;
+        if (!p.scored && p.x + PW < BX - BR) {
+          p.scored = true;
+          score++;
+          scoreEl.textContent = score;
+        }
+        if (p.x < -PW - 10) pipes.splice(i, 1);
+      }
+      if (y + BR >= H - 8 || y - BR <= 0) return die();
+      for (var j = 0; j < pipes.length; j++) {
+        var q = pipes[j];
+        if (BX + BR > q.x && BX - BR < q.x + PW &&
+            (y - BR < q.gapY || y + BR > q.gapY + GAP)) return die();
+      }
+    }
+
+    ctx.fillStyle = '#23232c';
+    for (var k = 0; k < pipes.length; k++) {
+      var pp = pipes[k];
+      ctx.fillRect(pp.x, 0, PW, pp.gapY);
+      ctx.fillRect(pp.x, pp.gapY + GAP, PW, H - pp.gapY - GAP);
+      ctx.fillStyle = '#2e2e38';
+      ctx.fillRect(pp.x - 3, pp.gapY - 14, PW + 6, 14);
+      ctx.fillRect(pp.x - 3, pp.gapY + GAP, PW + 6, 14);
+      ctx.fillStyle = '#23232c';
+    }
+    // ground
+    ctx.fillStyle = '#1b1b22';
+    ctx.fillRect(0, H - 8, W, 8);
+
+    var tilt = Math.max(-0.5, Math.min(0.6, vy * 0.07));
+    ctx.save();
+    ctx.translate(BX, y);
+    ctx.rotate(tilt);
+    ctx.fillStyle = '#FF8C1A';
+    ctx.beginPath(); ctx.arc(0, 0, BR, 0, 7); ctx.fill();
+    ctx.fillStyle = '#0d0e10';
+    ctx.beginPath(); ctx.arc(5, -4, 4, 0, 7); ctx.fill();
+    ctx.restore();
+
+    if (state === 'ready') {
+      ctx.fillStyle = '#55555f';
+      ctx.font = '15px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('click, tap, or press space', W / 2, H / 2 + 70);
+    }
+    if (state !== 'over') requestAnimationFrame(step);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space') { e.preventDefault(); flap(); }
+  });
+  cv.addEventListener('mousedown', flap);
+  cv.addEventListener('touchstart', function (e) { e.preventDefault(); flap(); }, { passive: false });
+  document.getElementById('again').addEventListener('click', function () { reset(); step(); });
+  reset();
+  step();
+})();
+</script>
+</body>
+</html>

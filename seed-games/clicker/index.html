@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clicker — made with Cudic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 24px 12px; }
+  h1 { font-size: 1.4rem; }
+  h1 span { color: #855CD6; }
+  #count { font-size: 3rem; font-weight: 700; color: #FF8C1A; margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+  #rate { color: #8b8b96; font-size: 0.9rem; margin-bottom: 18px; }
+  #big { width: min(70vw, 220px); aspect-ratio: 1; border-radius: 50%; border: none; cursor: pointer;
+    font-size: 4rem; background: radial-gradient(circle at 35% 30%, #9a6ff0, #855CD6 55%, #4a3a7a);
+    box-shadow: 0 10px 40px rgba(133, 92, 214, 0.45); transition: transform 0.06s; font-family: inherit;
+    color: #fff; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  #big:active { transform: scale(0.93); }
+  #shop { width: min(92vw, 380px); margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+  .item { display: flex; align-items: center; gap: 12px; background: #141318;
+    border: 1px solid #2a2a33; border-radius: 10px; padding: 12px 14px; }
+  .item .info { flex: 1; }
+  .item .info b { display: block; font-size: 0.95rem; }
+  .item .info span { font-size: 0.78rem; color: #8b8b96; }
+  .item button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
+    padding: 9px 14px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .item button:disabled { background: #2a2a33; color: #55555f; cursor: default; }
+  .item button:not(:disabled):hover { filter: brightness(1.15); }
+  #reset { margin-top: 18px; background: none; border: none; color: #55555f;
+    font-size: 0.78rem; cursor: pointer; font-family: inherit; }
+  #reset:hover { color: #f48771; }
+  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+  .pop { position: fixed; font-weight: 700; color: #FF8C1A; pointer-events: none;
+    animation: rise 0.7s ease-out forwards; font-size: 1.1rem; }
+  @keyframes rise { to { transform: translateY(-60px); opacity: 0; } }
+</style>
+</head>
+<body>
+  <h1><span>◆</span> Clicker</h1>
+  <div id="count">0</div>
+  <div id="rate">0 per click · 0 per second</div>
+  <button id="big" aria-label="Click">◉</button>
+  <div id="shop"></div>
+  <button id="reset">reset everything</button>
+  <footer>Made with Cudic — fork it and make it yours.</footer>
+<script>
+(function () {
+  var S = { n: 0, click: 1, cps: 0, cursors: 0, mults: 0 };
+  try {
+    var saved = JSON.parse(localStorage.getItem('cudic-clicker') || 'null');
+    if (saved && typeof saved.n === 'number') S = saved;
+  } catch (e) {}
+  var countEl = document.getElementById('count'), rateEl = document.getElementById('rate');
+  var shopEl = document.getElementById('shop');
+  var UPGRADES = [
+    { id: 'cursors', name: 'Auto-clicker', desc: '+1 per second each', base: 15, growth: 1.15,
+      level: function () { return S.cursors; },
+      apply: function () { S.cursors++; S.cps++; } },
+    { id: 'mults', name: 'Click power', desc: '+1 per click each', base: 100, growth: 2.1,
+      level: function () { return S.mults; },
+      apply: function () { S.mults++; S.click++; } }
+  ];
+  function cost(u) { return Math.floor(u.base * Math.pow(u.growth, u.level())); }
+  function fmt(n) {
+    if (n < 1000) return Math.floor(n).toString();
+    var units = ['K', 'M', 'B', 'T'];
+    var u = -1, v = n;
+    while (v >= 1000 && u < units.length - 1) { v /= 1000; u++; }
+    return (v >= 100 ? Math.floor(v) : Math.floor(v * 10) / 10) + units[u];
+  }
+  function save() { try { localStorage.setItem('cudic-clicker', JSON.stringify(S)); } catch (e) {} }
+  function paint() {
+    countEl.textContent = fmt(S.n);
+    rateEl.textContent = S.click + ' per click · ' + S.cps + ' per second';
+    shopEl.innerHTML = '';
+    UPGRADES.forEach(function (u) {
+      var c = cost(u);
+      var row = document.createElement('div');
+      row.className = 'item';
+      var info = document.createElement('div');
+      info.className = 'info';
+      var b = document.createElement('b');
+      b.textContent = u.name + ' ×' + u.level();
+      var s = document.createElement('span');
+      s.textContent = u.desc;
+      info.appendChild(b); info.appendChild(s);
+      var btn = document.createElement('button');
+      btn.textContent = fmt(c);
+      btn.disabled = S.n < c;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (S.n < cost(u)) return;
+        S.n -= cost(u);
+        u.apply();
+        save(); paint();
+      });
+      row.appendChild(info); row.appendChild(btn);
+      shopEl.appendChild(row);
+    });
+  }
+  document.getElementById('big').addEventListener('click', function (e) {
+    S.n += S.click;
+    var p = document.createElement('div');
+    p.className = 'pop';
+    p.textContent = '+' + S.click;
+    p.style.left = (e.clientX - 10) + 'px';
+    p.style.top = (e.clientY - 20) + 'px';
+    document.body.appendChild(p);
+    setTimeout(function () { p.remove(); }, 700);
+    save(); paint();
+  });
+  document.getElementById('reset').addEventListener('click', function () {
+    if (!confirm('Reset everything?')) return;
+    S = { n: 0, click: 1, cps: 0, cursors: 0, mults: 0 };
+    save(); paint();
+  });
+  setInterval(function () {
+    if (S.cps > 0) { S.n += S.cps / 10; save(); paint(); }
+  }, 100);
+  setInterval(save, 5000);
+  paint();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pong — made with Cudic</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; }
+  h1 span { color: #855CD6; }
+  .hud { display: flex; gap: 26px; margin: 10px 0 14px; font-size: 1.1rem; }
+  .hud b { color: #FF8C1A; font-size: 1.5rem; }
+  #wrap { position: relative; width: min(94vw, 620px); }
+  canvas { width: 100%; aspect-ratio: 3/2; display: block; background: #141318;
+    border: 1px solid #2a2a33; border-radius: 12px; touch-action: none; cursor: none; }
+  #over { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: rgba(13,14,16,0.82);
+    border-radius: 12px; text-align: center; }
+  #over.show { display: flex; }
+  #over p { color: #8b8b96; font-size: 0.9rem; }
+  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
+    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  button:hover { filter: brightness(1.1); }
+  .hint { margin-top: 12px; font-size: 0.8rem; color: #55555f; }
+  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+</style>
+</head>
+<body>
+  <h1><span>◆</span> Pong</h1>
+  <div class="hud"><span>You <b id="ps">0</b></span><span><b id="cs">0</b> CPU</span></div>
+  <div id="wrap">
+    <canvas id="cv" width="600" height="400"></canvas>
+    <div id="over"><h2 id="overTitle">You win!</h2><p>First to 5 takes it.</p><button id="again">Play again</button></div>
+  </div>
+  <p class="hint">Move mouse, drag, or ↑ ↓ keys · Click / Space to serve</p>
+  <footer>Made with Cudic — fork it and make it yours.</footer>
+<script>
+(function () {
+  var W = 600, H = 400, PH = 84, PW = 10, WIN = 5;
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var psEl = document.getElementById('ps'), csEl = document.getElementById('cs');
+  var over = document.getElementById('over'), overTitle = document.getElementById('overTitle');
+  var py = H / 2, cy = H / 2, pv = 0, ball, ps = 0, cs = 0, state = 'serve', pauseT = 0;
+
+  function serve(toward) {
+    ball = { x: W / 2, y: H / 2, vx: (toward || (Math.random() < 0.5 ? 1 : -1)) * 4.2, vy: (Math.random() * 4 - 2) };
+    state = 'play';
+  }
+  function reset(full) {
+    if (full) { ps = 0; cs = 0; psEl.textContent = '0'; csEl.textContent = '0'; }
+    py = H / 2; cy = H / 2;
+    over.classList.remove('show');
+    state = 'serve';
+  }
+  function point(winner) {
+    if (winner === 'p') { ps++; psEl.textContent = ps; } else { cs++; csEl.textContent = cs; }
+    if (ps >= WIN || cs >= WIN) {
+      overTitle.textContent = ps >= WIN ? 'You win!' : 'CPU wins!';
+      over.classList.add('show');
+      state = 'over';
+    } else {
+      state = 'pause'; pauseT = 50;
+    }
+  }
+  function step() {
+    ctx.fillStyle = '#141318';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#23232c';
+    for (var y = 6; y < H; y += 22) ctx.fillRect(W / 2 - 2, y, 4, 10);
+
+    py += pv;
+    if (py < PH / 2) py = PH / 2;
+    if (py > H - PH / 2) py = H - PH / 2;
+
+    // CPU: chase with capped speed + a little laziness
+    var target = ball && state === 'play' ? ball.y : H / 2;
+    var diff = target - cy;
+    var max = 3.4;
+    cy += Math.max(-max, Math.min(max, diff * 0.09));
+
+    if (state === 'play' && ball) {
+      ball.x += ball.vx; ball.y += ball.vy;
+      if (ball.y < 6 || ball.y > H - 6) ball.vy *= -1;
+      // player paddle
+      if (ball.vx < 0 && ball.x - 6 < 20 + PW && ball.x > 20 && Math.abs(ball.y - py) < PH / 2 + 6) {
+        ball.vx = Math.abs(ball.vx) * 1.05;
+        ball.vy += (ball.y - py) * 0.045;
+        ball.x = 20 + PW + 6;
+      }
+      // cpu paddle
+      if (ball.vx > 0 && ball.x + 6 > W - 20 - PW && ball.x < W - 20 && Math.abs(ball.y - cy) < PH / 2 + 6) {
+        ball.vx = -Math.abs(ball.vx) * 1.05;
+        ball.vy += (ball.y - cy) * 0.045;
+        ball.x = W - 20 - PW - 6;
+      }
+      if (Math.abs(ball.vy) > 7) ball.vy = ball.vy > 0 ? 7 : -7;
+      if (ball.x < -20) point('c');
+      if (ball.x > W + 20) point('p');
+    } else if (state === 'pause') {
+      if (--pauseT <= 0) serve();
+    } else if (state === 'serve' && ball == null) {
+      ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+    }
+
+    ctx.fillStyle = '#855CD6';
+    ctx.fillRect(20, py - PH / 2, PW, PH);
+    ctx.fillStyle = '#FF8C1A';
+    ctx.fillRect(W - 20 - PW, cy - PH / 2, PW, PH);
+    if (ball && state !== 'serve') {
+      ctx.fillStyle = '#dbe4ff';
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, 7, 0, 7); ctx.fill();
+    } else if (state === 'serve') {
+      ctx.fillStyle = '#55555f';
+      ctx.font = '15px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('click or press space to serve', W / 2, H / 2 + 40);
+    }
+    requestAnimationFrame(step);
+  }
+  function go() { if (state === 'serve') serve(); }
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'ArrowUp') { pv = -6; e.preventDefault(); }
+    else if (e.code === 'ArrowDown') { pv = 6; e.preventDefault(); }
+    else if (e.code === 'Space') { e.preventDefault(); go(); }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.code === 'ArrowUp' || e.code === 'ArrowDown') pv = 0;
+  });
+  function toY(clientY) {
+    var r = cv.getBoundingClientRect();
+    return (clientY - r.top) / r.height * H;
+  }
+  cv.addEventListener('mousemove', function (e) { py = toY(e.clientY); });
+  cv.addEventListener('mousedown', go);
+  cv.addEventListener('touchstart', function (e) { py = toY(e.changedTouches[0].clientY); }, { passive: true });
+  cv.addEventListener('touchmove', function (e) { e.preventDefault(); py = toY(e.changedTouches[0].clientY); }, { passive: false });
+  document.getElementById('again').addEventListener('click', function () { reset(true); });
+  reset(true);
+  step();
+})();
+</script>
+</body>
+</html>

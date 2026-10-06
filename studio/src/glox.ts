@@ -24,6 +24,15 @@ import {
   MenuId
 } from '@codingame/monaco-vscode-api/vscode/vs/platform/actions/common/actions';
 import { mimeOf, collectBinaryFiles, collectTextFiles, previewBridge } from './project';
+import {
+  importMapNames,
+  needsModule,
+  splitImports,
+  rewriteBareImports,
+  splitVersion,
+  isValidPackageName,
+  identFor
+} from './npmutil';
 import mammoth from 'mammoth';
 
 const ICON_CSS =
@@ -147,9 +156,7 @@ async function assemble(baseHtml: string, selfName: string, selfCode: string): P
         jsUsed = true;
       });
       if (js == null) return m;
-      return (
-        '<script' + pre + post + '>' + js.replace(/<\/script/gi, '<\\/script') + '</script>'
-      );
+      return scriptTag(pre + post, js);
     }
   );
   if (/\.css$/i.test(selfName) && !cssUsed) {
@@ -157,10 +164,19 @@ async function assemble(baseHtml: string, selfName: string, selfCode: string): P
     html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : html + tag;
   }
   if (/\.m?jsx?$/i.test(selfName) && !jsUsed) {
-    const tag = '<script>' + selfCode.replace(/<\/script/gi, '<\\/script') + '</script>';
+    const tag = scriptTag('', selfCode);
     html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, tag + '</body>') : html + tag;
   }
+  html = rewriteBareImports(html, importMapNames(baseHtml), (ref) => REMOTE_REF.test(ref) || ref.startsWith('.'));
   return injectAssetUrls(html);
+}
+
+// Inline JS carrying static import/export (or import.meta) needs
+// type="module" — a plain <script> throws on it. Existing type= wins.
+function scriptTag(attrs: string, js: string): string {
+  const safe = js.replace(/<\/script/gi, '<\\/script');
+  if (needsModule(js) && !/\btype\s*=/i.test(attrs)) attrs += ' type="module"';
+  return '<script' + attrs + '>' + safe + '</script>';
 }
 
 function legacySingle(name: string, code: string): string {
@@ -168,12 +184,18 @@ function legacySingle(name: string, code: string): string {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${code}</style></head><body><h1>style preview</h1></body></html>`;
   }
   if (/\.m?jsx?$/.test(name) || name === 'untitled') {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#0d1021;color:#dbe4ff;font-family:monospace;padding:12px}#err{color:#ff7b7b;white-space:pre-wrap}</style></head><body><div id="out"></div><div id="err"></div><script>
-const out=document.getElementById('out'),err=document.getElementById('err');
+    // Static imports can't sit inside try{} (only module top level is
+    // legal), so hoist them above the console shims. Always a module:
+    // harmless for plain scripts, required for import/export ones.
+    const parts = splitImports(code);
+    const head = parts.head ? parts.head.replace(/<\/script/gi, '<\\/script') + '\n' : '';
+    const body = parts.body.replace(/<\/script/gi, '<\\/script');
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#0d1021;color:#dbe4ff;font-family:monospace;padding:12px}#err{color:#ff7b7b;white-space:pre-wrap}</style></head><body><div id="out"></div><div id="err"></div><script type="module">
+${head}const out=document.getElementById('out'),err=document.getElementById('err');
 const show=(v)=>{const d=document.createElement('div');d.textContent=typeof v==='object'?JSON.stringify(v):String(v);out.append(d);};
 console.log=(...a)=>a.forEach(show);console.error=(...a)=>{const d=document.createElement('div');d.style.color='#ff7b7b';d.textContent=a.join(' ');err.append(d);};
 window.onerror=(m)=>{err.textContent=String(m);};
-try{${code}\n}catch(e){err.textContent=String(e&&e.stack||e);}</script></body></html>`;
+try{${body}\n}catch(e){err.textContent=String(e&&e.stack||e);}</script></body></html>`;
   }
   return `<!DOCTYPE html><html><body><pre>${esc(code)}</pre></body></html>`;
 }
@@ -287,11 +309,64 @@ export async function gloxRun(): Promise<void> {
     vscode.window.showWarningMessage('Preview: no file to show. Open a file first, then Run.');
     return;
   }
+  const leaf = doc.fileName.split('/').pop() ?? 'untitled';
+  if (/\.py$/i.test(leaf)) {
+    panes.forEach((p) => p.showHtml(pythonRunnerHtml(doc.getText())));
+    return;
+  }
   const html = await previewHtmlFor(
-    doc.fileName.split('/').pop() ?? 'untitled',
+    leaf,
     doc.getText()
   );
   panes.forEach((p) => p.showHtml(html));
+}
+
+// ---- Python runner (Pyodide: real CPython in WebAssembly) -----------------
+// No server, no terminal needed: the runtime loads from CDN into the preview
+// frame (~10MB first run, cached after) and executes the open .py file there.
+// micropip is preloaded so `import micropip` + installs work from user code.
+// Top-level await is supported (runPythonAsync).
+declare const loadPyodide: any;
+const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
+
+function pythonRunnerHtml(code: string): string {
+  const codeJson = JSON.stringify(code).replace(/<\//g, '<\\/');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{background:#0d1021;color:#dbe4ff;font-family:monospace;padding:12px;white-space:pre-wrap;margin:0}#sys{color:#8b8b96}#err{color:#ff7b7b}</style></head><body><div id="sys">Starting Python…</div><div id="out"></div><div id="err"></div>
+<script src="${PYODIDE_URL}"></script>
+<script>(function(){
+var out=document.getElementById('out'),err=document.getElementById('err'),sys=document.getElementById('sys');
+function show(el,v){var d=document.createElement('div');d.textContent=String(v);el.append(d);}
+window.onerror=function(m){err.textContent+=String(m)+'\\n';};
+var CODE=${codeJson};
+async function main(){
+  try{
+    if(typeof loadPyodide==='undefined')throw new Error('Could not load Python — check your connection and reload.');
+    sys.textContent='Loading Python (first run downloads ~10MB)…';
+    var pyodide=await loadPyodide();
+    pyodide.setStdout({batched:function(s){show(out,s)}});
+    pyodide.setStderr({batched:function(s){show(err,s)}});
+    await pyodide.loadPackage('micropip');
+    sys.textContent='';
+    await pyodide.runPythonAsync(CODE);
+    sys.textContent='Done.';
+  }catch(e){sys.textContent='';err.textContent+=String((e&&(e as Error).stack)||e);}
+}
+main();
+})();</script></body></html>`;
+}
+
+export async function gloxRunPython(): Promise<void> {
+  const panes = PreviewPane.livePanes();
+  if (panes.length === 0) {
+    vscode.window.showErrorMessage('Preview: pane not ready yet, reopen Cudic Preview.');
+    return;
+  }
+  const doc = targetDoc();
+  if (doc == null || !/\.py$/i.test(doc.fileName.split('/').pop() ?? '')) {
+    vscode.window.showWarningMessage('Python: open a .py file first, then run.');
+    return;
+  }
+  panes.forEach((p) => p.showHtml(pythonRunnerHtml(doc.getText())));
 }
 
 // ---- Preview editor pane (tab) ---------------------------------------------
@@ -787,6 +862,107 @@ registerAction2(
     }
     async run(): Promise<void> {
         await gloxRun();
+    }
+  }
+);
+
+registerAction2(
+  class extends Action2 {
+    constructor() {
+      super({
+        id: 'glox.runPython',
+        title: { value: 'Cudic: Run Python file', original: 'Cudic: Run Python file' },
+        category: 'Cudic',
+        menu: [
+          { id: MenuId.CommandPalette },
+          { id: MenuId.EditorContext, group: 'cudic' }
+        ]
+      });
+    }
+    async run(): Promise<void> {
+        await gloxRunPython();
+    }
+  }
+);
+
+registerAction2(
+  class extends Action2 {
+    constructor() {
+      super({
+        id: 'glox.installPythonPackage',
+        title: { value: 'Cudic: Install Python package (micropip)', original: 'Cudic: Install Python package (micropip)' },
+        category: 'Cudic',
+        menu: [{ id: MenuId.CommandPalette }]
+      });
+    }
+    async run(): Promise<void> {
+      if (typeof vscode.window.showInputBox !== 'function') {
+        vscode.window.showErrorMessage('Cudic: input is unavailable here — add `import micropip` + `await micropip.install("name")` yourself.');
+        return;
+      }
+      const name = await vscode.window.showInputBox({ prompt: 'PyPI package name', placeHolder: 'requests' });
+      if (name == null) return;
+      const clean = name.trim();
+      if (!/^[A-Za-z0-9_.-]+$/.test(clean)) {
+        vscode.window.showErrorMessage('Cudic: not a valid package name.');
+        return;
+      }
+      const ed = vscode.window.activeTextEditor;
+      if (ed == null || !/\.py$/i.test(ed.document.fileName)) {
+        vscode.window.showWarningMessage('Cudic: open a .py file first.');
+        return;
+      }
+      const snippet = 'import micropip\nawait micropip.install("' + clean + '")\n';
+      try {
+        await ed.edit((b: any) => {
+          b.insert(new vscode.Position(0, 0), snippet);
+        });
+        vscode.window.showInformationMessage('Cudic: added install for "' + clean + '" — Run the file to install it.');
+      } catch {
+        vscode.window.showInformationMessage('Cudic: could not edit — add these lines yourself:\n' + snippet);
+      }
+    }
+  }
+);
+
+registerAction2(
+  class extends Action2 {
+    constructor() {
+      super({
+        id: 'glox.addPackage',
+        title: { value: 'Cudic: Add npm package (esm.sh)', original: 'Cudic: Add npm package (esm.sh)' },
+        category: 'Cudic',
+        menu: [{ id: MenuId.CommandPalette }]
+      });
+    }
+    async run(): Promise<void> {
+      if (typeof vscode.window.showInputBox !== 'function') {
+        vscode.window.showErrorMessage('Cudic: input is unavailable here — import from https://esm.sh/<name> yourself.');
+        return;
+      }
+      const name = await vscode.window.showInputBox({ prompt: 'npm package name (name or name@version)', placeHolder: 'canvas-confetti' });
+      if (name == null) return;
+      const clean = name.trim();
+      if (!isValidPackageName(clean)) {
+        vscode.window.showErrorMessage('Cudic: not a valid package name.');
+        return;
+      }
+      const ed = vscode.window.activeTextEditor;
+      if (ed == null || !/\.m?jsx?$/i.test(ed.document.fileName)) {
+        vscode.window.showWarningMessage('Cudic: open a .js file first.');
+        return;
+      }
+      const ver = splitVersion(clean);
+      const ref = ver.version ? ver.name + '@' + ver.version : ver.name;
+      const snippet = "import " + identFor(clean) + " from 'https://esm.sh/" + ref + "';\n";
+      try {
+        await ed.edit((b: any) => {
+          b.insert(new vscode.Position(0, 0), snippet);
+        });
+        vscode.window.showInformationMessage('Cudic: "' + clean + '" added — it resolves in previews and published games.');
+      } catch {
+        vscode.window.showInformationMessage('Cudic: could not edit — add this line yourself:\n' + snippet);
+      }
     }
   }
 );

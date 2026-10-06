@@ -1,5 +1,5 @@
-// Cudic AI built-in — chat panel mounted straight into the auxiliary bar
-// part (right side). This stack ships no WebviewViewPane, so sidebar webview
+// Cudic AI built-in — chat panel mounted straight into the bottom panel
+// part. This stack ships no WebviewViewPane, so sidebar webview
 // views can never render — direct DOM mount instead, the same proven pattern
 // as the title-bar Cudic icon. The UI runs in a sandboxed srcdoc iframe;
 // all behavior (LLM, files, settings) stays main-side. No vsix, no worker
@@ -22,11 +22,22 @@ import {
   isPartVisibile
 } from '@codingame/monaco-vscode-workbench-service-override';
 import chatHtmlRaw from './chat.html?raw';
+// Terminal base layer (MIT, vendored inline): type scale + form rhythm for
+// the panel's terminal skin. Our rules come after it in chat.html and win.
+import terminalCss from 'terminal.css/dist/terminal.min.css?raw';
 import { PROVIDERS, presetById, ProviderPreset } from './providers';
-import { streamChat, fetchModels, setSupaToken, friendlyError, suggestModels, ChatMessage, ToolDef, ToolCall } from './llm';
+import { streamChat, fetchModels, friendlyError, suggestModels, ChatMessage, ToolDef, ToolCall, setSupaToken as setLlmToken } from './llm';
 import { SKILLS } from './skills';
 
-export { setSupaToken };
+// main.ts calls this on boot + every 60s. Forwards the token to llm.ts and
+// tells the panel whether a login exists, so /status and the status line
+// can say so instead of failing at send time.
+let lastSupa: string | null = null;
+export function setSupaToken(t: string | null): void {
+  lastSupa = t;
+  setLlmToken(t);
+  postToPanel({ type: 'ai:supa', ok: !!t });
+}
 
 export interface AiSettings {
   provider: string;
@@ -36,6 +47,7 @@ export interface AiSettings {
   completeModel: string;
   keys: Record<string, string>;
   modelLists: Record<string, string[]>;
+  fetchedAt: Record<string, number>;
   // Selected premade skill ids appended to the system prompt.
   skills: string[];
 }
@@ -44,7 +56,7 @@ const STORE_KEY = 'cudic-ai';
 const TEXT_EXT = /\.(html|css|js|ts|tsx|jsx|json|md|txt|svg|xml)$/i;
 
 function loadSettings(): AiSettings {
-  const d: AiSettings = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', keys: {}, modelLists: {}, skills: ['cudic'] };
+  const d: AiSettings = { provider: 'zen', model: '', baseOverride: '', completeOn: true, completeModel: '', keys: {}, modelLists: {}, fetchedAt: {}, skills: ['cudic'] };
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) return { ...d, ...(JSON.parse(raw) as Partial<AiSettings>) };
@@ -145,7 +157,34 @@ const TOOL_DEFS: ToolDef[] = [
   }
 ];
 
-async function runTool(call: ToolCall): Promise<{ ok: boolean; summary: string; payload: string }> {
+// Prefix/suffix hunk diff for tool cards: the changed middle rendered as
+// -/＋ lines with counts. Bounded so a full-file rewrite can't flood chat.
+function hunkDiff(before: string, after: string, cap = 40): { added: number; removed: number; text: string } {
+  const a = before.split('\n');
+  const b = after.split('\n');
+  let pre = 0;
+  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  const del = a.slice(pre, a.length - suf);
+  const ins = b.slice(pre, b.length - suf);
+  const lines: string[] = [];
+  for (const l of del) {
+    if (lines.length >= cap) break;
+    lines.push('-' + l);
+  }
+  for (const l of ins) {
+    if (lines.length >= cap) break;
+    lines.push('+' + l);
+  }
+  let text = lines.join('\n');
+  if (del.length + ins.length > lines.length) {
+    text += '\n… (' + (del.length + ins.length - lines.length) + ' more lines)';
+  }
+  return { added: ins.length, removed: del.length, text };
+}
+
+async function runTool(call: ToolCall): Promise<{ ok: boolean; summary: string; payload: string; diff?: string; added?: number; removed?: number }> {
   try {
     const args = JSON.parse(call.args || '{}') as Record<string, unknown>;
     const target = normalizeApplyPath(String(args.path ?? ''));
@@ -155,8 +194,17 @@ async function runTool(call: ToolCall): Promise<{ ok: boolean; summary: string; 
     }
     const rel = target.replace(/^\/workspace\//, '');
     if (call.name === 'save_file') {
-      await vscode.workspace.fs.writeFile(vscode.Uri.file(target), new TextEncoder().encode(String(args.content ?? '')));
-      return { ok: true, summary: 'saved ' + rel, payload: JSON.stringify({ ok: true, path: rel }) };
+      const next = String(args.content ?? '');
+      let before = '';
+      try {
+        before = new TextDecoder().decode(await vscode.workspace.fs.readFile(vscode.Uri.file(target)));
+      } catch {
+        // New file: everything counts as added.
+      }
+      await vscode.workspace.fs.writeFile(vscode.Uri.file(target), new TextEncoder().encode(next));
+      const d = hunkDiff(before, next);
+      const stat = before === next ? ' (no changes)' : ' (+' + d.added + ' −' + d.removed + ')';
+      return { ok: true, summary: 'saved ' + rel + stat, payload: JSON.stringify({ ok: true, path: rel }), diff: d.text, added: d.added, removed: d.removed };
     }
     if (call.name === 'read_file') {
       const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(target));
@@ -185,6 +233,24 @@ function postToPanel(m: unknown): void {
   } catch { /* panel hidden */ }
 }
 
+// Model catalogs older than this refetch in the background (see ai:ready).
+const MODEL_LIST_TTL = 24 * 3600 * 1000;
+
+async function refreshModels(pid: string, st: AiSettings): Promise<void> {
+  const target = presetById(pid);
+  const tkey = st.keys[pid] ?? '';
+  try {
+    const models = await fetchModels(target, tkey, pid === st.provider ? st.baseOverride || undefined : undefined);
+    const next = loadSettings();
+    next.modelLists = { ...next.modelLists, [pid]: models.slice(0, 500) };
+    next.fetchedAt = { ...next.fetchedAt, [pid]: Date.now() };
+    saveSettings(next);
+    postToPanel({ type: 'ai:modelsResult', provider: pid, models });
+  } catch (e) {
+    postToPanel({ type: 'ai:modelsResult', provider: pid, error: friendlyError(target.name, (e as Error).message) });
+  }
+}
+
 async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
   const st = loadSettings();
   const preset: ProviderPreset = presetById(st.provider);
@@ -194,6 +260,23 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
       type: 'ai:init', presets: PROVIDERS, settings: publicSettings(st),
       skills: SKILLS.map((s) => ({ id: s.id, label: s.label, blurb: s.blurb }))
     });
+    postToPanel({ type: 'ai:supa', ok: !!lastSupa });
+    // Daily catalog refresh: stale or missing lineups for listable companies
+    // (public, local, or keyed) refetch quietly in the background, staggered
+    // so providers don't get hammered. Results land via ai:modelsResult.
+    void (async () => {
+      const cur = loadSettings();
+      const due = PROVIDERS.filter((p) => {
+        if (!p.modelsPath) return false;
+        if (!(p.publicModels || p.loopback || cur.keys[p.id])) return false;
+        const at = (cur.fetchedAt ?? {})[p.id] ?? 0;
+        return Date.now() - at > MODEL_LIST_TTL;
+      });
+      for (let i = 0; i < due.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 800));
+        await refreshModels(due[i].id, loadSettings());
+      }
+    })();
     return;
   }
   if (m.type === 'ai:saveSettings') {
@@ -204,6 +287,8 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
       completeOn: m.completeOn !== false,
       completeModel: String(m.completeModel || ''),
       keys: { ...st.keys },
+      modelLists: { ...st.modelLists },
+      fetchedAt: { ...st.fetchedAt },
       skills: Array.isArray(m.skills)
         ? (m.skills as unknown[]).filter((x): x is string => typeof x === 'string').slice(0, 8)
         : st.skills
@@ -217,17 +302,7 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
     // Optional provider override lets the list screen load another
     // company's lineup without switching the active provider.
     const pid = typeof m.provider === 'string' && m.provider ? m.provider : st.provider;
-    const target = presetById(pid);
-    const tkey = (st.keys[pid] ?? '');
-    try {
-      const models = await fetchModels(target, tkey, pid === st.provider ? st.baseOverride || undefined : undefined);
-      const next = loadSettings();
-      next.modelLists = { ...next.modelLists, [pid]: models.slice(0, 500) };
-      saveSettings(next);
-      postToPanel({ type: 'ai:modelsResult', provider: pid, models });
-    } catch (e) {
-      postToPanel({ type: 'ai:modelsResult', provider: pid, error: friendlyError(target.name, (e as Error).message) });
-    }
+    await refreshModels(pid, st);
     return;
   }
   // Resolve the model, validating against the last live list so a stale or
@@ -290,7 +365,7 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
         messages.push({ role: 'assistant', content: out, toolCalls });
         for (const tc of toolCalls) {
           const r = await runTool(tc);
-          postToPanel({ type: 'ai:tool', id, name: tc.name, ok: r.ok, summary: r.summary });
+          postToPanel({ type: 'ai:tool', id, name: tc.name, ok: r.ok, summary: r.summary, diff: r.diff, added: r.added, removed: r.removed });
           messages.push({ role: 'tool', toolCallId: tc.id, content: r.payload });
         }
         if (ctl.signal.aborted) throw new Error('Stopped.');
@@ -305,6 +380,14 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
   }
   if (m.type === 'ai:stop') {
     controllers.get(String(m.id))?.abort();
+    return;
+  }
+  if (m.type === 'ai:answer') {
+    const r = askResolvers.get(String(m.id || ''));
+    if (r) {
+      askResolvers.delete(String(m.id || ''));
+      r(String(m.choice || ''));
+    }
     return;
   }
   if (m.type === 'ai:apply') {
@@ -323,13 +406,26 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
   }
 }
 const controllers = new Map<string, AbortController>();
+// Inline permission answers. Nothing sends ai:ask yet (that gate lands with
+// the agent behavior track); the map exists so the panel's permission row
+// has a working counterpart the day it does. Unmatched answers are ignored.
+const askResolvers = new Map<string, (choice: string) => void>();
 
 function showPanel(): void {
   if (!panelEl) return;
   try {
-    setPartVisibility(Parts.AUXILIARYBAR_PART, true);
+    setPartVisibility(Parts.PANEL_PART, true);
   } catch { /* part api hiccup */ }
   panelEl.style.display = 'flex';
+  // The part API fails silently (see try above): verify it actually opened
+  // and say so out loud instead of swallowing the click.
+  try {
+    if (!isPartVisibile(Parts.PANEL_PART)) {
+      vscode.window.showInformationMessage(
+        'Cudic AI is on, but the bottom panel stayed shut — open it with View > Appearance > Panel, then press ✦ again.'
+      );
+    }
+  } catch { /* unreadable state; the panel may still show */ }
 }
 
 function hidePanel(): void {
@@ -342,11 +438,11 @@ function el(html: string): HTMLElement {
   return t.content.firstElementChild as HTMLElement;
 }
 
-// Mounts the chat panel as an overlay filling the auxiliary bar part.
+// Mounts the chat panel as an overlay filling the bottom panel part.
 // Called with the workbench shadow root; retries until the part exists.
 export function registerCudicAi(shadowRoot: ShadowRoot): void {
   const mount = (): boolean => {
-    const part = shadowRoot.querySelector('.part.auxiliarybar') as HTMLElement | null;
+    const part = shadowRoot.querySelector('.part.panel') as HTMLElement | null;
     if (!part) return false;
     if (!panelEl) {
       if (getComputedStyle(part).position === 'static') part.style.position = 'relative';
@@ -370,27 +466,17 @@ export function registerCudicAi(shadowRoot: ShadowRoot): void {
       iframeEl.setAttribute('sandbox', 'allow-scripts');
       iframeEl.setAttribute('title', 'Cudic AI chat');
       iframeEl.style.cssText = 'flex:1;border:none;width:100%;min-height:0;background:transparent;';
-      iframeEl.srcdoc = chatHtmlRaw.replaceAll('__NONCE__', nonce());
+      iframeEl.srcdoc = chatHtmlRaw
+        .replaceAll('__NONCE__', nonce())
+        .replace('/*__TERMINAL_CSS__*/', terminalCss);
       panelEl.append(bar, iframeEl);
       part.appendChild(panelEl);
       window.addEventListener('message', (e: MessageEvent) => {
         if (e.source !== iframeEl?.contentWindow) return;
         void handlePanelMessage((e.data || {}) as Record<string, unknown>);
       });
-      // Title-bar sparkle toggle next to the Cudic cube (same pattern).
-      const cube = shadowRoot.querySelector('#glox-title-icon');
-      if (cube?.parentElement) {
-        const spark = el(
-          '<button title="Cudic AI" aria-label="Cudic AI" style="display:flex;align-items:center;' +
-          'justify-content:center;width:28px;height:24px;background:transparent;border:none;cursor:pointer;' +
-          'padding:0;margin-right:2px;flex:0 0 auto;color:var(--vscode-foreground,#dbe4ff);font-size:15px;">✦</button>'
-        );
-        spark.addEventListener('click', () => {
-          if (panelEl && panelEl.style.display !== 'none' && isPartVisibile(Parts.AUXILIARYBAR_PART)) hidePanel();
-          else showPanel();
-        });
-        cube.parentElement.insertBefore(spark, cube.nextSibling);
-      }
+      // No title-bar button: entry is the command palette + right-click
+      // menus (cudic-ai.openChat below).
     }
     return true;
   };
@@ -407,12 +493,26 @@ export function registerCudicAi(shadowRoot: ShadowRoot): void {
         super({
           id: 'cudic-ai.openChat',
           title: { value: 'Cudic AI: Open chat', original: 'Cudic AI: Open chat' },
-          menu: [{ id: MenuId.CommandPalette }]
+          menu: [
+            { id: MenuId.CommandPalette },
+            // Right-click a file in the Explorer
+            { id: MenuId.ExplorerContext, group: 'navigation' },
+            // Right-click inside an editor
+            { id: MenuId.EditorContext, group: 'navigation' }
+          ]
         });
       }
       async run(): Promise<void> {
         mount();
         showPanel();
+        // Temporary diagnostic: proves the command ran and reports what the
+        // layout service thinks. Remove once opening is confirmed working.
+        try {
+          const vis = isPartVisibile(Parts.PANEL_PART);
+          void vscode.window.showInformationMessage(
+            'Cudic AI: command ran — bottom panel reads ' + (vis ? 'VISIBLE' : 'HIDDEN') + '.'
+          );
+        } catch { /* layout service unreadable */ }
       }
     }
   );

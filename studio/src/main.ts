@@ -229,7 +229,20 @@ void registerCudicAi(shadowRoot);
 function pushSupaToken(): void {
   try {
     const raw = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
-    setSupaToken(raw ? (JSON.parse(raw).access_token as string) ?? null : null);
+    const tok = raw ? (JSON.parse(raw).access_token as string) ?? null : null;
+    // Don't send dead tokens: an expired JWT only buys a confusing proxy
+    // 401. Null reads as "not logged in" everywhere downstream.
+    if (tok) {
+      const parts = tok.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')) as string);
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          setSupaToken(null);
+          return;
+        }
+      }
+    }
+    setSupaToken(tok);
   } catch {
     setSupaToken(null);
   }

@@ -113,11 +113,11 @@
       +sbItem('/games','games','games','Games')
       +sbItem('/themes','themes','palette','Themes')
       +'<div id="serversSection" style="margin-top:16px">'
-        +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/3</span></div>'
+        +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/50</span></div>'
         +'<div id="serverList"></div>'
       +'</div>'
       +'<div style="flex:1"></div>'
-    +'</div></div>';
+    +'</div>';
 
   document.body.insertBefore(nav,document.body.firstChild);
 

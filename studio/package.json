@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@codingame/esbuild-import-meta-url-plugin": "latest",
+    "terminal.css": "^0.7.5",
     "vite": "^6.0.0"
   },
   "allowScripts": {

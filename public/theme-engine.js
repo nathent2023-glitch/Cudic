@@ -116,6 +116,83 @@
     root.setAttribute('data-pack-bg', '1');
   }
 
+  /* ── Custom layer (community packs: author CSS + HTML) ── */
+  /* Stored raw in the manifest, sanitized here at render time. Scripts can
+   * never run: parsing happens in an inert <template>, and only an explicit
+   * tag/attribute allowlist survives. */
+  var OK_TAGS = { DIV: 1, SPAN: 1, P: 1, IMG: 1, VIDEO: 1, SOURCE: 1 };
+  var DROP_ALL = { SCRIPT: 1, STYLE: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, FORM: 1, INPUT: 1, BUTTON: 1, TEXTAREA: 1, SELECT: 1, LINK: 1, META: 1, BASE: 1, AUDIO: 1, CANVAS: 1, SVG: 1, MATH: 1, A: 1 };
+  function scrubCustomStyle(s) {
+    s = String(s || '');
+    if (/javascript\s*:|expression\s*\(|behaviour|binding/ig.test(s)) return '';
+    return s.replace(/url\(\s*["']?(?!https:)[^)]*\)/ig, 'url()');
+  }
+  function sanitizeCustomHtml(html) {
+    var tpl = document.createElement('template');
+    tpl.innerHTML = String(html || '').slice(0, 8000);
+    function clean(node) {
+      var kids = Array.prototype.slice.call(node.childNodes);
+      for (var i = 0; i < kids.length; i++) {
+        var k = kids[i];
+        if (k.nodeType === 8) { node.removeChild(k); continue; }
+        if (k.nodeType !== 1) continue;
+        if (DROP_ALL[k.tagName]) { node.removeChild(k); continue; }
+        if (!OK_TAGS[k.tagName]) {
+          clean(k);
+          while (k.firstChild) node.insertBefore(k.firstChild, k);
+          node.removeChild(k);
+          continue;
+        }
+        var allow = ['class', 'alt', 'loop', 'muted', 'autoplay', 'playsinline'];
+        if (k.tagName === 'IMG' || k.tagName === 'VIDEO' || k.tagName === 'SOURCE') allow.push('src');
+        if (k.tagName === 'DIV' || k.tagName === 'SPAN' || k.tagName === 'P') allow.push('style');
+        var attrs = Array.prototype.slice.call(k.attributes);
+        for (var j = 0; j < attrs.length; j++) {
+          var a = attrs[j].name.toLowerCase();
+          if (allow.indexOf(a) === -1) { k.removeAttribute(attrs[j].name); continue; }
+          if (a === 'src' && !/^https:\/\//.test(k.getAttribute(attrs[j].name) || '')) k.removeAttribute(attrs[j].name);
+          if (a === 'style') {
+            var s = scrubCustomStyle(k.getAttribute('style'));
+            if (s) k.setAttribute('style', s); else k.removeAttribute('style');
+          }
+        }
+        clean(k);
+      }
+    }
+    clean(tpl.content);
+    return tpl.content.innerHTML;
+  }
+  function teardownCustom() {
+    var s = document.getElementById('packCustomCss');
+    if (s) s.remove();
+    var h = document.getElementById('packCustomHtml');
+    if (h) h.remove();
+  }
+  function applyCustom(custom) {
+    teardownCustom();
+    if (!custom) return;
+    if (custom.css) {
+      var st = document.createElement('style');
+      st.id = 'packCustomCss';
+      st.textContent = String(custom.css).slice(0, 8000);
+      document.head.appendChild(st);
+    }
+    if (custom.html) {
+      var layer = document.createElement('div');
+      layer.id = 'packCustomHtml';
+      layer.setAttribute('aria-hidden', 'true');
+      // Styled inline (not in sidebar.css) so the layer is positioned
+      // correctly even under a stale cached stylesheet.
+      layer.style.cssText = 'position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;';
+      layer.innerHTML = sanitizeCustomHtml(custom.html);
+      var media = layer.querySelectorAll('img,video');
+      for (var i = 0; i < media.length; i++) {
+        media[i].style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      }
+      document.body.insertBefore(layer, document.body.firstChild);
+    }
+  }
+
   /* ── Canvas scenes (the only code a pack can invoke, by id + params) ── */
   function fitCanvas(cv) {
     var dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -286,6 +363,7 @@
     state.manifest = manifest; state.slug = slug || manifest.slug || null;
     applyVars(manifest);
     buildBackground(manifest);
+    applyCustom(manifest.custom);
     mountSidebar();
   }
   function persist(slug, manifest) {
@@ -305,7 +383,7 @@
   function clearPack() {
     state.manifest = null; state.slug = null;
     persist(null);
-    clearVars(); teardownBg(); mountSidebar();
+    clearVars(); teardownBg(); teardownCustom(); mountSidebar();
   }
   function storedSlug() {
     try { return localStorage.getItem(PACK_KEY); } catch (e) { return null; }
@@ -337,6 +415,7 @@
   window.CudicTheme = {
     boot: boot, applyPack: applyPack, installPack: installPack, clearPack: clearPack,
     mountSidebar: mountSidebar, storedSlug: storedSlug,
+    applyCustom: applyCustom, sanitizeCustomHtml: sanitizeCustomHtml,
     previewScene: function (canvas, scene, params) {
       if (reduced() || !SCENES[scene]) return null;
       return SCENES[scene](canvas, params || {});

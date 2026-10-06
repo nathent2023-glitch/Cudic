@@ -71,8 +71,9 @@ npm run dev          # vite dev server
 - **Rebuild Studio after editing anything under `studio/src/`** — `public/studio/`
   is gitignored, so what you see in the browser is always the last build.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
-  (currently **v16**) — pages cache CSS aggressively. Same for
-  `sidebar.js?v=N` / `client.js?v=N` (currently **v3**) after editing those.
+  (currently **v19**) — pages cache CSS aggressively. Same for
+  `sidebar.js?v=N` (currently **v3**) / `client.js?v=N` (currently **v3**) after editing those.
+  New shared scripts take `?v=1` (`ctheme.js`, `csel.js`).
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
   and check the console. Playwright MCP is **disabled**; the browser tools that
   work here are `chrome-devtools` (screenshots return media inline when no
@@ -255,6 +256,10 @@ return keyed.indexOf(pid) !== -1;                     // or you have that key
 - **No endpoint** (Anthropic, Perplexity…): curated `models[]` + note "curated".
 - Results merge into `LISTS[pid]`; errors land in `FETCHERR[pid]` and render
   inline as `⚠ <provider> says: …` — they used to vanish silently.
+- Lists persist in settings with fetch timestamps (`fetchedAt`); eligible
+  catalogs (public/local/keyed) auto-refresh in the background when older
+  than 24h (`refreshModels`, staggered 800ms). `ai:saveSettings` preserves
+  both maps — it used to wipe them.
 - `fetchModels` (`llm.ts`) handles shapes: `j.data ?? j.models`, string-or-object
   entries, and Google's `models/gemini-…` prefix stripping.
 
@@ -332,6 +337,7 @@ and an active key.
 glox.saveProject | glox.importFiles | glox.importFolder | glox.exportProject
 glox.publishProject | glox.unpublishProject | glox.deleteProject
 glox.setThumbnail | glox.openPreview | glox.run | glox.leaveStudio | glox.toggleSidebar
+glox.runPython | glox.installPythonPackage | glox.addPackage
 cudic ai:  Cudic AI: Open chat
 ```
 Note the **`glox.` prefix is intentional and kept** — command IDs and storage keys
@@ -341,6 +347,27 @@ the Supabase anon key storage key still says `sb-opimjwmgmzwapkzgxvhk-…`.
 `glox.ts` builds a preview by **assembling project files**: inlining local CSS/JS
 into the HTML, resolving `data:`/relative refs against the project map, wrapping
 legacy single-file games. `assemble()` / `injectAssetUrls()` / `previewHtmlFor()`.
+
+### Runtimes (no terminal, no backend exec — browsers can't run OS programs)
+- **Python**: `glox.runPython` (Run routes `.py` files here too) executes the open
+  file with Pyodide 0.26.4 (WASM, jsdelivr CDN, ~10MB first load) inside the
+  preview frame; `micropip` preloaded. `glox.installPythonPackage` inserts
+  `import micropip` + `await micropip.install("name")` at the top of the file.
+- **npm packages**: preview `assemble()` rewrites bare imports to `esm.sh` URLs
+  (`rewriteBareImports`), skipping names the project's own importmap pins.
+  Static CSS imports (`import 'pkg/style.css'`) lift to `<link>` tags;
+  dynamic `import('*.css')` can't lift and fails at runtime (documented).
+  `glox.addPackage` inserts a full `https://esm.sh/<pkg>` import (works in
+  previews AND published games — publish pipeline untouched by design).
+  Inline scripts carrying static import/export get `type="module"` automatically
+  (`scriptTag`); the legacy single-file preview hoists imports above its console
+  shim (`splitImports`). Pure helpers live in `src/npmutil.ts` (zero imports);
+  unit-test with `esbuild src/npmutil.ts --format=cjs` + node assertions.
+  Limits (physics, not missing features): no Node built-ins (`fs`, `net`,
+  `child_process`), no native binaries, no `require()`, no build scripts.
+- **Legacy scene games**: classic-editor rows carry code in `scene` with no
+  `files`; Studio `bootProject` converts them on the fly via `sceneToFiles`
+  (same module) into an editable single-file game — saving persists it.
 
 ### Thumbnails
 `games.thumbnail` (text, data-URL) — column, PUT field, and both `/api/games`
@@ -443,7 +470,7 @@ Read it before building any classic-page screen. Headlines:
 8. **`public/studio/` is gitignored** — a fresh clone has no `/studio` until
    `cd studio && npm run build` (or Vercel's `buildCommand` runs).
 9. **No `&&`** — PowerShell 5.1. Use `;` and `if ($?) { }`.
-10. **CSS/JS cache** — bump `sidebar.css?v=N` (v16) on every page after editing it;
+10. **CSS/JS cache** — bump `sidebar.css?v=N` (v19) on every page after editing it;
   same for versioned `sidebar.js` / `client.js` (v3).
 11. **Restart the server** after any `server.js` edit; **rebuild Studio** after any
     `studio/src` edit. Neither auto-reloads.

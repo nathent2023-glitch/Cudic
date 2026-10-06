@@ -1268,7 +1268,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (String(description || '').length > 500) return 'Description is too long (500 max).';
     if (!Number.isInteger(price) || price < 0 || price > 100000) return 'Price must be 0–100000 coins.';
     if (!m || typeof m !== 'object' || Array.isArray(m)) return 'Invalid manifest.';
-    const top = ['colors', 'fonts', 'background', 'icons', 'motion', 'radius', 'tags', 'sidebar'];
+    const top = ['colors', 'fonts', 'background', 'icons', 'motion', 'radius', 'tags', 'sidebar', 'custom'];
     for (const k of Object.keys(m)) if (!top.includes(k)) return 'Unknown manifest section: ' + k + '.';
     const c = m.colors || {};
     if (typeof c !== 'object') return 'Invalid colors.';
@@ -1308,6 +1308,13 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (m.sidebar !== undefined) {
       if (!m.sidebar || typeof m.sidebar !== 'object') return 'Invalid sidebar.';
       if (m.sidebar.background !== undefined && (typeof m.sidebar.background !== 'string' || !m.sidebar.background.startsWith('https://') || m.sidebar.background.length > 500)) return 'Sidebar background must be an https URL.';
+    }
+    // Custom author layer (Advanced tab): stored raw, sanitized at render
+    // time by the theme engine. Length-capped only — never executed.
+    if (m.custom !== undefined) {
+      if (!m.custom || typeof m.custom !== 'object') return 'Invalid custom layer.';
+      if (m.custom.css !== undefined && (typeof m.custom.css !== 'string' || m.custom.css.length > 8000)) return 'Custom CSS is too long (8000 max).';
+      if (m.custom.html !== undefined && (typeof m.custom.html !== 'string' || m.custom.html.length > 8000)) return 'Custom HTML is too long (8000 max).';
     }
     return null;
   }

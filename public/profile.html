@@ -17,7 +17,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/og.png">
   <link rel="canonical" content="https://cudic.vercel.app/profile">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-  <link rel="stylesheet" href="/sidebar.css?v=18">
+  <link rel="stylesheet" href="/sidebar.css?v=19">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .profile-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -77,7 +77,7 @@
           </div>
         </div>
         <div class="field"><label>Display name</label><input type="text" id="displayName" maxlength="24"></div>
-        <button class="btn-primary" id="saveName">Save changes</button>
+        <button class="btn btn-primary" id="saveName">Save changes</button>
         <div class="status-msg" id="nameMsg"></div>
       </div>
       <div class="profile-card">
@@ -86,7 +86,7 @@
         <div class="field"><label>Email</label><input type="text" id="emailField" readonly></div>
         <div class="field"><label>New password</label><input type="password" id="newPass" autocomplete="new-password"></div>
         <div class="field"><label>Confirm new password</label><input type="password" id="newPass2" autocomplete="new-password"></div>
-        <button class="btn-secondary" id="savePass">Change password</button>
+        <button class="btn btn-secondary" id="savePass">Change password</button>
         <div class="status-msg" id="passMsg"></div>
       </div>
       <div class="profile-card">
@@ -123,13 +123,13 @@
         </div>
       </div>
       <div class="profile-card">
-        <button class="btn-danger" id="signOutBtn">Sign out</button>
+        <button class="btn btn-danger" id="signOutBtn">Sign out</button>
       </div>
     </div>
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=2"></script>
+  <script src="/sidebar.js?v=3"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
