@@ -8,3 +8,8 @@ agora.db-wal
 .playwright-mcp/
 # Phase 0: studio build output is local-only (Vercel build lands in a later phase)
 public/studio/
+# Local-only, never commit: agent skills, lockfiles, CLI temp, personal assets
+.agents/
+skills-lock.json
+supabase/.temp/
+public/3d_models/
