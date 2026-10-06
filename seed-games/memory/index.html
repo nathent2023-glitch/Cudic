@@ -47,6 +47,7 @@
   <div id="grid"></div>
   <div id="win"><h2>You cleared it!</h2><p id="winSub"></p><button class="action" id="again">Play again</button></div>
   <button class="action" id="newBtn">Shuffle new game</button>
+<script src="/cudic-save.js?v=1"></script>
 <script>
 (function () {
   var GLYPHS = ['★', '♥', '●', '▲', '✚', '◆', '◉', '✖'];
@@ -54,6 +55,25 @@
   var movesEl = document.getElementById('moves'), pairsEl = document.getElementById('pairs'), timeEl = document.getElementById('time');
   var win = document.getElementById('win'), winSub = document.getElementById('winSub');
   var first, lock, moves, found, secs, clock;
+  var best = { moves: 0, time: 0 };
+  var CS = window.CudicSave || null;
+  function better(a, b) {
+    if (!b || !b.moves) return false;
+    if (!a || !a.moves) return true;
+    if (b.moves !== a.moves) return b.moves < a.moves;
+    return (b.time || 9999) < (a.time || 9999);
+  }
+  function saveBest() {
+    if (CS) { CS.save({ moves: best.moves, time: best.time }); return; }
+    try { localStorage.setItem('cudic-memory-best', JSON.stringify(best)); } catch (e) {}
+  }
+  try {
+    var oldBest = JSON.parse(localStorage.getItem('cudic-memory-best') || 'null');
+    if (better(best, oldBest)) best = oldBest;
+  } catch (e) {}
+  if (CS) CS.load({ legacyKey: 'cudic-memory-best' }).then(function (d) {
+    if (better(best, d)) best = { moves: d.moves, time: d.time || 0 };
+  }).catch(function () {});
 
   function reset() {
     var deck = GLYPHS.concat(GLYPHS);
@@ -99,7 +119,10 @@
         pairsEl.textContent = found + '/8';
         if (found === 8) {
           clearInterval(clock);
-          winSub.textContent = moves + ' moves in ' + secs + ' seconds.';
+          var rec = { moves: moves, time: secs };
+          if (better(best, rec)) { best = rec; saveBest(); }
+          winSub.textContent = moves + ' moves in ' + secs + ' seconds.' +
+            (best.moves ? ' Best: ' + best.moves + ' moves · ' + best.time + 's.' : '');
           win.classList.add('show');
         }
       }, 350);

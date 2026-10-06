@@ -357,6 +357,91 @@
           playerStarted = true;
           if (e.data.level === 'error') playerFail('Game error: ' + e.data.text);
         });
+        // ── Cloud saves: the game frame is sandboxed and never sees the
+        // login token, so this page mediates. Game -> run frame -> here.
+        // Guests persist nothing; they get one sign-in nudge per session.
+        var saveSession = null, cloudSave = null;
+        var saveKey = 'cudic-save:' + id;
+        function saveHeaders(extra) {
+          var h = extra || {};
+          if (saveSession) h['Authorization'] = 'Bearer ' + saveSession.token;
+          try { if (typeof seatId === 'function') { var s = seatId(); if (s) h['X-Seat'] = s; } } catch (e) {}
+          return h;
+        }
+        function loadCloudSave() {
+          fetch(apiBase() + '/api/saves/' + encodeURIComponent(id), { headers: saveHeaders() })
+            .then(function (r) {
+              if (r.status === 403) {
+                r.json().then(function (d) {
+                  if (d && d.error === 'session_superseded' && typeof pauseSeat === 'function') pauseSeat('device');
+                }).catch(function () {});
+                return null;
+              }
+              if (!r.ok) return null;
+              return r.json();
+            })
+            .then(function (d) { if (d && d.data) cloudSave = { data: d.data, updated_at: d.updated_at }; })
+            .catch(function () {});
+        }
+        function nagGuest() {
+          try {
+            if (sessionStorage.getItem('cudic-save-nag:' + id)) return;
+            sessionStorage.setItem('cudic-save-nag:' + id, '1');
+          } catch (e) { return; }
+          var n = document.createElement('div');
+          n.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel-raised);border:1px solid var(--signal);color:var(--text-primary);border-radius:12px;padding:12px 18px;font-size:0.85rem;font-weight:600;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.3);max-width:90vw;text-align:center';
+          var sp = document.createElement('span');
+          sp.textContent = 'Sign up or log in to sync your progress across every device.';
+          var go = document.createElement('a');
+          go.href = '/login'; go.textContent = 'Sign in';
+          go.className = 'btn btn-primary';
+          go.style.cssText = 'margin-left:12px;padding:6px 14px;font-size:0.8rem;text-decoration:none';
+          var x = document.createElement('button');
+          x.textContent = '×'; x.setAttribute('aria-label', 'Dismiss');
+          x.style.cssText = 'background:none;border:none;color:var(--text-tertiary);font-size:1rem;cursor:pointer;margin-left:8px';
+          x.onclick = function () { n.remove(); };
+          n.appendChild(sp); n.appendChild(go); n.appendChild(x);
+          document.body.appendChild(n);
+          setTimeout(function () { if (n.parentNode) n.remove(); }, 12000);
+        }
+        getSession().then(function (s) {
+          saveSession = s;
+          if (s) loadCloudSave();
+          else nagGuest();
+        });
+        window.addEventListener('message', function (e) {
+          var d = e.data || {};
+          if (!d || (d.type !== 'cudic-save-get' && d.type !== 'cudic-save-set' && d.type !== 'cudic-save-del')) return;
+          try { if (!f || e.source !== f.contentWindow) return; } catch (err) { return; }
+          if (d.type === 'cudic-save-get') {
+            try { f.contentWindow.postMessage({ type: 'cudic-save-data', req: d.req, save: cloudSave, authed: !!saveSession, storageKey: saveKey }, '*'); } catch (err) {}
+          } else if (!saveSession) {
+            try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: false, error: 'signed-out' }, '*'); } catch (err) {}
+          } else if (d.type === 'cudic-save-set') {
+            if (!d.data || typeof d.data !== 'object' || Array.isArray(d.data) || JSON.stringify(d.data).length > 100 * 1024) {
+              try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: false, error: 'bad-data' }, '*'); } catch (err) {}
+              return;
+            }
+            fetch(apiBase() + '/api/saves/' + encodeURIComponent(id), { method: 'PUT', headers: saveHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ data: d.data }) })
+              .then(function (r) {
+                if (r.status === 403) { if (typeof pauseSeat === 'function') pauseSeat('device'); }
+                return r.json().catch(function () { return {}; });
+              })
+              .then(function (j) {
+                var ok = !j.error;
+                if (ok) cloudSave = { data: d.data, updated_at: j.updated_at };
+                try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: ok, error: j.error }, '*'); } catch (err) {}
+              })
+              .catch(function () {
+                try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: false, error: 'network' }, '*'); } catch (err) {}
+              });
+          } else if (d.type === 'cudic-save-del') {
+            fetch(apiBase() + '/api/saves/' + encodeURIComponent(id), { method: 'DELETE', headers: saveHeaders() })
+              .then(function () { cloudSave = null; })
+              .catch(function () {});
+            try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: true }, '*'); } catch (err) {}
+          }
+        });
         setTimeout(function(){
           if (!playerStarted) playerFail('Player did not start. Hard-refresh (Ctrl+Shift+R); if it persists, open the project in Studio and re-save.');
         }, 6000);

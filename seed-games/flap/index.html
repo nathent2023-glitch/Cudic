@@ -41,6 +41,7 @@
     <div id="over"><h2>Splat!</h2><p id="overSub"></p><button id="again">Try again</button></div>
   </div>
   <p class="hint">Click, tap, or Space to flap</p>
+<script src="/cudic-save.js?v=1"></script>
 <script>
 (function () {
   var W = 440, H = 560, BX = 110, BR = 15, GRAV = 0.45, FLAP = -7.5;
@@ -51,6 +52,17 @@
   var y, vy, pipes, score, best, state, frame;
   try { best = parseInt(localStorage.getItem('cudic-flap-best') || '0', 10) || 0; } catch (e) { best = 0; }
   bestEl.textContent = best;
+  var CS = window.CudicSave || null;
+  function saveBest() {
+    if (CS) { CS.save({ best: best }); return; }
+    try { localStorage.setItem('cudic-flap-best', String(best)); } catch (e) {}
+  }
+  if (CS) CS.load({
+    legacyKey: 'cudic-flap-best',
+    legacyMap: function (n) { n = parseInt(n, 10) || 0; return { best: n }; }
+  }).then(function (d) {
+    if (d && typeof d.best === 'number' && d.best > best) { best = d.best; bestEl.textContent = best; }
+  }).catch(function () {});
 
   function reset() {
     y = H / 2; vy = 0; pipes = []; score = 0; frame = 0;
@@ -67,7 +79,7 @@
     state = 'over';
     if (score > best) {
       best = score; bestEl.textContent = best;
-      try { localStorage.setItem('cudic-flap-best', String(best)); } catch (e) {}
+      saveBest();
     }
     overSub.textContent = 'You scored ' + score + ' point' + (score === 1 ? '' : 's') + '.';
     over.classList.add('show');

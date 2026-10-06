@@ -45,13 +45,13 @@
   <button id="big" aria-label="Click">◉</button>
   <div id="shop"></div>
   <button id="reset">reset everything</button>
+<script src="/cudic-save.js?v=1"></script>
 <script>
 (function () {
   var S = { n: 0, click: 1, cps: 0, cursors: 0, mults: 0 };
-  try {
-    var saved = JSON.parse(localStorage.getItem('cudic-clicker') || 'null');
-    if (saved && typeof saved.n === 'number') S = saved;
-  } catch (e) {}
+  var CS = window.CudicSave || null;
+  var ready = !CS;
+  function validSave(d) { return d && typeof d.n === 'number'; }
   var countEl = document.getElementById('count'), rateEl = document.getElementById('rate');
   var shopEl = document.getElementById('shop');
   var UPGRADES = [
@@ -70,7 +70,27 @@
     while (v >= 1000 && u < units.length - 1) { v /= 1000; u++; }
     return (v >= 100 ? Math.floor(v) : Math.floor(v * 10) / 10) + units[u];
   }
-  function save() { try { localStorage.setItem('cudic-clicker', JSON.stringify(S)); } catch (e) {} }
+  function save() {
+    if (CS) {
+      if (ready) CS.save({ n: S.n, click: S.click, cps: S.cps, cursors: S.cursors, mults: S.mults });
+      return;
+    }
+    try { localStorage.setItem('cudic-clicker', JSON.stringify(S)); } catch (e) {}
+  }
+  function bootSave() {
+    if (!CS) {
+      try {
+        var saved = JSON.parse(localStorage.getItem('cudic-clicker') || 'null');
+        if (validSave(saved)) S = saved;
+      } catch (e) {}
+      paint();
+      return;
+    }
+    CS.load({ legacyKey: 'cudic-clicker' }).then(function (d) {
+      if (validSave(d)) S = d;
+      ready = true; paint();
+    }).catch(function () { ready = true; paint(); });
+  }
   function paint() {
     countEl.textContent = fmt(S.n);
     rateEl.textContent = S.click + ' per click · ' + S.cps + ' per second';
@@ -101,6 +121,7 @@
     });
   }
   document.getElementById('big').addEventListener('click', function (e) {
+    if (!ready) return;
     S.n += S.click;
     var p = document.createElement('div');
     p.className = 'pop';
@@ -120,7 +141,7 @@
     if (S.cps > 0) { S.n += S.cps / 10; save(); paint(); }
   }, 100);
   setInterval(save, 5000);
-  paint();
+  bootSave();
 })();
 </script>
 </body>

@@ -158,6 +158,7 @@ POST /api/ai/fetch              ← the AI proxy (see §7)
 GET  /favicon.ico               → serves public/cudic_sfsvg.svg
 GET  /themes                    theme pack store
 POST /api/session/claim|heartbeat  DELETE /api/session
+GET|PUT|DELETE /api/saves/:gameId  ← account-bound saves (100KB cap)
 + static file serving from public/
 ```
 WebSocket: `new WebSocketServer({ server })` — lobby presence, typing, broadcast,
@@ -180,6 +181,16 @@ the server can't tell tabs apart; only the leader beats. Seat travels as
 (RLS locked, service key only). Tested end-to-end (20 checks, temp user,
 cleaned up) — see `/api/session/claim|heartbeat` + `seatAlive()`.
 
+### Cloud game saves (progress follows the account)
+Table `game_saves` (pk(user_id, game_id), `data` jsonb, RLS locked).
+Endpoints above; all seat-checked (403 `session_superseded`). Games never
+touch the token (sandboxed iframes) — `public/cudic-save.js` (`CudicSave.load/
+save/clear`, local mirror + debounced cloud, legacy-key import) talks to the
+parent via postMessage; `view.html` mediates with its own session and shows
+guests a one-time sign-in nudge (no guest persistence). Last-write-wins by
+`updated_at`; mid-run boards don't sync (bests + full clicker-style state
+only). Tested end-to-end (17 checks, temp user+games, cleaned up).
+
 ### Env (all in gitignored `.env`, never commit)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `PORT`,
 plus optional `SMTP_HOST/PORT/USER/PASS`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRET`.
@@ -192,7 +203,7 @@ plus optional `SMTP_HOST/PORT/USER/PASS`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRE
 
 Supabase project `opimjwmgmzwapkzgxvhk`.
 Tables: `users`, `lobbies`, `messages`, `games`, `game_comments`, `servers`,
-`server_members`, `active_sessions`. Trigger `on_auth_user_created` creates the profile on signup.
+`server_members`, `active_sessions`, `game_saves`. Trigger `on_auth_user_created` creates the profile on signup.
 
 Migrations:
 - `20260919181404_studio_files.sql` — `games.files jsonb` + storage policies

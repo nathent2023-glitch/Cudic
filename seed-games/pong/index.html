@@ -35,12 +35,13 @@
 </head>
 <body>
   <h1><span>◆</span> Pong</h1>
-  <div class="hud"><span>You <b id="ps">0</b></span><span><b id="cs">0</b> CPU</span></div>
+  <div class="hud"><span>You <b id="ps">0</b></span><span><b id="cs">0</b> CPU</span><span>All-time <b id="tally">0–0</b></span></div>
   <div id="wrap">
     <canvas id="cv" width="600" height="400"></canvas>
     <div id="over"><h2 id="overTitle">You win!</h2><p>First to 5 takes it.</p><button id="again">Play again</button></div>
   </div>
   <p class="hint">Move mouse, drag, or ↑ ↓ keys · Click / Space to serve</p>
+<script src="/cudic-save.js?v=1"></script>
 <script>
 (function () {
   var W = 600, H = 400, PH = 84, PW = 10, WIN = 5;
@@ -48,6 +49,21 @@
   var psEl = document.getElementById('ps'), csEl = document.getElementById('cs');
   var over = document.getElementById('over'), overTitle = document.getElementById('overTitle');
   var py = H / 2, cy = H / 2, pv = 0, ball, ps = 0, cs = 0, state = 'serve', pauseT = 0;
+  var tally = { w: 0, l: 0 };
+  var CS = window.CudicSave || null;
+  function paintTally() { document.getElementById('tally').textContent = tally.w + '–' + tally.l; }
+  function saveTally() {
+    if (CS) { CS.save({ w: tally.w, l: tally.l }); return; }
+    try { localStorage.setItem('cudic-pong-tally', JSON.stringify(tally)); } catch (e) {}
+  }
+  try {
+    var old = JSON.parse(localStorage.getItem('cudic-pong-tally') || 'null');
+    if (old && typeof old.w === 'number') tally = old;
+  } catch (e) {}
+  paintTally();
+  if (CS) CS.load({ legacyKey: 'cudic-pong-tally' }).then(function (d) {
+    if (d && typeof d.w === 'number') { tally = { w: d.w, l: d.l || 0 }; paintTally(); }
+  }).catch(function () {});
 
   function serve(toward) {
     ball = { x: W / 2, y: H / 2, vx: (toward || (Math.random() < 0.5 ? 1 : -1)) * 4.2, vy: (Math.random() * 4 - 2) };
@@ -62,6 +78,8 @@
   function point(winner) {
     if (winner === 'p') { ps++; psEl.textContent = ps; } else { cs++; csEl.textContent = cs; }
     if (ps >= WIN || cs >= WIN) {
+      if (ps >= WIN) tally.w++; else tally.l++;
+      paintTally(); saveTally();
       overTitle.textContent = ps >= WIN ? 'You win!' : 'CPU wins!';
       over.classList.add('show');
       state = 'over';

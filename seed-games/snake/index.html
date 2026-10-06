@@ -41,6 +41,7 @@
     <div id="over"><h2>Game over</h2><p id="overSub"></p><button id="again">Play again</button></div>
   </div>
   <p class="hint">Arrows / WASD or swipe · Space to restart</p>
+<script src="/cudic-save.js?v=1"></script>
 <script>
 (function () {
   var N = 21, CELL = 420 / N;
@@ -50,6 +51,17 @@
   var snake, dir, queue, food, score, best, timer, alive, step;
   try { best = parseInt(localStorage.getItem('cudic-snake-best') || '0', 10) || 0; } catch (e) { best = 0; }
   bestEl.textContent = best;
+  var CS = window.CudicSave || null;
+  function saveBest() {
+    if (CS) { CS.save({ best: best }); return; }
+    try { localStorage.setItem('cudic-snake-best', String(best)); } catch (e) {}
+  }
+  if (CS) CS.load({
+    legacyKey: 'cudic-snake-best',
+    legacyMap: function (n) { n = parseInt(n, 10) || 0; return { best: n }; }
+  }).then(function (d) {
+    if (d && typeof d.best === 'number' && d.best > best) { best = d.best; bestEl.textContent = best; }
+  }).catch(function () {});
 
   function reset() {
     snake = [{ x: 10, y: 10 }, { x: 9, y: 10 }, { x: 8, y: 10 }];
@@ -90,7 +102,7 @@
       scoreEl.textContent = score;
       if (score > best) {
         best = score; bestEl.textContent = best;
-        try { localStorage.setItem('cudic-snake-best', String(best)); } catch (e) {}
+        saveBest();
       }
       if (step > 55) { step -= 3; clearInterval(timer); timer = setInterval(tick, step); }
       placeFood();

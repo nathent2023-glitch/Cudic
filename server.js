@@ -1839,6 +1839,61 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     return;
   }
 
+  // ── API: account-bound game saves (one row per user+game) ────
+  // Progress follows the login across days and devices. Seat-checked:
+  // a kicked device gets 403 session_superseded, never a silent overwrite.
+  // Games never call these directly (sandboxed iframes can't hold the
+  // token) — view.html mediates via postMessage. 100KB cap per save.
+  function playableGame(g, userId) {
+    return !!g && (!!g.published || g.owner_id === userId);
+  }
+  if (url.pathname.startsWith('/api/saves/') && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    const gid = url.pathname.split('/')[3] || '';
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    const { data: g } = await supabase.from('games').select('id, published, owner_id').eq('id', gid).single();
+    if (!playableGame(g, user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found.' })); return; }
+    const { data: row } = await supabase.from('game_saves').select('data, updated_at').eq('user_id', user.id).eq('game_id', gid).single();
+    if (!row) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'No save.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ data: row.data, updated_at: row.updated_at }));
+    return;
+  }
+  if (url.pathname.startsWith('/api/saves/') && req.method === 'PUT') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    const gid = url.pathname.split('/')[3] || '';
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    const { data: g } = await supabase.from('games').select('id, published, owner_id').eq('id', gid).single();
+    if (!playableGame(g, user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const data = body.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save must be an object.' })); return; }
+    if (JSON.stringify(data).length > 100 * 1024) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save too large (100KB max).' })); return; }
+    const now = new Date().toISOString();
+    await supabase.from('game_saves').upsert(
+      { user_id: user.id, game_id: gid, data, updated_at: now },
+      { onConflict: 'user_id,game_id' }
+    );
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, updated_at: now }));
+    return;
+  }
+  if (url.pathname.startsWith('/api/saves/') && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    const gid = url.pathname.split('/')[3] || '';
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    await supabase.from('game_saves').delete().eq('user_id', user.id).eq('game_id', gid);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   // ── API: update game ──────────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'PUT') {
     cors(res);
