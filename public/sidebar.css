@@ -199,6 +199,32 @@ body {
   white-space: nowrap;
 }
 
+/* Paused seat banner: one live seat per account. Shown when another
+   device took over (403 session_superseded) or another tab holds the
+   leader lock. Take over mints a fresh seat, claims, and reloads. */
+#seatBanner {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 60px;
+  right: 0;
+  z-index: 9998;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: var(--panel-raised);
+  border-bottom: 1px solid var(--danger);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+}
+#seatBanner #seatTakeover {
+  padding: 6px 16px;
+  font-size: 0.8rem;
+}
+
 .nav-section-label {
   font-size: 0.75rem;
   color: var(--text-tertiary);

@@ -213,6 +213,14 @@ export function suggestModels(input: string, list: string[], n = 3): string[] {
 }
 
 // Fetch that routes loopback direct and cloud via the Cudic proxy.
+function seatHeader(): Record<string, string> {
+  try {
+    const s = localStorage.getItem('cudic_seat');
+    return s ? { 'X-Seat': s } : {};
+  } catch {
+    return {};
+  }
+}
 async function routedFetch(url: string, headers: Record<string, string>, body: unknown, signal: AbortSignal): Promise<Response> {
   if (isLoopbackUrl(url)) {
     return fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });
@@ -220,7 +228,7 @@ async function routedFetch(url: string, headers: Record<string, string>, body: u
   if (!supaToken) throw new Error('Sign in on the Cudic site first (cloud models go through your login).');
   return fetch('/api/ai/fetch', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supaToken },
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supaToken, ...seatHeader() },
     body: JSON.stringify({ url, method: 'POST', headers, body }),
     signal
   });
@@ -302,7 +310,7 @@ export async function fetchModels(preset: ProviderPreset, key: string, baseOverr
     if (!supaToken) throw new Error('Sign in on the Cudic site first.');
     return fetch('/api/ai/fetch', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supaToken },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + supaToken, ...seatHeader() },
       body: JSON.stringify({ url: target, method: 'GET', headers: h })
     });
   };

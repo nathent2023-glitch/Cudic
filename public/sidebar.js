@@ -191,6 +191,15 @@
     }catch(e){window._authError=(e&&e.message)||'Sign-in failed';}
     try{window.currentToken=window.currentToken||await getAuthToken();}catch(e){}
     try{window.dispatchEvent(new Event('glox:auth'));}catch(e){}
+    // Single-seat sessions: fresh OAuth login mints a new seat (takeover);
+    // normal loads keep the existing seat. Heartbeat runs in the leader tab.
+    try{
+      if(typeof startSeatSystem==='function'&&window.currentToken){
+        if(attempted&&typeof mintSeat==='function')mintSeat();
+        if(typeof claimSeat==='function'){claimSeat();}
+        startSeatSystem();
+      }
+    }catch(e){}
     loadSidebarUser();
     loadServers();
     try{

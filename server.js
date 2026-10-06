@@ -317,7 +317,8 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   }
 
   // ── API: get session ───────────────────────────────────────────
-  if (url.pathname === '/api/session') {
+  // GET-only: DELETE /api/session (seat release) lives further below.
+  if (url.pathname === '/api/session' && req.method === 'GET') {
     cors(res);
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '');
@@ -744,6 +745,46 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (!m) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Join this server first.' })); return; }
     await supabase.from('server_members').update({ rules_accepted_at: new Date().toISOString() }).eq('server_id', id).eq('user_id', user.id);
     sendConversationsDirty();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: single-seat session claim / heartbeat / release ────
+  // Claim always succeeds (it IS the takeover). Heartbeat doubles as a
+  // claim refresh. Release deletes only the matching seat, best effort.
+  if (url.pathname === '/api/session/claim' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const seat = String(body.seat || '').substring(0, 64);
+    if (!seat) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Missing seat.' })); return; }
+    await claimSeatRow(user.id, seat);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url.pathname === '/api/session/heartbeat' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const seat = String(body.seat || '').substring(0, 64);
+    if (!seat) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Missing seat.' })); return; }
+    // Unlike claim, heartbeat never takes over: if a different fresh seat
+    // holds the row, this tab lost — tell it so it pauses instead of
+    // fighting a silent takeover war one beat at a time.
+    if (!(await seatAlive(user.id, seat))) { seatDead(res); return; }
+    await claimSeatRow(user.id, seat);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url.pathname === '/api/session' && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const seat = String(body.seat || '').substring(0, 64);
+    if (seat) await supabase.from('active_sessions').delete().eq('user_id', user.id).eq('seat_id', seat);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;
@@ -1612,6 +1653,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
     const body = await readBody(req);
     let target;
     try { target = new URL(String(body.url || '')); } catch { target = null; }
@@ -2004,6 +2046,37 @@ function sendLobbyListToAll() {
   }
 }
 
+// ── Single-seat sessions ──────────────────────────────────────────
+// One live seat per account. The client mints a random seat id at login
+// (localStorage `cudic_seat`) and heartbeats it; a different fresh seat
+// means another device took over. No row = grandfathered free pass, so the
+// rollout never surprise-kicks anyone. Tabs share one login and elect a
+// leader client-side; the server can't tell tabs apart.
+const SEAT_TTL_MS = 90 * 1000;
+function seatFromReq(req) {
+  return String(req.headers['x-seat'] || '').substring(0, 64);
+}
+async function claimSeatRow(userId, seatId) {
+  await supabase.from('active_sessions').upsert(
+    { user_id: userId, seat_id: seatId, heartbeat_at: new Date().toISOString() },
+    { onConflict: 'user_id' }
+  );
+}
+async function seatAlive(userId, seatId) {
+  if (!seatId) return true;
+  const { data: row } = await supabase.from('active_sessions')
+    .select('seat_id, heartbeat_at').eq('user_id', userId).single();
+  if (!row) return true;
+  if (row.seat_id !== seatId) {
+    return (Date.now() - new Date(row.heartbeat_at).getTime()) > SEAT_TTL_MS;
+  }
+  return true;
+}
+function seatDead(res) {
+  res.writeHead(403, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'session_superseded' }));
+}
+
 // Save message to Supabase (fire and forget)
 async function saveMessage(lobbyName, userId, displayName, text) {
   try {
@@ -2138,6 +2211,11 @@ wss.on('connection', (ws) => {
         ws.send(JSON.stringify({ type: 'error', text: 'Sign in required.' }));
         return;
       }
+      const wseat = String(msg.seat || '').substring(0, 64);
+      if (!(await seatAlive(authed.id, wseat))) {
+        ws.send(JSON.stringify({ type: 'superseded' }));
+        return;
+      }
       const { data: lobbyRow } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('name', lobby).single();
       if (!lobbyRow || !(await canSeeLobby(authed.id, lobbyRow))) {
         if (lobbyRow && await needsRulesAccept(authed.id, lobbyRow)) {
@@ -2178,7 +2256,7 @@ wss.on('connection', (ws) => {
       }
       const entry = { username, ws, userId, avatar: authed.avatar };
       room.add(entry);
-      clients.set(ws, { username, lobby, userId, avatar: authed.avatar });
+      clients.set(ws, { username, lobby, userId, avatar: authed.avatar, seat: wseat });
 
       // Confirm join to this client
       ws.send(JSON.stringify({ type: 'joined', lobby, username }));
@@ -2199,6 +2277,10 @@ wss.on('connection', (ws) => {
     if (msg.type === 'message') {
       const info = clients.get(ws);
       if (!info) return;
+      if (!(await seatAlive(info.userId, info.seat))) {
+        ws.send(JSON.stringify({ type: 'superseded' }));
+        return;
+      }
       const text = (msg.text || '').trim();
       if (!text) return;
 

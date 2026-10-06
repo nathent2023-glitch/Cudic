@@ -3,41 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memory — made with Cudic</title>
+<title>Memory</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
-    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
-  h1 { font-size: 1.4rem; }
-  h1 span { color: #855CD6; }
-  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
-  .hud b { color: #FF8C1A; }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  h1 span { color: #58cc02; }
+  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.9rem;
+    font-weight: 800; text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; }
   #grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: min(92vw, 420px); }
-  .card { aspect-ratio: 1; border-radius: 10px; border: 1px solid #2a2a33; background: #141318;
-    color: transparent; font-size: 2rem; cursor: pointer; font-family: inherit;
-    display: flex; align-items: center; justify-content: center; transition: transform 0.12s, background 0.15s; }
-  .card:not(.done):hover { border-color: #855CD6; }
-  .card.open { background: #23232c; color: #dbe4ff; }
-  .card.done { background: #1d2b26; border-color: #4ec9b0; color: #4ec9b0; cursor: default; }
-  .card:active:not(.done) { transform: scale(0.95); }
+  .card { aspect-ratio: 1; border-radius: 14px; border: none; background: #58cc02;
+    color: #ffffff; font-size: 1.6rem; font-weight: 900; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 0 0 #46a302; transition: transform 0.08s, box-shadow 0.08s, background 0.15s; }
+  .card:active:not(.done):not(.open) { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  .card.open { background: #ffffff; color: #3c3c3c; border: 2px solid #e5e5e5;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  .card.done { background: #ffffff; color: #58cc02; border: 2px solid #58cc02;
+    box-shadow: 0 4px 0 0 #46a302; cursor: default; }
   #win { margin-top: 16px; display: none; flex-direction: column; gap: 10px;
-    align-items: center; text-align: center; }
+    align-items: center; text-align: center; background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 20px; padding: 20px 28px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
   #win.show { display: flex; }
-  #win p { color: #8b8b96; font-size: 0.9rem; }
-  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
-    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-  button:hover { filter: brightness(1.1); }
-  #newBtn { margin-top: 16px; background: #23232c; }
-  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+  #win h2 { font-weight: 900; text-transform: uppercase; }
+  #win p { color: #777777; font-size: 0.9rem; }
+  button.action { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 1rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302; transition: all 0.1s ease; }
+  button.action:active { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  #newBtn { margin-top: 16px; background: #ffffff; color: #777777; border: 2px solid #e5e5e5;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  #newBtn:active { transform: translateY(4px); box-shadow: none; }
 </style>
 </head>
 <body>
   <h1><span>◆</span> Memory</h1>
   <div class="hud"><span>Moves <b id="moves">0</b></span><span>Pairs <b id="pairs">0/8</b></span><span>Time <b id="time">0s</b></span></div>
   <div id="grid"></div>
-  <div id="win"><h2>You cleared it!</h2><p id="winSub"></p><button id="again">Play again</button></div>
-  <button id="newBtn">Shuffle new game</button>
-  <footer>Made with Cudic — fork it and make it yours.</footer>
+  <div id="win"><h2>You cleared it!</h2><p id="winSub"></p><button class="action" id="again">Play again</button></div>
+  <button class="action" id="newBtn">Shuffle new game</button>
 <script>
 (function () {
   var GLYPHS = ['★', '♥', '●', '▲', '✚', '◆', '◉', '✖'];
@@ -70,14 +79,17 @@
       timeEl.textContent = secs + 's';
     }, 1000);
   }
+  function showFace(c, faceUp) {
+    c.textContent = faceUp ? c.getAttribute('data-g') : '?';
+  }
   function flip(c) {
     if (lock || c.classList.contains('open') || c.classList.contains('done')) return;
     c.classList.add('open');
-    c.setAttribute('aria-label', 'Card showing ' + c.textContent);
+    showFace(c, true);
     if (!first) { first = c; return; }
     moves++;
     movesEl.textContent = moves;
-    if (first.textContent === c.textContent) {
+    if (first.getAttribute('data-g') === c.getAttribute('data-g')) {
       var a = first;
       first = null;
       setTimeout(function () {
@@ -96,15 +108,23 @@
       first = null;
       lock = true;
       setTimeout(function () {
-        b.classList.remove('open');
-        d.classList.remove('open');
+        showFace(b, false); b.classList.remove('open');
+        showFace(d, false); d.classList.remove('open');
         lock = false;
       }, 750);
     }
   }
-  document.getElementById('again').addEventListener('click', reset);
-  document.getElementById('newBtn').addEventListener('click', reset);
-  reset();
+  function deal() {
+    reset();
+    var cards = grid.querySelectorAll('.card');
+    for (var i = 0; i < cards.length; i++) {
+      cards[i].setAttribute('data-g', cards[i].textContent);
+      showFace(cards[i], false);
+    }
+  }
+  document.getElementById('again').addEventListener('click', deal);
+  document.getElementById('newBtn').addEventListener('click', deal);
+  deal();
 })();
 </script>
 </body>

@@ -76,6 +76,15 @@ async function api(path, opts) {
   opts.headers = Object.assign({ 'Authorization': 'Bearer ' + TOKEN }, opts.headers || {});
   const r = await fetch(apiHost() + path, opts);
   if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+  if (r.status === 403) {
+    try {
+      const d = await r.clone().json();
+      if (d && d.error === 'session_superseded') {
+        if (typeof pauseSeat === 'function') pauseSeat('device');
+        throw new Error('seat');
+      }
+    } catch (e) { if (e && e.message === 'seat') throw e; }
+  }
   return r.json();
 }
 
@@ -137,9 +146,16 @@ function connectWs() {
   };
 }
 function sendJoin(name) {
-  const payload = JSON.stringify({ type: 'join', lobby: name, token: TOKEN });
+  var seat = '';
+  try { if (typeof seatId === 'function') seat = seatId(); } catch (e) {}
+  const payload = JSON.stringify({ type: 'join', lobby: name, token: TOKEN, seat: seat });
   if (wsReady) ws.send(payload); else pendingJoin = payload;
 }
+// Seat lost (another device took over, or tab election): pause + banner.
+// Take over reloads the page for a clean resume.
+window.addEventListener('focus', function () {
+  try { if (current && wsReady && typeof sendJoin === 'function') sendJoin(current.name); } catch (e) {}
+});
 // Ensure server knows we left when navigating away
 window.addEventListener('pagehide', function () { try { ws.close(); } catch (e) {} });
 window.addEventListener('beforeunload', function () { try { ws.close(); } catch (e) {} });
@@ -149,6 +165,9 @@ function onWs(e) {
   try { msg = JSON.parse(e.data); } catch (err) { return; }
   switch (msg.type) {
     case 'joined':
+      break;
+    case 'superseded':
+      try { if (typeof pauseSeat === 'function') pauseSeat('device'); } catch (e) {}
       break;
     case 'message':
       if (current && msg.lobby === current.name) {

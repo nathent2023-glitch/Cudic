@@ -157,6 +157,7 @@ GET  /api/games                 GET|POST /api/games     GET /api/games/mine
 POST /api/ai/fetch              ← the AI proxy (see §7)
 GET  /favicon.ico               → serves public/cudic_sfsvg.svg
 GET  /themes                    theme pack store
+POST /api/session/claim|heartbeat  DELETE /api/session
 + static file serving from public/
 ```
 WebSocket: `new WebSocketServer({ server })` — lobby presence, typing, broadcast,
@@ -165,6 +166,19 @@ lobby list fanout. Homepage listens as a watcher.
 ### Auth pattern
 Every gated route: pull `Authorization: Bearer <supabase jwt>` →
 `supabase.auth.getUser(token)` → 401 `{"error":"Sign in to ..."}` if bad.
+
+### Single-seat sessions (one live seat per account)
+Client mints a random seat id at login (`cudic_seat` in localStorage; fresh
+mint = takeover) and the leader tab heartbeats it every 30s
+(`POST /api/session/heartbeat`; 90s expiry; no row = grandfathered free
+pass). Second device login claims the row → old seat gets `403
+{"error":"session_superseded"}` on checked paths (WS join/send, AI proxy)
+and a paused banner with Take over (fresh seat + claim + reload). Tabs share
+one login and elect a leader via `cudic_tab_lock` (10s stale, 5s refresh) —
+the server can't tell tabs apart; only the leader beats. Seat travels as
+`X-Seat` header / `msg.seat` / body field. Table: `active_sessions`
+(RLS locked, service key only). Tested end-to-end (20 checks, temp user,
+cleaned up) — see `/api/session/claim|heartbeat` + `seatAlive()`.
 
 ### Env (all in gitignored `.env`, never commit)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `PORT`,
@@ -178,7 +192,7 @@ plus optional `SMTP_HOST/PORT/USER/PASS`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRE
 
 Supabase project `opimjwmgmzwapkzgxvhk`.
 Tables: `users`, `lobbies`, `messages`, `games`, `game_comments`, `servers`,
-`server_members`. Trigger `on_auth_user_created` creates the profile on signup.
+`server_members`, `active_sessions`. Trigger `on_auth_user_created` creates the profile on signup.
 
 Migrations:
 - `20260919181404_studio_files.sql` — `games.files jsonb` + storage policies

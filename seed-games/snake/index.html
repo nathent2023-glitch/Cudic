@@ -3,28 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Snake — made with Cudic</title>
+<title>Snake</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
-    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
-  h1 { font-size: 1.4rem; letter-spacing: 0.02em; }
-  h1 span { color: #855CD6; }
-  .hud { display: flex; gap: 18px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
-  .hud b { color: #FF8C1A; }
-  #wrap { position: relative; width: min(92vw, 420px); }
-  canvas { width: 100%; aspect-ratio: 1; display: block; background: #141318;
-    border: 1px solid #2a2a33; border-radius: 12px; touch-action: none; }
-  #over { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
-    align-items: center; justify-content: center; background: rgba(13,14,16,0.82);
-    border-radius: 12px; text-align: center; }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  h1 span { color: #58cc02; }
+  .hud { display: flex; gap: 18px; margin: 10px 0 14px; font-size: 0.95rem;
+    font-weight: 800; text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; }
+  #wrap { position: relative; width: min(92vw, 420px); background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 20px; padding: 14px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  canvas { width: 100%; aspect-ratio: 1; display: block; background: #f7f7f7;
+    border: 2px solid #e5e5e5; border-radius: 16px; touch-action: none; }
+  #over { position: absolute; inset: 14px; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: rgba(255,255,255,0.92);
+    border-radius: 16px; text-align: center; }
   #over.show { display: flex; }
-  #over p { color: #8b8b96; font-size: 0.9rem; }
-  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
-    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-  button:hover { filter: brightness(1.1); }
-  .hint { margin-top: 12px; font-size: 0.8rem; color: #55555f; }
-  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+  #over h2 { font-weight: 900; text-transform: uppercase; }
+  #over p { color: #777777; font-size: 0.9rem; }
+  button { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 1rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302; transition: all 0.1s ease; }
+  button:active { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  .hint { margin-top: 12px; font-size: 0.8rem; color: #afafaf; }
 </style>
 </head>
 <body>
@@ -32,10 +38,9 @@
   <div class="hud"><span>Score <b id="score">0</b></span><span>Best <b id="best">0</b></span></div>
   <div id="wrap">
     <canvas id="cv" width="420" height="420"></canvas>
-    <div id="over"><h2 id="overTitle">Game over</h2><p id="overSub"></p><button id="again">Play again</button></div>
+    <div id="over"><h2>Game over</h2><p id="overSub"></p><button id="again">Play again</button></div>
   </div>
-  <p class="hint">Arrows / WASD or swipe to steer · Space to restart</p>
-  <footer>Made with Cudic — fork it and make it yours.</footer>
+  <p class="hint">Arrows / WASD or swipe · Space to restart</p>
 <script>
 (function () {
   var N = 21, CELL = 420 / N;
@@ -68,8 +73,8 @@
   }
   function steer(x, y) {
     var last = queue.length ? queue[queue.length - 1] : dir;
-    if (last.x === -x && last.y === -y) return;      // no 180s
-    if (last.x === x && last.y === y) return;        // no dupes
+    if (last.x === -x && last.y === -y) return;
+    if (last.x === x && last.y === y) return;
     if (queue.length < 3) queue.push({ x: x, y: y });
   }
   function tick() {
@@ -100,21 +105,36 @@
     overSub.textContent = 'You scored ' + score + ' points.';
     over.classList.add('show');
   }
-  function draw() {
-    ctx.fillStyle = '#141318';
-    ctx.fillRect(0, 0, 420, 420);
-    ctx.fillStyle = '#FF8C1A';
-    round(food.x * CELL + 2, food.y * CELL + 2, CELL - 4, 5);
-    ctx.fill();
-    for (var i = snake.length - 1; i >= 0; i--) {
-      ctx.fillStyle = i === 0 ? '#855CD6' : '#4a3a7a';
-      round(snake[i].x * CELL + 1, snake[i].y * CELL + 1, CELL - 2, 4);
-      ctx.fill();
-    }
-  }
-  function round(x, y, s, r) {
+  function seg(x, y, w, h, r, color) {
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.roundRect(x, y, s, s, r);
+    ctx.roundRect(x, y, w, h, r);
+    ctx.fill();
+  }
+  function draw() {
+    ctx.fillStyle = '#f7f7f7';
+    ctx.fillRect(0, 0, 420, 420);
+    var fx = food.x * CELL, fy = food.y * CELL;
+    seg(fx + 3, fy + 5, CELL - 6, CELL - 6, 9, '#d33131');
+    seg(fx + 3, fy + 2, CELL - 6, CELL - 6, 9, '#ff4b4b');
+    ctx.fillStyle = '#58cc02';
+    ctx.fillRect(fx + CELL / 2 - 1.5, fy - 2, 3, 7);
+    for (var i = snake.length - 1; i >= 0; i--) {
+      var sx = snake[i].x * CELL, sy = snake[i].y * CELL;
+      seg(sx + 1, sy + 4, CELL - 2, CELL - 2, 6, '#46a302');
+      seg(sx + 1, sy + 1, CELL - 2, CELL - 2, 6, '#58cc02');
+      if (i === 0) {
+        var cx = sx + CELL / 2, cy = sy + CELL / 2;
+        var ex = dir.x * 4, ey = dir.y * 4;
+        var pxv = -dir.y, pyv = dir.x;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(cx + pxv * 5 + ex, cy + pyv * 5 + ey, 4.5, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - pxv * 5 + ex, cy - pyv * 5 + ey, 4.5, 0, 7); ctx.fill();
+        ctx.fillStyle = '#3c3c3c';
+        ctx.beginPath(); ctx.arc(cx + pxv * 5 + ex * 1.6, cy + pyv * 5 + ey * 1.6, 2.2, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx - pxv * 5 + ex * 1.6, cy - pyv * 5 + ey * 1.6, 2.2, 0, 7); ctx.fill();
+      }
+    }
   }
   var KEYS = { ArrowUp: [0, -1], KeyW: [0, -1], ArrowDown: [0, 1], KeyS: [0, 1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0] };
   document.addEventListener('keydown', function (e) {

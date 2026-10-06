@@ -3,28 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flap — made with Cudic</title>
+<title>Flap</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
-    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
-  h1 { font-size: 1.4rem; }
-  h1 span { color: #855CD6; }
-  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
-  .hud b { color: #FF8C1A; font-size: 1.3rem; }
-  #wrap { position: relative; width: min(94vw, 440px); }
-  canvas { width: 100%; aspect-ratio: 11/14; display: block; background: #141318;
-    border: 1px solid #2a2a33; border-radius: 12px; touch-action: none; }
-  #over { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
-    align-items: center; justify-content: center; background: rgba(13,14,16,0.82);
-    border-radius: 12px; text-align: center; }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  h1 span { color: #58cc02; }
+  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.9rem;
+    font-weight: 800; text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; font-size: 1.3rem; }
+  #wrap { position: relative; width: min(94vw, 440px); background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 20px; padding: 14px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  canvas { width: 100%; aspect-ratio: 11/14; display: block; background: #ddf4ff;
+    border: 2px solid #e5e5e5; border-radius: 16px; touch-action: none; }
+  #over { position: absolute; inset: 14px; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: rgba(255,255,255,0.92);
+    border-radius: 16px; text-align: center; }
   #over.show { display: flex; }
-  #over p { color: #8b8b96; font-size: 0.9rem; }
-  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
-    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-  button:hover { filter: brightness(1.1); }
-  .hint { margin-top: 12px; font-size: 0.8rem; color: #55555f; }
-  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+  #over h2 { font-weight: 900; text-transform: uppercase; }
+  #over p { color: #777777; font-size: 0.9rem; }
+  button { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 1rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302; transition: all 0.1s ease; }
+  button:active { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  .hint { margin-top: 12px; font-size: 0.8rem; color: #afafaf; }
 </style>
 </head>
 <body>
@@ -35,10 +41,9 @@
     <div id="over"><h2>Splat!</h2><p id="overSub"></p><button id="again">Try again</button></div>
   </div>
   <p class="hint">Click, tap, or Space to flap</p>
-  <footer>Made with Cudic — fork it and make it yours.</footer>
 <script>
 (function () {
-  var W = 440, H = 560, BX = 110, BR = 14, GRAV = 0.45, FLAP = -7.5;
+  var W = 440, H = 560, BX = 110, BR = 15, GRAV = 0.45, FLAP = -7.5;
   var PW = 74, GAP = 158, SPEED = 2.6;
   var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
   var scoreEl = document.getElementById('score'), bestEl = document.getElementById('best');
@@ -69,7 +74,7 @@
   }
   function step() {
     frame++;
-    ctx.fillStyle = '#141318';
+    ctx.fillStyle = '#ddf4ff';
     ctx.fillRect(0, 0, W, H);
 
     if (state === 'play') {
@@ -99,35 +104,44 @@
       }
     }
 
-    ctx.fillStyle = '#23232c';
+    ctx.fillStyle = '#e5e5e5';
     for (var k = 0; k < pipes.length; k++) {
       var pp = pipes[k];
+      ctx.fillStyle = '#46a302';
       ctx.fillRect(pp.x, 0, PW, pp.gapY);
       ctx.fillRect(pp.x, pp.gapY + GAP, PW, H - pp.gapY - GAP);
-      ctx.fillStyle = '#2e2e38';
-      ctx.fillRect(pp.x - 3, pp.gapY - 14, PW + 6, 14);
-      ctx.fillRect(pp.x - 3, pp.gapY + GAP, PW + 6, 14);
-      ctx.fillStyle = '#23232c';
+      ctx.fillStyle = '#58cc02';
+      ctx.fillRect(pp.x, 0, PW, pp.gapY - 4);
+      ctx.fillRect(pp.x, pp.gapY + GAP + 4, PW, H - pp.gapY - GAP - 4);
+      ctx.fillStyle = '#46a302';
+      ctx.fillRect(pp.x - 3, pp.gapY - 15, PW + 6, 12);
+      ctx.fillRect(pp.x - 3, pp.gapY + GAP + 3, PW + 6, 12);
+      ctx.fillStyle = '#58cc02';
+      ctx.fillRect(pp.x - 3, pp.gapY - 15, PW + 6, 9);
+      ctx.fillRect(pp.x - 3, pp.gapY + GAP + 3, PW + 6, 9);
     }
-    // ground
-    ctx.fillStyle = '#1b1b22';
+    ctx.fillStyle = '#e5e5e5';
     ctx.fillRect(0, H - 8, W, 8);
 
     var tilt = Math.max(-0.5, Math.min(0.6, vy * 0.07));
     ctx.save();
     ctx.translate(BX, y);
     ctx.rotate(tilt);
-    ctx.fillStyle = '#FF8C1A';
+    ctx.fillStyle = '#e6a800';
+    ctx.beginPath(); ctx.arc(0, 3, BR, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffc800';
     ctx.beginPath(); ctx.arc(0, 0, BR, 0, 7); ctx.fill();
-    ctx.fillStyle = '#0d0e10';
-    ctx.beginPath(); ctx.arc(5, -4, 4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(5, -4, 5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#3c3c3c';
+    ctx.beginPath(); ctx.arc(6, -4, 2.4, 0, 7); ctx.fill();
     ctx.restore();
 
     if (state === 'ready') {
-      ctx.fillStyle = '#55555f';
-      ctx.font = '15px system-ui';
+      ctx.fillStyle = '#afafaf';
+      ctx.font = "800 15px Nunito, system-ui, sans-serif";
       ctx.textAlign = 'center';
-      ctx.fillText('click, tap, or press space', W / 2, H / 2 + 70);
+      ctx.fillText('CLICK, TAP, OR PRESS SPACE', W / 2, H / 2 + 70);
     }
     if (state !== 'over') requestAnimationFrame(step);
   }

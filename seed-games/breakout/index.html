@@ -3,28 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Breakout — made with Cudic</title>
+<title>Breakout</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0d0e10; color: #dbe4ff; font-family: "Space Grotesk", system-ui, sans-serif;
-    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 12px; }
-  h1 { font-size: 1.4rem; }
-  h1 span { color: #855CD6; }
-  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.95rem; color: #8b8b96; }
-  .hud b { color: #FF8C1A; }
-  #wrap { position: relative; width: min(94vw, 560px); }
-  canvas { width: 100%; aspect-ratio: 7/5; display: block; background: #141318;
-    border: 1px solid #2a2a33; border-radius: 12px; touch-action: none; }
-  #over { position: absolute; inset: 0; display: none; flex-direction: column; gap: 10px;
-    align-items: center; justify-content: center; background: rgba(13,14,16,0.82);
-    border-radius: 12px; text-align: center; }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px 12px; }
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+  h1 span { color: #58cc02; }
+  .hud { display: flex; gap: 22px; margin: 10px 0 14px; font-size: 0.9rem;
+    font-weight: 800; text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; }
+  #wrap { position: relative; width: min(94vw, 560px); background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 20px; padding: 14px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  canvas { width: 100%; aspect-ratio: 7/5; display: block; background: #f7f7f7;
+    border: 2px solid #e5e5e5; border-radius: 16px; touch-action: none; }
+  #over { position: absolute; inset: 14px; display: none; flex-direction: column; gap: 10px;
+    align-items: center; justify-content: center; background: rgba(255,255,255,0.92);
+    border-radius: 16px; text-align: center; }
   #over.show { display: flex; }
-  #over p { color: #8b8b96; font-size: 0.9rem; }
-  button { background: #855CD6; color: #fff; border: none; border-radius: 8px;
-    padding: 10px 22px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
-  button:hover { filter: brightness(1.1); }
-  .hint { margin-top: 12px; font-size: 0.8rem; color: #55555f; }
-  footer { margin-top: auto; padding-top: 18px; font-size: 0.75rem; color: #55555f; }
+  #over h2 { font-weight: 900; text-transform: uppercase; }
+  #over p { color: #777777; font-size: 0.9rem; }
+  button { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 1rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302; transition: all 0.1s ease; }
+  button:active { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  .hint { margin-top: 12px; font-size: 0.8rem; color: #afafaf; }
 </style>
 </head>
 <body>
@@ -35,15 +41,17 @@
     <div id="over"><h2 id="overTitle">Game over</h2><p id="overSub"></p><button id="again">Play again</button></div>
   </div>
   <p class="hint">Mouse, drag, or ← → keys · Click / Space to launch</p>
-  <footer>Made with Cudic — fork it and make it yours.</footer>
 <script>
 (function () {
-  var W = 560, H = 400, PW = 84, PH = 12, BR = 8;
+  var W = 560, H = 400, PW = 84, PH = 14, BR = 8;
   var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
   var scoreEl = document.getElementById('score'), livesEl = document.getElementById('lives'), levelEl = document.getElementById('level');
   var over = document.getElementById('over'), overTitle = document.getElementById('overTitle'), overSub = document.getElementById('overSub');
   var ROWS = 5, COLS = 8;
-  var COLORS = ['#855CD6', '#6a4fc4', '#FF8C1A', '#e67a00', '#4ec9b0'];
+  var ROWCOLORS = [
+    ['#ff4b4b', '#d33131'], ['#ffc800', '#e6a800'], ['#58cc02', '#46a302'],
+    ['#1cb0f6', '#1899d6'], ['#ce82ff', '#a568cc']
+  ];
   var px, ball, bricks, score, lives, level, state, pv;
 
   function buildLevel() {
@@ -51,7 +59,7 @@
     var gw = (W - 40) / COLS, bh = 24;
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < COLS; c++) {
-        bricks.push({ x: 20 + c * gw + 3, y: 50 + r * (bh + 8), w: gw - 6, h: bh, color: COLORS[r % COLORS.length], dead: false });
+        bricks.push({ x: 20 + c * gw + 3, y: 50 + r * (bh + 8), w: gw - 6, h: bh, colors: ROWCOLORS[r % ROWCOLORS.length], dead: false });
       }
     }
   }
@@ -64,7 +72,7 @@
     stick();
   }
   function stick() {
-    ball = { x: px, y: H - 40, vx: 0, vy: 0, stuck: true };
+    ball = { x: px, y: H - 44, vx: 0, vy: 0, stuck: true };
     state = 'serve';
   }
   function launch() {
@@ -86,8 +94,14 @@
       stick();
     }
   }
+  function brick(x, y, w, h, colors) {
+    ctx.fillStyle = colors[1];
+    ctx.beginPath(); ctx.roundRect(x, y + 3, w, h, 6); ctx.fill();
+    ctx.fillStyle = colors[0];
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+  }
   function step() {
-    ctx.fillStyle = '#141318';
+    ctx.fillStyle = '#f7f7f7';
     ctx.fillRect(0, 0, W, H);
     px += pv;
     if (px < PW / 2 + 8) px = PW / 2 + 8;
@@ -98,15 +112,13 @@
       if (ball.x < BR + 6) { ball.x = BR + 6; ball.vx *= -1; }
       if (ball.x > W - BR - 6) { ball.x = W - BR - 6; ball.vx *= -1; }
       if (ball.y < BR + 6) { ball.y = BR + 6; ball.vy *= -1; }
-      // paddle
-      if (ball.vy > 0 && ball.y + BR >= H - 34 && ball.y + BR <= H - 22 && Math.abs(ball.x - px) < PW / 2 + BR) {
+      if (ball.vy > 0 && ball.y + BR >= H - 38 && ball.y + BR <= H - 26 && Math.abs(ball.x - px) < PW / 2 + BR) {
         var off = (ball.x - px) / (PW / 2);
         var sp = Math.min(8, Math.hypot(ball.vx, ball.vy) * 1.02);
         var ang = -Math.PI / 2 + off * 1.1;
         ball.vx = Math.cos(ang) * sp; ball.vy = Math.sin(ang) * sp;
-        ball.y = H - 34 - BR;
+        ball.y = H - 38 - BR;
       }
-      // bricks
       var left = 0;
       for (var i = 0; i < bricks.length; i++) {
         var b = bricks[i];
@@ -133,20 +145,21 @@
     for (var j = 0; j < bricks.length; j++) {
       var bb = bricks[j];
       if (bb.dead) continue;
-      ctx.fillStyle = bb.color;
-      ctx.fillRect(bb.x, bb.y, bb.w, bb.h);
+      brick(bb.x, bb.y, bb.w, bb.h, bb.colors);
     }
-    ctx.fillStyle = '#855CD6';
-    ctx.fillRect(px - PW / 2, H - 28, PW, PH);
+    ctx.fillStyle = '#46a302';
+    ctx.beginPath(); ctx.roundRect(px - PW / 2, H - 28 + 3, PW, PH, 7); ctx.fill();
+    ctx.fillStyle = '#58cc02';
+    ctx.beginPath(); ctx.roundRect(px - PW / 2, H - 28, PW, PH, 7); ctx.fill();
     if (ball) {
-      ctx.fillStyle = '#dbe4ff';
+      ctx.fillStyle = '#3c3c3c';
       ctx.beginPath(); ctx.arc(ball.x, ball.y, BR, 0, 7); ctx.fill();
     }
     if (state === 'serve') {
-      ctx.fillStyle = '#55555f';
-      ctx.font = '15px system-ui';
+      ctx.fillStyle = '#afafaf';
+      ctx.font = "800 15px Nunito, system-ui, sans-serif";
       ctx.textAlign = 'center';
-      ctx.fillText('click or press space to launch', W / 2, H / 2 + 60);
+      ctx.fillText('CLICK OR PRESS SPACE TO LAUNCH', W / 2, H / 2 + 60);
     }
     requestAnimationFrame(step);
   }
