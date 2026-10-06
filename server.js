@@ -1603,7 +1603,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     cors(res);
     const { data, error } = await supabase
       .from('games')
-      .select('id, title, description, credits, thumbnail, owner_id, created_at, updated_at, users!owner_id(display_name, user_id)')
+      .select('id, title, description, credits, thumbnail, owner_id, forked_from, forked_from_title, created_at, updated_at, users!owner_id(display_name, user_id)')
       .eq('published', true)
       .order('updated_at', { ascending: false })
       .limit(50);
@@ -1620,7 +1620,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
-    const { data } = await supabase.from('games').select('id, title, description, thumbnail, published, created_at, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false });
+    const { data } = await supabase.from('games').select('id, title, description, thumbnail, published, forked_from, forked_from_title, created_at, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false });
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ games: data || [] }));
     return;
@@ -1740,7 +1740,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
-    const { data, error } = await supabase.from('games').select('*, users(display_name, user_id)').eq('id', id).single();
+    const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(display_name, user_id)').eq('id', id).single();
     if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ game: data }));
@@ -1793,7 +1793,9 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       files: g.files || null,
       assets: null,
       thumbnail: g.thumbnail || null,
-      published: false
+      published: false,
+      forked_from: g.id,
+      forked_from_title: g.title || 'Untitled'
     }).select().single();
     if (insErr || !nu) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: insErr?.message || 'Fork failed' })); return; }
     // Copy storage objects old prefix -> new prefix (recursive), rewrite manifest.

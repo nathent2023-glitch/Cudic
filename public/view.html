@@ -80,6 +80,7 @@
         <p id="gameDesc" class="dim">No notes yet.</p>
         <h3>Credits</h3>
         <p id="gameCredits" class="dim">No credits yet.</p>
+        <p id="remixLine" style="display:none;font-size:0.8rem;color:var(--text-secondary)">↩ Remixed from <a id="remixLink" href="#" style="color:var(--signal);font-weight:700"></a></p>
         <div class="meta" id="gameMeta"></div>
       </div>
     </div>
@@ -290,6 +291,14 @@
         document.getElementById('authorAvatar').textContent = name.substring(0, 2).toUpperCase();
         if (game.description) { var de = document.getElementById('gameDesc'); de.textContent = game.description; de.classList.remove('dim'); }
         if (game.credits) { var ce = document.getElementById('gameCredits'); ce.textContent = game.credits; ce.classList.remove('dim'); }
+        // System-rendered remix credit (Scratch-style): set once at fork time,
+        // not editable and not clearable through the API.
+        if (game.forked_from) {
+          var rl = document.getElementById('remixLine'), ra = document.getElementById('remixLink');
+          ra.href = '/view.html?id=' + encodeURIComponent(game.forked_from);
+          ra.textContent = game.forked_from_title || 'the original game';
+          rl.style.display = '';
+        }
         if (game.created_at) document.getElementById('gameMeta').textContent = 'Published ' + new Date(game.created_at).toLocaleDateString();
         checkOwner(game.owner_id);
         initComments(game);
