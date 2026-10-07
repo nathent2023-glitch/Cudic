@@ -1784,6 +1784,15 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const { data: g } = await supabase.from('games').select('*').eq('id', id).single();
     if (!g) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     if (!g.published && g.owner_id !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Forbidden' })); return; }
+    // Transitive credit: extend the parent's snapshot chain with the parent
+    // itself, so a remix of a remix still names the original maker. Capped
+    // (original always kept); snapshots survive deletions by design.
+    const parentChain = Array.isArray(g.fork_chain) ? g.fork_chain : [];
+    const cleanChain = parentChain
+      .filter(e => e && typeof e.id === 'string')
+      .map(e => ({ id: e.id, title: String(e.title || 'Untitled') }));
+    cleanChain.push({ id: g.id, title: g.title || 'Untitled' });
+    const chain = cleanChain.length > 25 ? [cleanChain[0], ...cleanChain.slice(-24)] : cleanChain;
     const { data: nu, error: insErr } = await supabase.from('games').insert({
       owner_id: user.id,
       title: (g.title || 'Untitled') + ' (fork)',
@@ -1795,7 +1804,8 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
       thumbnail: g.thumbnail || null,
       published: false,
       forked_from: g.id,
-      forked_from_title: g.title || 'Untitled'
+      forked_from_title: g.title || 'Untitled',
+      fork_chain: chain
     }).select().single();
     if (insErr || !nu) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: insErr?.message || 'Fork failed' })); return; }
     // Copy storage objects old prefix -> new prefix (recursive), rewrite manifest.

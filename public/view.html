@@ -13,7 +13,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Play on Cudic">
 <meta name="twitter:description" content="Play this game instantly in your browser. Built with Cudic Studio — fork it and make your own version.">
-<meta name="twitter:image" content="https://cudic.vercel.app/og.png">
+<meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=19">
   <style>
@@ -80,7 +80,7 @@
         <p id="gameDesc" class="dim">No notes yet.</p>
         <h3>Credits</h3>
         <p id="gameCredits" class="dim">No credits yet.</p>
-        <p id="remixLine" style="display:none;font-size:0.8rem;color:var(--text-secondary)">↩ Remixed from <a id="remixLink" href="#" style="color:var(--signal);font-weight:700"></a></p>
+        <p id="remixLine" style="display:none;font-size:0.8rem;color:var(--text-secondary)"></p>
         <div class="meta" id="gameMeta"></div>
       </div>
     </div>
@@ -292,11 +292,26 @@
         if (game.description) { var de = document.getElementById('gameDesc'); de.textContent = game.description; de.classList.remove('dim'); }
         if (game.credits) { var ce = document.getElementById('gameCredits'); ce.textContent = game.credits; ce.classList.remove('dim'); }
         // System-rendered remix credit (Scratch-style): set once at fork time,
-        // not editable and not clearable through the API.
+        // not editable and not clearable through the API. Chain walks back
+        // through every ancestor, so a remix of a remix still names both
+        // the direct parent and the original maker.
         if (game.forked_from) {
-          var rl = document.getElementById('remixLine'), ra = document.getElementById('remixLink');
-          ra.href = '/view.html?id=' + encodeURIComponent(game.forked_from);
-          ra.textContent = game.forked_from_title || 'the original game';
+          var chain = [];
+          if (Array.isArray(game.fork_chain)) {
+            for (var ci = 0; ci < game.fork_chain.length; ci++) {
+              var ce = game.fork_chain[ci];
+              if (ce && ce.id) chain.push({ id: ce.id, title: ce.title || 'a game' });
+            }
+          }
+          if (!chain.length) chain.push({ id: game.forked_from, title: game.forked_from_title || 'the original game' });
+          var direct = chain[chain.length - 1], original = chain[0];
+          var rhtml = 'Remixed from <a href="/view.html?id=' + encodeURIComponent(direct.id) + '" style="color:var(--signal);font-weight:700">' + escapeHtml(direct.title) + '</a>';
+          if (chain.length > 1) {
+            rhtml += ' · originally <a href="/view.html?id=' + encodeURIComponent(original.id) + '" style="color:var(--signal);font-weight:700">' + escapeHtml(original.title) + '</a>';
+          }
+          if (chain.length > 2) rhtml += ' (+' + (chain.length - 2) + ' more in between)';
+          var rl = document.getElementById('remixLine');
+          rl.innerHTML = '↩ ' + rhtml;
           rl.style.display = '';
         }
         if (game.created_at) document.getElementById('gameMeta').textContent = 'Published ' + new Date(game.created_at).toLocaleDateString();
