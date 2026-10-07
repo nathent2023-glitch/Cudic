@@ -2271,6 +2271,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/themes.html';
   }
 
+  // ── Redirect /docs to /docs.html ──────────────────────────────
+  if (url.pathname === '/docs') {
+    url.pathname = '/docs.html';
+  }
+
   // ── Redirect /editor to /editor.html ──────────────────────────
   if (url.pathname === '/editor') {
     url.pathname = '/editor.html';

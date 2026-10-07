@@ -6,6 +6,7 @@
     { "source": "/chat", "destination": "/chat.html" },
     { "source": "/games", "destination": "/games.html" },
     { "source": "/themes", "destination": "/themes.html" },
+    { "source": "/docs", "destination": "/docs.html" },
     { "source": "/editor", "destination": "/editor.html" },
     { "source": "/music", "destination": "/music.html" },
     { "source": "/servers", "destination": "/servers.html" },

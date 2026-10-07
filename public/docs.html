@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cudic — Docs</title>
+  <meta name="description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cudic">
+  <meta property="og:title" content="Cudic — Docs">
+  <meta property="og:description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta property="og:url" content="https://cudic.vercel.app/docs">
+  <meta property="og:image" content="https://cudic.vercel.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Cudic — Docs">
+  <meta name="twitter:description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
+  <link rel="canonical" content="https://cudic.vercel.app/docs">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=19">
+    <style>
+        .docs-layout {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .docs-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 28px 32px 100px;
+        }
+
+        .wrap {
+            max-width: 1040px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 190px 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .lead {
+            color: var(--text-secondary);
+            max-width: 70ch;
+            margin: 6px 0 0;
+            font-size: 0.95rem;
+        }
+
+        .toc {
+            position: sticky;
+            top: 24px;
+            font-size: var(--text-sm);
+        }
+
+        .toc .toc-label {
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .toc a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 4px 0;
+            line-height: 1.35;
+        }
+
+        .toc a:hover {
+            color: var(--signal);
+        }
+
+        article {
+            min-width: 0;
+        }
+
+        article section {
+            margin-bottom: 44px;
+            scroll-margin-top: 24px;
+        }
+
+        article h2 {
+            font-family: var(--font-head);
+            font-size: 1.35rem;
+            font-weight: 600;
+            margin: 0 0 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        article h3 {
+            font-family: var(--font-head);
+            font-size: 1.02rem;
+            font-weight: 600;
+            margin: 22px 0 6px;
+        }
+
+        article p,
+        article li {
+            color: var(--text-secondary);
+            line-height: 1.65;
+            font-size: 0.95rem;
+        }
+
+        article ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        article ol {
+            padding-left: 22px;
+            margin: 10px 0;
+        }
+
+        article li {
+            margin-bottom: 6px;
+        }
+
+        article strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        article a {
+            color: var(--signal);
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.85em;
+            background: var(--panel-raised);
+            padding: 1px 5px;
+            border-radius: var(--radius-sm);
+        }
+
+        pre {
+            font-family: var(--font-mono);
+            font-size: 0.83rem;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            overflow-x: auto;
+            color: var(--text-primary);
+        }
+
+        .note {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-left: 3px solid var(--signal);
+            border-radius: var(--radius-lg);
+            padding: 12px 16px;
+            margin: 14px 0;
+        }
+
+        .note p {
+            margin: 0;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 12px;
+            margin: 14px 0;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+        }
+
+        .card h3 {
+            margin: 0 0 4px;
+            font-size: 0.95rem;
+        }
+
+        .card p {
+            margin: 0;
+            font-size: 0.86rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+            font-size: 0.88rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--line);
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        th {
+            font-family: var(--font-head);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 860px) {
+            .wrap {
+                grid-template-columns: 1fr;
+                gap: 22px;
+            }
+
+            .docs-scroll {
+                padding: 20px 18px 80px;
+            }
+
+            .toc {
+                position: static;
+                padding-bottom: 12px;
+                border-bottom: 1px solid var(--line);
+            }
+        }
+    </style>
+</head>
+
+<body data-page="docs">
+
+    <div class="docs-layout page-panel">
+        <div class="topbar">
+            <h1>Docs</h1>
+        </div>
+
+        <div class="docs-scroll">
+            <div class="wrap">
+                <p class="lead" style="grid-column: 1 / -1">Everything Cudic can do, in the order you'll probably need it. Build in Studio, publish to the gallery, chat in servers, and restyle the whole site with theme packs.</p>
+
+                <nav class="toc">
+                <div class="toc-label">On this page</div>
+                <a href="#start">Getting started</a>
+                <a href="#studio">Studio</a>
+                <a href="#files">Project files</a>
+                <a href="#python">Python</a>
+                <a href="#npm">npm packages</a>
+                <a href="#scratch">Importing Scratch</a>
+                <a href="#publish">Publishing</a>
+                <a href="#remix">Remixing</a>
+                <a href="#saves">Cloud saves</a>
+                <a href="#chat">Chat &amp; servers</a>
+                <a href="#themes">Theme packs</a>
+                <a href="#coins">Coins</a>
+                <a href="#reports">Reports</a>
+                <a href="#ai">Cudic AI panel</a>
+                <a href="#account">Account</a>
+                <a href="#faq">FAQ</a>
+                <a href="#limits">Limits &amp; known gaps</a>
+            </nav>
+
+            <article>
+                <section id="start">
+                    <h2>Getting started</h2>
+                    <p>Cudic is a place to hang out and a place to build. Servers and channels for chat, a gallery of games made in Cudic Studio, theme packs that restyle the whole site, and coins you spend on packs.</p>
+                    <ol>
+                        <li><strong>Sign in</strong> — email + password, GitHub, or continue as a guest to look around. Saving, publishing, coins and saved progress need an account.</li>
+                        <li><strong>Open <a href="/studio">Studio</a></strong> — a full code editor with a live preview.</li>
+                        <li><strong>Build something</strong> — write HTML/CSS/JS, or import an existing project, or bring a Scratch game across.</li>
+                        <li><strong>Save, then Publish</strong> — saving keeps the project in your account; publishing puts it in the <a href="/games">gallery</a>.</li>
+                    </ol>
+                    <div class="note"><p>Guests can play games and read chat. Progress in a game isn't stored for guests — the game will offer you a sign-in the first time you play.</p></div>
+                </section>
+
+                <section id="studio">
+                    <h2>Studio</h2>
+                    <p>Studio is a VS&nbsp;Code-style workbench: file Explorer on the left, editor in the middle, live Preview on the right, and the Cudic AI panel along the bottom.</p>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Save project</strong></td><td>Saves the workspace to your Cudic account (needs a sign-in).</td></tr>
+                        <tr><td><strong>Import files</strong></td><td>Pull a set of files into the workspace, merging over what's there.</td></tr>
+                        <tr><td><strong>Import folder</strong></td><td>Same, for a whole folder — relative paths are kept.</td></tr>
+                        <tr><td><strong>Import Scratch project</strong></td><td>Turn a <code>.sb3</code> or a shared Scratch link into a playable Cudic project. See <a href="#scratch">below</a>.</td></tr>
+                        <tr><td><strong>Export project as zip</strong></td><td>Downloads the whole workspace as a zip.</td></tr>
+                        <tr><td><strong>Publish / Unpublish</strong></td><td>Puts your project in the gallery, or takes it back out.</td></tr>
+                        <tr><td><strong>Set thumbnail</strong></td><td>Upload an image, capture the preview, or clear it — that's the card art in the gallery.</td></tr>
+                        <tr><td><strong>Open Preview / Run</strong></td><td>Runs the project in the preview pane. A <code>.py</code> file runs with Python.</td></tr>
+                        <tr><td><strong>Add package / Install Python package</strong></td><td>Adds the import line for an npm or Python package to the open file.</td></tr>
+                    </table>
+                    <p>The import and export commands live in the palette, the <strong>File</strong> menu, and the right-click menu in the Explorer or the editor.</p>
+                </section>
+
+                <section id="files">
+                    <h2>Project files</h2>
+                    <ul>
+                        <li><strong><code>index.html</code> is the entry point.</strong> If your project doesn't have one, the preview won't run.</li>
+                        <li>Local <code>.css</code> and <code>.js</code> siblings are inlined into the preview automatically, so you can keep styles and scripts in separate files and still get one working page.</li>
+                        <li>Images, audio and other binaries are uploaded separately from your text files, so big media doesn't slow saves down.</li>
+                        <li>Bare imports like <code>import confetti from 'canvas-confetti'</code> are resolved from a public CDN for previews. Publish uses the same URLs, so a published game needs no build step.</li>
+                        <li>An importmap in your <code>index.html</code> pins a package to a version or path; anything you pin yourself is left alone.</li>
+                    </ul>
+                    <div class="note"><p>If a text file you imported shows up as a <strong>binary file</strong> in the editor, it was probably saved as UTF-16 (old Windows Notepad does this by default). Re-save it as UTF-8 and import again.</p></div>
+                </section>
+
+                <section id="python">
+                    <h2>Python</h2>
+                    <p>Running a <code>.py</code> file (with <strong>Run</strong>, or via <strong>Cudic: Run Python</strong>) executes it with Pyodide — CPython compiled to WebAssembly — inside the preview pane. <code>micropip</code> is preloaded, so package installs are one line:</p>
+                    <pre>import micropip
+await micropip.install("cowsay")
+
+import cowsay
+cowsay.cow("hello from Cudic")</pre>
+                    <p><strong>Install Python package</strong> writes that snippet to the top of the open file for you.</p>
+                    <p>Things to know: the first run downloads roughly 10&nbsp;MB of Python, so give it a second. It's a browser runtime, so no files, no network servers and no installing system packages — pure-Python and WASM wheels only.</p>
+                </section>
+
+                <section id="npm">
+                    <h2>npm packages</h2>
+                    <p>Write a normal import and it works in the preview and in the published game:</p>
+                    <pre>import confetti from 'canvas-confetti'
+confetti({ particleCount: 120 })</pre>
+                    <p><strong>Add package</strong> inserts a fully-qualified import (optionally with a pinned version) so the file also works when someone else opens it.</p>
+                    <ul>
+                        <li><code>import 'pkg/style.css'</code> is lifted into a stylesheet link automatically.</li>
+                        <li>A <em>dynamic</em> <code>import('pkg/style.css')</code> can't be rewritten — load styles statically instead.</li>
+                        <li>No build scripts, no native binaries and no Node built-ins (<code>fs</code>, <code>net</code>, <code>child_process</code>): those don't exist in a browser.</li>
+                    </ul>
+                </section>
+
+                <section id="scratch">
+                    <h2>Importing Scratch projects</h2>
+                    <p><strong>Cudic: Import Scratch project</strong> (palette, File menu, or right-click) takes a Scratch game and turns it into a Cudic project you can edit and publish.</p>
+                    <h3>Two ways in</h3>
+                    <ul>
+                        <li><strong>File</strong> — pick a <code>.sb3</code> you've downloaded from Scratch. This is the most reliable route.</li>
+                        <li><strong>Link or id</strong> — paste a shared link like <code>https://scratch.mit.edu/projects/123456789</code> or just the number. You'll be asked to confirm the project is your own or one marked “See inside”.</li>
+                    </ul>
+                    <h3>What lands in the workspace</h3>
+                    <table>
+                        <tr><th>File</th><th>What it is</th></tr>
+                        <tr><td><code>index.html</code></td><td>A tiny player page. There's no game code in here.</td></tr>
+                        <tr><td><code>scratch.js</code></td><td>The fixed loader that boots the Scratch runtime and plays the project.</td></tr>
+                        <tr><td><code>project.json</code></td><td><strong>The editable source.</strong> Every sprite, costume, sound and block lives here.</td></tr>
+                        <tr><td><code>assets.js</code></td><td>A short map from each asset to its file.</td></tr>
+                        <tr><td><code>assets/</code></td><td>The costumes and sounds themselves, as normal files you can save and publish.</td></tr>
+                    </table>
+                    <div class="note"><p>Scratch blocks are <em>data</em>, not JavaScript, so <code>index.html</code> looks almost empty and the real project sits in <code>project.json</code>. If you edit <code>project.json</code>, the running copy in <code>assets.js</code> doesn't change until you re-import or sync the two by hand.</p></div>
+                    <h3>Good to know</h3>
+                    <ul>
+                        <li><strong>Scratch blocks are not converted to hand-written JS.</strong> You get the original project, editable as blocks-as-data.</li>
+                        <li><strong>Cloud variables</strong> are kept per player in that browser instead of being synced.</li>
+                        <li><strong>Text to speech and translate</strong> blocks need service keys, so they stay silent.</li>
+                        <li><strong>Video sensing</strong> needs a camera; the game sandbox doesn't allow it.</li>
+                        <li>Projects that use music load a bigger runtime the first time they run.</li>
+                        <li>Scratch rate-limits downloads and sometimes won't hand over a link at all — if a link fails, import the <code>.sb3</code> file instead.</li>
+                        <li>Imports are capped at 25&nbsp;MB, and a heavy project (lots of costumes or sounds) takes longer to save.</li>
+                    </ul>
+                </section>
+
+                <section id="publish">
+                    <h2>Publishing &amp; the gallery</h2>
+                    <ul>
+                        <li><strong>Publish</strong> makes your project playable at its own page and lists it in the <a href="/games">gallery</a>. <strong>Unpublish</strong> keeps the project but hides it.</li>
+                        <li>Set a title, a description, and a thumbnail — upload one or capture the preview, which is usually the fastest route to a decent card.</li>
+                        <li>Gallery cards show the thumbnail, title, author and comment count; comments are open on each game's page.</li>
+                        <li>Games play in a sandboxed frame, so nothing in your game can reach your Cudic session. That's why saved progress is handled by Cudic rather than the game (see below).</li>
+                    </ul>
+                </section>
+
+                <section id="remix">
+                    <h2>Remixing</h2>
+                    <p><strong>Remix</strong> on any published game copies it into your own projects so you can change it. The game you came from is credited permanently: your copy keeps a line back to its parent and to the original, all the way up the chain, and the original page keeps crediting the parent too.</p>
+                    <p>Credits are part of the game record and don't go away if you edit or unpublish — that link stays with the remix.</p>
+                </section>
+
+                <section id="saves">
+                    <h2>Cloud saves</h2>
+                    <p>Signed in, your progress follows your account: sign in on another device and your bests and saved state are there.</p>
+                    <ul>
+                        <li>Games opt in — the ones in the gallery already do. Your own game can use the same helper if you want saves.</li>
+                        <li>Typical shape: best scores and a small amount of state. A clicker-style game can save its whole board; a platformer saves a level and a best.</li>
+                        <li>Each save is small (100&nbsp;KB). If something doesn't fit, save a summary instead of the full board.</li>
+                        <li>Guests play normally, but nothing is stored — a sign-in prompt appears once per game.</li>
+                    </ul>
+                </section>
+
+                <section id="chat">
+                    <h2>Chat &amp; servers</h2>
+                    <p>A <strong>server</strong> holds channels; a <strong>channel</strong> holds messages. You can also message people directly.</p>
+                    <ul>
+                        <li><strong>Create a server</strong> from <a href="/servers">Servers</a> — you pick the starting channels, and you can add more later.</li>
+                        <li><strong>Roles:</strong> owner, admin, member. Admins manage channels and members; members chat.</li>
+                        <li><strong>Friends:</strong> add someone, they accept, then you can DM them. Requests show in your profile.</li>
+                        <li><strong>Rules:</strong> a server can post rules that members acknowledge once.</li>
+                        <li>Typing indicators, unread badges and read receipts are all live — no refreshing needed.</li>
+                        <li>Your servers are listed in the left rail so jumping between them is one click.</li>
+                    </ul>
+                </section>
+
+                <section id="themes">
+                    <h2>Theme packs</h2>
+                    <p>A theme pack restyles Cudic: colours, fonts, rail icons, rail background art, motion, and a live background scene. Anyone can try one instantly, or buy it with coins.</p>
+                    <h3>Publishing a pack</h3>
+                    <p><a href="/themes">Themes</a> has a builder that previews changes as you make them and publishes to the store when you're happy.</p>
+                    <ul>
+                        <li>Pick colours, fonts, icon style, motion level and a scene, then preview.</li>
+                        <li><strong>Advanced</strong> lets you paste a <code>.ctheme</code> — a small text language for packs — plus your own CSS and HTML for the really specific bits.</li>
+                        <li>Set a price in coins (including free), and people who buy it keep it even if you later change the price.</li>
+                        <li>Anyone can report a pack; see <a href="#reports">Reports</a>.</li>
+                    </ul>
+                    <p>Prefer plain CSS? You don't need a pack: any project you publish can include its own stylesheet.</p>
+                </section>
+
+                <section id="coins">
+                    <h2>Coins</h2>
+                    <p>Coins are Cudic's own currency — there is no real money and no cash-out. You earn them for being around and making things, and spend them on theme packs.</p>
+                    <ul>
+                        <li><strong>Daily claim</strong> on your profile's Earn panel.</li>
+                        <li><strong>Quests</strong> — small tasks like publishing a game or joining a server.</li>
+                        <li><strong>Activity</strong> — chatting counts toward a small daily trickle.</li>
+                        <li><strong>Selling packs</strong> earns coins every time someone buys one.</li>
+                    </ul>
+                    <p>Your balance and every transaction are listed in the same panel, so you can always see where coins came from and went.</p>
+                </section>
+
+                <section id="reports">
+                    <h2>Reports</h2>
+                    <p>Every published game and theme pack can be reported: pick the reason, add what's going on, and attach a screenshot if it helps. Reports go to the moderators, not to the person who made the thing.</p>
+                </section>
+
+                <section id="ai">
+                    <h2>Cudic AI panel</h2>
+                    <p>The ✦ button in the title bar (or the palette command <strong>Cudic AI: Open chat</strong>) opens a chat panel along the bottom of Studio. It works with the model provider of your choice.</p>
+                    <ul>
+                        <li><strong>Bring your own key.</strong> Add a provider once, then pick any model it lists — or a local Ollama / LM Studio model. Keys are stored in this browser and are sent only to the provider you chose.</li>
+                        <li><strong>Streaming answers</strong> with code blocks that have <strong>Apply</strong> and <strong>Copy</strong>, so a suggestion becomes an edit in one click.</li>
+                        <li><strong>Slash commands</strong> for the everyday actions (new chat, clear, help, model, keys).</li>
+                        <li><strong>Skills</strong> are reusable prompt packs you can switch on and off — one teaches it Cudic's conventions, another adds a design sensibility pass.</li>
+                        <li><strong>Ghost-text autocomplete</strong> in the editor works when you've saved a key for the model it's using.</li>
+                        <li>It can read and write files in your project, so read the diffs before applying one.</li>
+                    </ul>
+                    <p>It needs to know what you're working on to be useful — open the file you're editing or mention it, and it'll answer about that instead of in generalities.</p>
+                </section>
+
+                <section id="account">
+                    <h2>Account</h2>
+                    <p>Your profile at <a href="/profile">/profile</a> holds the things that follow you: display name, avatar, bio, accent colour and light/dark preference. Theme, accent and reduced-motion settings are remembered in this browser and applied on every page.</p>
+                    <p>Sign out from the account row at the bottom of the rail. Signing in on a second device takes over the session there — the older device pauses and offers to take it back.</p>
+                </section>
+
+                <section id="faq">
+                    <h2>FAQ</h2>
+                    <h3>Why is index.html almost empty after a Scratch import?</h3>
+                    <p>It is just the player page. The project is <code>project.json</code>, and <code>scratch.js</code> runs it.</p>
+                    <h3>It says I can't save.</h3>
+                    <p>You need to be signed in. If a single file is enormous (tens of megabytes on one line), that's usually the problem — keep big media as real files instead of pasting it into text.</p>
+                    <h3>My preview is blank.</h3>
+                    <p>Check the console panel in the bottom bar. The most common causes are a missing <code>index.html</code>, a typo in a script tag, or an import that couldn't resolve.</p>
+                    <h3>The camera/microphone blocks in my game don't work.</h3>
+                    <p>Games run sandboxed, so hardware access is off. It's the same reason a game can't read your account.</p>
+                    <h3>Studio feels slow the first time.</h3>
+                    <p>The workbench is a large download on first visit. After that it's cached and normal.</p>
+                </section>
+
+                <section id="limits">
+                    <h2>Limits &amp; known gaps</h2>
+                    <ul>
+                        <li>It's a browser: no terminal, no native binaries, no installing system software. Python runs in WebAssembly, npm packages come from a CDN.</li>
+                        <li>Scratch blocks aren't translated to hand-written JS — the original project comes across as-is.</li>
+                        <li>Guest progress isn't stored, and cloud saves are opt-in per game.</li>
+                        <li>Text-to-speech and translate blocks are silent; video sensing is blocked.</li>
+                        <li>Editing a Scratch <code>project.json</code> alone doesn't change what's running until you re-import or sync.</li>
+                        <li>Imports cap at 25&nbsp;MB and each cloud save at 100&nbsp;KB.</li>
+                    </ul>
+                    <p>Something missing or wrong? Tell us in a server, or report the game or pack and we'll take a look.</p>
+                </section>
+            </article>
+            </div>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=3"></script>
+
+</body>
+
+</html>
