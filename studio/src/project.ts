@@ -227,7 +227,9 @@ export async function bootProject(): Promise<BootProject> {
   if (projectId != null) {
     try {
       const base = await apiBase();
-      const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId));
+      // Cache-bust: a failed load (e.g. a 404 served before a fix
+      // deploys) must never come back from cache as "no files".
+      const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId) + '?t=' + Date.now());
       const d = await res.json();
       const g = d?.game;
       if (g != null) {

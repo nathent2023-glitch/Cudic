@@ -623,7 +623,7 @@ async function loadGame() {
   if (!currentGameId) return;
   var c = await getCfg();
   try {
-    var res = await fetch(c.api + '/api/games/' + currentGameId);
+    var res = await fetch(c.api + '/api/games/' + currentGameId + '?t=' + Date.now());
     var d = await res.json();
     if (!d.game) return;
     // Owner check: only the owner may load a project into the editor.
