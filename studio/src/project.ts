@@ -53,8 +53,13 @@ function getToken(): string | null {
 
 async function apiBase(): Promise<string> {
   try {
+    // Mirror config.js: local dev talks to the local backend (same host)
+    // so new endpoints work before they deploy.
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return '';
     const t = await (await fetch('/config.js')).text();
-    const m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/);
+    // NOTE: match the wss:// URL anywhere — config.js computes WS_URL with
+    // a ternary, so `WS_URL = '...'` never literally appears in the file.
+    const m = t.match(/(wss?:\/\/[^'"]+)/);
     if (m != null) return m[1].replace(/^wss?:\/\//, 'https://');
   } catch {
     // same-origin fallback
@@ -87,8 +92,11 @@ async function getCfg(): Promise<StorageCfg> {
   const cfg: StorageCfg = { api: '', url: '', anon: '' };
   try {
     const t = await (await fetch('/config.js')).text();
-    const w = t.match(/WS_URL\s*=\s*['"]([^'"]+)/);
-    if (w != null) cfg.api = w[1].replace(/^wss?:\/\//, 'https://');
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      // Same NOTE as apiBase: WS_URL is computed, match the URL anywhere.
+      const w = t.match(/(wss?:\/\/[^'"]+)/);
+      if (w != null) cfg.api = w[1].replace(/^wss?:\/\//, 'https://');
+    }
     const u = t.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)/);
     if (u != null) cfg.url = u[1];
     const a = t.match(/SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)/);

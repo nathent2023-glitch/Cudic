@@ -315,7 +315,15 @@ async function getCfg() {
   cfg = { api: '', url: '', anon: '' };
   try {
     var t = await (await fetch('/config.js')).text();
-    var m = t.match(/WS_URL\s*=\s*['"]([^'"]+)/); if (m) cfg.api = m[1].replace(/^wss?:\/\//, 'https://');
+    var m = null;
+    // WS_URL is computed with a ternary in config.js, so `WS_URL = '...'`
+    // never literally appears — match the wss:// URL anywhere. Localhost
+    // keeps same-origin so new endpoints work before they deploy.
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      var wm = t.match(/(wss?:\/\/[^'"]+)/);
+      if (wm) m = [wm[0], wm[1]];
+    }
+    if (m) cfg.api = m[1].replace(/^wss?:\/\//, 'https://');
     var u = t.match(/SUPABASE_URL\s*=\s*['"]([^'"]+)/); if (u) cfg.url = u[1];
     var a = t.match(/SUPABASE_ANON_KEY\s*=\s*['"]([^'"]+)/); if (a) cfg.anon = a[1];
   } catch (e) {}
