@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { createClient } = require('@supabase/supabase-js');
 const { Resend } = require('resend');
+const JSZip = require('jszip');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
@@ -1849,6 +1850,239 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ game: nu }));
     return;
+  }
+
+  // ── API: import Scratch (.sb3) → split game files ───────────────
+  // POST /api/scratch/import {sb3?: base64, scratchUrl?: string, scratchId?: string|number, title?: string}
+  // Server-side only: the packager/scaffolding Node module explicitly does
+  // not run in browsers. We unpack here and emit editable split files plus
+  // a Scaffolding player shell (CDN, pinned) — the existing preview /
+  // publish / gallery pipeline handles the rest untouched. Auth + seat +
+  // rate limited. No DB writes: files go back to Studio, the user saves.
+  // ponytail: whole upload lives in memory as base64 (25MB cap). If imports
+  // get big, stream the .sb3 to storage and pass a key instead.
+  const SCRATCH_MAX_BYTES = 25 * 1024 * 1024;
+  const SCAFFOLD_CDN = 'https://cdn.jsdelivr.net/npm/@turbowarp/packager@3.13.0/dist/scaffolding/';
+  function scratchFail(res, status, error) {
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error }));
+  }
+  async function fetchUrl(url, ms) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms);
+    try {
+      const r = await fetch(url, { signal: ctl.signal });
+      if (!r.ok) return null;
+      const ab = await r.arrayBuffer();
+      return Buffer.from(ab);
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+  async function fetchScratchProject(pid) {
+    // Scratch 403s server-side /<id> downloads, so the documented token dance
+    // (trampoline metadata → ?token=) is the only path. That API rate-limits
+    // bursts, hence one retry.
+    const metaFor = async () => {
+      const b = await fetchUrl('https://trampoline.turbowarp.org/api/projects/' + pid, 15000);
+      if (!b) return null;
+      try { return JSON.parse(b.toString('utf8')); } catch { return null; }
+    };
+    let meta = await metaFor();
+    if (meta == null || !meta.project_token) {
+      await new Promise((r) => setTimeout(r, 1500));
+      meta = await metaFor();
+    }
+    if (meta == null || !meta.project_token) return null;
+    const buf = await fetchUrl('https://projects.scratch.mit.edu/' + pid + '?token=' + encodeURIComponent(meta.project_token), 30000);
+    return buf && buf.length > 0 ? { buf, title: typeof meta.title === 'string' ? meta.title : '' } : null;
+  }
+  function scratchMime(name) {
+    const ext = String(name.split('.').pop() || '').toLowerCase();
+    if (ext === 'svg') return 'image/svg+xml';
+    if (ext === 'png') return 'image/png';
+    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+    if (ext === 'gif') return 'image/gif';
+    if (ext === 'wav') return 'audio/wav';
+    if (ext === 'mp3') return 'audio/mpeg';
+    return 'application/octet-stream';
+  }
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  if (url.pathname === '/api/scratch/import' && req.method === 'POST') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!rateLimit('scratch:' + user.id, 5, 3600000)) { scratchFail(res, 429, 'Too many imports, slow down.'); return; }
+    const body = await readBody(req).catch(() => ({}));
+    let title = String(body.title || '').trim().slice(0, 80);
+    let buf = null;
+    try {
+      if (typeof body.sb3 === 'string' && body.sb3.length > 0) {
+        if (body.sb3.length > 34 * 1024 * 1024) { scratchFail(res, 413, 'That file is over 25MB.'); return; }
+        if (!/^[A-Za-z0-9+/=\r\n]+$/.test(body.sb3)) { scratchFail(res, 400, 'That upload is not valid base64.'); return; }
+        buf = Buffer.from(body.sb3, 'base64');
+      } else {
+        let pid = '';
+        if (body.scratchId != null) pid = String(body.scratchId).trim();
+        else if (typeof body.scratchUrl === 'string') {
+          let u = null;
+          try { u = new URL(body.scratchUrl.trim()); } catch { u = null; }
+          const m = u && u.hostname === 'scratch.mit.edu' ? u.pathname.match(/\/projects\/(\d+)/) : null;
+          if (!m) { scratchFail(res, 400, 'Give a Scratch project link like https://scratch.mit.edu/projects/123456.'); return; }
+          pid = m[1];
+        }
+        if (!/^\d+$/.test(pid)) { scratchFail(res, 400, 'Give a numeric Scratch project id or a .sb3 file.'); return; }
+        const got = await fetchScratchProject(pid);
+        if (!got) { scratchFail(res, 502, 'Scratch would not hand over that project. It has to be shared (not private), and Scratch rate-limits downloads — try importing the .sb3 file instead.'); return; }
+        buf = got.buf;
+        if (title === '') title = got.title.substring(0, 80);
+      }
+      if (title === '') title = 'Scratch import';
+      if (!buf || buf.length === 0 || buf.length > SCRATCH_MAX_BYTES) { scratchFail(res, 413, 'That file is over 25MB.'); return; }
+      // Scratch hands back either an .sb3 zip or bare project.json depending on
+      // the project. A JSON body carries no assets, so pull each one from the
+      // Scratch asset CDN by the md5ext project.json references.
+      const warnings = [];
+      // Assets ship as real workspace files (assets/<md5ext>) so saving uploads
+      // them to storage instead of stuffing megabytes of base64 into the row;
+      // assets.js only maps md5ext -> that path.
+      const assets = {};
+      const binaries = {};
+      let assetBytes = 0, assetCount = 0;
+      const addAsset = (key, bytes) => {
+        const path = 'assets/' + key;
+        assets[key] = path;
+        binaries[path] = bytes.toString('base64');
+        assetBytes += bytes.length; assetCount++;
+      };
+      let proj = null, zip = null;
+      if (buf[0] === 0x7b) {
+        try { proj = JSON.parse(buf.toString('utf8')); } catch { proj = null; }
+        if (proj == null) { scratchFail(res, 422, 'That project could not be read.'); return; }
+        const need = [];
+        for (const t of (Array.isArray(proj.targets) ? proj.targets : [])) {
+          for (const c of [...(t.costumes || []), ...(t.sounds || [])]) {
+            if (c && typeof c.md5ext === 'string' && need.indexOf(c.md5ext) === -1) need.push(c.md5ext);
+          }
+        }
+        let missing = 0;
+        for (const md5 of need) {
+          const b = await fetchUrl('https://assets.scratch.mit.edu/internalapi/asset/' + encodeURIComponent(md5) + '/get/', 15000);
+          if (b == null) { missing++; continue; }
+          addAsset(md5, b);
+        }
+        if (missing > 0) warnings.push(missing + ' costume/sound(s) Scratch would not serve, so those will not show.');
+      } else {
+        try { zip = await JSZip.loadAsync(buf); } catch { scratchFail(res, 422, 'That file is not a Scratch project.'); return; }
+        const pjFile = zip.file('project.json');
+        if (!pjFile) { scratchFail(res, 422, 'No project.json inside — not a Scratch project.'); return; }
+        try { proj = JSON.parse(await pjFile.async('string')); } catch { scratchFail(res, 422, 'project.json would not parse.'); return; }
+      }
+      if (!proj || !Array.isArray(proj.targets)) { scratchFail(res, 422, 'project.json is not a Scratch project.'); return; }
+      // Fidelity scan: extensions + opcode prefixes + cloud variables.
+      const exts = new Set(Array.isArray(proj.extensions) ? proj.extensions : []);
+      const hasOp = (pre) => {
+        for (const t of proj.targets) {
+          const bl = (t && t.blocks) || {};
+          for (const k of Object.keys(bl)) {
+            const b = bl[k];
+            if (b && typeof b.opcode === 'string' && b.opcode.indexOf(pre) === 0) return true;
+          }
+        }
+        return false;
+      };
+      const fullPlayer = exts.has('music') || hasOp('music.');
+      if (fullPlayer) warnings.push('Uses the music extension: playing with the full-size player.');
+      if (exts.has('text2speech') || hasOp('text2speech.') || exts.has('translate') || hasOp('translate.')) warnings.push('Text-to-speech/translate blocks need API keys and will stay silent.');
+      if (exts.has('videoSensing') || hasOp('videoSensing.')) warnings.push('Video sensing needs camera access, which the game sandbox blocks.');
+      const clouds = [];
+      for (const t of proj.targets) {
+        const vars = (t && t.variables) || {};
+        for (const k of Object.keys(vars)) {
+          const v = vars[k];
+          const nm = Array.isArray(v) ? v[0] : v && v.name;
+          if (typeof nm === 'string' && nm.charAt(0) === '☁' && clouds.indexOf(nm) === -1) clouds.push(nm);
+        }
+      }
+      if (clouds.length) warnings.push('Cloud variables (' + clouds.slice(0, 5).join(', ') + (clouds.length > 5 ? ' +' + (clouds.length - 5) + ' more' : '') + ') are stored locally per player, not synced.');
+      if (zip != null) {
+        const names = Object.keys(zip.files).filter((n) => n !== 'project.json' && !zip.files[n].dir);
+        for (const n of names) addAsset(n, await zip.files[n].async('nodebuffer'));
+      }
+      if (assetBytes > 5 * 1024 * 1024) warnings.push('Heavy project: ' + Math.round(assetBytes / 1048576) + 'MB of costumes/sounds, so saving can be slow.');
+      const projJson = JSON.stringify(proj);
+      const safeAssets = JSON.stringify(assets).replace(/<\//g, '<\\/');
+      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 40) || 'scratch-game';
+      const shell =
+        '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+        '<title>' + escHtml(title) + ' — Cudic</title>\n' +
+        '<style>html,body{margin:0;height:100%;background:transparent;overflow:hidden}' +
+        '#stage{width:100%;height:100%}' +
+        // Overlay, not a flow child: never shifts the canvas, just removed on start.
+        '#loading{position:fixed;top:10px;left:12px;color:#8b8b96;font:12px monospace}</style>\n' +
+        '<script src="' + SCAFFOLD_CDN + (fullPlayer ? 'scaffolding-full.js' : 'scaffolding-min.js') + '"><\/script>\n' +
+        '</head>\n<body>\n<div id="stage"><div id="loading">Loading…</div></div>\n' +
+        '<script src="assets.js"><\/script>\n<script src="scratch.js"><\/script>\n</body>\n</html>\n';
+      const boot =
+        '// Generated by Cudic Scratch import. Scaffolding player (c) TurboWarp,\n' +
+        '// MPL-2.0 — see https://github.com/TurboWarp/packager. project.json is\n' +
+        '// the editable source; the copies below are what actually runs\n' +
+        '// (re-import, or hand-sync both, after editing project.json).\n' +
+        '// Cloud variables below use per-player local storage (see import notes).\n' +
+        '(function () {\n' +
+        'var mount = document.getElementById(\'stage\');\n' +
+        'function fail(msg) { var l = document.getElementById(\'loading\'); if (l) l.textContent = msg; }\n' +
+        'if (!window.Scaffolding) return fail(\'Player library failed to load — check connection and reload.\');\n' +
+        'var scaffolding = new window.Scaffolding.Scaffolding();\n' +
+        'scaffolding.width = 480; scaffolding.height = 360;\n' +
+        'scaffolding.resizeMode = \'preserve-ratio\';\n' +
+        'scaffolding.setup();\n' +
+        'scaffolding.appendTo(mount);\n' +
+        'try { scaffolding.setAccentColor(\'#855CD6\'); } catch (e) {}\n' +
+        'try {\n' +
+        '  var store = scaffolding.storage;\n' +
+        '  store.addWebStore([store.AssetType.ImageVector, store.AssetType.ImageBitmap, store.AssetType.Sound], function (asset) {\n' +
+        '    var key = asset.assetId + \'.\' + asset.dataFormat;\n' +
+        '    var p = (window.__SCRATCH_ASSETS__ || {})[key];\n' +
+        '    if (!p) throw new Error(\'missing asset \' + key);\n' +
+        '    // __CUDIC_BIN__ is injected by the Studio preview and the Cudic player\n' +
+        '    // so this sandboxed frame resolves the file without fetching it.\n' +
+        '    return (window.__CUDIC_BIN__ || {})[p] || p;\n' +
+        '  });\n' +
+        '} catch (e) {}\n' +
+        'try { scaffolding.addCloudProvider(new window.Scaffolding.Cloud.LocalStorageProvider(\'cudic-' + slug.replace(/'/g, '') + '\')); } catch (e) {}\n' +
+        'scaffolding.loadProject(JSON.stringify(window.__SCRATCH_PROJECT__))\n' +
+        '  .then(function () {\n' +
+        '    var l = document.getElementById(\'loading\'); if (l) l.remove();\n' +
+        '    scaffolding.start();\n' +
+        '  })\n' +
+        '  .catch(function (err) { fail(\'Could not start this project: \' + ((err && err.message) || err)); });\n' +
+        '})();\n';
+      const files = {
+        'index.html': shell,
+        'scratch.js': boot,
+        'project.json': JSON.stringify(proj, null, 2),
+        'assets.js': 'window.__SCRATCH_ASSETS__ = ' + safeAssets + ';\nwindow.__SCRATCH_PROJECT__ = ' + projJson.replace(/<\//g, '<\\/') + ';\n'
+      };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        files, binaries, warnings,
+        meta: { sprites: proj.targets.length, assets: assetCount, assetBytes, fullPlayer, title }
+      }));
+      return;
+    } catch (e) {
+      scratchFail(res, 500, 'Import failed while converting.');
+      return;
+    }
   }
 
   // ── API: account-bound game saves (one row per user+game) ────

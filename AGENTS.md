@@ -159,6 +159,7 @@ GET  /favicon.ico               → serves public/cudic_sfsvg.svg
 GET  /themes                    theme pack store
 POST /api/session/claim|heartbeat  DELETE /api/session
 GET|PUT|DELETE /api/saves/:gameId  ← account-bound saves (100KB cap)
+POST /api/scratch/import           ← .sb3 / Scratch URL → split player files
 + static file serving from public/
 ```
 WebSocket: `new WebSocketServer({ server })` — lobby presence, typing, broadcast,
@@ -363,6 +364,7 @@ glox.saveProject | glox.importFiles | glox.importFolder | glox.exportProject
 glox.publishProject | glox.unpublishProject | glox.deleteProject
 glox.setThumbnail | glox.openPreview | glox.run | glox.leaveStudio | glox.toggleSidebar
 glox.runPython | glox.installPythonPackage | glox.addPackage
+glox.importScratch   (.sb3 file or shared Scratch link → playable project)
 cudic ai:  Cudic AI: Open chat
 ```
 Note the **`glox.` prefix is intentional and kept** — command IDs and storage keys
@@ -393,6 +395,28 @@ legacy single-file games. `assemble()` / `injectAssetUrls()` / `previewHtmlFor()
 - **Legacy scene games**: classic-editor rows carry code in `scene` with no
   `files`; Studio `bootProject` converts them on the fly via `sceneToFiles`
   (same module) into an editable single-file game — saving persists it.
+
+### Scratch import (`glox.importScratch`)
+`POST /api/scratch/import` unpacks `.sb3` (base64) or a shared Scratch project
+and returns 4 files Studio drops into the workspace: `index.html` (player shell),
+`scratch.js` (TurboWarp Scaffolding loader), `project.json` (the editable source),
+`assets.js` (assets as data: URLs). Root dep: `jszip`.
+- **Scratch 403s direct server-side `projects.scratch.mit.edu/<id>` downloads.**
+  The token dance (trampoline metadata → `?token=`) is the only working path and
+  its token API rate-limits bursts → one 1.5s retry. `.sb3` upload is the reliable
+  route when a link fails.
+- **The token endpoint returns either an `.sb3` zip or bare `project.json`**,
+  depending on the project. JSON bodies carry no assets, so they're rebuilt by
+  fetching every referenced `md5ext` from `assets.scratch.mit.edu/internalapi/asset/…`.
+  Both shapes are handled; a heavy project (Geometry Dash = 104 assets, 10MB) works.
+- Scaffolding is loaded from a pinned jsDelivr URL; `window.Scaffolding` exposes
+  `{Scaffolding, Cloud, VM, Renderer, Storage, AudioEngine, JSZip}` — verified
+  against 3.13.0. `addCloudProvider` must run **before** `loadProject`.
+- Cloud variables map to `Cloud.LocalStorageProvider` (per-player, not synced);
+  music projects use `scaffolding-full.js`, everything else `-min.js`.
+- Known gaps: editing `project.json` alone does not change what runs (the loader
+  holds its own copy — re-import or hand-sync both); TTS/translate stay silent,
+  video sensing is blocked. Blocks are **not** translated to hand-written JS.
 
 ### Thumbnails
 `games.thumbnail` (text, data-URL) — column, PUT field, and both `/api/games`

@@ -72,6 +72,12 @@ function headers(json: boolean): Record<string, string> {
   if (json) h['Content-Type'] = 'application/json';
   const t = getToken();
   if (t != null) h['Authorization'] = 'Bearer ' + t;
+  try {
+    const seat = localStorage.getItem('cudic_seat');
+    if (seat != null) h['X-Seat'] = seat;
+  } catch {
+    // ignore
+  }
   return h;
 }
 
@@ -656,6 +662,107 @@ async function importFolder(): Promise<void> {
   }
 }
 
+function toBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (const b of bytes) s += String.fromCharCode(b);
+  return btoa(s);
+}
+
+function fromBase64(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+interface ScratchImportResult {
+  files?: FileMap;
+  binaries?: Record<string, string>;
+  warnings?: string[];
+  meta?: { sprites: number; assets: number };
+  error?: string;
+}
+
+// Unpacks an .sb3 (or shared Scratch project) on the server and drops the
+// result into the workspace: index.html + scratch.js + project.json + assets.js.
+// project.json is the editable source; scratch.js is the Scaffolding loader.
+async function importScratch(): Promise<void> {
+  if (provider == null) {
+    vscode.window.showErrorMessage('Scratch import needs a ready workspace, reload Studio.');
+    return;
+  }
+  const how = await vscode.window.showQuickPick(
+    [
+      { label: 'File', desc: 'Pick a .sb3 you downloaded from Scratch' },
+      { label: 'Link or id', desc: 'Paste a shared scratch.mit.edu project link' }
+    ],
+    { placeHolder: 'Import a Scratch project' }
+  );
+  if (how == null) return;
+
+  const body: Record<string, string> = {};
+  if (how.label === 'File') {
+    const f = (await pickInput(false))[0];
+    if (f == null) return;
+    if (!/\.sb3$/i.test(f.name)) {
+      vscode.window.showWarningMessage('Pick a Scratch .sb3 file.');
+      return;
+    }
+    if (f.size > MAX_IMPORT_BYTES) {
+      vscode.window.showWarningMessage('That file is over 25MB.');
+      return;
+    }
+    body.sb3 = toBase64(new Uint8Array(await f.arrayBuffer()));
+    body.title = f.name.replace(/\.sb3$/i, '');
+  } else {
+    const link = await vscode.window.showInputBox({
+      prompt: 'Scratch project link or id',
+      placeHolder: 'https://scratch.mit.edu/projects/123456789',
+      validateInput: (v) => (v.trim() === '' ? 'Give a link or a project id.' : null)
+    });
+    if (link == null) return;
+    const t = link.trim();
+    if (/^\d+$/.test(t)) body.scratchId = t;
+    else body.scratchUrl = t;
+    const ok = await vscode.window.showWarningMessage(
+      'Only import projects you may remix — your own, or one marked "See inside".',
+      { modal: true },
+      'I have the right to use this'
+    );
+    if (ok == null) return;
+  }
+
+  try {
+    const d = await vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Importing Scratch project…' },
+      async (): Promise<ScratchImportResult> => {
+        const res = await fetch((await apiBase()) + '/api/scratch/import', {
+          method: 'POST',
+          headers: headers(true),
+          body: JSON.stringify(body)
+        });
+        const j = (await res.json().catch(() => null)) as ScratchImportResult | null;
+        if (j?.files == null) throw new Error(j?.error ?? 'Import failed (' + res.status + ').');
+        return j;
+      }
+    );
+    // Assets arrive base64-encoded so they land as real binary files and go to
+    // storage on save — never as one giant text file.
+    const incoming: FileMap = { ...(d.files ?? {}) };
+    for (const [p, b64] of Object.entries(d.binaries ?? {})) incoming[p] = fromBase64(b64);
+    registerFiles({ ...(await collectFiles()), ...incoming });
+    void vscode.commands.executeCommand('vscode.open', monaco.Uri.file('/workspace/index.html'));
+    const notes = (d.warnings ?? []).join(' ');
+    vscode.window.showInformationMessage(
+      'Imported ' + (d.meta?.sprites ?? 0) + ' sprite(s) and ' + (d.meta?.assets ?? 0) + ' asset(s).' +
+      (notes === '' ? '' : ' ' + notes) +
+      ' Save to keep it on Cudic.'
+    );
+  } catch (e) {
+    vscode.window.showErrorMessage('Scratch import failed: ' + (e as Error).message);
+  }
+}
+
 async function exportProject(): Promise<void> {
   try {
     const files = await collectFiles();
@@ -748,6 +855,26 @@ export function registerProjectCommands(): void {
       }
       async run(): Promise<void> {
         await importFolder();
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.importScratch',
+          title: { value: 'Cudic: Import Scratch project', original: 'Cudic: Import Scratch project' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' },
+            { id: MenuId.ExplorerContext, group: 'cudic' },
+            { id: MenuId.EditorContext, group: 'cudic' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await importScratch();
       }
     }
   );

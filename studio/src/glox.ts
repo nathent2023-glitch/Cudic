@@ -91,6 +91,14 @@ async function injectAssetUrls(html: string): Promise<string> {
   for (const k of keys) {
     data.set(k, await toDataUrl(mimeOf(k), bins[k]));
   }
+  // Runtime-fetched assets (Scratch imports) name their files by path, and a
+  // sandboxed frame can't fetch workspace files — hand the runtime the map.
+  if (/__CUDIC_BIN__|__SCRATCH_ASSETS__/.test(html)) {
+    const map: Record<string, string> = {};
+    for (const [k, v] of data) map[k] = v;
+    const tag = '<script>window.__CUDIC_BIN__ = ' + JSON.stringify(map).replace(/<\//g, '<\\/') + ';<\/script>';
+    html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : tag + html;
+  }
   const byNorm = new Map(keys.map((k) => [k.toLowerCase(), k]));
   const swap = (raw: string): string => {
     const hit = byNorm.get(normalizeRef(raw).toLowerCase());

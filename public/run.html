@@ -86,7 +86,16 @@ window.addEventListener('message', async (e) => {
     const u = assetUrl(p);
     return u ? attr + '="' + u + '"' : m;
   });
-  const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})<\/script>';
+  // Runtime-fetched assets (Scratch imports) resolve through this map: binary
+  // siblings as data: URLs, saved binaries as public storage URLs.
+  const binMap = {};
+  for (const p of Object.keys(dataUrls)) binMap[p] = dataUrls[p];
+  for (const k of Object.keys(assets)) {
+    const p = k.split('/').slice(2).join('/');
+    if (p) binMap[p] = assetsBase + assets[k];
+  }
+  const binTag = '<script>window.__CUDIC_BIN__ = ' + JSON.stringify(binMap).replace(/<\//g, '<\\/') + ';<\/script>';
+  const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})' + binTag + '<\/script>';
   parent.postMessage({ type: 'console', level: 'info', text: 'Running' }, '*');
   // ponytail: doctype must stay first or the frame renders in quirks mode
   const doc = (/^\s*<!doctype html>/i.test(index))
