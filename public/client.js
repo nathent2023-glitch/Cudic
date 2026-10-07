@@ -44,6 +44,10 @@ var chatForm = document.getElementById('chatForm');
 var msgInput = document.getElementById('msgInput');
 var typingEl = document.getElementById('typingIndicator');
 var convListEl = document.getElementById('convList');
+var msgSearchBtn = document.getElementById('msgSearchBtn');
+var msgSearchPanel = document.getElementById('msgSearchPanel');
+var msgSearchInput = document.getElementById('msgSearchInput');
+var msgSearchResults = document.getElementById('msgSearchResults');
 var sidebar = document.querySelector('.chat-sidebar');
 var searchView = document.getElementById('searchView');
 var peopleSearch = document.getElementById('peopleSearch');
@@ -69,6 +73,58 @@ function flashTitle() {
 }
 var convSearch = document.getElementById('convSearch');
 convSearch.addEventListener('input', () => { convFilter = convSearch.value; renderConvs(); });
+
+// ── Message search inside the open conversation ────────────────────
+// Server-side (ilike per channel, same access gate as reading it), because
+// the client only ever holds the last 100 messages.
+function closeMsgSearch() {
+  if (!msgSearchPanel) return;
+  msgSearchPanel.hidden = true;
+  if (msgSearchInput) msgSearchInput.value = '';
+  if (msgSearchResults) msgSearchResults.innerHTML = '';
+}
+if (msgSearchBtn && msgSearchPanel) {
+  msgSearchBtn.addEventListener('click', function () {
+    msgSearchPanel.hidden = !msgSearchPanel.hidden;
+    if (!msgSearchPanel.hidden && msgSearchInput) msgSearchInput.focus();
+  });
+  document.getElementById('msgSearchClose').addEventListener('click', closeMsgSearch);
+  var msgSearchTimer = null;
+  msgSearchInput.addEventListener('input', function () {
+    clearTimeout(msgSearchTimer);
+    msgSearchTimer = setTimeout(runMsgSearch, 260);
+  });
+  msgSearchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { clearTimeout(msgSearchTimer); runMsgSearch(); } });
+}
+async function runMsgSearch() {
+  if (!msgSearchPanel || msgSearchPanel.hidden) return;
+  if (!current) { msgSearchResults.innerHTML = '<div class="dim" style="font-size:0.82rem">Open a conversation first.</div>'; return; }
+  const q = msgSearchInput.value.trim();
+  if (q.length < 3) { msgSearchResults.innerHTML = '<div class="dim" style="font-size:0.82rem">Type at least 3 characters.</div>'; return; }
+  msgSearchResults.innerHTML = '<div class="dim" style="font-size:0.82rem">Searching…</div>';
+  try {
+    const d = await api('/api/messages/search?lobby=' + encodeURIComponent(current.name) + '&q=' + encodeURIComponent(q));
+    const hits = d.results || [];
+    if (!hits.length) { msgSearchResults.innerHTML = '<div class="dim" style="font-size:0.82rem">No messages match.</div>'; return; }
+    msgSearchResults.innerHTML = hits.map(function (m) {
+      const when = new Date(m.created_at);
+      const txt = escapeHtml(String(m.text || ''));
+      const idx = txt.toLowerCase().indexOf(escapeHtml(q).toLowerCase());
+      // Server matched the raw text; highlight the first hit in the escaped copy.
+      const raw = String(m.text || '');
+      const at = raw.toLowerCase().indexOf(q.toLowerCase());
+      const body = at >= 0
+        ? escapeHtml(raw.slice(Math.max(0, at - 40), at + q.length + 60)) + (at > 40 ? '…' : '') + (at + q.length + 60 < raw.length ? '…' : '')
+        : txt;
+      void idx;
+      return '<div class="msgsearch-hit" style="padding:7px 0;border-bottom:1px solid var(--line)">' +
+        '<div style="font-size:0.8rem;color:var(--text-tertiary)"><b style="color:var(--text-primary)">' + escapeHtml(m.display_name || '') + '</b> · ' + fmtAgo(when) + '</div>' +
+        '<div style="font-size:0.88rem;color:var(--text-secondary);margin-top:2px">' + body + '</div></div>';
+    }).join('');
+  } catch (e) {
+    msgSearchResults.innerHTML = '<div style="font-size:0.82rem;color:var(--danger)">Search failed. Check your connection.</div>';
+  }
+}
 
 function apiHost() { return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
 async function api(path, opts) {
@@ -273,6 +329,7 @@ async function openConv(conv) {
   messagesEl.innerHTML = '';
   current = conv;
   searchView.hidden = true;
+  closeMsgSearch();
   rulesOverlay.hidden = true;
   pendingRulesServer = null;
   onlineUsers = [];

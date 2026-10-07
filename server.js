@@ -348,7 +348,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
 
     const { data: profile, error: profErr } = await supabase
       .from('users')
-      .select('user_id, display_name, avatar_url, created_at')
+      .select('user_id, display_name, avatar_url, bio, interests, created_at')
       .eq('id', user.id)
       .single();
 
@@ -377,8 +377,19 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const { display_name, avatar_url } = JSON.parse(body);
+        const { display_name, avatar_url, bio, interests } = JSON.parse(body);
         var updates = {};
+        if (bio !== undefined) {
+          // Plain text, trimmed and length-capped. Rendered as textContent
+          // everywhere, so this is display-only.
+          updates.bio = String(bio || '').replace(/\s+/g, ' ').trim().substring(0, 200);
+        }
+        if (interests !== undefined) {
+          const list = (Array.isArray(interests) ? interests : [])
+            .map((t) => String(t).toLowerCase().trim().replace(/[^a-z0-9-]/g, '').slice(0, 24))
+            .filter(Boolean);
+          updates.interests = [...new Set(list)].slice(0, 10);
+        }
         if (display_name !== undefined) {
           if (!display_name || display_name.trim().length < 1) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -461,6 +472,41 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ messages: messages || [], persistent: true }));
+    return;
+  }
+
+  // ── API: search messages in one conversation ──────────────────
+  // Same gate as reading a room (canSeeLobby), so search can't be used to
+  // read channels you can't open. 3+ chars, newest first.
+  if (url.pathname === '/api/messages/search') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const lobbyName = url.searchParams.get('lobby') || '';
+    const q = String(url.searchParams.get('q') || '').trim();
+    if (!validName(lobbyName) || q.length < 3) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'lobby param and 3+ characters required' }));
+      return;
+    }
+    const { data: lobby } = await supabase
+      .from('lobbies')
+      .select('id, name, kind, server_id, is_private')
+      .eq('name', lobbyName)
+      .single();
+    if (!lobby || !(await canSeeLobby(user.id, lobby))) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found.' }));
+      return;
+    }
+    const { data: hits } = await supabase
+      .from('messages')
+      .select('id, display_name, text, created_at, user_id')
+      .eq('lobby_id', lobby.id)
+      .ilike('text', '%' + q.slice(0, 60).replace(/[%_\\]/g, '') + '%')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ results: hits || [] }));
     return;
   }
 
@@ -1600,16 +1646,66 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   }
 
   // ── API: list published games ──────────────────────────────────
+  // ?q= searches title/description/tags, ?tag= filters one tag, ?sort=
+  // new|old|az|plays. Cap stays 50: the gallery is a browse surface, and
+  // a search that matches nothing is better than an endless list.
   if (url.pathname === '/api/games' && req.method === 'GET') {
     cors(res);
-    const { data, error } = await supabase
+    let query = supabase
       .from('games')
-      .select('id, title, description, credits, thumbnail, owner_id, forked_from, forked_from_title, created_at, updated_at, users!owner_id(display_name, user_id)')
-      .eq('published', true)
-      .order('updated_at', { ascending: false })
-      .limit(50);
+      .select('id, title, description, credits, thumbnail, tags, play_count, owner_id, forked_from, forked_from_title, created_at, updated_at, users!owner_id(display_name, user_id)')
+      .eq('published', true);
+    const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
+    if (q) {
+      const like = '%' + q.replace(/[%_\\]/g, '') + '%';
+      query = query.or(`title.ilike.${like},description.ilike.${like}`);
+    }
+    const tag = String(url.searchParams.get('tag') || '').trim().toLowerCase().slice(0, 24);
+    if (tag) query = query.contains('tags', [tag]);
+    const sort = String(url.searchParams.get('sort') || 'new');
+    if (sort === 'plays') query = query.order('play_count', { ascending: false }).order('updated_at', { ascending: false });
+    else if (sort === 'old') query = query.order('created_at', { ascending: true });
+    else if (sort === 'az') query = query.order('title', { ascending: true });
+    else query = query.order('updated_at', { ascending: false });
+    const { data, error } = await query.limit(50);
+    const rows = data || [];
+    const ids = rows.map((g) => g.id);
+    const counts = {};
+    const liked = new Set();
+    // Tag vocabulary, like counts and your own likes: three small queries
+    // scoped to the rows we just returned (never the whole table).
+    const [tagsRes, likesRes, viewer] = await Promise.all([
+      supabase.from('games').select('tags').eq('published', true).limit(200),
+      ids.length === 0 ? Promise.resolve({ data: [] }) : supabase.from('game_likes').select('game_id').in('game_id', ids),
+      (async () => {
+        const authHeader = req.headers.authorization || '';
+        const token = authHeader.replace('Bearer ', '');
+        if (!token) return null;
+        const { data: { user } } = await supabase.auth.getUser(token);
+        return user;
+      })()
+    ]);
+    for (const l of likesRes.data || []) counts[l.game_id] = (counts[l.game_id] || 0) + 1;
+    if (viewer && ids.length > 0) {
+      const { data: mine } = await supabase.from('game_likes').select('game_id').eq('user_id', viewer.id).in('game_id', ids);
+      for (const l of mine || []) liked.add(l.game_id);
+    }
+    const tags = [...new Set((tagsRes.data || []).flatMap((g) => g.tags || []))].sort();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ games: data || [], error: error?.message }));
+    res.end(JSON.stringify({
+      games: rows.map((g) => ({ ...g, likes: counts[g.id] || 0, liked: liked.has(g.id) })),
+      tags,
+      error: error?.message
+    }));
+    return;
+  }
+
+  // ── API: tag vocabulary (gallery chips, no game list) ──────────
+  if (url.pathname === '/api/game-tags' && req.method === 'GET') {
+    cors(res);
+    const { data } = await supabase.from('games').select('tags').eq('published', true).limit(200);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ tags: [...new Set((data || []).flatMap((g) => g.tags || []))].sort() }));
     return;
   }
 
@@ -1743,8 +1839,86 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     const id = url.pathname.split('/')[3];
     const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(display_name, user_id)').eq('id', id).single();
     if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    // Like count + whether this viewer liked it (optional token).
+    const authH = req.headers.authorization || '';
+    const tok = authH.replace('Bearer ', '');
+    const { data: { user: viewer } } = tok ? await supabase.auth.getUser(tok) : { data: { user: null } };
+    const { count: likeCount } = await supabase.from('game_likes').select('user_id', { count: 'exact', head: true }).eq('game_id', id);
+    let liked = false;
+    if (viewer) {
+      const { data: mine } = await supabase.from('game_likes').select('user_id').eq('game_id', id).eq('user_id', viewer.id).maybeSingle();
+      liked = !!mine;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ game: data }));
+    res.end(JSON.stringify({ game: { ...data, likes: likeCount || 0, liked } }));
+    return;
+  }
+
+  // ── API: like / unlike a game ──────────────────────────────────
+  // Seat-checked like everything else; the row itself is the only state.
+  // Guests get the count without the ability to like (no identity to bind).
+  const likeMatch = /^\/api\/games\/([^/]+)\/like$/.exec(url.pathname);
+  if (likeMatch && (req.method === 'POST' || req.method === 'DELETE')) {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    const gid = likeMatch[1];
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    const { data: g } = await supabase.from('games').select('published, owner_id').eq('id', gid).single();
+    if (!g || !(g.published || g.owner_id === user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    if (req.method === 'POST') {
+      await supabase.from('game_likes').upsert({ user_id: user.id, game_id: gid }, { onConflict: 'user_id,game_id', ignoreDuplicates: true });
+    } else {
+      await supabase.from('game_likes').delete().eq('user_id', user.id).eq('game_id', gid);
+    }
+    const { count } = await supabase.from('game_likes').select('user_id', { count: 'exact', head: true }).eq('game_id', gid);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ liked: req.method === 'POST', likes: count || 0 }));
+    return;
+  }
+
+  // ── API: games this account liked ───────────────────────────────
+  if (url.pathname === '/api/games/liked' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
+    const { data: rows } = await supabase
+      .from('game_likes')
+      .select('game_id, created_at, games!inner(id, title, description, thumbnail, tags, play_count, users!owner_id(display_name))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ games: (rows || []).map((r) => ({ ...r.games, likes: 1 })).filter((g) => g && g.id) }));
+    return;
+  }
+
+  // ── API: count a play ───────────────────────────────────────────
+  // A counter, not analytics: one integer per game, bumped when a game
+  // page actually starts the player. Guests count too — a play is a play.
+  const playMatch = /^\/api\/games\/([^/]+)\/play$/.exec(url.pathname);
+  if (playMatch && req.method === 'POST') {
+    cors(res);
+    const gid = playMatch[1];
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    const { data: g } = await supabase.from('games').select('published, owner_id').eq('id', gid).single();
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user } } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+    if (!g || !(g.published || (user && g.owner_id === user.id))) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    // One play per game per browser per hour: a reload shouldn't inflate it.
+    const key = 'play:' + clientIp(req) + ':' + gid;
+    if (!rateLimit(key, 1, 3600000)) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true })); return; }
+    const { data: bumped } = await supabase.rpc('bump_play_count', { p_game: gid });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, plays: bumped ?? null }));
     return;
   }
 
@@ -2159,6 +2333,14 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     if (body.assets !== undefined) updates.assets = body.assets;
     if (body.published !== undefined) updates.published = body.published;
     if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;
+    // Tags: lowercased, deduped, vocabulary trimmed. One column, so the
+    // gallery can filter without a join.
+    if (body.tags !== undefined) {
+      const list = (Array.isArray(body.tags) ? body.tags : [])
+        .map((t) => String(t).toLowerCase().trim().replace(/[^a-z0-9-]/g, '').slice(0, 24))
+        .filter(Boolean);
+      updates.tags = [...new Set(list)].slice(0, 8);
+    }
     updates.updated_at = new Date().toISOString();
     const { data, error } = await supabase.from('games').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });

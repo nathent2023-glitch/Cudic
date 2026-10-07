@@ -251,6 +251,15 @@
         <span id="chatTitle"></span>
         <span class="topic" id="chatTopic"></span>
         <span class="online" id="onlineCount"></span>
+        <button class="btn btn-secondary" id="msgSearchBtn" title="Search this conversation" style="margin-left:auto;padding:6px 12px;font-size:0.78rem">Search</button>
+      </div>
+      <div id="msgSearchPanel" hidden style="padding:12px 20px;border-bottom:1px solid var(--line)">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="msgSearchInput" placeholder="Search messages in this conversation" maxlength="60" autocomplete="off"
+            style="flex:1;padding:8px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel);color:var(--text-primary);font-family:inherit;font-size:0.88rem">
+          <button class="btn btn-secondary" id="msgSearchClose" style="padding:6px 12px;font-size:0.78rem">Close</button>
+        </div>
+        <div id="msgSearchResults" style="margin-top:10px;max-height:180px;overflow-y:auto"></div>
       </div>
       <div id="messages" class="messages" hidden></div>
       <div id="chatEmpty" class="empty-wrap">
@@ -282,5 +291,5 @@
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
   <script src="/sidebar.js?v=3"></script>
-  <script src="/client.js?v=3"></script>
+  <script src="/client.js?v=4"></script>
 </body></html>

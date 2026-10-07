@@ -51,6 +51,106 @@
             gap: 16px;
         }
 
+        /* ── Search + tag filters ─────────────────────────────── */
+        .find {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
+        .find input {
+            flex: 1;
+            min-width: 200px;
+            padding: 9px 14px;
+            border-radius: 99px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+        }
+
+        .find input:focus {
+            border-color: var(--signal);
+            outline: none;
+        }
+
+        .find input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .tagrow {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .tagrow:empty {
+            display: none;
+        }
+
+        .tagchip {
+            border: 1px solid var(--line);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 99px;
+            padding: 5px 12px;
+            font-size: 0.78rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+        }
+
+        .tagchip:hover {
+            color: var(--signal);
+            border-color: var(--signal);
+        }
+
+        .tagchip.on {
+            background: var(--signal-tint);
+            border-color: var(--signal);
+            color: var(--signal);
+            font-weight: 600;
+        }
+
+        .likebtn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid var(--line);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 99px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-family: var(--font-body);
+            cursor: pointer;
+        }
+
+        .likebtn:hover {
+            color: var(--signal);
+            border-color: var(--signal);
+        }
+
+        .likebtn.on {
+            color: var(--signal);
+            border-color: var(--signal);
+            background: var(--signal-tint);
+        }
+
+        .likebtn svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        .plays {
+            font-size: 0.72rem;
+            color: var(--text-tertiary);
+            margin-left: auto;
+        }
+
         .game-card {
             background: var(--panel-raised);
             border: 1px solid var(--line);
@@ -306,10 +406,16 @@
                 <h2 id="gridTitle">Fresh games</h2>
                 <select class="sortsel" id="sortSel" aria-label="Sort games">
                     <option value="new">Newest</option>
+                    <option value="plays">Trending</option>
                     <option value="old">Oldest</option>
                     <option value="az">A–Z</option>
                 </select>
             </div>
+            <div class="find">
+                <input id="galSearch" type="search" maxlength="60" placeholder="Search games by name or description" aria-label="Search games">
+                <button class="tagchip" id="findClear" style="display:none">Clear</button>
+            </div>
+            <div class="tagrow" id="tagRow"></div>
             <div class="grid" id="gameGrid">
                 <div class="game-card" aria-hidden="true"><div class="game-thumb sk"></div><div class="game-body"><div class="sk" style="height:14px;width:60%;border-radius:4px"></div><div class="sk" style="height:11px;width:40%;border-radius:4px"></div><div class="sk" style="height:11px;border-radius:4px"></div></div><div class="game-foot"><div class="sk" style="height:36px;border-radius:6px;flex:1"></div><div class="sk" style="height:36px;border-radius:6px;flex:1"></div></div></div>
                 <div class="game-card" aria-hidden="true"><div class="game-thumb sk"></div><div class="game-body"><div class="sk" style="height:14px;width:50%;border-radius:4px"></div><div class="sk" style="height:11px;width:45%;border-radius:4px"></div><div class="sk" style="height:11px;border-radius:4px"></div></div></div>
@@ -340,11 +446,32 @@
     <script src="/auth.js"></script>
     <script src="/sidebar.js?v=3"></script>
     <script src="/csel.js?v=1"></script>
-    <script>    var grid = document.getElementById('gameGrid'), empty = document.getElementById('emptyState'), content = document.getElementById('gamesContent'), tabBrowse = document.getElementById('tabBrowse'), tabMine = document.getElementById('tabMine'), emptyTitle = document.getElementById('emptyTitle'), emptyText = document.getElementById('emptyText'); var apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; async function getToken() { var p = new URLSearchParams(window.location.search).get('token'); if (p) return p; try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {} try { var r = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token'); return r ? JSON.parse(r).access_token : null; } catch (e) { return null } } function setTab(m) { var on = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-primary);font:inherit;font-weight:600;padding:10px 4px;cursor:pointer', off = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-tertiary);font:inherit;padding:10px 4px;cursor:pointer'; tabBrowse.style.cssText = m === 'browse' ? on : off; tabMine.style.cssText = m === 'mine' ? on : off; if (m === 'browse') loadGames(); else loadMine(); document.getElementById('galHero').style.display = m === 'browse' ? '' : 'none'; document.getElementById('gridTitle').textContent = m === 'browse' ? 'Fresh games' : 'Your projects'; if (window.motionTab) motionTab(m); } tabBrowse.onclick = function () { setTab('browse') }; tabMine.onclick = function () { setTab('mine') }; if(window.enhanceSelect){try{enhanceSelect(document.getElementById('sortSel'))}catch(e){}}document.getElementById('sortSel').addEventListener('change',function(){sortMode=this.value;if(window._lastList)showGrid(window._lastList,window._lastMine);}); document.getElementById('browseBtn').addEventListener('click',function(){document.getElementById('gameGrid').scrollIntoView({behavior:'smooth',block:'start'});}); var newDrop=document.getElementById('newDrop'),newDropBtn=document.getElementById('newDropBtn'); newDropBtn.addEventListener('click',function(e){e.stopPropagation();var open=newDrop.classList.toggle('open');newDropBtn.setAttribute('aria-expanded',open);}); document.addEventListener('click',function(e){if(!newDrop.contains(e.target)){newDrop.classList.remove('open');newDropBtn.setAttribute('aria-expanded','false');}}); document.addEventListener('keydown',function(e){if(e.key==='Escape'){newDrop.classList.remove('open');newDropBtn.setAttribute('aria-expanded','false');}}); function gameDate(g){ try{return new Date(g.updated_at||g.created_at).toLocaleDateString([],{month:'short',day:'numeric'});}catch(e){return '';} } var sortMode='new'; function sortGames(list){ var a=list.slice(); if(sortMode==='old')a.sort(function(x,y){return new Date(x.updated_at||x.created_at)-new Date(y.updated_at||y.created_at)}); else if(sortMode==='az')a.sort(function(x,y){return String(x.title||'').localeCompare(String(y.title||''))}); else a.sort(function(x,y){return new Date(y.updated_at||y.created_at)-new Date(x.updated_at||x.created_at)}); return a; } async function forkGame(id){ var token=null; try{token=await getToken();}catch(e){} if(!token){window.location.href='/login';return;} try{var res=await fetch(apiBase+'/api/games/'+encodeURIComponent(id)+'/fork',{method:'POST',headers:{'Authorization':'Bearer '+token}});var d=await res.json();if(d.game)window.location.href='/studio?id='+encodeURIComponent(d.game.id);else alert('Fork failed: '+(d.error||'unknown'));}catch(e){alert('Fork failed.');} } function cardHtml(g, mine) { var thumb = g.thumbnail ? '<img src="' + g.thumbnail + '" style="width:100%;height:100%;object-fit:cover">' : '<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>'; var badge = mine ? ' <span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;background:' + (g.published ? 'var(--signal-tint);color:var(--signal)' : 'var(--panel-raised);color:var(--text-tertiary);border:1px solid var(--line)') + '">' + (g.published ? 'Published' : 'Draft') + '</span>' : ''; var rbadge = g.forked_from ? ' <span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--panel-raised);color:var(--text-secondary);border:1px solid var(--line)">↩ remix</span>' : ''; var creator; if (mine) { creator = '<div class="game-creator"><div class="game-creator-name">You</div></div>'; } else { var owner = g.users || {}; var ownerName = owner.display_name || 'Unknown'; var ownerInit = ownerName.split(' ').map(function (w) { return w[0] }).join('').substring(0, 2).toUpperCase(); var ownerId = owner.user_id ? '#' + owner.user_id : ''; creator = '<div class="game-creator"><div class="game-creator-avatar">' + ownerInit + '</div><div><div class="game-creator-name">' + escapeHtml(ownerName) + '</div><div class="game-creator-id">' + ownerId + '</div></div></div>'; } var dest = mine ? '/studio?id=' + g.id : '/view.html?id=' + g.id; var foot = mine ? '<div class="game-actions">' +
+    <script>    var grid = document.getElementById('gameGrid'), empty = document.getElementById('emptyState'), content = document.getElementById('gamesContent'), tabBrowse = document.getElementById('tabBrowse'), tabMine = document.getElementById('tabMine'), emptyTitle = document.getElementById('emptyTitle'), emptyText = document.getElementById('emptyText'), galSearch = document.getElementById('galSearch'), tagRow = document.getElementById('tagRow'), findClear = document.getElementById('findClear'); var apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; async function getToken() { var p = new URLSearchParams(window.location.search).get('token'); if (p) return p; try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {} try { var r = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token'); return r ? JSON.parse(r).access_token : null; } catch (e) { return null } } function setTab(m) { window._tab = m; var on = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-primary);font:inherit;font-weight:600;padding:10px 4px;cursor:pointer', off = 'background:none;border:none;border-bottom:2px solid transparent;color:var(--text-tertiary);font:inherit;padding:10px 4px;cursor:pointer'; tabBrowse.style.cssText = m === 'browse' ? on : off; tabMine.style.cssText = m === 'mine' ? on : off; if (m === 'browse') loadGames(); else loadMine(); document.getElementById('galHero').style.display = m === 'browse' ? '' : 'none'; document.getElementById('gridTitle').textContent = m === 'browse' ? 'Fresh games' : 'Your projects'; if (window.motionTab) motionTab(m); } tabBrowse.onclick = function () { setTab('browse') }; tabMine.onclick = function () { setTab('mine') }; if(window.enhanceSelect){try{enhanceSelect(document.getElementById('sortSel'))}catch(e){}}document.getElementById('sortSel').addEventListener('change',function(){sortMode=this.value;if(window._tab==='mine'){if(window._lastList)showGrid(window._lastList,window._lastMine);}else{loadGames();}}); document.getElementById('browseBtn').addEventListener('click',function(){document.getElementById('gameGrid').scrollIntoView({behavior:'smooth',block:'start'});}); var newDrop=document.getElementById('newDrop'),newDropBtn=document.getElementById('newDropBtn'); newDropBtn.addEventListener('click',function(e){e.stopPropagation();var open=newDrop.classList.toggle('open');newDropBtn.setAttribute('aria-expanded',open);}); document.addEventListener('click',function(e){if(!newDrop.contains(e.target)){newDrop.classList.remove('open');newDropBtn.setAttribute('aria-expanded','false');}}); document.addEventListener('keydown',function(e){if(e.key==='Escape'){newDrop.classList.remove('open');newDropBtn.setAttribute('aria-expanded','false');}}); function gameDate(g){ try{return new Date(g.updated_at||g.created_at).toLocaleDateString([],{month:'short',day:'numeric'});}catch(e){return '';} } var sortMode='new'; function sortGames(list){ var a=list.slice(); if(sortMode==='old')a.sort(function(x,y){return new Date(x.updated_at||x.created_at)-new Date(y.updated_at||y.created_at)}); else if(sortMode==='az')a.sort(function(x,y){return String(x.title||'').localeCompare(String(y.title||''))}); else a.sort(function(x,y){return new Date(y.updated_at||y.created_at)-new Date(x.updated_at||x.created_at)}); return a; } async function forkGame(id){ var token=null; try{token=await getToken();}catch(e){} if(!token){window.location.href='/login';return;} try{var res=await fetch(apiBase+'/api/games/'+encodeURIComponent(id)+'/fork',{method:'POST',headers:{'Authorization':'Bearer '+token}});var d=await res.json();if(d.game)window.location.href='/studio?id='+encodeURIComponent(d.game.id);else alert('Fork failed: '+(d.error||'unknown'));}catch(e){alert('Fork failed.');} } function cardHtml(g, mine) { var thumb = g.thumbnail ? '<img src="' + g.thumbnail + '" style="width:100%;height:100%;object-fit:cover">' : '<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>'; var badge = mine ? ' <span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;background:' + (g.published ? 'var(--signal-tint);color:var(--signal)' : 'var(--panel-raised);color:var(--text-tertiary);border:1px solid var(--line)') + '">' + (g.published ? 'Published' : 'Draft') + '</span>' : ''; var rbadge = g.forked_from ? ' <span style="font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--panel-raised);color:var(--text-secondary);border:1px solid var(--line)">↩ remix</span>' : ''; var creator; if (mine) { creator = '<div class="game-creator"><div class="game-creator-name">You</div></div>'; } else { var owner = g.users || {}; var ownerName = owner.display_name || 'Unknown'; var ownerInit = ownerName.split(' ').map(function (w) { return w[0] }).join('').substring(0, 2).toUpperCase(); var ownerId = owner.user_id ? '#' + owner.user_id : ''; creator = '<div class="game-creator"><div class="game-creator-avatar">' + ownerInit + '</div><div><div class="game-creator-name">' + escapeHtml(ownerName) + '</div><div class="game-creator-id">' + ownerId + '</div></div></div>'; } var dest = mine ? '/studio?id=' + g.id : '/view.html?id=' + g.id; var foot = mine ? '<div class="game-actions">' +
       '<button class="' + (g.published ? 'ga-danger' : 'ga-primary') + '" onclick="event.stopPropagation();togglePublish(\'' + g.id + '\',' + (g.published ? 'false' : 'true') + ')">' + (g.published ? 'Unpublish' : 'Publish') + '</button>' +
       '<button class="ga-danger" onclick="event.stopPropagation();deleteProject(\'' + g.id + '\')">Delete</button>' +
     '</div>'
-  : '<div class="game-foot"><a class="btn btn-primary" href="/view.html?id=' + g.id + '" onclick="event.stopPropagation()" style="text-decoration:none">Play</a><button class="btn btn-secondary" onclick="event.stopPropagation();forkGame(\'' + g.id + '\')">Fork</button></div>'; return '<div class="game-card" onclick="window.location.href=\'' + dest + '\'">' + '<div class="game-thumb">' + thumb + '</div>' + '<div class="game-body">' + '<div class="game-top"><div class="game-title">' + escapeHtml(g.title) + badge + rbadge + '</div><div class="game-date">' + gameDate(g) + '</div></div>' + creator + (g.description ? '<div class="game-desc">' + escapeHtml(g.description) + '</div>' : '') + '</div>' + foot + '</div>'; } function showGrid(list, mine) { window._lastList = list; window._lastMine = mine; grid.innerHTML = sortGames(list).map(function (g) { return cardHtml(g, mine) }).join(''); grid.style.display = ''; empty.style.display = 'none'; content.style.overflowY = 'auto'; } function showEmpty(title, text) { emptyTitle.textContent = title; emptyText.textContent = text; grid.style.display = 'none'; empty.style.display = 'flex'; content.style.overflowY = 'hidden'; } async function loadGames() { try { var res = await fetch(apiBase + '/api/games'); var data = await res.json(); if (data.games && data.games.length) showGrid(data.games, false); else showEmpty('No games published yet', 'Publish your first game from the editor to see it here.'); tabBrowse.textContent = 'Browse (' + ((data.games && data.games.length) || 0) + ')'; var heroArt = (data.games || []).find(function(g){ return g.thumbnail; }); var heroEl = document.getElementById('galHero'); if (heroArt && heroEl) { heroEl.style.backgroundImage = 'linear-gradient(rgba(10,10,12,0.72), rgba(10,10,12,0.55)), url("' + heroArt.thumbnail + '")'; heroEl.classList.add('has-art'); } else if (heroEl) { heroEl.style.backgroundImage = ''; heroEl.classList.remove('has-art'); } } catch (e) { showEmpty('No games published yet', 'Publish your first game from the editor to see it here.'); } } async function loadMine() { var token = await getToken(); if (!token) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } try { var res = await fetch(apiBase + '/api/games/mine', { headers: { 'Authorization': 'Bearer ' + token } }); if (res.status === 401) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } var data = await res.json(); if (data.games && data.games.length) showGrid(data.games, true); else showEmpty('No projects yet', 'Create your first project in Studio.'); tabMine.textContent = 'Your Projects (' + ((data.games && data.games.length) || 0) + ')'; } catch (e) { showEmpty('No projects yet', 'Create your first project in Studio.'); } } async function togglePublish(id, pub) { var token = await getToken(); if (!token) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ published: pub }) }); var data = await res.json(); if (data.error && !data.game) { alert('Publish failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Publish failed.'); } } async function deleteProject(id) { var token = await getToken(); if (!token) return; if (!confirm('Delete this project? This cannot be undone.')) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); var data = await res.json(); if (data.error && !data.ok) { alert('Delete failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Delete failed.'); } } function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML } setTab('browse');  </script>
+  : '<div class="game-foot"><a class="btn btn-primary" href="/view.html?id=' + g.id + '" onclick="event.stopPropagation()" style="text-decoration:none">Play</a><button class="btn btn-secondary" onclick="event.stopPropagation();forkGame(\'' + g.id + '\')">Fork</button>' +
+        '<button class="likebtn' + (g.liked ? ' on' : '') + '" title="Like" onclick="event.stopPropagation();toggleLike(\'' + g.id + '\',this)"><svg viewBox="0 0 24 24" fill="' + (g.liked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg><span class="likecount">' + (g.likes || 0) + '</span></button>' +
+        (g.play_count ? '<span class="plays">' + g.play_count + ' play' + (g.play_count === 1 ? '' : 's') + '</span>' : '') +
+        '</div>'; return '<div class="game-card" onclick="window.location.href=\'' + dest + '\'">' + '<div class="game-thumb">' + thumb + '</div>' + '<div class="game-body">' + '<div class="game-top"><div class="game-title">' + escapeHtml(g.title) + badge + rbadge + '</div><div class="game-date">' + gameDate(g) + '</div></div>' + creator + (g.description ? '<div class="game-desc">' + escapeHtml(g.description) + '</div>' : '') + '</div>' + foot + '</div>'; } function showGrid(list, mine) { window._lastList = list; window._lastMine = mine; grid.innerHTML = sortGames(list).map(function (g) { return cardHtml(g, mine) }).join(''); grid.style.display = ''; empty.style.display = 'none'; content.style.overflowY = 'auto'; } function showEmpty(title, text) { emptyTitle.textContent = title; emptyText.textContent = text; grid.style.display = 'none'; empty.style.display = 'flex'; content.style.overflowY = 'hidden'; } async // Browse state: search + tag + sort all live in the URL the server sees, so
+// filtering isn't limited to the 50 rows we happened to load.
+    var galQuery = '', galTag = '', galLiked = {};
+    function galUrl() { return apiBase + '/api/games?sort=' + encodeURIComponent(sortMode) + (galQuery ? '&q=' + encodeURIComponent(galQuery) : '') + (galTag ? '&tag=' + encodeURIComponent(galTag) : ''); }
+    async function loadGames() { try { var res = await fetch(galUrl()); var data = await res.json(); var rows = data.games || []; renderTags(data.tags || []); findClear.style.display = (galQuery || galTag) ? '' : 'none'; if (rows.length) showGrid(rows, false); else if (galQuery || galTag) showEmpty('Nothing matches', galQuery ? 'No games match "' + escapeHtml(galQuery) + '"' + (galTag ? ' in ' + escapeHtml(galTag) : '') + '. Try a different word or clear the filter.' : 'No games tagged ' + escapeHtml(galTag) + ' yet.'); else showEmpty('No games published yet', 'Publish your first game from the editor to see it here.'); tabBrowse.textContent = 'Browse (' + rows.length + ')'; var heroArt = (data.games || []).find(function(g){ return g.thumbnail; }); var heroEl = document.getElementById('galHero'); if (heroArt && heroEl) { heroEl.style.backgroundImage = 'linear-gradient(rgba(10,10,12,0.72), rgba(10,10,12,0.55)), url("' + heroArt.thumbnail + '")'; heroEl.classList.add('has-art'); } else if (heroEl) { heroEl.style.backgroundImage = ''; heroEl.classList.remove('has-art'); } } catch (e) { showEmpty('No games published yet', 'Publish your first game from the editor to see it here.'); } }
+    // Deep links: /games?tag=puzzle (from a game page) and ?q= come back to the
+    // same filtered view, so a shared filter survives a reload.
+    (function initFind() {
+      var sp = new URLSearchParams(location.search);
+      if (sp.get('q')) { galQuery = sp.get('q'); galSearch.value = galQuery; }
+      if (sp.get('tag')) galTag = sp.get('tag').toLowerCase();
+      if (sp.get('sort')) { sortMode = sp.get('sort'); document.getElementById('sortSel').value = sortMode; }
+    })();
+    function renderTags(tags) { if (tagRow.dataset.seen === tags.join(',')) return; tagRow.dataset.seen = tags.join(','); tagRow.innerHTML = tags.map(function (t) { return '<button class="tagchip' + (t === galTag ? ' on' : '') + '" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + '</button>'; }).join(''); }
+    var searchTimer = null;
+    galSearch.addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(function () { galQuery = galSearch.value.trim(); loadGames(); }, 220); });
+    findClear.addEventListener('click', function () { galQuery = ''; galTag = ''; galSearch.value = ''; tagRow.querySelectorAll('.tagchip').forEach(function (c) { c.classList.remove('on'); }); loadGames(); });
+    tagRow.addEventListener('click', function (e) { var c = e.target.closest('.tagchip'); if (!c) return; galTag = c.getAttribute('data-tag') === galTag ? '' : c.getAttribute('data-tag'); tagRow.querySelectorAll('.tagchip').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-tag') === galTag); }); loadGames(); });
+    async function toggleLike(id, btn) { var token = null; try { token = await getToken(); } catch (e) {} if (!token) { window.location.href = '/login'; return; } var on = btn.classList.contains('on'); btn.disabled = true; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id) + '/like', { method: on ? 'DELETE' : 'POST', headers: { 'Authorization': 'Bearer ' + token, 'X-Seat': localStorage.getItem('cudic_seat') || '' } }); var d = await res.json(); if (d.error) throw new Error(d.error); btn.classList.toggle('on', !on); var n = btn.querySelector('.likecount'); if (n) n.textContent = d.likes; } catch (e) { window.alert(e.message || 'Could not update like.'); } finally { btn.disabled = false; } } async function loadMine() { var token = await getToken(); if (!token) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } try { var res = await fetch(apiBase + '/api/games/mine', { headers: { 'Authorization': 'Bearer ' + token } }); if (res.status === 401) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } var data = await res.json(); if (data.games && data.games.length) showGrid(data.games, true); else showEmpty('No projects yet', 'Create your first project in Studio.'); tabMine.textContent = 'Your Projects (' + ((data.games && data.games.length) || 0) + ')'; } catch (e) { showEmpty('No projects yet', 'Create your first project in Studio.'); } } async function togglePublish(id, pub) { var token = await getToken(); if (!token) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ published: pub }) }); var data = await res.json(); if (data.error && !data.game) { alert('Publish failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Publish failed.'); } } async function deleteProject(id) { var token = await getToken(); if (!token) return; if (!confirm('Delete this project? This cannot be undone.')) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); var data = await res.json(); if (data.error && !data.ok) { alert('Delete failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Delete failed.'); } } function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML } setTab('browse');  </script>
     <script>
     /* Gallery micro-motion — GSAP, progressive enhancement (no GSAP = static page). */
     (function () {

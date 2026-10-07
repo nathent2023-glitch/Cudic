@@ -61,12 +61,18 @@
       <a class="btn btn-secondary" href="/games" style="padding:9px 14px">&larr; Gallery</a>
       <h1 id="gameTitle">Loading…</h1>
       <div class="author"><div class="author-avatar" id="authorAvatar">?</div><span id="authorName"></span></div>
+      <div id="gameTags" style="display:none;gap:6px;flex-wrap:wrap"></div>
       <div class="spacer"></div>
       <button class="btn btn-secondary" id="scrollBtn" title="Allow the game page to scroll (for website-style games)">Scroll: off</button>
       <button class="btn btn-secondary" id="fsBtn">Fullscreen</button>
       <a class="btn btn-primary" id="studioBtn" href="#" style="display:none">Open in Studio</a>
       <button class="btn btn-secondary" id="forkBtn" style="display:none">Fork</button>
       <button class="btn btn-secondary" id="shareBtn">Share</button>
+      <button class="btn btn-secondary" id="likeBtn" style="display:none" title="Like this game">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg>
+        <span id="likeCount">0</span>
+      </button>
+      <span id="playCount" style="font-size:0.8rem;color:var(--text-tertiary);align-self:center"></span>
     </div>
     <div class="game-grid">
       <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
@@ -124,6 +130,40 @@
     }
     if (!id) { document.getElementById('overlayText').textContent = 'Missing game id'; return; }
     document.getElementById('studioBtn').href = '/studio?id=' + encodeURIComponent(id);
+    // Like + play count. A play is counted once the player actually mounts,
+    // not on page load, and the server rate-limits it per IP/hour anyway.
+    var likeBtn = document.getElementById('likeBtn'), likeCount = document.getElementById('likeCount');
+    var playCount = document.getElementById('playCount');
+    function paintLikes(n, on) { likeCount.textContent = n; likeBtn.classList.toggle('btn-primary', !!on); likeBtn.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none'); }
+    function paintPlays(n) { playCount.textContent = n > 0 ? n + (n === 1 ? ' play' : ' plays') : ''; }
+    likeBtn.addEventListener('click', function(){
+      getTokenAsync().then(function (tok) {
+        if (!tok) { location.href = '/login'; return; }
+        var on = likeBtn.classList.contains('btn-primary');
+        likeBtn.disabled = true;
+        fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/like', { method: on ? 'DELETE' : 'POST', headers: { Authorization: 'Bearer ' + tok, 'X-Seat': seatId() } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { if (d.error) throw new Error(d.error); paintLikes(d.likes, d.liked); })
+          .catch(function (e) { alert(e.message || 'Could not update like.'); })
+          .finally(function () { likeBtn.disabled = false; });
+      });
+    });
+    function getTokenAsync() {
+      try {
+        if (window.getAuthToken) return window.getAuthToken();
+      } catch (e) {}
+      try {
+        var r = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+        return Promise.resolve(r ? JSON.parse(r).access_token : null);
+      } catch (e) { return Promise.resolve(null); }
+    }
+    function seatId() { try { return localStorage.getItem('cudic_seat') || ''; } catch (e) { return ''; } }
+    function countPlay() {
+      fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/play', { method: 'POST' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && typeof d.plays === 'number') paintPlays(d.plays); })
+        .catch(function () {});
+    }
     // Share: native sheet on touch, clipboard everywhere else
     document.getElementById('shareBtn').addEventListener('click', function(){
       var url = location.origin + location.pathname + '?id=' + encodeURIComponent(id);
@@ -285,6 +325,15 @@
         if (!files || !Object.keys(files).length) { location.href = '/studio?id=' + encodeURIComponent(id); return; }
         document.title = (game.title || 'Untitled') + ' — Cudic';
         document.getElementById('gameTitle').textContent = game.title || 'Untitled Game';
+        // Tags become chips under the title; likes/plays come off the row.
+        var tagWrap = document.getElementById('gameTags');
+        if (tagWrap && Array.isArray(game.tags) && game.tags.length) {
+          tagWrap.innerHTML = game.tags.map(function (tg) { return '<a class="btn btn-secondary" href="/games?tag=' + encodeURIComponent(tg) + '" style="padding:4px 10px;font-size:0.75rem;text-decoration:none">' + tg + '</a>'; }).join('');
+          tagWrap.style.display = 'flex';
+        }
+        likeBtn.style.display = '';
+        paintLikes(game.likes || 0, !!game.liked);
+        paintPlays(game.play_count || 0);
         var author = game.users || {};
         var name = author.display_name || 'Unknown';
         document.getElementById('authorName').textContent = name + (author.user_id ? ' #' + author.user_id : '');
@@ -373,6 +422,7 @@
             }
             playerStarted = true;
             window.removeEventListener('message', wait);
+            countPlay();
             try { f.contentWindow.postMessage({ type: 'code', files: files, assets: game.assets || {}, assetsBase: (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ? SUPABASE_URL + '/storage/v1/object/public/' : '' }, '*'); } catch (err) {}
           }
         });

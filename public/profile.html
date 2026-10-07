@@ -24,6 +24,17 @@
     .profile-content { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; align-items: center; }
     .profile-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 20px; width: 100%; max-width: 560px; }
     .profile-card { width: 100%; max-width: 560px; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+
+    .profile-card textarea { width: 100%; background: var(--panel); color: var(--text-primary); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 0.9rem; resize: vertical; }
+    .profile-card textarea:focus { border-color: var(--signal); outline: none; }
+
+    .tagpill { font-size: 0.72rem; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--text-secondary); background: var(--panel); }
+
+    .liked-card { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); background: var(--panel); }
+    .liked-card:hover { border-color: var(--signal); }
+    .liked-thumb { width: 64px; height: 40px; border-radius: 4px; overflow: hidden; background: var(--ink); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .liked-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .liked-title { font-weight: 600; font-size: 0.9rem; }
     .profile-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
     .profile-card p.sub { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 18px; }
     .row { display: flex; gap: 10px; align-items: center; }
@@ -77,8 +88,17 @@
           </div>
         </div>
         <div class="field"><label>Display name</label><input type="text" id="displayName" maxlength="24"></div>
+        <div class="field"><label>Bio <span class="sub" style="display:inline">— what you make, what you're into</span></label><textarea id="bioField" maxlength="200" rows="3" placeholder="I mostly build small arcade games."></textarea></div>
+        <div class="field"><label>Interests <span class="sub" style="display:inline">— comma separated</span></label><input type="text" id="interestField" maxlength="200" placeholder="arcade, pixel art, chiptune"></div>
         <button class="btn btn-primary" id="saveName">Save changes</button>
         <div class="status-msg" id="nameMsg"></div>
+        <div id="publicBio" class="sub" style="margin-top:14px"></div>
+        <div id="publicInterests" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+      </div>
+      <div class="profile-card">
+        <h2>Games you liked</h2>
+        <p class="sub">Saved to your account. Tap the heart on any game in the gallery.</p>
+        <div id="likedList" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
       <div class="profile-card">
         <h2>Private settings</h2>
@@ -166,17 +186,23 @@
         document.getElementById('publicId').textContent = '#' + d.profile.user_id;
         if (d.profile.created_at) document.getElementById('publicSince').textContent = new Date(d.profile.created_at).toLocaleDateString();
         if (d.email) document.getElementById('emailField').value = d.email;
+        document.getElementById('bioField').value = d.profile.bio || '';
+        document.getElementById('interestField').value = (d.profile.interests || []).join(', ');
+        paintBioCard(d.profile);
+        loadLiked();
       }).catch(function(){});
 
     /* Public: save display name */
     document.getElementById('saveName').addEventListener('click', function(){
       var btn = this, val = document.getElementById('displayName').value.trim(), m = document.getElementById('nameMsg');
+      var bio = document.getElementById('bioField').value;
+      var interests = document.getElementById('interestField').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean);
       if (!val) { msg(m, 'Display name required.', false); return; }
       btn.disabled = true;
       m.textContent = ''; m.className = 'msg';
       var ctrl = ('AbortController' in window) ? new AbortController() : null;
       var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 45000) : null;
-      fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: val }), signal: ctrl ? ctrl.signal : undefined })
+      fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: val, bio: bio, interests: interests }), signal: ctrl ? ctrl.signal : undefined })
         .then(function(r){ return r.json().then(function(d){ return { ok: r.ok, d: d }; }); })
         .then(function(res){
           if (timer) clearTimeout(timer);
@@ -185,9 +211,36 @@
           document.getElementById('publicName').textContent = res.d.display_name;
           document.getElementById('avatarLg').textContent = initials(res.d.display_name);
           if (window._reloadSidebarUser) window._reloadSidebarUser();
-          msg(m, 'Display name updated.', true);
+          paintBioCard({ display_name: res.d.display_name, bio: bio, interests: interests });
+          msg(m, 'Profile updated.', true);
         }).catch(function(e){ if (timer) clearTimeout(timer); btn.disabled = false; msg(m, (e && e.name === 'AbortError') ? 'Server is waking up — try again in a minute.' : 'Save failed.', false); });
     });
+
+    // Bio + interests, rendered as plain text where other people see them.
+    function paintBioCard(p) {
+      var b = document.getElementById('publicBio');
+      var it = document.getElementById('publicInterests');
+      if (b) b.textContent = (p && p.bio) || '';
+      if (it) it.innerHTML = ((p && p.interests) || []).map(function (x) { return '<span class="tagpill">' + String(x) + '</span>'; }).join('');
+    }
+
+    function loadLiked() {
+      var box = document.getElementById('likedList');
+      if (!box) return;
+      fetch(apiHost() + '/api/games/liked', { headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          var rows = d.games || [];
+          if (!rows.length) { box.innerHTML = '<p class="sub">Nothing liked yet. Tap the heart on a game in the gallery.</p>'; return; }
+          box.innerHTML = rows.map(function (g) {
+            return '<a class="liked-card" href="/view.html?id=' + encodeURIComponent(g.id) + '">' +
+              '<div class="liked-thumb">' + (g.thumbnail ? '<img src="' + g.thumbnail + '" alt="">' : '') + '</div>' +
+              '<div><div class="liked-title">' + String(g.title || 'Untitled') + '</div>' +
+              '<div class="sub">' + (g.tags || []).join(' · ') + '</div></div></a>';
+          }).join('');
+        })
+        .catch(function () {});
+    }
 
     /* Private: change password */
     document.getElementById('savePass').addEventListener('click', function(){
