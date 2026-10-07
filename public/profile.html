@@ -28,8 +28,6 @@
     .profile-card textarea { width: 100%; background: var(--panel); color: var(--text-primary); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 0.9rem; resize: vertical; }
     .profile-card textarea:focus { border-color: var(--signal); outline: none; }
 
-    .tagpill { font-size: 0.72rem; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--text-secondary); background: var(--panel); }
-
     .liked-card { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); background: var(--panel); }
     .liked-card:hover { border-color: var(--signal); }
     .liked-thumb { width: 64px; height: 40px; border-radius: 4px; overflow: hidden; background: var(--ink); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
@@ -93,7 +91,7 @@
         <button class="btn btn-primary" id="saveName">Save changes</button>
         <div class="status-msg" id="nameMsg"></div>
         <div id="publicBio" class="sub" style="margin-top:14px"></div>
-        <div id="publicInterests" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+        <div id="publicInterests" style="display:none;margin-top:8px"></div>
       </div>
       <div class="profile-card">
         <h2>Games you liked</h2>
@@ -221,7 +219,14 @@
       var b = document.getElementById('publicBio');
       var it = document.getElementById('publicInterests');
       if (b) b.textContent = (p && p.bio) || '';
-      if (it) it.innerHTML = ((p && p.interests) || []).map(function (x) { return '<span class="tagpill">' + String(x) + '</span>'; }).join('');
+      // Interests as plain text — a list, not a row of badges.
+      if (it) {
+        var list = (p && p.interests) || [];
+        it.textContent = list.join(' · ');
+        it.style.display = list.length ? 'block' : 'none';
+        it.style.color = 'var(--text-secondary)';
+        it.style.fontSize = '0.9rem';
+      }
     }
 
     function loadLiked() {

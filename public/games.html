@@ -64,7 +64,7 @@
             flex: 1;
             min-width: 200px;
             padding: 9px 14px;
-            border-radius: 99px;
+            border-radius: var(--radius-lg);
             border: 1px solid var(--line);
             background: var(--panel);
             color: var(--text-primary);
@@ -81,74 +81,63 @@
             color: var(--text-tertiary);
         }
 
+        /* Tag filters and the like control are text-first, not pills: no
+           micro-label badges. Selected state is colour + underline. */
         .tagrow {
             display: flex;
-            gap: 6px;
+            gap: 14px;
             flex-wrap: wrap;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
 
         .tagrow:empty {
             display: none;
         }
 
+        .tagrow .sep {
+            color: var(--text-tertiary);
+        }
+
         .tagchip {
-            border: 1px solid var(--line);
-            background: transparent;
+            border: 0;
+            background: none;
             color: var(--text-secondary);
-            border-radius: 99px;
-            padding: 5px 12px;
-            font-size: 0.78rem;
+            padding: 0;
+            font-size: 0.9rem;
             font-family: var(--font-body);
             cursor: pointer;
         }
 
         .tagchip:hover {
             color: var(--signal);
-            border-color: var(--signal);
         }
 
         .tagchip.on {
-            background: var(--signal-tint);
-            border-color: var(--signal);
             color: var(--signal);
             font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 4px;
         }
 
-        .likebtn {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            border: 1px solid var(--line);
-            background: transparent;
-            color: var(--text-secondary);
-            border-radius: 99px;
-            padding: 4px 10px;
-            font-size: 0.75rem;
+        .findlink {
+            border: 0;
+            background: none;
+            color: var(--text-tertiary);
+            padding: 0;
+            font-size: 0.9rem;
             font-family: var(--font-body);
             cursor: pointer;
+            text-decoration: underline;
+            text-underline-offset: 4px;
         }
 
-        .likebtn:hover {
+        .findlink:hover {
             color: var(--signal);
-            border-color: var(--signal);
-        }
-
-        .likebtn.on {
-            color: var(--signal);
-            border-color: var(--signal);
-            background: var(--signal-tint);
-        }
-
-        .likebtn svg {
-            width: 13px;
-            height: 13px;
         }
 
         .plays {
-            font-size: 0.72rem;
+            font-size: 0.8rem;
             color: var(--text-tertiary);
-            margin-left: auto;
         }
 
         .game-card {
@@ -413,7 +402,7 @@
             </div>
             <div class="find">
                 <input id="galSearch" type="search" maxlength="60" placeholder="Search games by name or description" aria-label="Search games">
-                <button class="tagchip" id="findClear" style="display:none">Clear</button>
+                <button class="findlink" id="findClear" style="display:none">Clear filters</button>
             </div>
             <div class="tagrow" id="tagRow"></div>
             <div class="grid" id="gameGrid">
@@ -451,8 +440,8 @@
       '<button class="ga-danger" onclick="event.stopPropagation();deleteProject(\'' + g.id + '\')">Delete</button>' +
     '</div>'
   : '<div class="game-foot"><a class="btn btn-primary" href="/view.html?id=' + g.id + '" onclick="event.stopPropagation()" style="text-decoration:none">Play</a><button class="btn btn-secondary" onclick="event.stopPropagation();forkGame(\'' + g.id + '\')">Fork</button>' +
-        '<button class="likebtn' + (g.liked ? ' on' : '') + '" title="Like" onclick="event.stopPropagation();toggleLike(\'' + g.id + '\',this)"><svg viewBox="0 0 24 24" fill="' + (g.liked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg><span class="likecount">' + (g.likes || 0) + '</span></button>' +
-        (g.play_count ? '<span class="plays">' + g.play_count + ' play' + (g.play_count === 1 ? '' : 's') + '</span>' : '') +
+        '<button class="btn btn-secondary likebtn' + (g.liked ? ' btn-primary' : '') + '" onclick="event.stopPropagation();toggleLike(\'' + g.id + '\',this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="' + (g.liked ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg><span class="likecount">' + (g.likes || 0) + '</span></button>' +
+        (g.play_count ? '<span class="plays">' + g.play_count + (g.play_count === 1 ? ' play' : ' plays') + '</span>' : '') +
         '</div>'; return '<div class="game-card" onclick="window.location.href=\'' + dest + '\'">' + '<div class="game-thumb">' + thumb + '</div>' + '<div class="game-body">' + '<div class="game-top"><div class="game-title">' + escapeHtml(g.title) + badge + rbadge + '</div><div class="game-date">' + gameDate(g) + '</div></div>' + creator + (g.description ? '<div class="game-desc">' + escapeHtml(g.description) + '</div>' : '') + '</div>' + foot + '</div>'; } function showGrid(list, mine) { window._lastList = list; window._lastMine = mine; grid.innerHTML = sortGames(list).map(function (g) { return cardHtml(g, mine) }).join(''); grid.style.display = ''; empty.style.display = 'none'; content.style.overflowY = 'auto'; } function showEmpty(title, text) { emptyTitle.textContent = title; emptyText.textContent = text; grid.style.display = 'none'; empty.style.display = 'flex'; content.style.overflowY = 'hidden'; } async // Browse state: search + tag + sort all live in the URL the server sees, so
 // filtering isn't limited to the 50 rows we happened to load.
     var galQuery = '', galTag = '', galLiked = {};
@@ -466,12 +455,12 @@
       if (sp.get('tag')) galTag = sp.get('tag').toLowerCase();
       if (sp.get('sort')) { sortMode = sp.get('sort'); document.getElementById('sortSel').value = sortMode; }
     })();
-    function renderTags(tags) { if (tagRow.dataset.seen === tags.join(',')) return; tagRow.dataset.seen = tags.join(','); tagRow.innerHTML = tags.map(function (t) { return '<button class="tagchip' + (t === galTag ? ' on' : '') + '" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + '</button>'; }).join(''); }
+    function renderTags(tags) { if (tagRow.dataset.seen === tags.join(',')) return; tagRow.dataset.seen = tags.join(','); tagRow.innerHTML = tags.map(function (t, i) { return (i ? '<span class="sep">·</span>' : '') + '<button class="tagchip' + (t === galTag ? ' on' : '') + '" data-tag="' + escapeHtml(t) + '">' + escapeHtml(t) + '</button>'; }).join(''); }
     var searchTimer = null;
     galSearch.addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(function () { galQuery = galSearch.value.trim(); loadGames(); }, 220); });
     findClear.addEventListener('click', function () { galQuery = ''; galTag = ''; galSearch.value = ''; tagRow.querySelectorAll('.tagchip').forEach(function (c) { c.classList.remove('on'); }); loadGames(); });
     tagRow.addEventListener('click', function (e) { var c = e.target.closest('.tagchip'); if (!c) return; galTag = c.getAttribute('data-tag') === galTag ? '' : c.getAttribute('data-tag'); tagRow.querySelectorAll('.tagchip').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-tag') === galTag); }); loadGames(); });
-    async function toggleLike(id, btn) { var token = null; try { token = await getToken(); } catch (e) {} if (!token) { window.location.href = '/login'; return; } var on = btn.classList.contains('on'); btn.disabled = true; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id) + '/like', { method: on ? 'DELETE' : 'POST', headers: { 'Authorization': 'Bearer ' + token, 'X-Seat': localStorage.getItem('cudic_seat') || '' } }); var d = await res.json(); if (d.error) throw new Error(d.error); btn.classList.toggle('on', !on); var n = btn.querySelector('.likecount'); if (n) n.textContent = d.likes; } catch (e) { window.alert(e.message || 'Could not update like.'); } finally { btn.disabled = false; } } async function loadMine() { var token = await getToken(); if (!token) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } try { var res = await fetch(apiBase + '/api/games/mine', { headers: { 'Authorization': 'Bearer ' + token } }); if (res.status === 401) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } var data = await res.json(); if (data.games && data.games.length) showGrid(data.games, true); else showEmpty('No projects yet', 'Create your first project in Studio.'); tabMine.textContent = 'Your Projects (' + ((data.games && data.games.length) || 0) + ')'; } catch (e) { showEmpty('No projects yet', 'Create your first project in Studio.'); } } async function togglePublish(id, pub) { var token = await getToken(); if (!token) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ published: pub }) }); var data = await res.json(); if (data.error && !data.game) { alert('Publish failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Publish failed.'); } } async function deleteProject(id) { var token = await getToken(); if (!token) return; if (!confirm('Delete this project? This cannot be undone.')) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); var data = await res.json(); if (data.error && !data.ok) { alert('Delete failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Delete failed.'); } } function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML } setTab('browse');  </script>
+    async function toggleLike(id, btn) { var token = null; try { token = await getToken(); } catch (e) {} if (!token) { window.location.href = '/login'; return; } var on = btn.classList.contains('btn-primary'); btn.disabled = true; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id) + '/like', { method: on ? 'DELETE' : 'POST', headers: { 'Authorization': 'Bearer ' + token, 'X-Seat': localStorage.getItem('cudic_seat') || '' } }); var d = await res.json(); if (d.error) throw new Error(d.error); btn.classList.toggle('btn-primary', !on); btn.querySelector('svg').setAttribute('fill', on ? 'none' : 'currentColor'); var n = btn.querySelector('.likecount'); if (n) n.textContent = d.likes; } catch (e) { window.alert(e.message || 'Could not update like.'); } finally { btn.disabled = false; } } async function loadMine() { var token = await getToken(); if (!token) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } try { var res = await fetch(apiBase + '/api/games/mine', { headers: { 'Authorization': 'Bearer ' + token } }); if (res.status === 401) { showEmpty('Sign in to see your projects', 'Your studio projects live here once you sign in.'); return; } var data = await res.json(); if (data.games && data.games.length) showGrid(data.games, true); else showEmpty('No projects yet', 'Create your first project in Studio.'); tabMine.textContent = 'Your Projects (' + ((data.games && data.games.length) || 0) + ')'; } catch (e) { showEmpty('No projects yet', 'Create your first project in Studio.'); } } async function togglePublish(id, pub) { var token = await getToken(); if (!token) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ published: pub }) }); var data = await res.json(); if (data.error && !data.game) { alert('Publish failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Publish failed.'); } } async function deleteProject(id) { var token = await getToken(); if (!token) return; if (!confirm('Delete this project? This cannot be undone.')) return; try { var res = await fetch(apiBase + '/api/games/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); var data = await res.json(); if (data.error && !data.ok) { alert('Delete failed: ' + data.error); return; } loadMine(); } catch (e) { alert('Delete failed.'); } } function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML } setTab('browse');  </script>
     <script>
     /* Gallery micro-motion — GSAP, progressive enhancement (no GSAP = static page). */
     (function () {
