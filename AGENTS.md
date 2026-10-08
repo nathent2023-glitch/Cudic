@@ -103,6 +103,8 @@ public/                   # the classic app (served at Vercel output root)
   cudic_sfpng.png         # PNG version of same           (NEVER DELETE)
   cucid.svg               # full wordmark (user's logo)   (NEVER DELETE)
   fonts/                  # incl. "Nine Circles" (free commercial license)
+  assets/kenney/          # 674 CC0 game/board-game/emote icons + manifest.json
+                         # (served statically; picked by glox.insertIcon)
   packs/                 # static theme packs: index.json + <pack>/manifest.json
                          # (NOT themes/ — a /themes dir shadows the /themes rewrite on Vercel)
   studio/                 # ← GITIGNORED build output
@@ -365,6 +367,7 @@ glox.publishProject | glox.unpublishProject | glox.deleteProject
 glox.setThumbnail | glox.openPreview | glox.run | glox.leaveStudio | glox.toggleSidebar
 glox.runPython | glox.installPythonPackage | glox.addPackage
 glox.importScratch   (.sb3 file or shared Scratch link → playable project)
+glox.insertIcon       (Kenney CC0 icon library → assets/icons + <img> at cursor)
 cudic ai:  Cudic AI: Open chat
 ```
 Note the **`glox.` prefix is intentional and kept** — command IDs and storage keys

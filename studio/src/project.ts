@@ -683,6 +683,61 @@ interface ScratchImportResult {
   error?: string;
 }
 
+// Kenney icon library (CC0, served from public/assets/kenney). Copies the
+// picked PNG into the project as a binary file — it goes to storage on save,
+// same as any imported image — and drops an <img> at the cursor.
+interface IconLib {
+  packs: { id: string; label: string; sets: { id: string; label: string; icons: { file: string; label: string }[] }[] }[];
+}
+let iconLib: IconLib | null = null;
+async function insertIcon(): Promise<void> {
+  if (provider == null) {
+    vscode.window.showErrorMessage('Icons need a ready workspace, reload Studio.');
+    return;
+  }
+  try {
+    if (iconLib == null) {
+      const res = await fetch('/assets/kenney/manifest.json');
+      if (!res.ok) throw new Error('icon library not found (' + res.status + ')');
+      iconLib = (await res.json()) as IconLib;
+    }
+  } catch (e) {
+    vscode.window.showErrorMessage('Could not load the icon library: ' + (e as Error).message);
+    return;
+  }
+  const items: vscode.QuickPickItem[] = [];
+  for (const p of iconLib.packs) {
+    for (const s of p.sets) {
+      for (const i of s.icons) {
+        items.push({ label: i.label, description: p.label + (s.id ? ' · ' + s.id : ''), detail: i.file });
+      }
+    }
+  }
+  const pick = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Insert an icon (type to filter)',
+    matchOnDescription: true,
+    matchOnDetail: true
+  });
+  if (pick == null) return;
+  const desc = pick.description ?? '';
+  const pack = desc.split(' · ')[0];
+  const src = '/assets/kenney/' + pack + '/' + (desc.includes(' · ') ? desc.split(' · ')[1] + '/' : '') + pick.detail;
+  const rel = 'assets/icons/' + pick.detail;
+  try {
+    const res = await fetch(src);
+    if (!res.ok) throw new Error('could not fetch the icon (' + res.status + ')');
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    registerFiles({ ...(await collectFiles()), [rel]: bytes });
+    const ed = vscode.window.activeTextEditor;
+    if (ed != null) {
+      await ed.edit((b) => b.replace(ed.selection, '<img src="' + rel + '" alt="' + pick.label + '" width="64" height="64">'));
+    }
+    vscode.window.showInformationMessage('Added ' + rel + '. Save to publish it with your game.');
+  } catch (e) {
+    vscode.window.showErrorMessage('Could not add that icon: ' + (e as Error).message);
+  }
+}
+
 // Unpacks an .sb3 (or shared Scratch project) on the server and drops the
 // result into the workspace: index.html + scratch.js + project.json + assets.js.
 // project.json is the editable source; scratch.js is the Scaffolding loader.
@@ -855,6 +910,24 @@ export function registerProjectCommands(): void {
       }
       async run(): Promise<void> {
         await importFolder();
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.insertIcon',
+          title: { value: 'Cudic: Insert icon', original: 'Cudic: Insert icon' },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await insertIcon();
       }
     }
   );
