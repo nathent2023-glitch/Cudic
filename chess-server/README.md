@@ -49,7 +49,7 @@ node server.js
 
 | Var | Default | Notes |
 |---|---|---|
-| `STOCKFISH_PATH` | searches PATH | the engine binary |
+| `STOCKFISH_PATH` | `/usr/bin/stockfish`, then PATH | the engine binary; Render sets `/tmp/stockfish` |
 | `PORT` | `3001` | |
 | `ENGINE_MOVETIME` | `350` | ms per move |
 | `ENGINE_MULTIPV` | `8` | ceiling; `multiPvFor` scales under it |
@@ -59,9 +59,23 @@ node server.js
 
 ## On Render
 
-Root directory `chess-server`, build command `apt-get install -y stockfish`.
-Free tier. `render.yaml` at the repo root is deliberately untouched — it belongs
-to the existing services.
+Free tier, Oregon, auto-deploy off. `render.yaml` at the repo root is
+deliberately untouched — it belongs to the existing services.
+
+The build command downloads Stockfish rather than installing it:
+
+```
+curl -sL https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz | tar xz && mv stockfish/stockfish-linux-x86-64-universal /tmp/stockfish && chmod +x /tmp/stockfish && cd chess-server && npm install --omit=dev
+```
+
+Start command `node server.js`, with `STOCKFISH_PATH=/tmp/stockfish`.
+
+**Why a download and not `apt-get install stockfish`:** Render's native Node
+runtime has a read-only filesystem, and `apt` dies immediately with
+`E: List directory /var/lib/apt/lists/partial is missing. - Acquire
+(30: Read-only file system)`. The official release is a static binary, so it
+needs nothing from the package manager. To move to a newer Stockfish, change
+`sf_19` in the build command.
 
 The page picks the host automatically: `localhost` talks to `:3001`, everything
 else to the deployed URL in `CHESS_API`.

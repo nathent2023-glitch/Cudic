@@ -145,8 +145,14 @@ class EnginePool {
 
   /** Candidate binaries, most explicit first. */
   candidates() {
-    return [this.path, process.env.STOCKFISH_PATH, '/usr/bin/stockfish', 'stockfish']
-      .filter(Boolean);
+    return [
+      this.path,
+      process.env.STOCKFISH_PATH,
+      '/tmp/stockfish',        /* where the Render build command puts it */
+      '/usr/bin/stockfish',
+      '/usr/games/stockfish',  /* Debian's stockfish package */
+      'stockfish'              /* PATH */
+    ].filter(Boolean);
   }
 
   async warm() {
