@@ -1,0 +1,26 @@
+Derived from Kenney's "Board Game Icons" pack (chess_king, chess_queen, chess_rook,
+chess_bishop, chess_knight, chess_pawn vector sources), recoloured into a
+light and a dark side. No artwork added or redrawn.
+
+	
+
+	Board Game Icons (1.1)
+
+	Created/distributed by Kenney (www.kenney.nl)
+	Creation date: 22-07-2024
+
+			------------------------------
+
+	License: (Creative Commons Zero, CC0)
+	http://creativecommons.org/publicdomain/zero/1.0/
+
+	This content is free to use in personal, educational and commercial projects.
+	Support us by crediting Kenney or www.kenney.nl (this is not mandatory)
+
+			------------------------------
+
+	Donate:   http://support.kenney.nl
+	Patreon:  http://patreon.com/kenney/
+
+	Follow on Twitter for updates:
+	http://twitter.com/KenneyNL

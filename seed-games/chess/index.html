@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 16px 12px 28px; }
+
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px; }
+  h1 img { width: 20px; height: 28px; object-fit: contain; }
+
+  .topbar { display: flex; gap: 10px; align-items: center; justify-content: space-between;
+    width: min(96vw, 560px); margin: 10px 0 8px; }
+
+  .bot { display: flex; align-items: center; gap: 10px; background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 16px; padding: 6px 10px 6px 8px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  .bot img { width: 26px; height: 26px; object-fit: contain; }
+  .bot .who { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+  .bot .rank { font-size: 0.72rem; color: #777777; font-weight: 800; text-transform: uppercase; }
+
+  .elo { display: flex; align-items: center; gap: 6px; }
+  .elo button { background: #58cc02; color: #ffffff; border: none; border-radius: 10px;
+    width: 26px; height: 26px; font-size: 0.95rem; font-weight: 900; cursor: pointer;
+    font-family: inherit; box-shadow: 0 3px 0 0 #46a302; }
+  .elo button:active { transform: translateY(3px); box-shadow: none; }
+  .elo .val { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; color: #777777;
+    min-width: 96px; text-align: center; }
+
+  /* ── motion tokens: one place, both games read the same numbers ── */
+  :root {
+    --t-tap: 120ms;
+    --t-move: 200ms;
+    --t-beat: 240ms;
+    --t-stage: 320ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .board { position: relative; width: min(92vw, 520px); aspect-ratio: 1;
+    border: 3px solid #e5e5e5; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 4px 0 0 #e5e5e5; transition: filter var(--t-stage) var(--ease); }
+  /* rotating the surface keeps the checker pattern valid (parity is symmetric
+     under 180 degrees) and carries the tiles and the pieces together */
+  .surface { position: absolute; inset: 0; transition: transform var(--t-stage) var(--ease); }
+  .board.flipped .surface { transform: rotate(180deg); }
+  .squares { position: absolute; inset: 0; display: grid;
+    grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); }
+
+  .sq { position: relative; display: flex; align-items: center; justify-content: center;
+    border: none; padding: 0; cursor: pointer; font-family: inherit;
+    min-width: 0; min-height: 0; }
+  .sq.l { background: #f0f6e4; }
+  .sq.d { background: #58cc02; }
+
+  /* last move + selection wash in rather than snapping on */
+  .sq.sel::after, .sq.last::after { content: ''; position: absolute; inset: 0;
+    background: rgba(255, 214, 0, 0.45); pointer-events: none;
+    animation: wash var(--t-move) var(--ease) both; }
+  .sq.last::after { background: rgba(255, 214, 0, 0.28); }
+  .sq .dot { position: absolute; width: 24%; height: 24%; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92); box-shadow: 0 0 0 2px rgba(60, 60, 60, 0.5);
+    pointer-events: none;
+    animation: pop var(--t-tap) var(--spring) both;
+    animation-delay: calc(var(--i, 0) * 24ms); }
+  @keyframes wash { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pop { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* a nudge, not a cartoon: two quick taps */
+  .sq.nope { animation: nope 60ms var(--ease) 2; }
+  @keyframes nope { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+  .sq.hit { animation: hit var(--t-move) var(--ease); }
+  @keyframes hit { 30% { transform: scale(0.93); } 70% { transform: scale(1.03); } }
+
+  /* check: a warm ring breathing twice. no red, no strobing */
+  .sq.chk::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 0 4px #ff8c1a; border-radius: 2px;
+    animation: pulse 900ms var(--ease) 2; }
+  @keyframes pulse { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* ── pieces: persistent elements, moved with translate so they glide ── */
+  .pieces { position: absolute; inset: 0; pointer-events: none; }
+  .pc { position: absolute; width: 12.5%; height: 12.5%; left: 0; top: 0;
+    transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%));
+    transition: transform var(--t-move) var(--ease); will-change: transform; }
+  .pc .imgwrap { position: absolute; inset: 8%; display: block; }
+  .pc img { width: 100%; height: 100%; object-fit: contain; display: block;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.25)); }
+  /* lifted while in flight, settles on landing */
+  .pc.go { z-index: 3; transition: transform var(--t-move) var(--ease),
+      filter var(--t-move) var(--ease); }
+  .pc.go img { transform: scale(1.08);
+    filter: drop-shadow(0 5px 4px rgba(0,0,0,0.32)); }
+  .pc.take { animation: taken 150ms var(--ease) forwards; }
+  @keyframes taken { to { transform: var(--tf) scale(0.55); opacity: 0; } }
+  .pc.slip .imgwrap { } /* ep handled by the same transform path */
+  .pc.crown .imgwrap { animation: pop var(--t-beat) var(--spring) both; }
+  .pc.mate { z-index: 4; animation: spring var(--t-stage) var(--spring) both; }
+  @keyframes spring { 0% { transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%)) scale(1); }
+    45% { transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%)) scale(1.16); }
+    100% { transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%)) scale(1); } }
+  .pc.fall { animation: topple 420ms var(--ease) forwards; }
+  @keyframes topple { to { transform: translate(calc(var(--c) * 100%), calc(var(--r) * 100%))
+      rotate(74deg) translateY(14%); opacity: 0.15; } }
+
+  .board.over .surface { filter: saturate(0.45) brightness(0.97); }
+  .board.over .sq { cursor: default; }
+  .status.bump { animation: slide var(--t-beat) var(--spring); }
+  @keyframes slide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .status { margin: 14px 0 4px; font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+    color: #3c3c3c; min-height: 1.2em; }
+  .hud { display: flex; gap: 20px; font-size: 0.8rem; font-weight: 800;
+    text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; }
+
+  .row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; justify-content: center; }
+  button.action { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302; transition: all 0.1s ease;
+    display: inline-flex; align-items: center; gap: 7px; }
+  button.action:active { transform: translateY(4px); box-shadow: 0 0 0 0 #46a302; }
+  button.action img { width: 17px; height: 17px; object-fit: contain; filter: invert(1); }
+  button.ghost { background: #ffffff; color: #777777; border: 2px solid #e5e5e5;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  button.ghost:active { transform: translateY(4px); box-shadow: none; }
+  button.ghost img { filter: none; opacity: 0.55; }
+
+  #over { margin-top: 16px; display: none; flex-direction: column; gap: 10px;
+    align-items: center; text-align: center; background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 20px; padding: 18px 26px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  #over.show { display: flex; animation: rise var(--t-stage) var(--spring); }
+  #over h2 { font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  #over h2 img { width: 24px; height: 24px; }
+  #over p { color: #777777; font-size: 0.9rem; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.94); }
+    to { opacity: 1; transform: none; } }
+
+  /* the bot's avatar breathes while it thinks */
+  .bot.think { transform: translateY(-2px); }
+  .bot.think img { animation: breathe 1.6s var(--ease) infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  /* motion is opt-out for anyone who asked the OS to calm things down */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important;
+      transition-duration: 1ms !important; }
+  }
+</style>
+</head>
+<body>
+  <h1><img src="/assets/kenney/chess/black/chess_king.svg" data-ico="chess/black/chess_king.svg" alt=""> Chess</h1>
+
+  <div class="topbar">
+    <div class="bot">
+      <img src="/assets/kenney/game-icons/black/gamepad.png" data-ico="game-icons/black/gamepad.png" alt="">
+      <div>
+        <div class="who" id="botName">Novice</div>
+        <div class="rank" id="botRank">800 elo</div>
+      </div>
+    </div>
+    <div class="elo">
+      <button id="down" aria-label="Weaker bot">&minus;</button>
+      <span class="val" id="eloVal">800</span>
+      <button id="up" aria-label="Stronger bot">+</button>
+    </div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="surface" id="surface">
+      <div class="squares" id="squares"></div>
+      <div class="pieces" id="pieces"></div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Your move</div>
+  <div class="hud">
+    <span>Side <b id="sYou">white</b></span>
+    <span>Wins <b id="sWins">0</b></span>
+    <span>Losses <b id="sLoss">0</b></span>
+    <span>Draws <b id="sDraw">0</b></span>
+  </div>
+
+  <div class="row">
+    <button class="action" id="newBtn"><img src="/assets/kenney/game-icons/white/return.png" data-ico="game-icons/white/return.png" alt=""> New game</button>
+    <button class="action ghost" id="flipBtn"><img src="/assets/kenney/board-game-icons/arrow_rotate.png" data-ico="board-game-icons/arrow_rotate.png" alt=""> Flip</button>
+    <button class="action ghost" id="resignBtn"><img src="/assets/kenney/game-icons/black/exitRight.png" data-ico="game-icons/black/exitRight.png" alt=""> Resign</button>
+  </div>
+
+  <div id="over">
+    <h2><img id="overIcon" src="/assets/kenney/game-icons/black/medal1.png" data-ico="game-icons/black/medal1.png" alt=""><span id="overTitle">Checkmate</span></h2>
+    <p id="overSub"></p>
+    <button class="action" id="again">Play again</button>
+  </div>
+
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── The ladder: 100 to 3000. The bot itself lives in the chess service
+        (Stockfish), so these are just rungs for the picker — the service
+        decides what a rating actually plays. ── */
+  /* the elo rungs the picker walks; the service owns what each one plays */
+  var LEVELS = [
+    { elo: 100,  name: 'Beginner' },
+    { elo: 500,  name: 'Novice' },
+    { elo: 900,  name: 'Casual' },
+    { elo: 1300, name: 'Club player' },
+    { elo: 1700, name: 'Intermediate' },
+    { elo: 2100, name: 'Strong' },
+    { elo: 2600, name: 'Master' },
+    { elo: 3000, name: 'Grandmaster' }
+  ];
+
+  var FILES = 'abcdefgh';
+
+  /* published games run from the site root; a copy opened off disk needs to
+     walk back up to the repo's public folder for icons */
+  var ICON = (location.protocol === 'file:' ? '../../' : '/') + 'assets/kenney/';
+
+  /* the move API. Local dev runs the service on 3001; production uses Render. */
+  var CHESS_API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    ? 'http://localhost:3001'
+    : 'https://cudic-chess.onrender.com';
+
+  /* ── Board: 0x88-lite. 0 = empty, positive = white, negative = black. ── */
+  var board = new Array(64);
+  var turn = 1;          /* 1 white, -1 black */
+  var castle = 15;       /* WK WQ BK BQ */
+  var epSq = -1;
+  var half = 0;
+  var full = 1;
+  var sel = -1;
+  var legal = [];
+  var lastMove = null;
+  var flipped = false;
+  var over = false;
+  var thinking = false;
+  var checkSq = -1;      /* the king currently in check, for the pulse */
+  var matePiece = -1;    /* the piece that landed the mate, for the spring */
+
+  var stats = { wins: 0, losses: 0, draws: 0 };
+  var CS = window.CudicSave || null;
+  var eloIdx = 1;
+
+  var el = {
+    board: document.getElementById('board'),
+    surface: document.getElementById('surface'),
+    squares: document.getElementById('squares'),
+    pieces: document.getElementById('pieces'),
+    bot: document.querySelector('.bot'),
+    status: document.getElementById('status'),
+    eloVal: document.getElementById('eloVal'),
+    botName: document.getElementById('botName'),
+    botRank: document.getElementById('botRank'),
+    botIcon: document.querySelector('.bot img'),
+    over: document.getElementById('over'),
+    overTitle: document.getElementById('overTitle'),
+    overSub: document.getElementById('overSub'),
+    overIcon: document.getElementById('overIcon'),
+    sWins: document.getElementById('sWins'),
+    sLoss: document.getElementById('sLoss'),
+    sDraw: document.getElementById('sDraw'),
+    sYou: document.getElementById('sYou')
+  };
+
+  function save() {
+    if (CS) { CS.save(stats); return; }
+    try { localStorage.setItem('cudic-chess-stats', JSON.stringify(stats)); } catch (e) {}
+  }
+  function mergeStats(d) {
+    if (!d) return;
+    stats.wins = Math.max(stats.wins, d.wins || 0);
+    stats.losses = Math.max(stats.losses, d.losses || 0);
+    stats.draws = Math.max(stats.draws, d.draws || 0);
+    paintStats();
+  }
+  try { mergeStats(JSON.parse(localStorage.getItem('cudic-chess-stats') || 'null')); } catch (e) {}
+  if (CS) CS.load({ legacyKey: 'cudic-chess-stats' }).then(mergeStats).catch(function () {});
+  function paintStats() {
+    el.sWins.textContent = stats.wins;
+    el.sLoss.textContent = stats.losses;
+    el.sDraw.textContent = stats.draws;
+  }
+  paintStats();
+
+  function kind(p) { return p > 0 ? p : -p; }
+  function colour(p) { return p > 0 ? 1 : -1; }
+  function row(sq) { return (sq / 8) | 0; }
+  function col(sq) { return sq % 8; }
+  function sq(r, c) { return r * 8 + c; }
+  function name(sq) { return FILES[col(sq)] + (8 - row(sq)); }
+  /* kind numbers 1..6 map to the Kenney file names */
+  var LETTER = ['', 'pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+  /* FEN wants single letters (N B R Q K), not the file names */
+  var FEN_LETTER = ['', 'p', 'n', 'b', 'r', 'q', 'k'];
+  /* published games are served from the site root; an index.html opened
+     straight off disk needs to walk back up to the repo's public folder */
+  var ICON = (location.protocol === 'file:' ? '../../' : '/') + 'assets/kenney/';
+  /* the fixed icons ship with absolute srcs for production; re-point them so a
+     copy opened straight off disk finds the same folder */
+  (function () {
+    var imgs = document.querySelectorAll('img[data-ico]');
+    for (var i = 0; i < imgs.length; i++) imgs[i].src = ICON + imgs[i].getAttribute('data-ico');
+  })();
+  function pieceSrc(p) {
+    return ICON + 'chess/' + (colour(p) > 0 ? 'white/' : 'black/') +
+           'chess_' + LETTER[kind(p)] + '.svg';
+  }
+  function pieceName(p) {
+    return (colour(p) > 0 ? 'white ' : 'black ') + LETTER[kind(p)];
+  }
+
+  function reset() {
+    board = new Array(64).fill(0);    /* clear first — a mid-game reset would leave strays */
+    /* back rank as piece numbers: r n b q k b n r */
+    var back = [4, 2, 3, 5, 6, 3, 2, 4];
+    for (var c = 0; c < 8; c++) {
+      board[sq(0, c)] = -back[c];   /* rank 8 is black's back rank */
+      board[sq(1, c)] = -1;
+      board[sq(6, c)] = 1;
+      board[sq(7, c)] = back[c];    /* rank 1 is white's back rank */
+    }
+    turn = 1; castle = 15; epSq = -1; half = 0; full = 1;
+    sel = -1; legal = []; lastMove = null; over = false; thinking = false;
+    checkSq = -1; matePiece = -1;
+    el.board.classList.remove('over');
+    el.over.className = '';
+    setStatus('Your move');
+    buildTiles();
+    rebuildPieces();
+    paint();
+  }
+
+  /* the status line swaps with a small rise instead of blinking */
+  function setStatus(text) {
+    if (el.status.textContent === text) return;
+    el.status.textContent = text;
+    el.status.classList.remove('bump');
+    void el.status.offsetWidth;
+    el.status.classList.add('bump');
+  }
+
+  /* ── Move generation ───────────────────────────────────────────── */
+  function attacked(target, byColour) {
+    var r = row(target), c = col(target), i, tr, tc, p;
+    /* pawns attack the row in front of them, so look one row *behind* the target */
+    tr = r + (byColour > 0 ? 1 : -1);
+    if (tr >= 0 && tr <= 7) {
+      if (c > 0) { p = board[sq(tr, c - 1)]; if (p && colour(p) === byColour && kind(p) === 1) return true; }
+      if (c < 7) { p = board[sq(tr, c + 1)]; if (p && colour(p) === byColour && kind(p) === 1) return true; }
+    }
+    /* knights */
+    var N = [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]];
+    for (i = 0; i < 8; i++) {
+      tr = r + N[i][0]; tc = c + N[i][1];
+      if (tr < 0 || tr > 7 || tc < 0 || tc > 7) continue;
+      p = board[sq(tr, tc)];
+      if (p && colour(p) === byColour && kind(p) === 2) return true;
+    }
+    /* king */
+    for (i = 0; i < 8; i++) {
+      tr = r + [1,1,1,0,0,-1,-1,-1][i]; tc = c + [1,0,-1,1,-1,1,0,-1][i];
+      if (tr < 0 || tr > 7 || tc < 0 || tc > 7) continue;
+      p = board[sq(tr, tc)];
+      if (p && colour(p) === byColour && kind(p) === 6) return true;
+    }
+    /* sliders */
+    var DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    var k;
+    for (k = 0; k < 8; k++) {
+      tr = r + DIRS[k][0]; tc = c + DIRS[k][1];
+      while (tr >= 0 && tr <= 7 && tc >= 0 && tc <= 7) {
+        p = board[sq(tr, tc)];
+        if (p) {
+          if (colour(p) === byColour) {
+            var kk = kind(p);
+            if ((k < 4 && kk === 4) || (k >= 4 && kk === 3) || kk === 5) return true;
+          }
+          break;
+        }
+        tr += DIRS[k][0]; tc += DIRS[k][1];
+      }
+    }
+    return false;
+  }
+
+  function kingSq(colourWanted) {
+    for (var s = 0; s < 64; s++) if (board[s] && kind(board[s]) === 6 && colour(board[s]) === colourWanted) return s;
+    return -1;
+  }
+
+  function genMoves(side, pseudoOnly) {
+    var out = [];
+    for (var from = 0; from < 64; from++) {
+      var p = board[from];
+      if (!p || colour(p) !== side) continue;
+      var k = kind(p), r = row(from), c = col(from), i, tr, tc, target;
+      if (k === 1) {
+        var dir = side > 0 ? -1 : 1;
+        tr = r + dir;
+        /* any pawn move landing on the far rank is a promotion */
+        var promo = (side > 0 && tr === 0) || (side < 0 && tr === 7);
+        var pf = promo ? 'promo' : '';
+        if (tr >= 0 && tr <= 7 && !board[sq(tr, c)]) {
+          out.push(mk(from, sq(tr, c), pf));
+          var start = side > 0 ? 6 : 1;
+          if (r === start && !board[sq(r + dir * 2, c)]) out.push(mk(from, sq(r + dir * 2, c), 'double'));
+        }
+        for (i = -1; i <= 1; i += 2) {
+          tc = c + i;
+          if (tc < 0 || tc > 7 || tr < 0 || tr > 7) continue;
+          target = board[sq(tr, tc)];
+          if (target && colour(target) === -side) out.push(mk(from, sq(tr, tc), pf));
+          else if (!target && epSq >= 0 && sq(tr, tc) === epSq) {
+            var capSq = sq(r, tc);
+            out.push({ from: from, to: sq(tr, tc), cap: capSq, flag: 'ep' });
+          }
+        }
+      } else if (k === 2) {
+        var N = [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]];
+        for (i = 0; i < 8; i++) {
+          tr = r + N[i][0]; tc = c + N[i][1];
+          if (tr < 0 || tr > 7 || tc < 0 || tc > 7) continue;
+          target = board[sq(tr, tc)];
+          if (!target || colour(target) === -side) out.push(mk(from, sq(tr, tc)));
+        }
+      } else if (k === 3 || k === 4 || k === 5) {
+        var DIRS = k === 3 ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
+                   k === 4 ? [[1,0],[-1,0],[0,1],[0,-1]] :
+                             [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+        for (var d = 0; d < DIRS.length; d++) {
+          tr = r + DIRS[d][0]; tc = c + DIRS[d][1];
+          while (tr >= 0 && tr <= 7 && tc >= 0 && tc <= 7) {
+            target = board[sq(tr, tc)];
+            if (!target) out.push(mk(from, sq(tr, tc)));
+            else { if (colour(target) === -side) out.push(mk(from, sq(tr, tc))); break; }
+            tr += DIRS[d][0]; tc += DIRS[d][1];
+          }
+        }
+      } else if (k === 6) {
+        var K8 = [1,1,1,0,0,-1,-1,-1];
+        for (i = 0; i < 8; i++) {
+          tr = r + K8[i]; tc = c + [1,0,-1,1,-1,1,0,-1][i];
+          if (tr < 0 || tr > 7 || tc < 0 || tc > 7) continue;
+          target = board[sq(tr, tc)];
+          if (!target || colour(target) === -side) out.push(mk(from, sq(tr, tc)));
+        }
+        /* castling: rights, empty path, king not in check, transit safe */
+        var homeRank = side > 0 ? 7 : 0;
+        if (r === homeRank && c === 4) {
+          var kingRight = side > 0 ? 1 : 4;
+          var queenRight = side > 0 ? 2 : 8;
+          if ((castle & kingRight) && !board[sq(homeRank, 5)] && !board[sq(homeRank, 6)] &&
+              board[sq(homeRank, 7)] && kind(board[sq(homeRank, 7)]) === 4 &&
+              !attacked(sq(homeRank, 4), -side) && !attacked(sq(homeRank, 5), -side) &&
+              !attacked(sq(homeRank, 6), -side)) {
+            out.push({ from: from, to: sq(homeRank, 6), castle: 'K' });
+          }
+          if ((castle & queenRight) && !board[sq(homeRank, 3)] && !board[sq(homeRank, 2)] &&
+              !board[sq(homeRank, 1)] && board[sq(homeRank, 0)] && kind(board[sq(homeRank, 0)]) === 4 &&
+              !attacked(sq(homeRank, 4), -side) && !attacked(sq(homeRank, 3), -side) &&
+              !attacked(sq(homeRank, 2), -side)) {
+            out.push({ from: from, to: sq(homeRank, 2), castle: 'Q' });
+          }
+        }
+      }
+    }
+    /* pseudoOnly skips the king-safety filter — quiescence only needs captures */
+    if (pseudoOnly) return out;
+    var ok = [];
+    for (var m = 0; m < out.length; m++) {
+      if (legalish(out[m])) ok.push(out[m]);
+    }
+    return ok;
+  }
+
+  function mk(from, to, flag) {
+    return { from: from, to: to, flag: flag || '' };
+  }
+
+  function takeSnap() {
+    return { b: board.slice(), t: turn, c: castle, e: epSq, h: half, f: full };
+  }
+  function restoreSnap(s) { board = s.b; turn = s.t; castle = s.c; epSq = s.e; half = s.h; full = s.f; }
+
+  function legalish(m) {
+    var s = takeSnap();
+    apply(m);
+    var ks = kingSq(-turn);          /* turn has flipped, so -turn is the mover */
+    var bad = ks < 0 || attacked(ks, turn);
+    restoreSnap(s);
+    return !bad;
+  }
+
+  /* castle bits: 1 white K, 2 white Q, 4 black K, 8 black Q */
+  function rightsFromSq(s) {
+    if (s === 0 || s === 7) return 3;
+    if (s === 56 || s === 63) return 12;
+    if (s === 60) return 1;
+    if (s === 4) return 4;
+    return 0;
+  }
+
+  /* One make/unmake path — search, quiescence and the legality filter all
+     snapshot and restore, so there is nothing else to keep in sync. */
+  function apply(m) {
+    var p = board[m.from];
+    var cap = board[m.to];
+    if (m.cap != null) { cap = board[m.cap]; board[m.cap] = 0; }
+    board[m.from] = 0;
+    board[m.to] = p;
+    if (m.flag === 'promo') board[m.to] = colour(p) * 5;   /* auto-queen */
+    if (m.castle === 'K') {
+      board[sq(row(m.to), 7)] = board[sq(row(m.to), 5)];
+      board[sq(row(m.to), 5)] = 0;
+    } else if (m.castle === 'Q') {
+      board[sq(row(m.to), 0)] = board[sq(row(m.to), 3)];
+      board[sq(row(m.to), 3)] = 0;
+    }
+    epSq = m.flag === 'double' ? ((row(m.from) + row(m.to)) / 2 * 8 + col(m.from)) : -1;
+    half = (kind(p) === 1 || cap || m.flag === 'ep') ? 0 : half + 1;
+    if (turn < 0) full++;
+    castle &= ~(rightsFromSq(m.from) | rightsFromSq(m.to));
+    turn = -turn;
+  }
+
+  /* ── Rendering ──────────────────────────────────────────────────
+     Squares are rebuilt (cheap, they hold no state). Pieces are NOT: each one
+     is a persistent element living in a layer, so a move is a transform change
+     and the browser animates it for free. */
+  var pieceEls = new Array(64).fill(null);
+  var MOVE_MS = 200;
+
+  function place(el, s) {
+    el.style.setProperty('--c', col(s));
+    el.style.setProperty('--r', row(s));
+  }
+
+  function makePiece(p) {
+    var node = document.createElement('div');
+    node.className = 'pc';
+    var wrap = document.createElement('span');
+    wrap.className = 'imgwrap';
+    var img = document.createElement('img');
+    img.src = pieceSrc(p);
+    img.alt = pieceName(p);
+    wrap.appendChild(img);
+    node.appendChild(wrap);
+    return node;
+  }
+
+  /* build the tile grid once; only the classes change afterwards */
+  function buildTiles() {
+    var html = '';
+    for (var r = 0; r < 8; r++) {
+      for (var c = 0; c < 8; c++) {
+        var s = sq(flipped ? 7 - r : r, flipped ? 7 - c : c);
+        var dark = (row(s) + col(s)) % 2 === 1;
+        html += '<button class="sq ' + (dark ? 'd' : 'l') + '" data-sq="' + s +
+                '" aria-label="' + name(s) + '"></button>';
+      }
+    }
+    el.squares.innerHTML = html;
+  }
+
+  /* mirror the board into the piece layer from scratch (new game, flips) */
+  function rebuildPieces() {
+    el.pieces.innerHTML = '';
+    pieceEls.fill(null);
+    for (var s = 0; s < 64; s++) {
+      if (!board[s]) continue;
+      var node = makePiece(board[s]);
+      place(node, s);
+      el.pieces.appendChild(node);
+      pieceEls[s] = node;
+    }
+  }
+
+  function paint() {
+    var tiles = el.squares.children;
+    for (var i = 0; i < tiles.length; i++) {
+      var t = tiles[i];
+      var s = parseInt(t.getAttribute('data-sq'), 10);
+      var dark = (row(s) + col(s)) % 2 === 1;
+      var want = '';
+      if (s === sel) want += ' sel';
+      if (lastMove && (s === lastMove.from || s === lastMove.to)) want += ' last';
+      if (s === checkSq) want += ' chk';
+      t.className = 'sq ' + (dark ? 'd' : 'l') + want;
+      /* legal-move dots live in the tiles */
+      var dot = t.firstChild;
+      if (legal.indexOf(s) >= 0) {
+        if (!dot || dot.className !== 'dot') {
+          t.innerHTML = '';
+          dot = document.createElement('span');
+          dot.className = 'dot';
+          dot.style.setProperty('--i', legal.indexOf(s));
+          t.appendChild(dot);
+        }
+      } else if (dot && dot.className === 'dot') {
+        t.removeChild(dot);
+      }
+    }
+    el.sYou.textContent = flipped ? 'black' : 'white';
+  }
+
+  /* nudge a tile: illegal tap, or a capture landing */
+  function bump(s, cls) {
+    var t = tileFor(s);
+    if (!t) return;
+    t.classList.remove(cls);
+    void t.offsetWidth;              /* restart the animation */
+    t.classList.add(cls);
+    setTimeout(function () { t.classList.remove(cls); }, MOVE_MS + 20);
+  }
+  function tileFor(s) {
+    var tiles = el.squares.children;
+    for (var i = 0; i < tiles.length; i++) {
+      if (parseInt(tiles[i].getAttribute('data-sq'), 10) === s) return tiles[i];
+    }
+    return null;
+  }
+
+  /* ── piece animation, driven by the move itself ───────────────── */
+  function animate(m) {
+    var mover = pieceEls[m.from];
+    if (mover) {
+      /* en passant: the doomed pawn slides to its own square as it dies */
+      if (m.cap != null && pieceEls[m.cap]) {
+        var doomed = pieceEls[m.cap];
+        doomed.style.setProperty('--tf', 'translate(' + (col(m.to) - col(m.cap)) * 100 +
+          '%, ' + (row(m.to) - row(m.cap)) * 100 + '%)');
+        doomed.classList.add('take');
+      }
+      var victim = pieceEls[m.to];
+      if (victim && victim !== mover) {
+        victim.classList.add('take');
+        setTimeout(function () { if (victim.parentNode) victim.parentNode.removeChild(victim); }, 200);
+        bump(m.to, 'hit');
+      }
+      if (m.flag === 'promo') setTimeout(function () { mover.classList.add('crown'); }, MOVE_MS);
+
+      mover.classList.add('go');
+      pieceEls[m.from] = null;
+      pieceEls[m.to] = mover;
+      place(mover, m.to);
+      setTimeout(function () { mover.classList.remove('go'); }, MOVE_MS + 20);
+    }
+    /* castling moves the rook on the same beat as the king */
+    if (m.castle === 'K') slidePiece(sq(row(m.to), 5), sq(row(m.to), 7));
+    if (m.castle === 'Q') slidePiece(sq(row(m.to), 3), sq(row(m.to), 0));
+  }
+
+  function slidePiece(from, to) {
+    var el = pieceEls[from];
+    if (!el) return;
+    el.classList.add('go');
+    pieceEls[from] = null;
+    pieceEls[to] = el;
+    place(el, to);
+    setTimeout(function () { el.classList.remove('go'); }, MOVE_MS + 20);
+  }
+
+  /* the surface can be rotated 180 degrees, so work the square out from where
+     the pointer landed rather than trusting the tile's stored index */
+  function squareAt(e) {
+    var box = el.surface.getBoundingClientRect();
+    if (!box.width) return -1;
+    var r = Math.floor((e.clientY - box.top) / (box.height / 8));
+    var c = Math.floor((e.clientX - box.left) / (box.width / 8));
+    if (flipped) { r = 7 - r; c = 7 - c; }
+    if (r < 0 || r > 7 || c < 0 || c > 7) return -1;
+    return sq(r, c);
+  }
+
+  el.board.addEventListener('click', function (e) {
+    var s = squareAt(e);
+    if (s < 0 || over || thinking || turn !== 1) return;
+    var p = board[s];
+    if (sel >= 0 && legal.indexOf(s) >= 0) { playUser(s); return; }
+    if (p && colour(p) === 1) {
+      sel = s;
+      legal = genMoves(1).filter(function (m) { return m.from === s; }).map(function (m) { return m.to; });
+      paint();
+      return;
+    }
+    if (sel >= 0) bump(s, 'nope');
+    sel = -1; legal = []; paint();
+  });
+
+  function findMove(from, to) {
+    var ms = genMoves(turn);
+    for (var i = 0; i < ms.length; i++) if (ms[i].from === from && ms[i].to === to) return ms[i];
+    return null;
+  }
+
+  function playUser(to) {
+    var m = findMove(sel, to);
+    if (!m) return;
+    sel = -1; legal = [];
+    doMove(m);
+    afterMove();
+  }
+
+  function doMove(m) {
+    apply(m);
+    lastMove = m;
+    animate(m);
+  }
+
+  function afterMove() {
+    var moves = genMoves(turn);
+    var ks = kingSq(turn);
+    var check = ks >= 0 && attacked(ks, -turn);
+    checkSq = check ? ks : -1;
+    if (moves.length === 0) {
+      matePiece = check ? lastMove.to : -1;
+      finish(check ? 'mate' : 'stalemate');
+      return;
+    }
+    if (half >= 100) { finish('fifty'); return; }
+    paint();
+    /* the check ring only shows once the moving piece has landed */
+    if (checkSq >= 0) setTimeout(function () {
+      var t = tileFor(checkSq);
+      if (t) { t.classList.add('chk'); }
+    }, MOVE_MS);
+    if (turn === -1) botTurn();
+    else setStatus(check ? 'You left him in check' : 'Your move');
+  }
+
+  function finish(kindOfEnd) {
+    over = true;
+    thinking = false;
+    el.bot.classList.remove('think');
+    el.board.classList.add('over');       /* desaturate, then let the pieces play out */
+    var title, sub, icon;
+    if (kindOfEnd === 'mate') {
+      /* whoever has no legal move lost; turn is the loser */
+      if (turn === 1) { title = 'Checkmate'; sub = 'The bot got you. Play again and try a new rating.'; stats.losses++; icon = 'gamepad'; }
+      else { title = 'You won!'; sub = 'Checkmate. Nicely played.'; stats.wins++; icon = 'trophy'; }
+    } else if (kindOfEnd === 'stalemate') {
+      title = 'Stalemate'; sub = 'No legal moves, but no check. It is a draw.'; stats.draws++; icon = 'minus';
+    } else {
+      title = 'Draw'; sub = 'Fifty moves without a capture or a pawn move.'; stats.draws++; icon = 'minus';
+    }
+    /* fall: the beaten king, then the mating piece springs */
+    var fallen = pieceEls[checkSq];
+    if (fallen) fallen.classList.add('fall');
+    var hero = matePiece >= 0 ? pieceEls[matePiece] : null;
+    if (hero) hero.classList.add('mate');
+    paint();
+    setStatus(title);
+    el.overIcon.src = ICON + 'game-icons/black/' + icon + '.png';
+    el.overTitle.textContent = title;
+    el.overSub.textContent = sub;
+    /* let the board settle before the card lands on it */
+    setTimeout(function () { el.over.className = 'show'; }, 420);
+    save();
+    paintStats();
+  }
+
+  /* ── Bot ────────────────────────────────────────────────────────
+        There is no search in this file any more. The board is exported as a
+        FEN, the chess service runs Stockfish, and the move comes back as UCI
+        (e4e2). Everything below is just the plumbing around that call. */
+
+  /* Board -> FEN. Needed to describe the position to the service. */
+  function toFen() {
+    var out = '';
+    for (var r = 0; r < 8; r++) {
+      var gap = 0;
+      for (var c = 0; c < 8; c++) {
+        var p = board[sq(r, c)];
+        if (!p) { gap++; continue; }
+        if (gap) { out += gap; gap = 0; }
+        var ch = FEN_LETTER[kind(p)];
+        out += colour(p) > 0 ? ch.toUpperCase() : ch;
+      }
+      if (gap) out += gap;
+      if (r < 7) out += '/';
+    }
+    var rights = '';
+    if (castle & 8) rights += 'K';
+    if (castle & 4) rights += 'Q';
+    if (castle & 2) rights += 'k';
+    if (castle & 1) rights += 'q';
+    return out + ' ' + (turn > 0 ? 'w' : 'b') + ' ' + (rights || '-') + ' ' +
+           (epSq >= 0 ? name(epSq) : '-') + ' ' + half + ' ' + full;
+  }
+
+  /* UCI (e4e2) -> one of our move objects. Generation is asked for directly:
+     `legal` is only the click-selection highlight, and is empty here. */
+  function findUci(uci) {
+    var ms = genMoves(turn);
+    var i, k;
+    for (i = 0; i < ms.length; i++) {
+      if (name(ms[i].from) + name(ms[i].to) === uci) return ms[i];
+    }
+    /* a promotion carries the piece it becomes, so e7e8q is one legal move */
+    var suffix = ' qrbn';
+    for (i = 0; i < ms.length; i++) {
+      if (ms[i].flag !== 'promo') continue;
+      for (k = 1; k <= 4; k++) {
+        if (name(ms[i].from) + name(ms[i].to) + suffix[k] === uci) {
+          ms[i].promo = [5, 6, 3, 4][k - 1];   /* q r b n */
+          return ms[i];
+        }
+      }
+    }
+    return null;
+  }
+
+  function postMove(attempt) {
+    var lv = LEVELS[eloIdx];
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 40000);
+    return fetch(CHESS_API + '/move', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fen: toFen(), elo: lv.elo }),
+      signal: ctl ? ctl.signal : undefined
+    }).then(function (r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error('engine ' + r.status);
+      return r.json();
+    }).then(function (d) {
+      if (!d || !d.move) throw new Error('engine returned no move');
+      var m = findUci(d.move);
+      if (!m) throw new Error('engine returned ' + d.move + ', which is not legal here');
+      return m;
+    }, function (err) {
+      clearTimeout(timer);
+      /* A free instance that has gone cold answers the first request with 503
+         while it spins Stockfish up. One retry covers that; more would just
+         make a real outage take longer to report. */
+      if (attempt === 0) return postMove(1);
+      throw err;
+    });
+  }
+
+  function askService() {
+    setStatus(LEVELS[eloIdx].name + ' is thinking');
+    return postMove(0);
+  }
+
+  /* Start the engine before the player has even moved. On a free instance the
+     first request otherwise pays the whole spin-up while someone waits. */
+  function warmUp() {
+    if (typeof fetch !== 'function') return;
+    try { fetch(CHESS_API + '/warm').catch(function () {}); } catch (e) {}
+  }
+
+  function botTurn() {
+    thinking = true;
+    el.bot.classList.add('think');
+    askService().then(function (m) {
+      thinking = false;
+      el.bot.classList.remove('think');
+      doMove(m);
+      afterMove();
+    }).catch(function (err) {
+      thinking = false;
+      el.bot.classList.remove('think');
+      /* Never quietly fall back to a local search — there isn't one, and
+         pretending the bot moved would be a lie. Say so and stop the board. */
+      over = true;
+      setStatus('Engine unavailable');
+      el.overIcon.src = ICON + 'game-icons/black/minus.png';
+      el.overTitle.textContent = 'Engine unavailable';
+      el.overSub.textContent = 'The chess service did not answer. Try again in a moment.';
+      el.over.className = 'show';
+    });
+  }
+
+  /* ── Controls ─────────────────────────────────────────────────── */
+  function paintLevel() {
+    var lv = LEVELS[eloIdx];
+    el.eloVal.textContent = lv.elo;
+    el.botName.textContent = lv.name;
+    el.botRank.textContent = lv.elo + ' elo';
+  }
+  document.getElementById('up').addEventListener('click', function () {
+    if (eloIdx < LEVELS.length - 1) { eloIdx++; paintLevel(); reset(); }
+  });
+  document.getElementById('down').addEventListener('click', function () {
+    if (eloIdx > 0) { eloIdx--; paintLevel(); reset(); }
+  });
+  document.getElementById('newBtn').addEventListener('click', reset);
+  document.getElementById('again').addEventListener('click', reset);
+  document.getElementById('flipBtn').addEventListener('click', function () {
+    flipped = !flipped;
+    el.board.classList.toggle('flipped', flipped);
+    /* the surface rotates visually; square names and hit-testing flip with it */
+    var tiles = el.squares.children;
+    for (var i = 0; i < tiles.length; i++) {
+      var s = parseInt(tiles[i].getAttribute('data-sq'), 10);
+      tiles[i].setAttribute('aria-label', name(flipped ? 63 - s : s));
+    }
+    setStatus(flipped ? 'Playing as black' : 'Playing as white');
+  });
+  document.getElementById('resignBtn').addEventListener('click', function () {
+    if (over) return;
+    over = true;
+    stats.losses++; save(); paintStats();
+    el.overIcon.src = ICON + 'game-icons/black/exitRight.png';
+    el.overTitle.textContent = 'Resigned';
+    el.overSub.textContent = 'You resigned the game.';
+    el.status.textContent = 'Resigned';
+    el.over.className = 'show';
+  });
+
+  paintLevel();
+  reset();
+  warmUp();
+})();
+</script>
+</body>
+</html>

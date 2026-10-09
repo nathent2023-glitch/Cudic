@@ -709,7 +709,10 @@ async function insertIcon(): Promise<void> {
   for (const p of iconLib.packs) {
     for (const s of p.sets) {
       for (const i of s.icons) {
-        items.push({ label: i.label, description: p.label + (s.id ? ' · ' + s.id : ''), detail: i.file });
+        // Sets become part of the label: "white pawn" reads better than "pawn"
+        // when a pack ships both sides.
+        const label = s.id === '' ? i.label : s.id + ' ' + i.label;
+        items.push({ label, description: p.label + (s.id ? ' · ' + s.id : ''), detail: i.file });
       }
     }
   }
@@ -720,9 +723,13 @@ async function insertIcon(): Promise<void> {
   });
   if (pick == null) return;
   const desc = pick.description ?? '';
-  const pack = desc.split(' · ')[0];
-  const src = '/assets/kenney/' + pack + '/' + (desc.includes(' · ') ? desc.split(' · ')[1] + '/' : '') + pick.detail;
-  const rel = 'assets/icons/' + pick.detail;
+  const parts = desc.split(' · ');
+  const pack = parts[0];
+  const set = parts.length > 1 ? parts[1] : '';
+  const src = '/assets/kenney/' + pack + '/' + (set === '' ? '' : set + '/') + pick.detail;
+  // Keep the subfolder when a pack has sets, so e.g. the light and dark pawn
+  // don't overwrite each other in the project.
+  const rel = 'assets/icons/' + (set === '' ? '' : pack + '/' + set + '/') + pick.detail;
   try {
     const res = await fetch(src);
     if (!res.ok) throw new Error('could not fetch the icon (' + res.status + ')');

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic Tac Toe</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── motion tokens: identical numbers to the chess board ── */
+  :root {
+    --t-tap: 120ms;
+    --t-move: 200ms;
+    --t-beat: 240ms;
+    --t-stage: 320ms;
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  body { background: #ffffff; color: #3c3c3c; font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 700; display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 16px 12px 28px; }
+
+  h1 { font-size: 1.4rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 8px; }
+  h1 img { width: 26px; height: 26px; object-fit: contain; filter: brightness(0); }
+
+  .topbar { display: flex; gap: 10px; align-items: center; justify-content: space-between;
+    width: min(92vw, 380px); margin: 12px 0 10px; }
+
+  .bot { display: flex; align-items: center; gap: 10px; background: #ffffff;
+    border: 2px solid #e5e5e5; border-radius: 16px; padding: 6px 10px 6px 8px;
+    box-shadow: 0 4px 0 0 #e5e5e5; }
+  .bot img { width: 26px; height: 26px; object-fit: contain; filter: brightness(0); }
+  .bot .who { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; line-height: 1.1; }
+  .bot .rank { font-size: 0.72rem; color: #777777; font-weight: 800; text-transform: uppercase;
+    transition: transform var(--t-tap) var(--ease); }
+
+  .elo { display: flex; align-items: center; gap: 6px; }
+  .elo button { background: #58cc02; color: #ffffff; border: none; border-radius: 10px;
+    width: 26px; height: 26px; font-size: 0.95rem; font-weight: 900; cursor: pointer;
+    font-family: inherit; box-shadow: 0 3px 0 0 #46a302; }
+  .elo button:active { transform: translateY(3px); box-shadow: none; }
+  .elo .val { font-size: 0.8rem; font-weight: 900; text-transform: uppercase; color: #777777;
+    min-width: 96px; text-align: center; }
+
+  .board { position: relative; width: min(92vw, 380px); aspect-ratio: 1;
+    border: 3px solid #e5e5e5; border-radius: 18px; box-shadow: 0 4px 0 0 #e5e5e5; }
+  .cells { position: absolute; inset: 8px; display: grid;
+    grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 8px; }
+  .cell { border: none; padding: 0; cursor: pointer; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; border-radius: 12px;
+    min-width: 0; min-height: 0; }
+  .cell.l { background: #f0f6e4; }
+  .cell.d { background: #58cc02; }
+  .cell:disabled { cursor: default; }
+  .cell img { width: 62%; height: 62%; object-fit: contain; pointer-events: none;
+    filter: brightness(0); transform-origin: 50% 50%;
+    animation: mark var(--t-beat) var(--spring) both; }
+  @keyframes mark {
+    0% { transform: scale(0.25) rotate(-14deg); opacity: 0; }
+    60% { opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  /* the tile answers a press, and the winning three keep a slow glow */
+  .cell:not(:disabled):active { transform: scale(0.96); }
+  .cell { transition: transform var(--t-tap) var(--ease); }
+  .cell.win { box-shadow: inset 0 0 0 4px #ffd600; animation: glow 1.4s var(--ease) infinite; }
+  @keyframes glow { 0%, 100% { box-shadow: inset 0 0 0 4px #ffd600; }
+    50% { box-shadow: inset 0 0 0 7px #ffd600; } }
+
+  /* the winning line draws itself across the board. The viewBox is 0-100, so
+     stroke-width is in percent of the board: 2 is roughly a 7px line */
+  .winline { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .winline line { stroke: #ff8c1a; stroke-width: 1.8; stroke-linecap: round;
+    pathLength: 1; stroke-dasharray: 1; stroke-dashoffset: 1;
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9)); }
+  .winline.draw line { animation: draw var(--t-stage) var(--ease) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important;
+      transition-duration: 1ms !important; }
+    .cell.win { animation: none; }
+  }
+
+  .status { margin: 16px 0 4px; font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+    min-height: 1.2em; }
+  .status.bump { animation: slide var(--t-beat) var(--spring); }
+  @keyframes slide { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .bot.think { transform: translateY(-2px); }
+  .bot.think img { animation: breathe 1.6s var(--ease) infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .hud { display: flex; gap: 18px; font-size: 0.8rem; font-weight: 800;
+    text-transform: uppercase; color: #777777; }
+  .hud b { color: #3c3c3c; }
+
+  .row { display: flex; gap: 10px; margin-top: 18px; }
+  button.action { background: #58cc02; color: #ffffff; border: none; border-radius: 16px;
+    padding: 12px 24px; font-size: 0.95rem; font-weight: 800; text-transform: uppercase;
+    cursor: pointer; font-family: inherit; box-shadow: 0 4px 0 0 #46a302;
+    display: inline-flex; align-items: center; gap: 7px; }
+  button.action:active { transform: translateY(4px); box-shadow: none; }
+  button.action img { width: 17px; height: 17px; object-fit: contain; filter: invert(1); }
+
+  #over { margin-top: 18px; display: none; flex-direction: column; gap: 10px; align-items: center;
+    text-align: center; background: #ffffff; border: 2px solid #e5e5e5; border-radius: 20px;
+    padding: 18px 26px; box-shadow: 0 4px 0 0 #e5e5e5; }
+  #over.show { display: flex; }
+  #over h2 { font-weight: 900; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  #over h2 img { width: 24px; height: 24px; filter: brightness(0); }
+  #over p { color: #777777; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+  <h1><img src="/assets/kenney/board-game-icons/hexagon.png" data-ico="board-game-icons/hexagon.png" alt=""> Tic tac toe</h1>
+
+  <div class="topbar">
+    <div class="bot">
+      <img src="/assets/kenney/game-icons/black/gamepad.png" data-ico="game-icons/black/gamepad.png" alt="">
+      <div>
+        <div class="who" id="botName">Novice</div>
+        <div class="rank" id="botRank">800 elo</div>
+      </div>
+    </div>
+    <div class="elo">
+      <button id="down" aria-label="Weaker bot">&minus;</button>
+      <span class="val" id="eloVal">800</span>
+      <button id="up" aria-label="Stronger bot">+</button>
+    </div>
+  </div>
+
+  <div class="board" id="board">
+    <div class="cells" id="cells"></div>
+    <svg class="winline" id="winline" viewBox="0 0 100 100" aria-hidden="true">
+      <line id="winseg" x1="0" y1="0" x2="0" y2="0"></line>
+    </svg>
+  </div>
+
+  <div class="status" id="status">Your move</div>
+  <div class="hud">
+    <span>Wins <b id="sWins">0</b></span>
+    <span>Losses <b id="sLoss">0</b></span>
+    <span>Draws <b id="sDraw">0</b></span>
+  </div>
+
+  <div class="row">
+    <button class="action" id="newBtn"><img src="/assets/kenney/game-icons/white/return.png" data-ico="game-icons/white/return.png" alt=""> New game</button>
+  </div>
+
+  <div id="over">
+    <h2><img id="overIcon" src="/assets/kenney/game-icons/black/medal1.png" data-ico="game-icons/black/medal1.png" alt=""><span id="overTitle">Draw</span></h2>
+    <p id="overSub"></p>
+    <button class="action" id="again">Play again</button>
+  </div>
+
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* Same ladder as Chess. Tic tac toe has no real Elo, so the number is a
+     difficulty rating: `random` is how often it plays a throwaway move and
+     `sloppy` how often it takes the second-best line instead of the best. */
+  var LEVELS = [
+    { elo: 400,  name: 'Beginner',    random: 0.75, sloppy: 0.55 },
+    { elo: 800,  name: 'Novice',      random: 0.40, sloppy: 0.25 },
+    { elo: 1200, name: 'Casual',      random: 0.12, sloppy: 0.10 },
+    { elo: 1600, name: 'Club player', random: 0.02, sloppy: 0.00 },
+    { elo: 2000, name: 'Strong',      random: 0.00, sloppy: 0.00 },
+    { elo: 2400, name: 'Expert',      random: 0.00, sloppy: 0.00 },
+    { elo: 2800, name: 'Master',      random: 0.00, sloppy: 0.00 }
+  ];
+
+  var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  /* published games are served from the site root; an index.html opened
+     straight off disk needs to walk back up to the repo's public folder */
+  var ICON = (location.protocol === 'file:' ? '../../' : '/') + 'assets/kenney/';
+  (function () {
+    var imgs = document.querySelectorAll('img[data-ico]');
+    for (var i = 0; i < imgs.length; i++) imgs[i].src = ICON + imgs[i].getAttribute('data-ico');
+  })();
+  var X_IMG = ICON + 'game-icons/black/cross.png';
+  var O_IMG = ICON + 'board-game-icons/token.png';
+
+  var board = new Array(9).fill(0);   /* 0 empty, 1 player X, -1 bot O */
+  var over = false;
+  var thinking = false;
+  var eloIdx = 1;
+  var stats = { wins: 0, losses: 0, draws: 0 };
+
+  var el = {
+    board: document.getElementById('board'),
+    cells: document.getElementById('cells'),
+    winline: document.getElementById('winline'),
+    bot: document.querySelector('.bot'),
+    status: document.getElementById('status'),
+    eloVal: document.getElementById('eloVal'),
+    botName: document.getElementById('botName'),
+    botRank: document.getElementById('botRank'),
+    over: document.getElementById('over'),
+    overTitle: document.getElementById('overTitle'),
+    overSub: document.getElementById('overSub'),
+    overIcon: document.getElementById('overIcon'),
+    sWins: document.getElementById('sWins'),
+    sLoss: document.getElementById('sLoss'),
+    sDraw: document.getElementById('sDraw')
+  };
+
+  var CS = window.CudicSave || null;
+  function save() {
+    if (CS) { CS.save(stats); return; }
+    try { localStorage.setItem('cudic-ttt-stats', JSON.stringify(stats)); } catch (e) {}
+  }
+  function mergeStats(d) {
+    if (!d) return;
+    stats.wins = Math.max(stats.wins, d.wins || 0);
+    stats.losses = Math.max(stats.losses, d.losses || 0);
+    stats.draws = Math.max(stats.draws, d.draws || 0);
+    paintStats();
+  }
+  try { mergeStats(JSON.parse(localStorage.getItem('cudic-ttt-stats') || 'null')); } catch (e) {}
+  if (CS) CS.load({ legacyKey: 'cudic-ttt-stats' }).then(mergeStats).catch(function () {});
+  function paintStats() {
+    el.sWins.textContent = stats.wins;
+    el.sLoss.textContent = stats.losses;
+    el.sDraw.textContent = stats.draws;
+  }
+
+  /* the status line swaps with a small rise instead of blinking */
+  function setStatus(text) {
+    if (el.status.textContent === text) return;
+    el.status.textContent = text;
+    el.status.classList.remove('bump');
+    void el.status.offsetWidth;
+    el.status.classList.add('bump');
+  }
+  paintStats();
+
+  /* ── Rules ────────────────────────────────────────────────────── */
+  function winnerOf(b) {
+    for (var i = 0; i < LINES.length; i++) {
+      var l = LINES[i];
+      if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[1]] === b[l[2]]) return b[l[0]];
+    }
+    return 0;
+  }
+  function full(b) {
+    for (var i = 0; i < 9; i++) if (!b[i]) return false;
+    return true;
+  }
+  function winningCells(b) {
+    for (var i = 0; i < LINES.length; i++) {
+      var l = LINES[i];
+      if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[1]] === b[l[2]]) return l;
+    }
+    return null;
+  }
+
+  /* minimax with a tiny memo — 3^9 states, so this stays instant */
+  var memo = {};
+  function minimax(b, me) {
+    var w = winnerOf(b);
+    if (w === me) return 1;
+    if (w === -me) return -1;
+    if (full(b)) return 0;
+    /* the side to move is part of the key: the same board can be reached with
+       either player to move, and the score is always from `me`'s view */
+    var key = b.join('') + (me > 0 ? 'w' : 'b');
+    if (memo[key] != null) return memo[key];
+    var best = -2;
+    for (var i = 0; i < 9; i++) {
+      if (b[i]) continue;
+      b[i] = me;
+      var v = -minimax(b, -me);
+      b[i] = 0;
+      if (v > best) best = v;
+      if (best === 1) break;
+    }
+    memo[key] = best;
+    return best;
+  }
+
+  function botMove() {
+    var lv = LEVELS[eloIdx];
+    var empties = [];
+    for (var i = 0; i < 9; i++) if (!board[i]) empties.push(i);
+    if (!empties.length) return -1;
+    if (Math.random() < lv.random) return empties[(Math.random() * empties.length) | 0];
+    memo = {};
+    var scored = empties.map(function (i) {
+      board[i] = -1;
+      var s = minimax(board, -1);
+      board[i] = 0;
+      return { i: i, s: s };
+    });
+    scored.sort(function (a, b) { return b.s - a.s; });
+    if (lv.sloppy && scored.length > 1 && Math.random() < lv.sloppy) return scored[1].i;
+    return scored[0].i;
+  }
+
+  /* ── Render ───────────────────────────────────────────────────── */
+  function paint(winCells) {
+    var html = '';
+    for (var i = 0; i < 9; i++) {
+      var cls = 'cell ' + ((Math.floor(i / 3) + (i % 3)) % 2 ? 'd' : 'l');
+      if (winCells && winCells.indexOf(i) >= 0) cls += ' win';
+      var mark = board[i] === 1 ? '<img src="' + X_IMG + '" alt="X">' :
+                 board[i] === -1 ? '<img src="' + O_IMG + '" alt="O">' : '';
+      html += '<button class="' + cls + '" data-i="' + i + '"' +
+              (over || thinking ? ' disabled' : '') + ' aria-label="Cell ' + (i + 1) + '">' + mark + '</button>';
+    }
+    el.cells.innerHTML = html;
+  }
+
+  /* draw the winning line through the three cells, in board percentages */
+  function drawWin(cells) {
+    if (!cells) return;
+    var bb = el.board.getBoundingClientRect();
+    var kids = el.cells.children;
+    if (!bb.width) return;
+    var a = kids[cells[0]].getBoundingClientRect();
+    var b = kids[cells[cells.length - 1]].getBoundingClientRect();
+    var seg = document.getElementById('winseg');
+    seg.setAttribute('x1', (a.left + a.width / 2 - bb.left) / bb.width * 100);
+    seg.setAttribute('y1', (a.top + a.height / 2 - bb.top) / bb.height * 100);
+    seg.setAttribute('x2', (b.left + b.width / 2 - bb.left) / bb.width * 100);
+    seg.setAttribute('y2', (b.top + b.height / 2 - bb.top) / bb.height * 100);
+    el.winline.classList.add('draw');
+  }
+
+  function clearWin() {
+    el.winline.classList.remove('draw');
+    var seg = document.getElementById('winseg');
+    seg.setAttribute('x1', 0); seg.setAttribute('y1', 0);
+    seg.setAttribute('x2', 0); seg.setAttribute('y2', 0);
+  }
+
+  function reset() {
+    board = new Array(9).fill(0);
+    over = false; thinking = false;
+    el.over.className = '';
+    el.bot.classList.remove('think');
+    clearWin();
+    setStatus('Your move');
+    paint();
+  }
+
+  el.board.addEventListener('click', function (e) {
+    var b = e.target.closest('.cell');
+    if (!b || over || thinking) return;
+    var i = parseInt(b.getAttribute('data-i'), 10);
+    if (board[i]) return;
+    board[i] = 1;
+    paint();
+    settle();
+  });
+
+  function settle() {
+    var w = winnerOf(board);
+    if (w === 1) { finish('win', winningCells(board)); return; }
+    if (full(board)) { finish('draw', null); return; }
+    thinking = true;
+    el.bot.classList.add('think');
+    setStatus(LEVELS[eloIdx].name + ' is thinking');
+    setTimeout(function () {
+      var i = botMove();
+      thinking = false;
+      el.bot.classList.remove('think');
+      if (i < 0) { finish('draw', null); return; }
+      board[i] = -1;
+      paint();
+      var w2 = winnerOf(board);
+      if (w2 === -1) { finish('loss', winningCells(board)); return; }
+      if (full(board)) { finish('draw', null); return; }
+      setStatus('Your move');
+      paint();
+    }, 260);
+  }
+
+  function finish(kindOfEnd, winCells) {
+    over = true;
+    var title, sub, icon;
+    if (kindOfEnd === 'win') { title = 'You won!'; sub = 'Three in a row.'; stats.wins++; icon = 'trophy'; }
+    else if (kindOfEnd === 'loss') { title = 'Bot wins'; sub = LEVELS[eloIdx].name + ' took the line.'; stats.losses++; icon = 'gamepad'; }
+    else { title = 'Draw'; sub = 'Board full, nobody got three.'; stats.draws++; icon = 'minus'; }
+    paint(winCells);
+    setStatus(title);
+    el.overIcon.src = ICON + 'game-icons/black/' + icon + '.png';
+    el.overTitle.textContent = title;
+    el.overSub.textContent = sub;
+    el.over.className = 'show';
+    save();
+    paintStats();
+    /* let the last mark land, then run the line across it */
+    if (winCells) setTimeout(function () { drawWin(winCells); }, 180);
+  }
+
+  /* ── Controls ─────────────────────────────────────────────────── */
+  function paintLevel() {
+    var lv = LEVELS[eloIdx];
+    el.eloVal.textContent = lv.elo;
+    el.botName.textContent = lv.name;
+    el.botRank.textContent = lv.elo + ' elo';
+  }
+  document.getElementById('up').addEventListener('click', function () {
+    if (eloIdx < LEVELS.length - 1) { eloIdx++; paintLevel(); reset(); }
+  });
+  document.getElementById('down').addEventListener('click', function () {
+    if (eloIdx > 0) { eloIdx--; paintLevel(); reset(); }
+  });
+  document.getElementById('newBtn').addEventListener('click', reset);
+  document.getElementById('again').addEventListener('click', reset);
+
+  paintLevel();
+  reset();
+})();
+</script>
+</body>
+</html>
