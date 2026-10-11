@@ -103,7 +103,7 @@
     if(document.querySelector('script[src*="adsbygoogle.js"]'))return;
     var g=document.createElement('script');
     g.async=true;
-    g.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483495816823658';
+    g.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483499851682563';
     g.setAttribute('crossorigin','anonymous');
     document.head.appendChild(g);
   })();
