@@ -88,34 +88,9 @@ async function signUpWithEmail(email, password, displayName) {
   });
   if (error) throw error;
 
-  // Auto-confirmed (session present): signed in immediately, no email needed
-  if (data.session) return Object.assign({}, data, { verifyEmail: 'none' });
-
-  // Send verification email via our server, fall back to Supabase's own mail
-  if (data.user) {
-    try {
-      const serverBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
-      const res = await fetch(serverBase + '/auth/send-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email,
-          userId: data.user.id,
-          displayName: displayName,
-        }),
-      });
-      if (!res.ok) throw new Error('custom mail unavailable');
-      return Object.assign({}, data, { verifyEmail: 'custom' });
-    } catch (err) {
-      try {
-        if (db) await db.auth.resend({ type: 'signup', email: email });
-        return Object.assign({}, data, { verifyEmail: 'supabase' });
-      } catch (e2) {
-        return Object.assign({}, data, { verifyEmail: 'none' });
-      }
-    }
-  }
-
+  // Session present: signed in immediately (soft mode — publishing and
+  // chat stay locked until the email code is confirmed; login.html owns
+  // that UI via /auth/send-code + /auth/verify-code).
   return data;
 }
 

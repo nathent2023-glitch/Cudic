@@ -71,6 +71,16 @@
         <a class="btn btn-primary" href="/" style="text-decoration:none">Sign in</a>
     </div>
     <div id="profileBody" style="display:none;width:100%;max-width:560px">
+      <div class="profile-card" id="verifyCard" style="display:none">
+        <h2>Confirm your email</h2>
+        <p class="sub">Publishing and chat unlock once you prove this address is yours.</p>
+        <div class="field"><label>Confirmation code</label><input type="text" id="verifyCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" style="letter-spacing:8px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" id="verifyGo">Confirm email</button>
+          <button class="btn btn-secondary" id="verifySend">Send a new code</button>
+        </div>
+        <div class="status-msg" id="verifyMsg"></div>
+      </div>
       <div class="profile-card">
         <h2>Public profile</h2>
         <p class="sub">What other people see in chat and lobbies.</p>
@@ -190,6 +200,40 @@
         paintBioCard(d.profile);
         loadLiked();
       }).catch(function(){});
+
+    /* Email confirmation (soft gate): card shows only when unconfirmed */
+    (function(){
+      var card = document.getElementById('verifyCard'); if (!card) return;
+      fetch(apiHost() + '/auth/check-verified', { headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (!d.verified) card.style.display = 'block'; })
+        .catch(function(){});
+      function myEmail(){ var e = document.getElementById('emailField'); return e ? e.value.trim() : ''; }
+      document.getElementById('verifySend').addEventListener('click', function(){
+        var btn = this, m = document.getElementById('verifyMsg'), em = myEmail();
+        if (!em) { msg(m, 'No email on this account.', false); return; }
+        btn.disabled = true;
+        fetch(apiHost() + '/auth/send-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: em }) })
+          .then(function(r){ return r.json().then(function(dd){ return { ok: r.ok, d: dd }; }); })
+          .then(function(res){ btn.disabled = false; msg(m, res.ok ? 'Code sent! Check your inbox.' : (res.d.error || 'Could not send.'), res.ok); })
+          .catch(function(){ btn.disabled = false; msg(m, 'Could not send.', false); });
+      });
+      document.getElementById('verifyGo').addEventListener('click', function(){
+        var btn = this, m = document.getElementById('verifyMsg'), em = myEmail();
+        var v = document.getElementById('verifyCode').value.replace(/\D/g, '');
+        if (v.length !== 6) { msg(m, 'Type the 6-digit code first.', false); return; }
+        btn.disabled = true;
+        fetch(apiHost() + '/auth/verify-code', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: JSON.stringify({ email: em, code: v }) })
+          .then(function(r){ return r.json().then(function(dd){ return { ok: r.ok, d: dd }; }); })
+          .then(function(res){
+            btn.disabled = false;
+            if (!res.ok) { msg(m, res.d.error || 'Could not confirm.', false); return; }
+            msg(m, 'Email confirmed! Publishing and chat are unlocked.', true);
+            setTimeout(function(){ card.style.display = 'none'; }, 1500);
+          })
+          .catch(function(){ btn.disabled = false; msg(m, 'Could not confirm.', false); });
+      });
+    })();
 
     /* Public: save display name */
     document.getElementById('saveName').addEventListener('click', function(){

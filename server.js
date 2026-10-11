@@ -65,17 +65,28 @@ function getMailFrom() {
     || null;
 }
 
-// ── Email verification tokens ───────────────────────────────────
-// token → { email, userId, displayName, expires }
-const verifyTokens = new Map();
-
-// Clean expired tokens every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, data] of verifyTokens) {
-    if (data.expires < now) verifyTokens.delete(token);
-  }
-}, 600000);
+// ── Magic email codes (soft gate) ─────────────────────────────
+// email_confirmed_at is the source of truth. Exempt: GitHub OAuth
+// (GitHub proved the email) and accounts created before magic codes
+// shipped (never asked to confirm — leave them alone).
+const EMAIL_CODES_SINCE = new Date('2026-10-11T00:00:00Z').getTime();
+function userUnconfirmed(u) {
+  if (!u) return false;
+  if (u.email_confirmed_at) return false;
+  if (u.app_metadata && u.app_metadata.provider && u.app_metadata.provider !== 'email') return false;
+  if (new Date(u.created_at || 0).getTime() < EMAIL_CODES_SINCE) return false;
+  return true;
+}
+// 403s when the writer hasn't confirmed. Returns true when clear to go.
+async function needVerified(user, res) {
+  if (!userUnconfirmed(user)) return true;
+  res.writeHead(403, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'email_unconfirmed', text: 'Confirm your email to do that.' }));
+  return false;
+}
+function codeHash(email, code) {
+  return crypto.createHash('sha256').update(email.toLowerCase() + ':' + code).digest('hex');
+}
 
 const PORT = process.env.PORT || 3000;
 
@@ -121,103 +132,163 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ── API: send verification email ──────────────────────────────
-  if (url.pathname === '/auth/send-verification' && req.method === 'POST') {
+    // ── API: magic codes (send + verify) ─────────────────────────
+  // 6-digit codes over our own mail stack (Resend → SMTP fallback).
+  // Supabase's built-in mail caps at 2/hour site-wide, so it can't
+  // carry verification. Codes live 10 minutes, 5 attempts max, and
+  // verifying flips the same email_confirmed_at the old link flow set.
+  async function sendCodeMail(email, code) {
+    const mailHtml = `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFFFF;color:#2E2A4B;border-radius:16px;border:1px solid #C9D5F0;text-align:center;">
+        <h1 style="font-size:24px;margin-bottom:8px;">cudic<span style="color:#774DCB;">.</span></h1>
+        <p style="color:#5C5878;font-size:14px;margin-top:0;">Your confirmation code</p>
+        <p style="font-size:40px;font-weight:800;letter-spacing:12px;margin:24px 0;color:#2E2A4B;">${code}</p>
+        <p style="font-size:13px;color:#9C97B8;">Expires in 10 minutes. If you didn't ask for this, ignore it.</p>
+      </div>
+    `;
+    if (resend) {
+      try {
+        const { error } = await resend.emails.send({
+          from: process.env.RESEND_FROM || 'Cudic <onboarding@resend.dev>',
+          to: email,
+          subject: 'Your Cudic code: ' + code,
+          html: mailHtml,
+        });
+        if (!error) return null;
+        console.error('Resend error:', error);
+      } catch (e) { console.error('Resend error:', (e && e.message) || e); }
+    }
+    try {
+      const transporter = getMailTransporter();
+      if (!transporter) return new Error('mail unavailable');
+      await transporter.sendMail({
+        from: getMailFrom(),
+        to: email,
+        subject: 'Your Cudic code: ' + code,
+        html: mailHtml,
+      });
+      return null;
+    } catch (smtpErr) {
+      console.error('SMTP error:', smtpErr);
+      return smtpErr;
+    }
+  }
+
+  if (url.pathname === '/auth/send-code' && req.method === 'POST') {
     cors(res);
     if (!resend && !getMailFrom()) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or SMTP/Gmail env missing)' }));
       return;
     }
-    let body = '';
-    for await (const chunk of req) body += chunk;
-    try {
-      const { email, userId, displayName } = JSON.parse(body);
-      if (!email || !userId) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'email and userId required' }));
-        return;
-      }
-
-      // Abuse guard: verification mail is a spam vector (arbitrary recipient)
-      const ip = clientIp(req);
-      if (!rateLimit('mail:ip:' + ip, 5, 10 * 60 * 1000) || !rateLimit('mail:to:' + email.toLowerCase(), 3, 60 * 60 * 1000)) {
-        res.writeHead(429, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Too many requests. Try again later.' }));
-        return;
-      }
-
-      // Generate token
-      const token = crypto.randomBytes(32).toString('hex');
-      verifyTokens.set(token, {
-        email: email.toLowerCase(),
-        userId,
-        displayName: displayName || email,
-        expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-      });
-
-      // Send email via Resend
-      const verifyUrl = `https://glox-o7rr.onrender.com/auth/verify?token=${token}`;
-      const mailHtml = `
-          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:40px 20px;background:#FFFFFF;color:#2E2A4B;border-radius:16px;border:1px solid #C9D5F0;">
-            <h1 style="font-size:24px;margin-bottom:8px;">cudic<span style="color:#774DCB;">.</span></h1>
-            <p style="color:#5C5878;font-size:14px;margin-top:0;">Verify your email to start chatting</p>
-            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Hi ${displayName || email},</p>
-            <p style="font-size:15px;line-height:1.6;color:#5C5878;">Click the button below to verify your email and start using Cudic:</p>
-            <a href="${verifyUrl}" style="display:inline-block;padding:14px 32px;background:#774DCB;color:#ffffff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;margin:20px 0;">Verify my email</a>
-            <p style="font-size:13px;color:#9C97B8;margin-top:24px;">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
-          </div>
-        `;
-      let mailError = null;
-      if (resend) {
-        const { error } = await resend.emails.send({
-          from: process.env.RESEND_FROM || 'Cudic <onboarding@resend.dev>',
-          to: email,
-          subject: 'Verify your Cudic account',
-          html: mailHtml,
-        });
-        if (error) {
-          console.error('Resend error:', error);
-          mailError = error;
-        }
-      } else {
-        mailError = new Error('Resend not configured');
-      }
-
-      // Fall back to SMTP (works without a verified domain)
-      if (mailError) {
-        try {
-          const transporter = getMailTransporter();
-          if (!transporter) throw mailError;
-          await transporter.sendMail({
-            from: getMailFrom(),
-            to: email,
-            subject: 'Verify your Cudic account',
-            html: mailHtml,
-          });
-          mailError = null;
-        } catch (smtpErr) {
-          console.error('SMTP error:', smtpErr);
-        }
-      }
-
-      if (mailError) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Failed to send email' }));
-        return;
-      }
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true }));
-    } catch (err) {
-      console.error('send-verification error:', err);
+    const body = await readBody(req).catch(() => ({}));
+    const email = String(body.email || '').toLowerCase().trim();
+    if (!email || email.indexOf('@') === -1 || email.length > 254) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Valid email required' }));
+      return;
+    }
+    // Abuse guard: codes are a spam vector (arbitrary recipient)
+    const ip = clientIp(req);
+    if (!rateLimit('code:ip:' + ip, 5, 10 * 60 * 1000) || !rateLimit('code:to:' + email, 3, 60 * 60 * 1000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many requests. Try again later.' }));
+      return;
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const { error: dbErr } = await supabase.from('email_codes').upsert({
+      email: email,
+      code_hash: codeHash(email, code),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      attempts: 0,
+    }, { onConflict: 'email' });
+    if (dbErr) {
+      console.error('send-code db error:', dbErr);
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Server error' }));
+      return;
     }
+    const mailError = await sendCodeMail(email, code);
+    if (mailError) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to send email' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
-  // ── API: check verification status ─────────────────────────────
+    if (url.pathname === '/auth/verify-code' && req.method === 'POST') {
+    cors(res);
+    const body = await readBody(req).catch(() => ({}));
+    const email = String(body.email || '').toLowerCase().trim();
+    const code = String(body.code || '').replace(/\D/g, '').substring(0, 6);
+    const userId = String(body.userId || '').substring(0, 64);
+    if (!email || code.length !== 6) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Email and 6-digit code required' }));
+      return;
+    }
+    const { data: row } = await supabase.from('email_codes').select('*').eq('email', email).single();
+    if (!row) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No code for this email. Send a new one.' }));
+      return;
+    }
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Code expired. Send a new one.' }));
+      return;
+    }
+    if ((row.attempts || 0) >= 5) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many tries. Send a new code.' }));
+      return;
+    }
+    let ok = false;
+    try { ok = crypto.timingSafeEqual(Buffer.from(row.code_hash, 'utf8'), Buffer.from(codeHash(email, code), 'utf8')); } catch (e) { ok = false; }
+    if (!ok) {
+      await supabase.from('email_codes').update({ attempts: (row.attempts || 0) + 1 }).eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Wrong code. Try again.' }));
+      return;
+    }
+    // Bind the code to an account: explicit userId from signup, else the
+    // caller's own session (profile path). Either way the account's email
+    // must match the address the code went to.
+    let targetId = '';
+    if (userId) {
+      try {
+        const g = await supabase.auth.admin.getUserById(userId);
+        if (g && g.data && g.data.user && ((g.data.user.email || '').toLowerCase() === email)) targetId = userId;
+      } catch (e) {}
+    } else {
+      try {
+        const t = String(req.headers.authorization || '').replace('Bearer ', '');
+        if (t) {
+          const me = await supabase.auth.getUser(t);
+          if (me && me.data && me.data.user && ((me.data.user.email || '').toLowerCase() === email)) targetId = me.data.user.id;
+        }
+      } catch (e) {}
+    }
+    if (!targetId) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'That code went to a different address.' }));
+      return;
+    }
+    await supabase.from('email_codes').delete().eq('email', email);
+    try {
+      await supabase.auth.admin.updateUserById(targetId, { email_confirm: true });
+    } catch (err) { console.error('Verify confirm error:', err); }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, verified: true }));
+    return;
+  }
+
+// ── API: check verification status ─────────────────────────────
   if (url.pathname === '/auth/check-verified') {
     cors(res);
     const authHeader = req.headers.authorization || '';
@@ -239,62 +310,6 @@ const server = http.createServer(async (req, res) => {
     const verified = !!user.email_confirmed_at;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ verified }));
-    return;
-  }
-
-  // ── Verify page ─────────────────────────────────────────────────
-  if (url.pathname === '/auth/verify') {
-    const token = url.searchParams.get('token');
-    let status = 'error';
-    let message = 'Invalid or expired verification link.';
-
-    if (token && verifyTokens.has(token)) {
-      const data = verifyTokens.get(token);
-      if (data.expires < Date.now()) {
-        verifyTokens.delete(token);
-        message = 'This verification link has expired. Please sign up again.';
-      } else {
-        // Mark email as confirmed in Supabase using service role
-        try {
-          await supabase.auth.admin.updateUserById(data.userId, {
-            email_confirm: true,
-          });
-          status = 'success';
-          message = `Email verified! You can now use Cudic.`;
-        } catch (err) {
-          console.error('Verify update error:', err);
-          message = 'Verification failed. Please try again.';
-        }
-        verifyTokens.delete(token);
-      }
-    }
-
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Cudic — Email Verified</title>
-<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:100vh;display:flex;align-items:center;justify-content:center}
-.card{max-width:420px;width:94vw;background:#FFFFFF;border-radius:20px;border:1px solid #C9D5F0;padding:36px 32px;text-align:center;box-shadow:0 24px 60px rgba(80,90,180,.20)}
-.brand{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
-.brand span{color:#774DCB}
-.status{font-size:3rem;margin-bottom:16px}
-.msg{font-size:1rem;color:#5C5878;line-height:1.6;margin-bottom:24px}
-.btn{display:inline-block;padding:12px 32px;background:#774DCB;color:#fff;text-decoration:none;border-radius:12px;font-weight:700;font-size:.87rem;font-family:inherit;border:none;cursor:pointer}
-.btn:hover{background:#643BAD}
-</style></head>
-<body>
-<div class="card">
-  <div class="brand">cudic<span>.</span></div>
-  <div class="status">${status === 'success' ? '&#9989;' : '&#10060;'}</div>
-  <p class="msg">${message}</p>
-  <a href="/" class="btn">${status === 'success' ? 'Go to Cudic' : 'Back to Cudic'}</a>
-</div>
-</body></html>`;
-
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(html);
     return;
   }
 
@@ -636,6 +651,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     // Check limit
     const { count } = await supabase.from('servers').select('id', { count: 'exact', head: true }).eq('owner_id', user.id);
     if (count !== null && count >= 50) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You can own at most 50 servers.' })); return; }
@@ -844,7 +860,9 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
   // enforces the same membership rules on join.
   async function requireUser(req, res) {
     const t = (req.headers.authorization || '').replace('Bearer ', '');
-    if (!t) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return null; }
+    // Malformed tokens (e.g. ?token=undefined leaking into a header) die
+    // here instead of burning a Supabase lookup and noisy 403s.
+    if (!t || t.split('.').length !== 3) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return null; }
     const { data: { user }, error } = await supabase.auth.getUser(t);
     if (error || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in required.' })); return null; }
     return user;
@@ -1484,6 +1502,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
   if (url.pathname === '/api/packs' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
     const price = body.price === undefined ? 0 : body.price;
     const err = validatePack(body.name, body.description || '', price, body.manifest);
@@ -1603,6 +1622,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
   if (url.pathname === '/api/reports' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
     if (body.content_type !== 'pack') { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown content.' })); return; }
     if (!REPORT_REASONS.includes(body.reason)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pick a reason.' })); return; }
@@ -1799,6 +1819,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const id = url.pathname.split('/')[3];
     const body = await readBody(req);
     const text = (body.text || '').trim().substring(0, 2000);
@@ -1932,6 +1953,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req);
     const { data, error } = await supabase.from('games').insert({
       owner_id: user.id,
@@ -2324,6 +2346,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const id = url.pathname.split('/')[3];
     const body = await readBody(req);
     const updates = {};
@@ -2358,6 +2381,7 @@ body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-heigh
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const id = url.pathname.split('/')[3];
     // Best-effort: purge the project's storage prefix so binaries don't orphan.
     try {
@@ -2698,7 +2722,7 @@ wss.on('connection', (ws) => {
           const { data: { user: u }, error: uerr } = await supabase.auth.getUser(tok);
           if (!uerr && u) {
             const { data: prof } = await supabase.from('users').select('display_name, avatar_url').eq('id', u.id).single();
-            authed = { id: u.id, name: (prof && prof.display_name) || String(u.email || 'Someone').split('@')[0], avatar: (prof && prof.avatar_url) || null };
+            authed = { id: u.id, name: (prof && prof.display_name) || String(u.email || 'Someone').split('@')[0], avatar: (prof && prof.avatar_url) || null, confirmed: !userUnconfirmed(u) };
           }
         }
       } catch (e) {}
@@ -2709,6 +2733,10 @@ wss.on('connection', (ws) => {
       const wseat = String(msg.seat || '').substring(0, 64);
       if (!(await seatAlive(authed.id, wseat))) {
         ws.send(JSON.stringify({ type: 'superseded' }));
+        return;
+      }
+      if (!authed.confirmed) {
+        ws.send(JSON.stringify({ type: 'error', code: 'email_unconfirmed', text: 'Confirm your email to chat.' }));
         return;
       }
       const { data: lobbyRow } = await supabase.from('lobbies').select('id, name, kind, server_id, is_private').eq('name', lobby).single();
@@ -2751,7 +2779,7 @@ wss.on('connection', (ws) => {
       }
       const entry = { username, ws, userId, avatar: authed.avatar };
       room.add(entry);
-      clients.set(ws, { username, lobby, userId, avatar: authed.avatar, seat: wseat });
+      clients.set(ws, { username, lobby, userId, avatar: authed.avatar, seat: wseat, confirmed: authed.confirmed });
 
       // Confirm join to this client
       ws.send(JSON.stringify({ type: 'joined', lobby, username }));
@@ -2774,6 +2802,10 @@ wss.on('connection', (ws) => {
       if (!info) return;
       if (!(await seatAlive(info.userId, info.seat))) {
         ws.send(JSON.stringify({ type: 'superseded' }));
+        return;
+      }
+      if (!info.confirmed) {
+        ws.send(JSON.stringify({ type: 'error', code: 'email_unconfirmed', text: 'Confirm your email to chat.' }));
         return;
       }
       const text = (msg.text || '').trim();

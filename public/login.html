@@ -71,6 +71,10 @@ input:focus{outline:none;border-color:var(--brand);background:var(--card);box-sh
 .primary:hover{transform:translateY(-1px);box-shadow:0 14px 28px -10px var(--brand)}
 .primary:active{transform:translateY(1px)}
 .hide{display:none}
+#code{letter-spacing:10px;text-indent:10px;text-align:center;font-size:26px;font-weight:700}
+.linklike{border:0;background:none;color:var(--brand);font:600 14px var(--body);cursor:pointer;padding:0}
+.linklike:disabled{color:var(--mute);cursor:default}
+#cool{color:var(--mute);font-size:13px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--bg-r);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;transition:.3s;pointer-events:none;z-index:9}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
@@ -125,6 +129,15 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
       </div>
       <button class="primary" id="go" type="submit">Sign in</button>
     </form>
+
+    <div id="codeWrap" class="hide">
+      <p class="sub" id="codeSub">We sent a 6-digit code. Type it below to confirm it's really you.</p>
+      <label for="code">Confirmation code</label>
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <button class="primary" id="verifyBtn" type="button">Confirm email</button>
+      <p class="sub" style="margin:14px 0 0">Didn't get it? <button type="button" class="linklike" id="resendBtn">Resend code</button> <span id="cool"></span></p>
+      <p class="sub" style="margin:8px 0 0"><button type="button" class="linklike" id="backBtn">Use a different email</button></p>
+    </div>
   </div>
 </main>
 <div class="toast" id="toast"></div>
@@ -239,8 +252,8 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
     try{
       if(up){
         var res=await signUpWithEmail(em.value.trim(),pw.value,dn.value.trim());
-        if(res&&res.session){location.href='/chat';return}
-        L.say((res&&res.verifyEmail==='none')?'Account created! You can sign in now.':'Account created! Check your email.');
+        if(res&&res.user){window._pendingEmail=em.value.trim();window._pendingPw=pw.value;window._pendingUid=res.user.id;showCode();sendCode(false);return}
+        L.say('Account created! You can sign in now.');
         setTimeout(function(){L.setMode('in')},2500);
       }else{
         await signInWithEmail(em.value.trim(),pw.value);
@@ -256,6 +269,60 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
     // Signed in already: straight to chat (no guest flow anymore).
     if(session&&session.user){location.href='/chat';return;}
   }
+
+  // ---------- magic codes ----------
+  var codeWrap=document.getElementById('codeWrap'),codeInput=document.getElementById('code'),
+      verifyBtn=document.getElementById('verifyBtn'),resendBtn=document.getElementById('resendBtn'),
+      coolEl=document.getElementById('cool'),coolT=null;
+  function apiBase(){try{return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''}catch(e){return ''}}
+  function showCode(){
+    document.getElementById('auth').classList.add('hide');
+    document.querySelector('.gh').classList.add('hide');
+    codeWrap.classList.remove('hide');
+    document.getElementById('title').textContent='Check your email';
+    document.getElementById('sub').textContent='Enter the 6-digit code to unlock publishing and chat.';
+    document.getElementById('codeSub').textContent='We sent a 6-digit code to '+window._pendingEmail+'.';
+    codeInput.value='';try{codeInput.focus()}catch(e){}
+  }
+  document.getElementById('backBtn').addEventListener('click',function(){
+    codeWrap.classList.add('hide');
+    document.getElementById('auth').classList.remove('hide');
+    document.querySelector('.gh').classList.remove('hide');
+    L.setMode('up');
+  });
+  function cooldown(sec){
+    clearInterval(coolT);resendBtn.disabled=true;
+    coolEl.textContent='('+sec+'s)';
+    coolT=setInterval(function(){sec--;if(sec<=0){clearInterval(coolT);coolEl.textContent='';resendBtn.disabled=false}else coolEl.textContent='('+sec+'s)'},1000);
+  }
+  async function sendCode(isResend){
+    if(!window._pendingEmail)return;
+    cooldown(60);
+    try{
+      var r=await fetch(apiBase()+'/auth/send-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:window._pendingEmail})});
+      var d=await r.json();
+      if(!r.ok)throw new Error((d&&d.error)||'Could not send code');
+      if(!isResend)L.say('Code sent! Check your inbox.');
+    }catch(err){L.say(err&&err.message?err.message:'Could not send code')}
+  }
+  resendBtn.addEventListener('click',function(){sendCode(true)});
+  verifyBtn.addEventListener('click',async function(){
+    var v=codeInput.value.replace(/\D/g,'');
+    if(v.length!==6){L.say('Type the 6-digit code first.');return}
+    verifyBtn.disabled=true;
+    try{
+      var r=await fetch(apiBase()+'/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:window._pendingEmail,code:v,userId:window._pendingUid||''})});
+      var d=await r.json();
+      if(!r.ok)throw new Error((d&&d.error)||'Could not confirm');
+      L.say('Email confirmed! Signing you in…');
+      try{
+        await signInWithEmail(window._pendingEmail,window._pendingPw||'');
+        window._pendingPw='';
+        location.href='/chat';
+      }catch(se){L.say('Confirmed! Sign in to continue.');backBtn.click();}
+    }catch(err){L.say(err&&err.message?err.message:'Could not confirm')}
+    finally{verifyBtn.disabled=false}
+  });
 
   if(typeof handleAuthCallback==='function'){
     handleAuthCallback().then(initPage).catch(initPage);

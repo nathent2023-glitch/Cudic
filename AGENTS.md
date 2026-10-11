@@ -150,7 +150,7 @@ Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
 
 ### HTTP endpoints
 ```
-POST /auth/send-verification    GET  /auth/check-verified
+POST /auth/send-code  POST /auth/verify-code    GET  /auth/check-verified
 GET  /auth/verify               GET  /auth/callback
 GET  /api/session               GET|PUT /api/profile
 GET  /api/messages              POST /api/lobby/persistent
