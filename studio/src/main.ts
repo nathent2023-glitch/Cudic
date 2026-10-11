@@ -227,6 +227,27 @@ await initializeMonacoService(
   envOptions
 );
 
+// Cudic ads: slim banner strip under the workbench (#studioAd in
+// index.html). Stays hidden until an ad actually fills it, so blockers
+// and localhost lose zero status-bar space.
+try {
+  const strip = document.getElementById('studioAd');
+  if (strip) {
+    let tries = 0;
+    const adTimer = setInterval(() => {
+      tries++;
+      if (strip.querySelector('iframe')) {
+        strip.classList.add('ad-live');
+        container.style.height = 'calc(100vh - 60px)';
+        workbenchElement.style.height = 'calc(100vh - 60px)';
+        clearInterval(adTimer);
+      } else if (tries > 24) clearInterval(adTimer);
+    }, 500);
+  }
+} catch {
+  // ads never load — Studio keeps full height, no harm done
+}
+
 // Phase 2 — Cudic: Save project / Import files / Import folder / Export as zip
 registerProjectCommands();
 

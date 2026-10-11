@@ -2460,6 +2460,11 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
     url.pathname = '/docs.html';
   }
 
+  // ── Redirect /privacy to /privacy.html ─────────────────────────
+  if (url.pathname === '/privacy') {
+    url.pathname = '/privacy.html';
+  }
+
   // ── Redirect /editor to /editor.html ──────────────────────────
   if (url.pathname === '/editor') {
     url.pathname = '/editor.html';

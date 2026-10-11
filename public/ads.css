@@ -1,0 +1,87 @@
+/* ── Cudic ad slots — themed Adsterra banner frames ──────────
+   Light pages use design.md tokens; dark pages flip via the same
+   vars sidebar.css already provides. Fallbacks keep the landing
+   page (own palette) looking right too. */
+.ad-frame {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.ad-frame iframe {
+  border: 0;
+  display: block;
+  max-width: 100%;
+}
+.ad-cap {
+  position: absolute;
+  top: -15px;
+  right: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: var(--text-tertiary, #6B655B);
+  font-family: var(--font-body, inherit);
+  line-height: 1;
+  pointer-events: none;
+}
+.ad-frame.ad-leaderboard {
+  min-height: 90px;
+  max-width: 764px;
+  padding: 10px 8px 8px;
+  border: 1px solid var(--line, rgba(31, 29, 26, 0.16));
+  border-radius: 12px;
+  background: var(--panel, #fff);
+}
+@media (max-width: 759px) {
+  .ad-frame.ad-leaderboard { min-height: 50px; }
+}
+.ad-frame.ad-rectangle {
+  min-height: 250px;
+  max-width: 336px;
+  padding: 10px 8px 8px;
+  border: 1px solid var(--line, rgba(31, 29, 26, 0.16));
+  border-radius: 12px;
+  background: var(--panel, #fff);
+}
+.ad-frame.ad-native {
+  min-height: 96px;
+  max-width: 860px;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--line, rgba(31, 29, 26, 0.16));
+  border-radius: 12px;
+  background: var(--panel, #fff);
+}
+/* Collapsed when blocked or unfilled: no hole left behind. */
+.ad-frame.ad-empty {
+  display: none !important;
+  margin: 0 !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
+/* Studio strip: slim dark bar pinned to the window bottom.
+   Hidden until main.ts sees a filled iframe (.ad-live), so
+   blockers and localhost lose zero status-bar space. */
+#studioAd {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5000;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  min-height: 56px;
+  max-height: 60px;
+  overflow: hidden;
+  padding: 4px 8px 2px;
+  background: #0d0e10;
+  border-top: 1px solid #26282c;
+}
+#studioAd.ad-live { display: flex; }
+#studioAd iframe { border: 0; display: block; max-width: 100%; }
+#studioAd .ad-cap { color: #71747c; }
+#studioAd.ad-empty { display: none !important; }

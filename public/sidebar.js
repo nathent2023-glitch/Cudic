@@ -90,6 +90,24 @@
   // Theme packs engine (real feature — loads on every page)
   (function(){var s=document.createElement('script');s.src='/theme-engine.js';document.head.appendChild(s);})();
 
+  // Cudic ads (Adsterra banners): themed slot chrome + collapse-on-block.
+  // Ad snippets themselves live inline in `.ad-frame` placeholders.
+  (function(){
+    var l=document.createElement('link');l.rel='stylesheet';l.href='/ads.css?v=1';document.head.appendChild(l);
+    var s=document.createElement('script');s.src='/ads.js?v=1';s.defer=true;document.head.appendChild(s);
+  })();
+
+  // Google AdSense: account-level library (site verification + future units).
+  // The loader alone renders nothing; slot tags arrive after approval.
+  (function(){
+    if(document.querySelector('script[src*="adsbygoogle.js"]'))return;
+    var g=document.createElement('script');
+    g.async=true;
+    g.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483495816823658';
+    g.setAttribute('crossorigin','anonymous');
+    document.head.appendChild(g);
+  })();
+
   // Web Awesome 3.14.0: default theme + lazy component loader (CDN, pinned).
   // Components load on demand only when a <wa-*> tag is present, so this is
   // ~free until used. Dark theme file (+wa-dark class) lands with dark mode.
