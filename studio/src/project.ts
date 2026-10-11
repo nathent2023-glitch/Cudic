@@ -12,6 +12,7 @@ import {
 } from '@codingame/monaco-vscode-files-service-override';
 import JSZip from 'jszip';
 import { sceneToFiles } from './npmutil';
+import { kenneyAssets, kenneyUrl, type KenneyAsset } from './kenney';
 
 const DEMO: Record<string, string> = {
   'index.html':
@@ -123,6 +124,7 @@ export function mimeOf(path: string): string {
     case 'gif': return 'image/gif';
     case 'svg': return 'image/svg+xml';
     case 'webp': return 'image/webp';
+    case 'glb': return 'model/gltf-binary';
     case 'ico': return 'image/x-icon';
     case 'mp3': return 'audio/mpeg';
     case 'wav': return 'audio/wav';
@@ -132,6 +134,10 @@ export function mimeOf(path: string): string {
     case 'webm': return 'video/webm';
     case 'pdf': return 'application/pdf';
     case 'zip': return 'application/zip';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    case 'xls': return 'application/vnd.ms-excel';
     case 'json': return 'application/json';
     default: return 'application/octet-stream';
   }
@@ -238,6 +244,7 @@ function registerFiles(files: FileMap): void {
 }
 
 export async function bootProject(): Promise<BootProject> {
+  let result: BootProject = { id: null, title: projectTitle, files: { ...DEMO } };
   if (projectId != null) {
     try {
       const base = await apiBase();
@@ -277,25 +284,31 @@ export async function bootProject(): Promise<BootProject> {
               }
             }
           }
-          return { id: projectId, title: projectTitle, files: out };
-        }
-        // Legacy scene-JSON games (classic-editor era, no files): convert on
-        // the fly so old projects open with their real content instead of the
-        // demo template. The next save persists the files (one-time migration).
-        const converted = sceneToFiles(
-          (g as { scene?: unknown }).scene,
-          typeof g.title === 'string' ? g.title : 'Untitled Project'
-        );
-        if (converted != null) {
-          projectTitle = typeof g.title === 'string' && g.title ? g.title : 'Untitled Project';
-          return { id: projectId, title: projectTitle, files: converted };
+          result = { id: projectId, title: projectTitle, files: out };
+        } else {
+          // Legacy scene-JSON games (classic-editor era, no files): convert on
+          // the fly so old projects open with their real content instead of the
+          // demo template. The next save persists the files (one-time migration).
+          const converted = sceneToFiles(
+            (g as { scene?: unknown }).scene,
+            typeof g.title === 'string' ? g.title : 'Untitled Project'
+          );
+          if (converted != null) {
+            projectTitle =
+              typeof g.title === 'string' && g.title ? g.title : 'Untitled Project';
+            result = { id: projectId, title: projectTitle, files: converted };
+          }
         }
       }
     } catch {
       // fall through to demo
     }
   }
-  return { id: null, title: projectTitle, files: { ...DEMO } };
+  // Unsaved local work wins over the backend copy — a frozen tab shouldn't
+  // cost anyone their edits.
+  const snap = await snapGet(snapKey()).catch(() => null);
+  if (snap != null) result = { ...result, title: snap.title, files: snap.files };
+  return result;
 }
 
 export function applyProjectToProvider(
@@ -306,6 +319,100 @@ export function applyProjectToProvider(
   projectTitle = boot.title;
   projectId = boot.id;
   registerFiles(boot.files);
+}
+
+// ---- Unsaved-work safety net ---------------------------------------------
+// A frozen tab loses everything since the last save. Snapshot the live editor
+// state to IndexedDB on a timer and on the way out, and put it back on boot.
+const SNAP_DB = 'cudic-studio';
+const SNAP_STORE = 'unsaved';
+
+interface Snapshot {
+  id: string;
+  title: string;
+  files: FileMap;
+  savedAt: number;
+}
+
+function snapKey(): string {
+  return projectId ?? 'draft';
+}
+
+function openSnapDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(SNAP_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(SNAP_STORE)) {
+        req.result.createObjectStore(SNAP_STORE);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function snapPut(s: Snapshot): Promise<void> {
+  const db = await openSnapDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SNAP_STORE, 'readwrite');
+    tx.objectStore(SNAP_STORE).put(s, s.id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function snapGet(id: string): Promise<Snapshot | null> {
+  const db = await openSnapDb();
+  return new Promise((resolve, reject) => {
+    const req = db
+      .transaction(SNAP_STORE, 'readonly')
+      .objectStore(SNAP_STORE)
+      .get(id);
+    req.onsuccess = () => resolve((req.result as Snapshot) ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function snapDelete(id: string): Promise<void> {
+  const db = await openSnapDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SNAP_STORE, 'readwrite');
+    tx.objectStore(SNAP_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Provider files are the last *registered* content, so edited-but-unsaved text
+// only exists in the open editor models. Overlay those on top.
+async function snapshotFiles(): Promise<FileMap> {
+  const out = await collectFiles();
+  for (const d of vscode.workspace.textDocuments) {
+    const p = d.uri.path;
+    if (!p.startsWith('/workspace/')) continue;
+    out[p.slice('/workspace/'.length)] = d.getText();
+  }
+  return out;
+}
+
+let snapTimer: number | null = null;
+
+function persistSnapshot(): void {
+  if (provider == null) return;
+  snapshotFiles()
+    .then((files) =>
+      snapPut({ id: snapKey(), title: projectTitle, files, savedAt: Date.now() })
+    )
+    .catch(() => {});
+}
+
+export function startSnapshotWatcher(): void {
+  if (snapTimer != null) return;
+  snapTimer = window.setInterval(persistSnapshot, 15000);
+  window.addEventListener('beforeunload', persistSnapshot);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') persistSnapshot();
+  });
 }
 
 async function setPublished(pub: boolean): Promise<void> {
@@ -496,6 +603,7 @@ async function saveProject(): Promise<void> {
   const cfg = await getCfg();
   try {
     let id = projectId;
+    const wasNew = id == null;
     if (id == null) {
       const res = await fetch(base + '/api/games', {
         method: 'POST',
@@ -525,6 +633,10 @@ async function saveProject(): Promise<void> {
       'Cudic: Saved "' + projectTitle + '"' +
       (bins.length > 0 ? ' (' + bins.length + ' asset(s)).' : '')
     );
+    // The work is safely in the backend now — drop the local copy so it can't
+    // clobber a newer published version on the next load.
+    if (wasNew) await snapDelete('draft').catch(() => {});
+    await snapDelete(id).catch(() => {});
   } catch (e) {
     vscode.window.showErrorMessage('Save failed: ' + (e as Error).message);
   }
@@ -683,65 +795,80 @@ interface ScratchImportResult {
   error?: string;
 }
 
-// Kenney icon library (CC0, served from public/assets/kenney). Copies the
-// picked PNG into the project as a binary file — it goes to storage on save,
-// same as any imported image — and drops an <img> at the cursor.
-interface IconLib {
-  packs: { id: string; label: string; sets: { id: string; label: string; icons: { file: string; label: string }[] }[] }[];
+// Kenney asset library (CC0, fetched from upstream at runtime). Copies the
+// picked file into the project as a binary — it goes to storage on save, same
+// as any imported file — drops an <img> at the cursor for images, and for .glb
+// models just lands the file (import three.js in your code to use it).
+type KenneyPick = vscode.QuickPickItem & { path: string; isModel: boolean };
+function humanBytes(n: number): string {
+  return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 }
-let iconLib: IconLib | null = null;
 async function insertIcon(): Promise<void> {
   if (provider == null) {
-    vscode.window.showErrorMessage('Icons need a ready workspace, reload Studio.');
+    vscode.window.showErrorMessage('Assets need a ready workspace, reload Studio.');
     return;
   }
+  let assets: KenneyAsset[];
   try {
-    if (iconLib == null) {
-      const res = await fetch('/assets/kenney/manifest.json');
-      if (!res.ok) throw new Error('icon library not found (' + res.status + ')');
-      iconLib = (await res.json()) as IconLib;
-    }
+    assets = await kenneyAssets();
   } catch (e) {
-    vscode.window.showErrorMessage('Could not load the icon library: ' + (e as Error).message);
+    vscode.window.showErrorMessage('Could not load the Kenney library: ' + (e as Error).message);
     return;
   }
-  const items: vscode.QuickPickItem[] = [];
-  for (const p of iconLib.packs) {
-    for (const s of p.sets) {
-      for (const i of s.icons) {
-        // Sets become part of the label: "white pawn" reads better than "pawn"
-        // when a pack ships both sides.
-        const label = s.id === '' ? i.label : s.id + ' ' + i.label;
-        items.push({ label, description: p.label + (s.id ? ' · ' + s.id : ''), detail: i.file });
-      }
-    }
-  }
-  const pick = await vscode.window.showQuickPick(items, {
-    placeHolder: 'Insert an icon (type to filter)',
-    matchOnDescription: true,
-    matchOnDetail: true
+  const toItem = (a: KenneyAsset): KenneyPick => ({
+    label: a.desc,
+    description: a.pack,
+    detail: a.size + ' · ' + humanBytes(a.bytes),
+    path: a.path,
+    isModel: a.pack === '3d'
   });
+  const qp = vscode.window.createQuickPick<KenneyPick>();
+  qp.placeholder = 'Search all Kenney images and 3D models';
+  qp.matchOnDescription = true;
+  qp.matchOnDetail = true;
+  const search = (q: string): KenneyPick[] => {
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    return assets
+      .filter(a => {
+        const hay = (a.path + ' ' + a.desc + ' ' + a.pack + ' ' + a.size).toLowerCase();
+        return terms.every(t => hay.includes(t));
+      })
+      .sort((a, b) => {
+        const rank = (x: KenneyAsset) =>
+          (x.desc.toLowerCase().includes(q) ? 2 : 0) + (x.pack.toLowerCase().includes(q) ? 1 : 0);
+        return rank(b) - rank(a);
+      })
+      .slice(0, 50)
+      .map(toItem);
+  };
+  qp.items = search('');
+  qp.onDidChangeValue(v => { qp.items = search(v); });
+  const pick = await new Promise<KenneyPick | undefined>(resolve => {
+    qp.onDidAccept(() => resolve(qp.selectedItems[0]));
+    qp.onDidHide(() => resolve(undefined));
+    qp.show();
+  });
+  qp.dispose();
   if (pick == null) return;
-  const desc = pick.description ?? '';
-  const parts = desc.split(' · ');
-  const pack = parts[0];
-  const set = parts.length > 1 ? parts[1] : '';
-  const src = '/assets/kenney/' + pack + '/' + (set === '' ? '' : set + '/') + pick.detail;
-  // Keep the subfolder when a pack has sets, so e.g. the light and dark pawn
-  // don't overwrite each other in the project.
-  const rel = 'assets/icons/' + (set === '' ? '' : pack + '/' + set + '/') + pick.detail;
+  // Keep the upstream subpath (2d/3d/icons/ui + folders) so e.g. light and dark
+  // pawns don't overwrite each other in the project.
+  const rel = 'assets/kenney/' + pick.path;
   try {
-    const res = await fetch(src);
-    if (!res.ok) throw new Error('could not fetch the icon (' + res.status + ')');
+    const res = await fetch(kenneyUrl(pick.path), { cache: 'no-store' });
+    if (!res.ok) throw new Error('could not fetch the file (' + res.status + ')');
     const bytes = new Uint8Array(await res.arrayBuffer());
     registerFiles({ ...(await collectFiles()), [rel]: bytes });
+    if (pick.isModel) {
+      vscode.window.showInformationMessage('Added ' + rel + '. Import three.js in your code to use it.');
+      return;
+    }
     const ed = vscode.window.activeTextEditor;
     if (ed != null) {
       await ed.edit((b) => b.replace(ed.selection, '<img src="' + rel + '" alt="' + pick.label + '" width="64" height="64">'));
     }
     vscode.window.showInformationMessage('Added ' + rel + '. Save to publish it with your game.');
   } catch (e) {
-    vscode.window.showErrorMessage('Could not add that icon: ' + (e as Error).message);
+    vscode.window.showErrorMessage('Could not add that asset: ' + (e as Error).message);
   }
 }
 
@@ -926,7 +1053,7 @@ export function registerProjectCommands(): void {
       constructor() {
         super({
           id: 'glox.insertIcon',
-          title: { value: 'Cudic: Insert icon', original: 'Cudic: Insert icon' },
+          title: { value: 'Cudic: Insert asset', original: 'Cudic: Insert asset' },
           menu: [
             { id: MenuId.CommandPalette },
             { id: MenuId.MenubarFileMenu, group: '5_glox' }

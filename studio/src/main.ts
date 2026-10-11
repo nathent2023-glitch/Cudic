@@ -18,7 +18,12 @@ import extensionHostWorkerUrl from '@codingame/monaco-vscode-api/workers/extensi
 import './glox';
 import { seedPreviewDoc } from './glox';
 import './style.css';
-import { bootProject, applyProjectToProvider, registerProjectCommands } from './project';
+import {
+  bootProject,
+  applyProjectToProvider,
+  registerProjectCommands,
+  startSnapshotWatcher
+} from './project';
 import { registerCudicAi, setSupaToken } from './cudic-ai/extension';
 import * as monaco from 'monaco-editor';
 import * as vscode from 'vscode';
@@ -67,6 +72,7 @@ import { EnvironmentOverride } from '@codingame/monaco-vscode-api/workbench';
 const fileSystemProvider = new RegisteredFileSystemProvider(false);
 const boot = await bootProject();
 applyProjectToProvider(fileSystemProvider, boot);
+startSnapshotWatcher();
 fileSystemProvider.registerFile(
   new RegisteredMemoryFile(
     monaco.Uri.file('/workspace.code-workspace'),

@@ -34,6 +34,7 @@ import {
   identFor
 } from './npmutil';
 import mammoth from 'mammoth';
+import JSZip from 'jszip';
 
 const ICON_CSS =
   '.glox-ibtn:hover{background:var(--vscode-toolbar-hoverBackground,rgba(255,255,255,0.08));}' +
@@ -612,10 +613,113 @@ registerEditorSerializer(
 const VIEW_EXTS = [
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico',
   'mp3', 'wav', 'ogg', 'mp4', 'webm',
-  'pdf', 'docx', 'pptx', 'xlsx'
+  'pdf', 'docx', 'pptx', 'xlsx', 'glb', 'zip'
 ];
 const VIEW_GLOBS = VIEW_EXTS.map((e) => '*.' + e);
 const BINARY_EXT = new RegExp('\\.(' + VIEW_EXTS.join('|') + ')$', 'i');
+
+// Each viewer is a self-contained srcdoc document: the workbench never imports
+// these libraries, they load lazily from a pinned CDN only when the matching
+// file type is opened. allow-scripts+allow-same-origin keeps the iframe from
+// navigating while still letting it fetch the blob URL handed down from above.
+const GLB_VIEWER = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>3D model</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#252630}canvas{display:block}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#8b93b8;font:13px sans-serif}
+#bar{position:fixed;top:8px;right:8px;display:flex;gap:6px}
+#bar button{background:#34354a;color:#d4d8ee;border:1px solid #44455a;border-radius:6px;padding:4px 10px;font:12px sans-serif;cursor:pointer}
+#bar button:hover{background:#3f4056}</style></head><body>
+<div id="load">Loading model…</div>
+<div id="bar"><button id="spin">Spin: on</button><button id="wire">Wireframe</button></div>
+<canvas id="c"></canvas>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const SRC='__SRC__',FPATH='__PATH__';
+const KENNEY='https://raw.githubusercontent.com/shorepine/kenney/main/';
+const ki=FPATH.indexOf('assets/kenney/');
+let texBase=null;
+if(ki>=0){const rel=FPATH.slice(ki+14),d=rel.slice(0,rel.lastIndexOf('/'));if(d)texBase=KENNEY+d+'/';}
+// Kenney .glb files reference textures by relative URI (e.g. Textures/colormap.png)
+// that a bare blob: URL can't resolve. parse() takes a base path used for exactly
+// this, so hand it the model's upstream directory and the textures load.
+const canvas=document.getElementById('c'),scene=new THREE.Scene();
+scene.background=new THREE.Color(0x252630);
+const camera=new THREE.PerspectiveCamera(55,1,0.01,5000);
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+const controls=new OrbitControls(camera,canvas);controls.enableDamping=true;
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
+const dl=new THREE.DirectionalLight(0xffffff,1.4);dl.position.set(6,10,8);scene.add(dl);
+scene.add(new THREE.HemisphereLight(0x68aed4,0x430067,0.35));
+scene.add(new THREE.GridHelper(40,40,0x555568,0x3a3a4a));
+let spin=true;
+document.getElementById('spin').onclick=(e)=>{spin=!spin;e.target.textContent='Spin: '+(spin?'on':'off');};
+document.getElementById('wire').onclick=()=>{scene.traverse(o=>{if(o.isMesh&&o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.wireframe=!m.wireframe);}});};
+function resize(){const w=window.innerWidth,h=window.innerHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}
+window.addEventListener('resize',resize);resize();
+const done=g=>{
+  const box=new THREE.Box3().setFromObject(g.scene);
+  const size=box.getSize(new THREE.Vector3());
+  g.scene.position.sub(box.getCenter(new THREE.Vector3()));
+  scene.add(g.scene);
+  const d=Math.max(size.x,size.y,size.z)||1;
+  camera.position.set(d*0.9,d*0.7,d*1.1);
+  controls.target.set(0,size.y/2,0);controls.update();
+  document.getElementById('load').remove();
+};
+const fail=e=>{document.getElementById('load').textContent='Could not load this model.';console.error(e);};
+if(texBase)new GLTFLoader().parse(await(await fetch(SRC)).arrayBuffer(),texBase,done,fail);
+else new GLTFLoader().load(SRC,done,undefined,fail);
+renderer.setAnimationLoop(()=>{if(spin)scene.rotation.y+=0.004;controls.update();renderer.render(scene,camera);});
+</script></body></html>`;
+
+const PPTX_VIEWER = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Presentation</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#fff}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#666;font:13px sans-serif}
+#bar{position:fixed;top:8px;right:8px}
+#bar button{background:#f3f3f3;color:#222;border:1px solid #ccc;border-radius:6px;padding:4px 10px;font:12px sans-serif;cursor:pointer}</style></head><body>
+<div id="load">Loading presentation…</div>
+<div id="bar"><button id="dl">Download original</button></div>
+<div id="out" style="height:100%;overflow:auto;"></div>
+<script type="module">
+import { PptxViewer, RECOMMENDED_ZIP_LIMITS } from 'https://cdn.jsdelivr.net/npm/@aiden0z/pptx-renderer@1.3.0/dist/aiden0z-pptx-renderer.browser.es.js';
+const SRC='__SRC__',out=document.getElementById('out');
+try{await PptxViewer.open(await(await fetch(SRC)).arrayBuffer(),out,{zipLimits:RECOMMENDED_ZIP_LIMITS});
+document.getElementById('load').remove();}
+catch(e){document.getElementById('load').textContent='Could not render this presentation.';console.error(e);}
+document.getElementById('dl').onclick=()=>{const a=document.createElement('a');a.href=SRC;a.download='presentation.pptx';document.body.append(a);a.click();a.remove();};
+</script></body></html>`;
+
+const XLSX_VIEWER = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Spreadsheet</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#fff}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#666;font:13px sans-serif}
+#bar{position:fixed;top:8px;right:8px}
+#bar button{background:#f3f3f3;color:#222;border:1px solid #ccc;border-radius:6px;padding:4px 10px;font:12px sans-serif;cursor:pointer}
+#tabs{display:flex;gap:4px;padding:6px 8px;background:#f7f7f7;border-bottom:1px solid #ddd;overflow:auto}
+#tabs button{border:1px solid #ccc;background:#fff;border-radius:5px;padding:3px 9px;font:12px sans-serif;cursor:pointer;color:#222}
+#tabs button.on{background:#2f6fed;color:#fff;border-color:#2f6fed}
+#out{height:calc(100% - 37px);overflow:auto}
+#out table{border-collapse:collapse;font:12px sans-serif}
+#out td,#out th{border:1px solid #ddd;padding:3px 7px;white-space:nowrap}
+#out th{background:#f0f0f0}</style></head><body>
+<div id="load">Loading spreadsheet…</div>
+<div id="bar"><button id="dl">Download original</button></div>
+<div id="tabs"></div><div id="out"></div>
+<script type="module">
+import * as XLSX from 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/xlsx.mjs';
+const SRC='__SRC__',tabs=document.getElementById('tabs'),out=document.getElementById('out');
+let wb;try{wb=XLSX.read(await(await fetch(SRC)).arrayBuffer(),{type:'array'});document.getElementById('load').remove();}
+catch(e){document.getElementById('load').textContent='Could not read this spreadsheet.';console.error(e);}
+function show(i){out.innerHTML=XLSX.utils.sheet_to_html(wb.Sheets[wb.SheetNames[i]]);
+tabs.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('on',j===i));}
+(wb?.SheetNames||[]).forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>show(i);tabs.append(b);});
+if(wb?.SheetNames?.length)show(0);
+document.getElementById('dl').onclick=()=>{const a=document.createElement('a');a.href=SRC;a.download='spreadsheet.xlsx';document.body.append(a);a.click();a.remove();};
+</script></body></html>`;
+
+const VIEWER_SANDBOX = 'allow-scripts allow-same-origin';
 
 class ViewerInput extends SimpleEditorInput {
   data: Uint8Array | null = null;
@@ -714,6 +818,56 @@ class ViewerPane extends SimpleEditorPane {
         ) as HTMLIFrameElement;
         f.src = blob(v.mime);
         node = f;
+      } else if (/\.glb$/i.test(v.sourcePath)) {
+        const f = el(
+          `<iframe style="flex:1;width:100%;border:none;"></iframe>`
+        ) as HTMLIFrameElement;
+        f.setAttribute('sandbox', VIEWER_SANDBOX);
+        f.srcdoc = GLB_VIEWER.split('__SRC__').join(blob('model/gltf-binary'))
+          .split('__PATH__').join(JSON.stringify(v.sourcePath));
+        node = f;
+      } else if (/\.pptx$/i.test(v.sourcePath)) {
+        const f = el(
+          `<iframe style="flex:1;width:100%;border:none;background:#fff;"></iframe>`
+        ) as HTMLIFrameElement;
+        f.setAttribute('sandbox', VIEWER_SANDBOX);
+        f.srcdoc = PPTX_VIEWER.split('__SRC__').join(
+          blob('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+        );
+        node = f;
+      } else if (/\.(xlsx|xls)$/i.test(v.sourcePath)) {
+        const f = el(
+          `<iframe style="flex:1;width:100%;border:none;background:#fff;"></iframe>`
+        ) as HTMLIFrameElement;
+        f.setAttribute('sandbox', VIEWER_SANDBOX);
+        f.srcdoc = XLSX_VIEWER.split('__SRC__').join(
+          blob('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        );
+        node = f;
+      } else if (/\.zip$/i.test(v.sourcePath)) {
+        const buf = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+        const zip = await JSZip.loadAsync(buf).catch(() => null);
+        if (zip == null) throw new Error('not a readable zip');
+        const list = el(
+          `<div style="padding:12px;overflow:auto;flex:1;"></div>`
+        );
+        const table = el(
+          `<table style="border-collapse:collapse;font-size:12px;width:100%;"><tr><th style="text-align:left;padding:3px 8px;color:#8b93b8;">Name</th><th style="text-align:right;padding:3px 8px;color:#8b93b8;">Kind</th></tr></table>`
+        ) as HTMLTableElement;
+        for (const f of Object.values(zip.files).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        )) {
+          const tr = el(
+            `<tr><td style="padding:3px 8px;border-bottom:1px solid #2a2a3a;">${esc(
+              f.name
+            )}</td><td style="padding:3px 8px;border-bottom:1px solid #2a2a3a;color:#8b93b8;text-align:right;">${
+              f.dir ? 'folder' : 'file'
+            }</td></tr>`
+          ) as HTMLTableRowElement;
+          table.append(tr);
+        }
+        list.append(table);
+        node = list;
       } else if (/\.docx$/i.test(v.sourcePath)) {
         const buf = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
         const { value: html } = await mammoth.convertToHtml({ arrayBuffer: buf });
