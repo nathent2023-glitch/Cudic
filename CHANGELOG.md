@@ -6,6 +6,71 @@ fixed. Commits are referenced by short hash.
 
 ---
 
+## Unreleased (on `master` past `v1.2`)
+
+**AdSense verification · gallery + type refresh · magic email codes ·
+embeddable games**
+
+### Added
+
+**Google AdSense verification** (`f1bc10d`, `fb142d3`)
+- Account-level `adsbygoogle.js` snippet site-wide (static heads + sidebar
+  injection), `ads.txt` with the publisher ID, `/privacy` page + routes,
+  ownership `<meta>` tag. Site verified; review requested with all
+  sensitive categories blocked. Adsterra slots paused meanwhile.
+
+**Magic email codes** (`15327eb`, migration `20261011120000_email_codes.sql`)
+- 6-digit codes over our own mail stack replace the magic-link flow
+  (in-memory tokens retired): `POST /auth/send-code` (hashed, 10-minute
+  expiry, Resend → SMTP fallback, rate-limited) + `POST /auth/verify-code`
+  (constant-time compare, 5 attempts then burn, flips `email_confirm`).
+- Soft enforcement via `needVerified()`: publish/unpublish/delete games,
+  comments, packs, reports, server create, and WS join/send 403 with
+  `email_unconfirmed` for unconfirmed email signups. GitHub OAuth and
+  pre-existing accounts exempt. Reads, playing, browsing stay open.
+- Login card flips to a code screen after signup (resend + cooldown);
+  profile gains a verify card for anyone who closes the tab mid-flow.
+- Mail goes HTTPS-only: Resend SDK first, Brevo API second (Render's free
+  tier seals outbound SMTP ports, so nodemailer's SMTP path was deleted).
+
+**Embeddable games** (`embed.html`, `/embed` route)
+- Chromeless player: cover (thumbnail/title/author + ember play button),
+  sandboxed `run.html` boot on click, local-only saves (no sign-in nudge
+  inside other sites' pages), one honest play-count per click, "Play on Cudic"
+  return link. Unpublished games get a notice, never the player.
+- `/embed.html` exempted from `X-Frame-Options` (everything else keeps
+  `SAMEORIGIN`); `/embed` rewrites in `vercel.json` + `server.js`.
+- Share modal on game pages: link row + fixed `485×402` and responsive
+  `100%×400` iframe snippets with copy buttons; drafts see link-only.
+
+**Gallery + type refresh** (`9c44757`)
+- Tag chips removed everywhere (gallery toolbar, game page); toolbar
+  rebuilt as one row (title removed, search grows, sort pinned).
+- Satoshi body + Epilogue headings (theme-pack lists, engine map, server
+  allowlist, and design docs updated to match).
+- Global squircle corners (`corner-shape: squircle`, circles exempt).
+- Docs remade as reference layout (section nav, breadcrumb, sub-TOC,
+  hash routing); docs + privacy pages drop the rail (`data-no-rail`).
+- Single-seat sessions: pages claim only when minting fresh, normal loads
+  heartbeat (no more phantom "other instance" kicks); second tabs stand
+  down silently with no banner.
+
+### Fixed
+
+- Malformed `?token=` values no longer burn Supabase lookups (JWT shape
+  check client + server; instant 401).
+- Gallery script killed by a dangling `async` after the tag-listener
+  removal — grid loads again.
+- Embed cover bugs found in testing: gradient overlay swallowing Play
+  clicks (`pointer-events: none`) and `display:flex` overriding `hidden`.
+
+### Changed
+
+- `sidebar.js` → v11, `sidebar.css` → v23, `theme-engine.js` → `?v=1`.
+- Rail icons render at full `--text-primary` for contrast.
+
+---
+
 ## v1.2 — 2026-10-09
 
 **Studio file viewers · IndexedDB auto-save · searchable Kenney library**

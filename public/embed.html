@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play on Cudic</title>
+  <meta name="description" content="Play this game instantly in your browser. Built with Cudic Studio.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+  <script src="/config.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    #cover[hidden], #err[hidden] { display: none !important; }
+    #stage { position: fixed; inset: 0; background: #000; }
+    #stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+    #cover {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 24px; text-align: center; color: #fff;
+      background: #101014 center / cover no-repeat;
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    #cover::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(rgba(8, 8, 12, 0.55), rgba(8, 8, 12, 0.78));
+    }
+    #cover > * { position: relative; }
+    #coverTitle { font-size: 1.25rem; font-weight: 700; margin: 0; max-width: 90%; }
+    #coverAuthor { font-size: 0.8rem; opacity: 0.75; }
+    #playBtn {
+      width: 68px; height: 68px; border-radius: 50%; border: none; cursor: pointer;
+      background: #FF8C1A; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 30px rgba(255, 140, 26, 0.45);
+    }
+    #playBtn:hover { transform: scale(1.06); }
+    #playBtn svg { width: 26px; height: 26px; fill: #141414; margin-left: 3px; }
+    #brand {
+      position: absolute; right: 12px; bottom: 10px; z-index: 3;
+      font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.65);
+      text-decoration: none; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    #brand:hover { color: #fff; }
+    #err {
+      position: absolute; inset: 0; z-index: 2; display: flex; align-items: center;
+      justify-content: center; padding: 24px; text-align: center; color: #b9b9c9;
+      font-size: 0.9rem; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="cover" hidden>
+      <button id="playBtn" aria-label="Play game"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5-13-7.5Z"/></svg></button>
+      <p id="coverTitle"></p>
+      <p id="coverAuthor"></p>
+    </div>
+    <div id="err" hidden></div>
+    <a id="brand" href="#" target="_blank" rel="noopener">Play on Cudic</a>
+  </div>
+  <script>
+  (function () {
+    var id = new URLSearchParams(location.search).get('id');
+    var apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+    var assetBase = (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ? SUPABASE_URL + '/storage/v1/object/public/' : '';
+    var stage = document.getElementById('stage');
+    var cover = document.getElementById('cover');
+    var errBox = document.getElementById('err');
+    function fail(m) {
+      cover.hidden = true;
+      errBox.textContent = m;
+      errBox.hidden = false;
+    }
+    if (!id) { fail('Missing game.'); return; }
+    document.getElementById('brand').href = '/view.html?id=' + encodeURIComponent(id);
+    var gameFiles = null, gameAssets = {};
+    fetch(apiBase + '/api/games/' + encodeURIComponent(id))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var game = d.game || null;
+        if (!game) { fail('Game not found.'); return; }
+        if (!game.published) { fail('This game is not published.'); return; }
+        var files = game.files;
+        if (typeof files === 'string') { try { files = JSON.parse(files); } catch (e) { files = null; } }
+        if (!files || !Object.keys(files).length) { fail('This game cannot be embedded.'); return; }
+        gameFiles = files;
+        gameAssets = game.assets || {};
+        document.title = (game.title || 'Untitled') + ' — Cudic';
+        document.getElementById('coverTitle').textContent = game.title || 'Untitled Game';
+        var author = (game.users && game.users.display_name) || '';
+        if (author) document.getElementById('coverAuthor').textContent = 'by ' + author;
+        var thumb = game.thumbnail;
+        if (thumb) cover.style.backgroundImage = 'url("' + thumb.replace(/"/g, '') + '")';
+        cover.hidden = false;
+      })
+      .catch(function () { fail('Could not load game.'); });
+
+    var started = false;
+    document.getElementById('playBtn').addEventListener('click', function () {
+      if (started || !gameFiles) return;
+      started = true;
+      cover.hidden = true;
+      var f = document.createElement('iframe');
+      f.setAttribute('sandbox', 'allow-scripts');
+      f.setAttribute('allowfullscreen', 'true');
+      f.setAttribute('scrolling', 'no');
+      f.src = '/run.html?v=2';
+      stage.insertBefore(f, document.getElementById('brand'));
+      window.addEventListener('message', function wait(e) {
+        if (e.data && e.data.type === 'ready') {
+          if (e.data.v !== 2) {
+            window.removeEventListener('message', wait);
+            fail('Player is outdated — the embed code needs regenerating from the game page.');
+            return;
+          }
+          window.removeEventListener('message', wait);
+          try { f.contentWindow.postMessage({ type: 'code', files: gameFiles, assets: gameAssets, assetsBase: assetBase }, '*'); } catch (err) {}
+          try { fetch(apiBase + '/api/games/' + encodeURIComponent(id) + '/play', { method: 'POST' }).catch(function () {}); } catch (err) {}
+        }
+      });
+      // Saves: local to this browser only. Answer authed so the game
+      // keeps a local mirror; cloud writes get a harmless ack.
+      var saveKey = 'cudic-save:' + id;
+      window.addEventListener('message', function (e) {
+        var d = e.data || {};
+        if (!d || (d.type !== 'cudic-save-get' && d.type !== 'cudic-save-set' && d.type !== 'cudic-save-del')) return;
+        try { if (!f || e.source !== f.contentWindow) return; } catch (err) { return; }
+        try {
+          if (d.type === 'cudic-save-get') {
+            f.contentWindow.postMessage({ type: 'cudic-save-data', req: d.req, save: null, authed: true, storageKey: saveKey }, '*');
+          } else {
+            f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: true }, '*');
+          }
+        } catch (err) {}
+      });
+    });
+  })();
+  </script>
+</body>
+</html>

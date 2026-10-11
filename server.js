@@ -34,36 +34,10 @@ function clientIp(req) {
   return (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
-// SMTP fallback (no custom domain needed). Generic SMTP via SMTP_HOST/PORT/USER/PASS,
-// or Gmail shorthand via GMAIL_USER + GMAIL_APP_PASSWORD
-// (Google Account → Security → 2-Step Verification → App passwords).
-// Outlook/ school mail: SMTP_HOST=smtp.office365.com, SMTP_PORT=587,
-// SMTP_USER=you@school.edu, SMTP_PASS=your password (SMTP AUTH must be enabled).
-let mailTransporter = null;
-function getMailTransporter() {
-  if (mailTransporter) return mailTransporter;
-  const nodemailer = require('nodemailer');
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    mailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
-  } else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    mailTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-    });
-  }
-  return mailTransporter;
-}
-function getMailFrom() {
-  return process.env.SMTP_FROM
-    || (process.env.SMTP_USER && `Cudic <${process.env.SMTP_USER}>`)
-    || (process.env.GMAIL_USER && `Cudic <${process.env.GMAIL_USER}>`)
-    || null;
-}
+
+// NOTE: SMTP (nodemailer) was removed — Render's free tier seals outbound
+// SMTP ports (25/465/587), so no SMTP transport can dial out from
+// production. Mail goes out over HTTPS only: Resend SDK, then Brevo API.
 
 // ── Magic email codes (soft gate) ─────────────────────────────
 // email_confirmed_at is the source of truth. Exempt: GitHub OAuth
@@ -123,7 +97,11 @@ const server = http.createServer(async (req, res) => {
   // Baseline security headers (no dep). SAMEORIGIN keeps the sandboxed preview working.
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // /embed.html is MEANT to be framed by other sites — framing it is the
+  // feature, so it keeps no X-Frame-Options (checked pre-rewrite too).
+  if (url.pathname !== '/embed.html' && url.pathname !== '/embed') {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
 
   if (req.method === 'OPTIONS') {
     cors(res);
@@ -158,27 +136,33 @@ const server = http.createServer(async (req, res) => {
         console.error('Resend error:', error);
       } catch (e) { console.error('Resend error:', (e && e.message) || e); }
     }
-    try {
-      const transporter = getMailTransporter();
-      if (!transporter) return new Error('mail unavailable');
-      await transporter.sendMail({
-        from: getMailFrom(),
-        to: email,
-        subject: 'Your Cudic code: ' + code,
-        html: mailHtml,
-      });
-      return null;
-    } catch (smtpErr) {
-      console.error('SMTP error:', smtpErr);
-      return smtpErr;
+    // Brevo over HTTPS (port 443): SMTP ports are sealed shut on Render's
+    // free tier, so nodemailer can never dial out from production. Needs
+    // a verified sender + BREVO_API_KEY env.
+    if (process.env.BREVO_API_KEY) {
+      try {
+        const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { 'accept': 'application/json', 'content-type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
+          body: JSON.stringify({
+            sender: { name: 'Cudic', email: process.env.BREVO_SENDER || 'cudic.codes@outlook.com' },
+            to: [{ email: email }],
+            subject: 'Your Cudic code: ' + code,
+            htmlContent: mailHtml,
+          }),
+        });
+        if (r.ok) return null;
+        try { console.error('Brevo error:', r.status, await r.text()); } catch (e) { console.error('Brevo error:', r.status); }
+      } catch (e) { console.error('Brevo error:', (e && e.message) || e); }
     }
+    return new Error('mail unavailable');
   }
 
   if (url.pathname === '/auth/send-code' && req.method === 'POST') {
     cors(res);
-    if (!resend && !getMailFrom()) {
+    if (!resend && !process.env.BREVO_API_KEY) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or SMTP/Gmail env missing)' }));
+      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or BREVO_API_KEY env missing)' }));
       return;
     }
     const body = await readBody(req).catch(() => ({}));
@@ -2487,6 +2471,12 @@ const server = http.createServer(async (req, res) => {
   // ── Redirect /privacy to /privacy.html ─────────────────────────
   if (url.pathname === '/privacy') {
     url.pathname = '/privacy.html';
+  }
+
+  // ── Redirect /embed to /embed.html ─────────────────────────────
+  // (frameable cross-origin — see the X-Frame-Options exemption above)
+  if (url.pathname === '/embed') {
+    url.pathname = '/embed.html';
   }
 
   // ── Redirect /editor to /editor.html ──────────────────────────
