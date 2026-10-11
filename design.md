@@ -63,10 +63,10 @@ playable right now" (a Play button, an online dot, a "published" badge).
 
 Two families, each with a job. No third "decorative" font.
 
-- **Space Grotesk** — all headings, the wordmark, and button labels.
+- **Epilogue** — all headings, the wordmark, and button labels.
   Geometric and a little technical, which fits a building tool. Weights
   500/600 only.
-- **Inter** — all body copy, form fields, nav labels, descriptions.
+- **Satoshi** — all body copy, form fields, nav labels, descriptions.
   Weights 400/500.
 - **JetBrains Mono** — reserved for actual code and technical values:
   the script editor, object/variable names, lobby codes, file names.
@@ -105,7 +105,7 @@ uppercase tracking.
 - Replace all emoji icons with a single icon set, one stroke weight
   (1.5px), 20px default — e.g. Lucide or Phosphor (outline variant).
   Home / Chat / Games / Editor / Settings all come from the same family.
-- Wordmark: `cudic` in Space Grotesk 600, with the accent dot recolored
+- Wordmark: `cudic` in Epilogue 600, with the accent dot recolored
   from lime to `--signal`.
 - Logomark (new): a simple isometric cube outline — a nod to the 3D scene
   the editor builds. Used as the favicon and loading state; a single

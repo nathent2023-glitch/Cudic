@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=19">
+    <link rel="stylesheet" href="/sidebar.css?v=23">
     <style>
         body {
             display: flex;
@@ -348,7 +348,7 @@
     <script src="/auth.js"></script>
     <script src="/ctheme.js?v=1"></script>
     <script src="/csel.js?v=1"></script>
-    <script src="/sidebar.js?v=6"></script>
+    <script src="/sidebar.js?v=11"></script>
     <script>
     (function () {
       var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
@@ -659,7 +659,7 @@
       }
       /* ── Pack builder (signed-in only) ── */
       var COLOR_FIELDS = [['ink', 'Ink'], ['panel', 'Panel'], ['raised', 'Raised'], ['line', 'Line'], ['signal', 'Signal'], ['tp', 'Text'], ['ts', 'Text dim'], ['tt', 'Text faint']];
-      var FONT_LIST = ['Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
+      var FONT_LIST = ['Satoshi', 'Epilogue', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
       var SCENE_PARAMS = {
         'city-night': [['rain', 'Rain', 0, 300, 1, 130], ['hueA', 'Sky hue', 0, 360, 1, 315], ['hueB', 'Glow hue', 0, 360, 1, 190], ['windows', 'Lit windows', 0, 1, 0.05, 0.45]],
         'ember-field': [['count', 'Sparks', 0, 200, 1, 70], ['hue', 'Hue', 0, 360, 1, 28]]
@@ -683,7 +683,7 @@
           var o1 = document.createElement('option'); o1.value = fn; o1.textContent = fn; fh.appendChild(o1);
           var o2 = document.createElement('option'); o2.value = fn; o2.textContent = fn; fb.appendChild(o2);
         });
-        fh.value = 'Space Grotesk'; fb.value = 'Inter';
+        fh.value = 'Epilogue'; fb.value = 'Satoshi';
         renderParams();
       }
       function renderParams() {

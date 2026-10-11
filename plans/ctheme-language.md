@@ -23,8 +23,8 @@ radius 12                    # integer 0–24
 color ink #E8EEFA             # keys: ink panel raised line signal tp ts tt
 color signal #7300FF          # values must be #rrggbb
 
-font head "Space Grotesk"     # any of: Inter, Space Grotesk, Sora,
-font body Inter               #   Manrope, Outfit, DM Sans, JetBrains Mono
+font head "Epilogue"     # any of: Satoshi, Epilogue, Sora,
+font body Satoshi         #   Manrope, Outfit, DM Sans, JetBrains Mono
 icons neon                    # default | neon
 motion playful                # calm | playful
 

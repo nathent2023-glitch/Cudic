@@ -175,10 +175,13 @@ Every gated route: pull `Authorization: Bearer <supabase jwt>` →
 Client mints a random seat id at login (`cudic_seat` in localStorage; fresh
 mint = takeover) and the leader tab heartbeats it every 30s
 (`POST /api/session/heartbeat`; 90s expiry; no row = grandfathered free
-pass). Second device login claims the row → old seat gets `403
-{"error":"session_superseded"}` on checked paths (WS join/send, AI proxy)
-and a paused banner with Take over (fresh seat + claim + reload). Tabs share
-one login and elect a leader via `cudic_tab_lock` (10s stale, 5s refresh) —
+pass). Page loads claim ONLY when minting fresh (no seat) or after Take
+over; normal loads heartbeat (refresh-or-learn, never kicks). A real
+takeover 403s the old seat (`{"error":"session_superseded"}` on checked
+paths: WS join/send, AI proxy) → paused banner with Take over (fresh seat
++ claim + reload). Same-browser tabs share the seat and stand down
+silently when another tab leads (no banner — they keep working).
+Tabs elect a leader via `cudic_tab_lock` (10s stale, 5s refresh) —
 the server can't tell tabs apart; only the leader beats. Seat travels as
 `X-Seat` header / `msg.seat` / body field. Table: `active_sessions`
 (RLS locked, service key only). Tested end-to-end (20 checks, temp user,
@@ -483,7 +486,7 @@ Read it before building any classic-page screen. Headlines:
 - **`--signal #7300FF` (electric violet)** is the *classic app's* primary — this is a
   different context from the AI panel. **`--ember #FF8C1A`** is reserved strictly
   for live/play moments (never nav, never structure).
-- Type: **Space Grotesk** headings/buttons (500/600 only), **Inter** body (400/500),
+- Type: **Epilogue** headings/buttons (500/600 only), **Satoshi** body (400/500),
   **JetBrains Mono** only for literal code/identifiers — never decorative labels.
 - Anti-patterns named explicitly: acid-green-on-black, emoji as icons,
   ALL-CAPS micro-labels as hierarchy, generic "No X selected" empty states.

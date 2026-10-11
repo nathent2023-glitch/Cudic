@@ -1,5 +1,6 @@
 /* ── Glox Design System ─────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Epilogue:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
 @font-face { font-family: 'NineCircles'; src: url('/fonts/NineCirclesReg.otf') format('opentype'), url('/fonts/NineCirclesReg.ttf') format('truetype'); font-display: swap; }
 @font-face { font-family: 'NineCirclesBook'; src: url('/fonts/nine-circles.book.otf') format('opentype'), url('/fonts/nine-circles.book.ttf') format('truetype'); font-display: swap; }
 
@@ -21,8 +22,8 @@
   --danger: #E0442E;
   --radius-sm: 6px;
   --radius-lg: 12px;
-  --font-head: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-head: 'Epilogue', sans-serif;
+  --font-body: 'Satoshi', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -31,6 +32,19 @@
   --text-xl: 1.625rem;
   --text-2xl: 2rem;
   --on-signal: #fff;
+}
+
+/* ── Squircles ───────────────────────────────────────────────
+   One curvature language app-wide: every rounded corner uses the
+   smooth continuous (iOS-style) shape instead of plain rounding.
+   Browsers without corner-shape support fall back silently.
+   True circles (avatars, badges, toggles) keep corner-shape: round
+   so they stay round. */
+*, *::before, *::after { corner-shape: squircle; }
+.conv-ava, .avatar, .author-avatar, .avatar-lg, .conv-unread, .req-badge,
+.swatch, .swatch-custom, .pack-dots span, .switch .track,
+.switch .track::before, *[style*="50%"], *[style*="999px"] {
+  corner-shape: round;
 }
 
 /* ── Dark theme ──────────────────────────────────────────────
@@ -199,9 +213,10 @@ body {
   white-space: nowrap;
 }
 
-/* Paused seat banner: one live seat per account. Shown when another
-   device took over (403 session_superseded) or another tab holds the
-   leader lock. Take over mints a fresh seat, claims, and reloads. */
+/* Paused seat banner: one live seat per account. Shown only on a real
+   device takeover (403 session_superseded). Same-browser tabs share one
+   seat and stand down silently — no banner. Take over mints a fresh
+   seat, claims, and reloads. */
 #seatBanner {
   display: none;
   position: fixed;
@@ -260,6 +275,7 @@ body {
   width: 20px;
   height: 20px;
   flex-shrink: 0;
+  color: var(--text-primary);
   stroke: currentColor;
   stroke-width: 1.5;
   fill: none;

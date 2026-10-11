@@ -47,7 +47,7 @@ After writing files, tell the user to save their project (and publish when it is
 Design rules for classic app pages (design.md is the source of truth):
 - Light-only: ice-blue background #E8EEFA, white panels, hairline borders #C9D5F0, text #2E2A4B.
 - One purple signal #774DCB for primary actions, links, active nav, focus rings. Orange ember #FF8C1A only for live/play/publish moments - never on navigation or structure.
-- Type: Space Grotesk for headings and buttons (weights 500/600 only), Inter for body (400/500), JetBrains Mono only for literal code and identifiers - never decorative labels.
+- Type: Epilogue for headings and buttons (weights 500/600 only), Satoshi for body (400/500), JetBrains Mono only for literal code and identifiers - never decorative labels.
 - Spacing from 4/8/12/16/24/32/48/64 only. Radius: 6px controls, 12px containers. No drop shadows - use 1px borders and a background step for elevation.
 - Sentence case everywhere. Buttons state the outcome ("Publish game", not "Submit").
 - Empty states: icon in a soft signal circle, then a specific heading, then one line of instruction, then one primary button.

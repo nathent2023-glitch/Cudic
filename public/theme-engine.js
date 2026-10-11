@@ -13,7 +13,9 @@
   var state = { slug: null, manifest: null, bgEl: null, sceneStop: null };
 
   var FONTS = {
-    'Inter': null, 'Space Grotesk': null,
+    'Satoshi': null, 'Epilogue': null,
+    'Inter': 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap',
+    'Space Grotesk': 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&display=swap',
     'Sora': 'https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap',
     'Manrope': 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&display=swap',
     'Outfit': 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap',

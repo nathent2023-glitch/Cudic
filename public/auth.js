@@ -213,6 +213,21 @@ function seatHeaders(h) {
   if (s) h['X-Seat'] = s;
   return h;
 }
+// Boot: claim ONLY when minting fresh (no seat yet) or on a fresh login.
+// Normal loads heartbeat instead — refreshes our row when it is ours (or
+// expired away) and learns about a real takeover via 403, but never kicks
+// another device just by loading a page. (Claim is an unconditional
+// takeover server-side, so calling it per-load turned every stray load
+// anywhere — second browser, forgotten tab farm, automated checks — into
+// a kick for the main tab.)
+async function bootSeat(freshLogin) {
+  try {
+    if (freshLogin) mintSeat();
+    if (!seatId()) { mintSeat(); await claimSeat(); }
+    else { await heartbeatSeat(); }
+  } catch (e) {}
+  startSeatSystem();
+}
 // ── Paused banner (shared; auth.js loads on every banner page) ──
 function ensureSeatBanner() {
   var b = document.getElementById('seatBanner');
@@ -271,10 +286,13 @@ function tabTick() {
       heartbeatSeat();
       startHeartbeat();
     }
-  } else if (tabLeader || !seatPaused) {
+  } else {
+    // Another tab leads: stand down silently. Same-browser tabs share one
+    // seat, so this tab keeps working — no banner, no scare. (The banner
+    // now fires only for a real device takeover.)
     tabLeader = false;
     stopHeartbeat();
-    pauseSeat('tab');
+    if (seatPaused === 'tab') resumeSeat();
   }
 }
 function startHeartbeat() {

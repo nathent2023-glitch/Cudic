@@ -4,6 +4,9 @@
   if(document.querySelector('nav.sidebar'))return;
 
   var page=document.body.getAttribute('data-page')||'home';
+  // Opt-out: <body data-no-rail> pages (docs, privacy) skip the rail chrome
+  // but keep prefs, theme packs and the component loader below.
+  var noRail=document.body.hasAttribute('data-no-rail');
 
   // Single source of truth for the auth token. Asks the Supabase client
   // first (it owns session storage), falls back to the legacy key.
@@ -88,7 +91,7 @@
   icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
 
   // Theme packs engine (real feature — loads on every page)
-  (function(){var s=document.createElement('script');s.src='/theme-engine.js';document.head.appendChild(s);})();
+  (function(){var s=document.createElement('script');s.src='/theme-engine.js?v=1';document.head.appendChild(s);})();
 
   // Cudic ads (Adsterra banners): themed slot chrome + collapse-on-block.
   // Ad snippets themselves live inline in `.ad-frame` placeholders.
@@ -137,7 +140,7 @@
       +'<div style="flex:1"></div>'
     +'</div>';
 
-  document.body.insertBefore(nav,document.body.firstChild);
+  if(!noRail)document.body.insertBefore(nav,document.body.firstChild);
 
   // Floating account button: bottom-left of the main panel. Same IDs as
   // before, so the login/logout hover, tooltip, and profile wiring below
@@ -151,14 +154,14 @@
     +'<button class="iconbtn" id="themeBtn" title="Toggle theme"><svg id="themeSun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg><svg id="themeMoon" viewBox="0 0 24 24" style="display:none"><path d="M20 13.2A8 8 0 1 1 10.8 4 6.6 6.6 0 0 0 20 13.2Z" fill="currentColor" stroke="none"/></svg></button>'
     +'<div id="logoutBtn" style="display:none;position:absolute;right:0;bottom:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 14px;font-size:0.75rem;color:var(--danger);cursor:pointer;white-space:nowrap;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.15)" onmouseover="this.style.borderColor=\'var(--danger)\'" onmouseout="this.style.borderColor=\'var(--line)\'">Logout</div>'
   +'</div>';
-  document.body.insertAdjacentHTML('beforeend',accountHtml);
+  if(!noRail)document.body.insertAdjacentHTML('beforeend',accountHtml);
 
   // Rail tooltip: one floating pill, positioned fixed so rail scrolling
   // never clips it. Shows on hover AND focus (keyboard users get it too).
   // Delegated so server rows added later by loadServers() get tips too.
   var railTip=document.createElement('div');
   railTip.id='railTip';
-  document.body.appendChild(railTip);
+  if(!noRail)document.body.appendChild(railTip);
   function railLabel(item){
     var s=item.querySelector('span:last-child');
     return s?s.textContent.trim():'';
@@ -201,6 +204,7 @@
   // or #access_token), then load user + servers so the session is visible
   // immediately. A failed handshake shows a toast instead of silent guest.
   (async function bootSidebar(){
+    if(noRail)return; // rail-less pages need no user/servers/seat boot
     var attempted=false;
     try{
       var hasCode=window.location.search.indexOf('code=')!==-1;
@@ -210,12 +214,12 @@
     try{window.currentToken=window.currentToken||await getAuthToken();}catch(e){}
     try{window.dispatchEvent(new Event('glox:auth'));}catch(e){}
     // Single-seat sessions: fresh OAuth login mints a new seat (takeover);
-    // normal loads keep the existing seat. Heartbeat runs in the leader tab.
+    // a missing seat mints + claims once; normal loads only heartbeat
+    // (never kick another device just by loading). Heartbeat runs in the
+    // leader tab.
     try{
-      if(typeof startSeatSystem==='function'&&window.currentToken){
-        if(attempted&&typeof mintSeat==='function')mintSeat();
-        if(typeof claimSeat==='function'){claimSeat();}
-        startSeatSystem();
+      if(typeof bootSeat==='function'&&window.currentToken){
+        bootSeat(attempted);
       }
     }catch(e){}
     loadSidebarUser();

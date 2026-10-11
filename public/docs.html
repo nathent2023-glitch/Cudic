@@ -20,7 +20,7 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
   <link rel="canonical" content="https://cudic.vercel.app/docs">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=19">
+    <link rel="stylesheet" href="/sidebar.css?v=23">
     <style>
         .docs-layout {
             display: flex;
@@ -35,28 +35,33 @@
         }
 
         .wrap {
-            max-width: 1040px;
+            max-width: 1180px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: 190px 1fr;
-            gap: 40px;
-            align-items: start;
         }
 
         .lead {
             color: var(--text-secondary);
             max-width: 70ch;
-            margin: 6px 0 0;
+            margin: 6px 0 18px;
             font-size: 0.95rem;
         }
 
-        .toc {
+        .docgrid {
+            display: grid;
+            grid-template-columns: 210px minmax(0, 1fr) 190px;
+            gap: 44px;
+            align-items: start;
+        }
+
+        .docnav {
             position: sticky;
             top: 24px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
             font-size: var(--text-sm);
         }
 
-        .toc .toc-label {
+        .docnav .toc-label {
             font-family: var(--font-head);
             font-weight: 600;
             font-size: 0.82rem;
@@ -64,7 +69,40 @@
             margin-bottom: 8px;
         }
 
-        .toc a {
+        .docnav a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 5px 10px;
+            border-radius: 8px;
+            line-height: 1.35;
+        }
+
+        .docnav a:hover {
+            color: var(--signal);
+        }
+
+        .docnav a.on {
+            color: var(--signal);
+            font-weight: 600;
+            background: var(--signal-tint);
+        }
+
+        .subtoc {
+            position: sticky;
+            top: 24px;
+            font-size: var(--text-sm);
+        }
+
+        .subtoc .toc-label {
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .subtoc a {
             display: block;
             color: var(--text-secondary);
             text-decoration: none;
@@ -72,8 +110,61 @@
             line-height: 1.35;
         }
 
-        .toc a:hover {
+        .subtoc a:hover {
             color: var(--signal);
+        }
+
+        .subtoc a.lvl3 {
+            padding-left: 12px;
+            border-left: 1px solid var(--line);
+        }
+
+        .crumbs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            color: var(--text-tertiary);
+            margin: 2px 0 10px;
+        }
+
+        .crumbs svg {
+            flex-shrink: 0;
+        }
+
+        .crumbs .cur {
+            color: var(--text-primary);
+            background: var(--panel-raised);
+            padding: 2px 10px;
+            border-radius: 99px;
+        }
+
+        @media (max-width: 960px) {
+            .docgrid {
+                grid-template-columns: 1fr;
+            }
+
+            .docnav {
+                position: static;
+                display: flex;
+                gap: 4px;
+                overflow-x: auto;
+                max-height: none;
+                padding-bottom: 6px;
+            }
+
+            .docnav .toc-label {
+                display: none;
+            }
+
+            .docnav a {
+                white-space: nowrap;
+                flex-shrink: 0;
+            }
+
+            .subtoc {
+                display: none;
+            }
         }
 
         article {
@@ -81,8 +172,13 @@
         }
 
         article section {
+            display: none;
             margin-bottom: 44px;
             scroll-margin-top: 24px;
+        }
+
+        article section.on {
+            display: block;
         }
 
         article h2 {
@@ -228,7 +324,7 @@
     </style>
 </head>
 
-<body data-page="docs">
+<body data-page="docs" data-no-rail>
 
     <div class="docs-layout page-panel">
         <div class="topbar">
@@ -237,33 +333,15 @@
 
         <div class="docs-scroll">
             <div class="wrap">
-                <p class="lead" style="grid-column: 1 / -1">Everything Cudic can do, in the order you'll probably need it. Build in Studio, publish to the gallery, chat in servers, and restyle the whole site with theme packs.</p>
+                <p class="lead">Everything Cudic can do, in the order you'll probably need it. Build in Studio, publish to the gallery, chat in servers, and restyle the whole site with theme packs.</p>
 
                 <div class="ad-frame ad-leaderboard" style="grid-column:1/-1"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
 
-            <nav class="toc">
-                <div class="toc-label">On this page</div>
-                <a href="#start">Getting started</a>
-                <a href="#studio">Studio</a>
-                <a href="#files">Project files</a>
-                <a href="#python">Python</a>
-                <a href="#npm">npm packages</a>
-                <a href="#scratch">Importing Scratch</a>
-                <a href="#publish">Publishing</a>
-                <a href="#remix">Remixing</a>
-                <a href="#saves">Cloud saves</a>
-                <a href="#chat">Chat &amp; servers</a>
-                <a href="#themes">Theme packs</a>
-                <a href="#coins">Coins</a>
-                <a href="#reports">Reports</a>
-                <a href="#ai">Cudic AI panel</a>
-                <a href="#account">Account</a>
-                <a href="#faq">FAQ</a>
-                <a href="#limits">Limits &amp; known gaps</a>
-                <a href="#credits">Credits</a>
-            </nav>
+            <div class="docgrid">
+            <nav class="docnav" id="docNav" aria-label="Guide"><div class="toc-label">Guide</div></nav>
 
             <article>
+                <nav class="crumbs" aria-label="Breadcrumb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg><span>›</span><span class="cur" id="crumbSec">Getting started</span></nav>
                 <section id="start">
                     <h2>Getting started</h2>
                     <p>Cudic is a place to hang out and a place to build. Servers and channels for chat, a gallery of games made in Cudic Studio, theme packs that restyle the whole site, and coins you spend on packs.</p>
@@ -372,7 +450,7 @@ confetti({ particleCount: 120 })</pre>
                     </ul>
                     <h3>Finding games</h3>
                     <ul>
-                        <li>The <strong>search box</strong> matches names and descriptions. <strong>Tag chips</strong> filter to one kind of game at a time, and a chip can be shared — the filter lives in the page address.</li>
+                        <li>The <strong>search box</strong> matches names and descriptions, and the filter lives in the page address so a search can be shared. The <strong>sort menu</strong> flips between newest, trending, oldest and A–Z.</li>
                         <li><strong>Trending</strong> sorts by how many times games have actually been played. One play per person per game per hour, so refreshing doesn't inflate it.</li>
                         <li>The <strong>heart</strong> on a card or a game page saves it to your account. Liked games collect on your profile.</li>
                         <li>Tags on your own game come from the project fields in Studio.</li>
@@ -495,13 +573,76 @@ confetti({ particleCount: 120 })</pre>
                     </ul>
                 </section>
             </article>
+            <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
+            </div>
             </div>
         </div>
     </div>
 
     <script src="/config.js"></script>
     <script src="/auth.js"></script>
-    <script src="/sidebar.js?v=6"></script>
+    <script src="/sidebar.js?v=11"></script>
+    <script>
+    /* Docs section router: one section visible at a time, hash-addressed
+       (/docs#studio). Left nav + crumb + right rail build themselves from
+       the sections, so adding a section is just adding a <section>. */
+    (function () {
+        var secs = Array.prototype.slice.call(document.querySelectorAll('article section'));
+        if (!secs.length) return;
+        var nav = document.getElementById('docNav');
+        var sub = document.getElementById('subTocLinks');
+        var crumb = document.getElementById('crumbSec');
+        var titles = {};
+        secs.forEach(function (s) {
+            var h = s.querySelector('h2');
+            titles[s.id] = h ? h.textContent : s.id;
+            var a = document.createElement('a');
+            a.href = '#' + s.id;
+            a.textContent = titles[s.id];
+            a.dataset.sec = s.id;
+            nav.appendChild(a);
+        });
+        secs.forEach(function (s) {
+            Array.prototype.forEach.call(s.querySelectorAll('h3'), function (h, i) {
+                if (!h.id) h.id = s.id + '-' + (i + 1);
+            });
+        });
+        function show(id) {
+            var sec = document.getElementById(id);
+            if (!sec || sec.tagName !== 'SECTION') return false;
+            secs.forEach(function (s) { s.classList.toggle('on', s === sec); });
+            Array.prototype.forEach.call(nav.querySelectorAll('a'), function (a) { a.classList.toggle('on', a.dataset.sec === id); });
+            if (crumb) crumb.textContent = titles[id];
+            sub.innerHTML = '';
+            Array.prototype.forEach.call(sec.querySelectorAll('h3'), function (h) {
+                var l = document.createElement('a');
+                l.href = '#' + h.id;
+                l.textContent = h.textContent;
+                l.className = 'lvl3';
+                sub.appendChild(l);
+            });
+            var sc = document.querySelector('.docs-scroll');
+            if (sc) sc.scrollTop = 0;
+            return true;
+        }
+        function route() {
+            var h = (location.hash || '').slice(1);
+            if (!h) { show('start'); return; }
+            var el = document.getElementById(h);
+            if (!el) { show('start'); return; }
+            if (el.tagName === 'SECTION') { show(h); return; }
+            var parent = el.closest ? el.closest('section') : null;
+            if (parent && parent.id) {
+                show(parent.id);
+                setTimeout(function () { try { el.scrollIntoView(); } catch (e) {} }, 60);
+                return;
+            }
+            show('start');
+        }
+        window.addEventListener('hashchange', route);
+        route();
+    })();
+    </script>
 
 </body>
 

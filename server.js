@@ -272,10 +272,10 @@ const server = http.createServer(async (req, res) => {
     const html = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Cudic — Email Verified</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:100vh;display:flex;align-items:center;justify-content:center}
+body{font-family:'Satoshi',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:100vh;display:flex;align-items:center;justify-content:center}
 .card{max-width:420px;width:94vw;background:#FFFFFF;border-radius:20px;border:1px solid #C9D5F0;padding:36px 32px;text-align:center;box-shadow:0 24px 60px rgba(80,90,180,.20)}
 .brand{font-size:1.6rem;font-weight:800;letter-spacing:-.03em;margin-bottom:20px}
 .brand span{color:#774DCB}
@@ -1345,7 +1345,7 @@ body{font-family:'Inter',sans-serif;background:#E8EEFA;color:#2E2A4B;min-height:
   // Manifests are pure data (see theme-engine.js): the server validates
   // every field against the engine's allowlists and serves manifests
   // only to entitled users — that gate is the purchase enforcement.
-  var PACK_FONTS = ['Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
+  var PACK_FONTS = ['Satoshi', 'Epilogue', 'Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
   var PACK_SCENES = ['city-night', 'ember-field'];
   var PACK_COLOR_KEYS = ['ink', 'panel', 'raised', 'line', 'signal', 'tp', 'ts', 'tt'];
   var RESERVED_PACK_SLUGS = ['anime-city-night'];

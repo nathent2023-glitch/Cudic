@@ -2,7 +2,7 @@
  * Spec: plans/ctheme-language.md. Vanilla, no dependencies.
  * window.CTheme = { parse, generate, sanitizeHtml } */
 (function () {
-  var FONTS = ['Inter', 'Space Grotesk', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
+  var FONTS = ['Satoshi', 'Epilogue', 'Sora', 'Manrope', 'Outfit', 'DM Sans', 'JetBrains Mono'];
   var SCENES = ['city-night', 'ember-field'];
   var COLOR_KEYS = ['ink', 'panel', 'raised', 'line', 'signal', 'tp', 'ts', 'tt'];
   var HEX = /^#[0-9a-fA-F]{6}$/;
