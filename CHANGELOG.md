@@ -30,8 +30,11 @@ embeddable games**
   pre-existing accounts exempt. Reads, playing, browsing stay open.
 - Login card flips to a code screen after signup (resend + cooldown);
   profile gains a verify card for anyone who closes the tab mid-flow.
-- Mail goes HTTPS-only: Resend SDK first, Brevo API second (Render's free
-  tier seals outbound SMTP ports, so nodemailer's SMTP path was deleted).
+- Mail goes HTTPS-only: Gmail API first (own Gmail account, `gmail.send`
+  scope, `GMAIL_*` env — no domain, phone, or card), Resend SDK second,
+  Brevo API third (coded but unconfigured — its phone/address verification
+  is a non-starter). Render's free tier seals outbound SMTP ports, so
+  nodemailer's SMTP path was deleted.
 
 **Embeddable games** (`embed.html`, `/embed` route)
 - Chromeless player: cover (thumbnail/title/author + ember play button),

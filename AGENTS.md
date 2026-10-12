@@ -139,7 +139,7 @@ Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
 | Lines (approx) | What |
 |---|---|
 | 15–30 | `validName`, `rateLimit(key,max,windowMs)`, `clientIp` |
-| 34–100 | mail transport (`SMTP_*` env or Resend), `getMailFrom`, `MIME` map, `cors` |
+| 34–100 | mail transport (Gmail API → Resend → Brevo, HTTPS-only), `MIME` map, `cors` |
 | 685 | `readBody(req)` |
 | 726–752 | **`AI_HOSTS` whitelist** + `/api/ai/fetch` proxy |
 | 872 / 952 | `walk()` — studio project file tree + assets |
@@ -199,7 +199,7 @@ only). Tested end-to-end (17 checks, temp user+games, cleaned up).
 
 ### Env (all in gitignored `.env`, never commit)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `PORT`,
-plus optional `SMTP_HOST/PORT/USER/PASS`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRET`.
+plus optional `GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN/SENDER`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRET`.
 `.env.example` lists the core four. `PROJECT_MEMORY.md` indexes where secrets live
 (it contains public IDs only — client ID, project ref — those are fine).
 

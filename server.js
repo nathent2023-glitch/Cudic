@@ -37,7 +37,42 @@ function clientIp(req) {
 
 // NOTE: SMTP (nodemailer) was removed — Render's free tier seals outbound
 // SMTP ports (25/465/587), so no SMTP transport can dial out from
-// production. Mail goes out over HTTPS only: Resend SDK, then Brevo API.
+// production. Mail goes out over HTTPS only: Gmail API first, then
+// Resend SDK, then Brevo API.
+
+// ── Gmail API mail (primary sender) ────────────────────────────
+// Our own Gmail account sends the codes over HTTPS. OAuth: Cloud
+// project "Cudic Mail", Web client, scope gmail.send only (send-only,
+// can't read mail). Needs GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET,
+// GMAIL_REFRESH_TOKEN, GMAIL_SENDER env. No domain, no phone, no card.
+let gmailToken = { access: '', exp: 0 };
+async function sendViaGmail(to, subject, html) {
+  const cid = process.env.GMAIL_CLIENT_ID, csec = process.env.GMAIL_CLIENT_SECRET,
+        rtok = process.env.GMAIL_REFRESH_TOKEN, from = process.env.GMAIL_SENDER;
+  if (!cid || !csec || !rtok || !from) return new Error('gmail not configured');
+  try {
+    if (Date.now() > gmailToken.exp - 60000) {
+      const t = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ client_id: cid, client_secret: csec, refresh_token: rtok, grant_type: 'refresh_token' }),
+      });
+      const j = await t.json().catch(() => ({}));
+      if (!t.ok || !j.access_token) return new Error('gmail token refresh failed');
+      gmailToken = { access: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
+    }
+    const raw = Buffer.from(
+      `From: Cudic <${from}>\r\nTo: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
+    ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages.send', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + gmailToken.access, 'content-type': 'application/json' },
+      body: JSON.stringify({ raw }),
+    });
+    if (r.ok) return null;
+    return new Error('gmail send failed: ' + r.status);
+  } catch (e) { return e instanceof Error ? e : new Error(String(e)); }
+}
 
 // ── Magic email codes (soft gate) ─────────────────────────────
 // email_confirmed_at is the source of truth. Exempt: GitHub OAuth
@@ -111,7 +146,7 @@ const server = http.createServer(async (req, res) => {
   }
 
     // ── API: magic codes (send + verify) ─────────────────────────
-  // 6-digit codes over our own mail stack (Resend → SMTP fallback).
+  // 6-digit codes over our own mail stack (Gmail API → Resend → Brevo).
   // Supabase's built-in mail caps at 2/hour site-wide, so it can't
   // carry verification. Codes live 10 minutes, 5 attempts max, and
   // verifying flips the same email_confirmed_at the old link flow set.
@@ -124,6 +159,9 @@ const server = http.createServer(async (req, res) => {
         <p style="font-size:13px;color:#9C97B8;">Expires in 10 minutes. If you didn't ask for this, ignore it.</p>
       </div>
     `;
+    const gErr = await sendViaGmail(email, 'Your Cudic code: ' + code, mailHtml);
+    if (!gErr) return null;
+    if (gErr.message !== 'gmail not configured') console.error('Gmail error:', gErr.message);
     if (resend) {
       try {
         const { error } = await resend.emails.send({
@@ -160,9 +198,9 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/auth/send-code' && req.method === 'POST') {
     cors(res);
-    if (!resend && !process.env.BREVO_API_KEY) {
+    if (!process.env.GMAIL_REFRESH_TOKEN && !resend && !process.env.BREVO_API_KEY) {
       res.writeHead(503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Email not configured (RESEND_API_KEY or BREVO_API_KEY env missing)' }));
+      res.end(JSON.stringify({ error: 'Email not configured (GMAIL_* / RESEND_API_KEY / BREVO_API_KEY env missing)' }));
       return;
     }
     const body = await readBody(req).catch(() => ({}));
