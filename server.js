@@ -79,6 +79,11 @@ async function sendViaGmail(to, subject, html) {
       body: JSON.stringify({ raw }),
     });
     if (r.ok) return null;
+    // Error bodies carry only codes/messages, never secrets — and the
+    // message names the exact failure (mailbox vs request vs permission).
+    let sbody = '';
+    try { sbody = await r.text(); } catch (e) {}
+    console.error('Gmail send failed:', r.status, String(sbody).substring(0, 300));
     return new Error('gmail send failed: ' + r.status);
   } catch (e) { return e instanceof Error ? e : new Error(String(e)); }
 }
