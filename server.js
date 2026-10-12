@@ -57,8 +57,15 @@ async function sendViaGmail(to, subject, html) {
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ client_id: cid, client_secret: csec, refresh_token: rtok, grant_type: 'refresh_token' }),
       });
-      const j = await t.json().catch(() => ({}));
-      if (!t.ok || !j.access_token) return new Error('gmail token refresh failed');
+      const body = await t.text().catch(() => '');
+      let j = {};
+      try { j = JSON.parse(body); } catch (e) {}
+      if (!t.ok || !j.access_token) {
+        // Error bodies carry only codes like invalid_client/invalid_grant,
+        // never secrets — safe to log, and it names the exact failure.
+        console.error('Gmail token refresh failed:', t.status, String(body).substring(0, 200));
+        return new Error('gmail token refresh failed');
+      }
       gmailToken = { access: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000 };
     }
     const raw = Buffer.from(
