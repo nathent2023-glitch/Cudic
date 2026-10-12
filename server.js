@@ -1840,6 +1840,26 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── API: games this account liked ───────────────────────────────
+  // Must stay above the generic /api/games/:id GET below, which would swallow it.
+  if (url.pathname === '/api/games/liked' && req.method === 'GET') {
+    cors(res);
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
+    const { data: { user } } = await supabase.auth.getUser(token);
+    if (!user) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
+    const { data: rows } = await supabase
+      .from('game_likes')
+      .select('game_id, created_at, games!inner(id, title, description, thumbnail, tags, play_count, users!owner_id(display_name))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ games: (rows || []).map((r) => ({ ...r.games, likes: 1 })).filter((g) => g && g.id) }));
+    return;
+  }
+
   // ── API: get single game ───────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
@@ -1885,25 +1905,6 @@ const server = http.createServer(async (req, res) => {
     const { count } = await supabase.from('game_likes').select('user_id', { count: 'exact', head: true }).eq('game_id', gid);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ liked: req.method === 'POST', likes: count || 0 }));
-    return;
-  }
-
-  // ── API: games this account liked ───────────────────────────────
-  if (url.pathname === '/api/games/liked' && req.method === 'GET') {
-    cors(res);
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '');
-    if (!token) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (!user) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ games: [] })); return; }
-    const { data: rows } = await supabase
-      .from('game_likes')
-      .select('game_id, created_at, games!inner(id, title, description, thumbnail, tags, play_count, users!owner_id(display_name))')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ games: (rows || []).map((r) => ({ ...r.games, likes: 1 })).filter((g) => g && g.id) }));
     return;
   }
 
@@ -2502,7 +2503,8 @@ const server = http.createServer(async (req, res) => {
     if (ext === '.html') headers['Cache-Control'] = 'no-store';
     // Hashed studio bundles are content-addressed — safe to cache forever.
     // (index.html itself stays no-store: it points at the latest hashes.)
-    if (ext !== '.html' && filePath.includes(`${path.sep}studio${path.sep}`)) {
+    // Same for the exported landing (_next) and its 3D models.
+    if (ext !== '.html' && (filePath.includes(`${path.sep}studio${path.sep}`) || filePath.includes(`${path.sep}_next${path.sep}`) || filePath.includes(`${path.sep}models${path.sep}`))) {
       headers['Cache-Control'] = 'public, max-age=31536000, immutable';
     }
     res.writeHead(200, headers);

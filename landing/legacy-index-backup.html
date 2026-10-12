@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d0e10">
+    <meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
+    <title>Cudic - build and play small games in your browser</title>
+    <meta name="description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Cudic - build and play small games in your browser">
+    <meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta property="og:url" content="https://cudic.vercel.app/">
+    <meta property="og:image" content="https://cudic.vercel.app/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cudic - build and play small games in your browser">
+    <meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play.">
+    <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
+    <link rel="canonical" content="https://cudic.vercel.app/">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <meta name="google-adsense-account" content="ca-pub-9483499851682563">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483499851682563" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/ads.css?v=1">
+    <script src="/ads.js?v=1" defer></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,400..900;1,400..900&family=Satoshi:ital,wght@0,300..800;1,300..800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <script>document.documentElement.className = 'js';</script>
+    <style>
+        /* ── Cudic landing: dark editorial, deep surfaces ──────────
+           Palette adapted for dark mode from design.md tokens.
+           Colour is rare: ~70% paper, ~20% cream, under 5% accent.
+           --signal #7300FF is the sole electric-violet accent (never purple everywhere). */
+        :root {
+            --paper: #0d0e10;
+            --cream: #161618;
+            --ink: #E8EEFA;
+            --stone: #6B7080;
+            --signal: #FF6B9D;
+            --ember: #FF8C1A;
+            --line: rgba(255,255,255,.08);
+            --muted: #A0A8C4;
+
+            --font-display: 'Epilogue', system-ui, sans-serif;
+            --font-body: 'Satoshi', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            --font-logo: var(--font-display);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            background: var(--paper);
+        }
+
+        /* ── Animated grid pattern (subtle background) ────────── */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .grid-bg { display: none; }
+        }
+
+        /* ── Smooth cursor ────────────────────────────────────────── */
+        .cursor {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid var(--signal);
+            background: rgba(255,107,157,.1);
+            pointer-events: none;
+            z-index: 9998;
+            mix-blend-mode: difference;
+            transform: translate(-50%, -50%);
+            transition: background .15s ease;
+        }
+        .cursor.ring {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--muted);
+            background: transparent;
+            opacity: .6;
+        }
+        body.cursor-active .cursor.ring {
+            opacity: .2;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .cursor, .cursor.ring { display: none; }
+        }
+
+        body {
+            margin: 0;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--font-body);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        ::selection {
+            background: #4A148C;
+            color: var(--ink);
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--ink);
+            outline-offset: 2px;
+        }
+
+        img {
+            max-width: 100%;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: var(--font-display);
+            font-weight: 600;
+            letter-spacing: -.02em;
+            margin: 0;
+        }
+
+        h1 em,
+        h2 em,
+        h3 em {
+            font-style: italic;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 7vw, 5.5rem);
+            line-height: 1.02;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 1.1;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        mark {
+            background: transparent;
+            color: var(--ink);
+            text-decoration: underline;
+            text-decoration-color: var(--signal);
+            text-decoration-thickness: 2px;
+            text-underline-offset: 4px;
+            padding: 0 .15em;
+        }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding-left: 24px;
+            padding-right: 24px;
+        }
+
+        .sec {
+            padding-top: 112px;
+            padding-bottom: 112px;
+        }
+
+        .band {
+            background: var(--cream);
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .sub {
+            margin-top: 16px;
+            color: var(--stone);
+            max-width: 60ch;
+        }
+
+        /* ── Links: underline slides ─────────────────────────────── */
+        .navlink,
+        .tlink,
+        .foot-links a {
+            text-decoration: none;
+            background-image: linear-gradient(currentColor, currentColor);
+            background-repeat: no-repeat;
+            background-size: 0 1px;
+            background-position: 0 100%;
+            transition: background-size .25s ease, color .2s ease;
+        }
+
+        .navlink:hover,
+        .tlink:hover {
+            background-size: 100% 1px;
+        }
+
+        .tlink {
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        /* ── Buttons: one primary per view ───────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-body);
+            font-size: .95rem;
+            font-weight: 600;
+            padding: .7rem 1.2rem;
+            border-radius: 12px;
+            corner-shape: squircle;
+            border: 1px solid transparent;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background .18s ease, color .18s ease, border-color .18s ease, font-weight .18s ease, letter-spacing .18s ease;
+        }
+
+        .btn:hover {
+            font-weight: 700;
+            letter-spacing: .02em;
+        }
+
+        /* ── Button labels morph letter-by-letter into the display face ── */
+        .btn .ch {
+            display: inline-block;
+            position: relative;
+            white-space: pre;
+            transition: color .18s ease;
+            transition-delay: calc(var(--i) * 38ms);
+        }
+
+        .btn:hover .ch {
+            color: transparent;
+        }
+
+        .btn .ch i {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, calc(-50% + 6px));
+            font-family: var(--font-display);
+            font-style: normal;
+            font-weight: 600;
+            font-size: 1.14em;
+            line-height: 1;
+            white-space: pre;
+            color: var(--paper);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .28s ease, transform .28s ease;
+            transition-delay: calc(var(--i) * 38ms + 90ms);
+        }
+
+        .btn:hover .ch i {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-primary {
+            background: var(--signal);
+            color: var(--paper);
+        }
+
+        .btn-primary:hover {
+            background: #FF7AAB;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+
+        .btn-secondary:hover {
+            background: var(--ink);
+            color: var(--paper);
+        }
+
+        /* ── Nav ─────────────────────────────────────────────────── */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
+        }
+
+        .nav-in {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--ink);
+            font-family: var(--font-logo);
+            font-weight: 600;
+            font-size: 1.3rem;
+            letter-spacing: -.01em;
+        }
+
+        .brand img {
+            width: 22px;
+            height: 22px;
+            display: block;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 26px;
+        }
+
+        .navlink {
+            color: var(--ink);
+            font-size: .92rem;
+            font-weight: 500;
+            padding: 2px 0;
+        }
+
+        .nav-cta {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 22px;
+        }
+
+        .nav-signin {
+            color: var(--pine);
+            font-size: .92rem;
+            font-weight: 500;
+        }
+
+        /* ── Hero ────────────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 116px 0 108px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero h1 {
+            max-width: 15ch;
+            margin: 0 auto;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .hero h1.animate-in {
+            opacity: 1;
+            transform: none;
+            animation: fadeSlideUp .8s ease-out forwards;
+            animation-delay: .3s;
+        }
+        @keyframes fadeSlideUp {
+            to { opacity: 1; transform: none; }
+        }
+
+        .hero .lede {
+            margin: 26px auto 0;
+            max-width: 56ch;
+            color: var(--stone);
+            font-size: 1.1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity .6s ease 0.5s, transform .6s ease 0.5s;
+        }
+        .hero.animate-ready .lede {
+            opacity: 1;
+            transform: none;
+        }
+
+        .hero-actions {
+            margin-top: 36px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 14px;
+        }
+
+        /* ── Cards: three things, one tab ────────────────────────── */
+        .sec-head {
+            max-width: 720px;
+        }
+
+        .cards {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--cream);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 30px 28px;
+        }
+
+        .card h3 {
+            font-size: 1.4rem;
+            line-height: 1.2;
+        }
+
+        .card p {
+            margin-top: 12px;
+            font-size: .97rem;
+            color: var(--ink);
+        }
+
+        /* ── Two-column sections: bullets + screenshot ───────────── */
+        .split {
+            display: grid;
+            grid-template-columns: .9fr 1.1fr;
+            gap: 56px;
+            align-items: center;
+        }
+
+        .split-mirror {
+            grid-template-columns: 1.1fr .9fr;
+        }
+
+        .ticks {
+            list-style: none;
+            margin: 28px 0 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .ticks li {
+            display: flex;
+            gap: 13px;
+            align-items: baseline;
+            font-size: 1rem;
+        }
+
+        .ticks li::before {
+            content: '';
+            flex-shrink: 0;
+            width: 7px;
+            height: 7px;
+            background: var(--muted);
+            border-radius: 2px;
+            transform: translateY(-1px);
+        }
+
+        .ticks b {
+            font-weight: 600;
+        }
+
+        .sec-cta {
+            margin-top: 30px;
+        }
+
+        /* ── Screenshot frames: flat, opposite band colour ───────── */
+        .frame {
+            display: block;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .frame img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        /* ── Border beam ────────────────────────────── */
+        .frame {
+            position: relative;
+            --beam: 25%;
+        }
+        .frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 2px;
+            background: transparent;
+            mask:
+                linear-gradient(180deg, #fff0, transparent),
+                linear-gradient(180deg, transparent, #000);
+            pointer-events: none;
+            z-index: 2;
+        }
+        .frame .beam {
+            position: absolute;
+            inset: -2px;
+            border-radius: calc(12px + 2px);
+            z-index: 1;
+            opacity: .4;
+        }
+        .frame .beam::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: conic-gradient(from 0deg, var(--signal), transparent, var(--signal));
+            filter: blur(6px);
+            opacity: .5;
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Gallery cards ───────────────────────────────────────── */
+        .games {
+            margin-top: 48px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .gcard {
+            display: block;
+            background: var(--cream);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            text-decoration: none;
+            color: var(--ink);
+            transition: border-color .2s ease;
+        }
+
+        .gcard:hover {
+            border-color: rgba(31, 29, 26, .4);
+        }
+
+        .gthumb {
+            aspect-ratio: 16 / 10;
+            background: var(--paper);
+            border-bottom: 1px solid var(--line);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gthumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .gthumb svg {
+            width: 40px;
+            height: 40px;
+            stroke: var(--stone);
+            stroke-width: 1.4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .gmeta {
+            padding: 16px 18px 18px;
+        }
+
+        .gtitle {
+            font-weight: 500;
+            font-size: 1rem;
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .grow {
+            margin-top: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .gcreator {
+            color: var(--stone);
+            font-size: .85rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .gpub {
+            font-family: var(--font-mono);
+            font-size: .68rem;
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .games-empty {
+            margin-top: 48px;
+            color: var(--stone);
+        }
+
+        /* ── Feature log (live commit cards) ─────────────────────── */
+        .dim { color: var(--muted); }
+        .feature-log {
+            margin-top: 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .feat-card {
+            background: var(--cream);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+            transition: border-color .2s ease, transform .2s ease;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .feat-card { transition: none; }
+        }
+        .feat-card:hover {
+            border-color: var(--signal);
+            transform: translateX(2px);
+        }
+        .feat-hash {
+            font-family: var(--font-mono);
+            font-size: .72rem;
+            color: var(--muted);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .feat-content {
+            flex: 1;
+        }
+        .feat-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 2px;
+        }
+        .feat-desc {
+            color: var(--stone);
+            font-size: .9rem;
+        }
+        .feat-date {
+            font-size: .72rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ── Final call to action ────────────────────────────────── */
+        .finale {
+            text-align: center;
+            padding-top: 128px;
+            padding-bottom: 128px;
+        }
+
+        .finale h2 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            max-width: 18ch;
+            margin: 0 auto;
+        }
+
+        .finale p {
+            margin: 22px auto 0;
+            color: var(--stone);
+            max-width: 52ch;
+        }
+
+        .finale .hero-actions {
+            margin-top: 36px;
+        }
+
+        /* ── Footer ──────────────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--line);
+        }
+
+        .foot-in {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 22px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .foot-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .foot-links a {
+            color: var(--ink);
+            font-size: .9rem;
+        }
+
+        .foot-links a:hover {
+            color: var(--ink);
+            background-size: 100% 1px;
+        }
+
+        .foot-note {
+            color: var(--stone);
+            font-size: .85rem;
+        }
+
+        /* ── Scroll reveal: fade and rise 12px, 400ms ────────────── */
+        .js [data-rv] {
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity .4s ease, transform .4s ease;
+        }
+
+        .js [data-rv].in {
+            opacity: 1;
+            transform: none;
+        }
+
+        /* ── Responsive ──────────────────────────────────────────── */
+        @media (max-width: 980px) {
+            .nav-links {
+                display: none;
+            }
+
+            .split,
+            .split-mirror {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+
+            .split-mirror .frame {
+                order: -1;
+            }
+
+            .cards,
+            .games {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sec {
+                padding-top: 64px;
+                padding-bottom: 64px;
+            }
+
+            .hero {
+                padding: 76px 0 68px;
+            }
+
+            .finale {
+                padding-top: 80px;
+                padding-bottom: 80px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .nav-signin {
+                display: none;
+            }
+
+            .hero-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                transition-duration: .001ms !important;
+                animation-duration: .001ms !important;
+            }
+
+            .js [data-rv],
+            [data-rv] {
+                opacity: 1;
+                transform: none;
+            }
+
+            .grid-bg,
+            .frame .beam,
+            .cursor {
+                display: none !important;
+            }
+
+            body { cursor: auto !important; }
+
+            .feat-card:hover {
+                transform: none;
+            }
+        }
+    </style>
+</head>
+
+    <body>
+        <div class="grid-bg"></div>
+    <header class="nav">
+        <div class="nav-in">
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic</span></a>
+            <nav class="nav-links">
+                <a class="navlink" href="/games">Gallery</a>
+                <a class="navlink" href="/themes">Themes</a>
+                <a class="navlink" href="/docs">Docs</a>
+                <a class="navlink" href="/chat">Chat</a>
+                <a class="navlink" href="/studio">Studio</a>
+            </nav>
+            <div class="nav-cta">
+                <a class="navlink nav-signin" href="/login">Sign in</a>
+                <a class="btn btn-primary" href="/studio">Open Studio</a>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Smooth cursor elements (Magic UI adaptation) -->
+        <div class="cursor" id="cursorDot" hidden></div>
+        <div class="cursor ring" id="cursorRing" hidden></div>
+
+        <!-- ── Hero ─────────────────────────────────────────────── -->
+        <section class="hero">
+            <div class="wrap">
+                <h1>Build <em>small</em> games. Play them <mark>instantly</mark>.</h1>
+                <p class="lede">A browser studio for games, sites and themes. Open Studio, drop in your files,
+                    publish, and share a playable link.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary" href="/studio">Open Studio</a>
+                    <a class="btn btn-secondary" href="/games">Browse the gallery</a>
+                </div>
+            </div>
+        </section>
+
+        <div class="wrap">
+            <div class="ad-frame ad-leaderboard"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
+        </div>
+
+        <!-- ── Live feature log ────────────────────────────────── -->
+        <section class="sec" data-rv>
+            <div class="wrap">
+                <div class="sec-head">
+                    <h2>Latest updates</h2>
+                    <p class="sub">Recent changes to Cudic, pulled live from the repo.</p>
+                </div>
+                <div class="feature-log" id="featureLog">
+                    <p class="dim">Loading recent commits…</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Three things, one tab ────────────────────────────── -->
+        <section class="sec">
+            <div class="wrap">
+                <div class="sec-head">
+                    <h2 data-rv>From a blank file to a playable link.</h2>
+                    <p class="sub" data-rv>Three things happen in one browser tab. You write it, you publish it,
+                        people play it.</p>
+                </div>
+                <div class="cards">
+                    <article class="card" data-rv>
+                        <h3>Build in Studio</h3>
+                        <p>A file tree, a tabbed editor, a running preview and a console, side by side in one tab. No
+                            local server, no setup.</p>
+                    </article>
+                    <article class="card" data-rv>
+                        <h3>Publish in one move</h3>
+                        <p>One click gives your game a page, a thumbnail and a comment thread. Fork any published game
+                            straight back into your Studio.</p>
+                    </article>
+                    <article class="card" data-rv>
+                        <h3>Chat while you play</h3>
+                        <p>Open a lobby, drop the link in a call, keep the history if you want it. Servers with
+                            membership are there when you need them.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Editor (cream band) ──────────────────────────────── -->
+        <section class="band">
+            <div class="sec wrap split">
+                <div>
+                    <h2 data-rv>Write it where it <em>runs</em>.</h2>
+                    <ul class="ticks" data-rv>
+                        <li>File tree, editor and status bar, side by side.</li>
+                        <li>The preview updates next to what you typed.</li>
+                        <li>The console sits in the same tab.</li>
+                    </ul>
+                    <p class="sec-cta" data-rv><a class="tlink" href="/studio">Open Studio</a></p>
+                </div>
+                <div data-rv>
+                <div class="frame">
+                    <span class="beam"></span>
+                    <img src="/shots/studio.png" width="1280" height="800" loading="lazy"
+                        alt="The Cudic Studio workbench showing a file explorer, an HTML file open in the editor and a status bar">
+                </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Gallery (paper) ──────────────────────────────────── -->
+        <section class="sec">
+            <div class="wrap">
+                <div class="sec-head">
+                    <h2 data-rv>Every game gets a <em>page</em>.</h2>
+                    <p class="sub" data-rv>A published game gets a thumbnail, a comment thread and a fork button that
+                        opens it straight back in your Studio.</p>
+                </div>
+                <div class="games" id="gameGrid" hidden></div>
+                <p class="games-empty" id="gameEmpty" hidden>No games published yet. Publish the first one from
+                    Studio.</p>
+                <p class="sec-cta" data-rv><a class="tlink" href="/games">Browse the gallery</a></p>
+            </div>
+        </section>
+
+        <!-- ── Theme packs (cream band, mirrored) ───────────────── -->
+        <section class="band">
+            <div class="sec wrap split split-mirror">
+                <div data-rv>
+                <div class="frame">
+                    <span class="beam"></span>
+                    <img src="/shots/themes.png" width="660" height="625" loading="lazy"
+                        alt="The Cudic theme pack store showing the Anime City Night pack with an install button">
+                </div>
+                </div>
+                <div>
+                    <h2 data-rv>Change the whole look in <em>one click</em>.</h2>
+                    <p class="sub" data-rv>A pack re-skins the rail, the scenes and the icons together. Install one and
+                        everything you open afterwards picks it up.</p>
+                    <ul class="ticks" data-rv>
+                        <li><span><b>Background art, not just a swatch.</b> Packs ship real scenes that sit behind your
+                                work.</span></li>
+                        <li><span><b>Icons and motion come along.</b> The set stays coherent instead of
+                                half-changed.</span></li>
+                    </ul>
+                    <p class="sec-cta" data-rv><a class="tlink" href="/themes">Browse theme packs</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Final call to action ─────────────────────────────── -->
+        <section class="finale">
+            <div class="wrap">
+                <h2 data-rv>Start with an <em>empty</em> file.</h2>
+                <p data-rv>Studio opens into a new project. Write three lines, hit preview, and something is running.
+                    Publishing takes one more click.</p>
+                <div class="hero-actions" data-rv>
+                    <a class="btn btn-primary" href="/studio">Open Studio</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="foot-in">
+            <a class="brand" href="/"><img src="/cudic_sfsvg.svg" alt="" width="22" height="22"><span>cudic</span></a>
+            <nav class="foot-links">
+                <a href="/games">Gallery</a>
+                <a href="/themes">Themes</a>
+                <a href="/docs">Docs</a>
+                <a href="/chat">Chat</a>
+                <a href="/studio">Studio</a>
+                <a href="/login">Sign in</a>
+                <a href="/privacy">Privacy</a>
+            </nav>
+            <p class="foot-note">Built in the browser. No install, no build step.</p>
+        </div>
+    </footer>
+
+    <script src="/config.js"></script>
+    <script>
+        (function () {
+            /* ── Scroll reveals: fade and rise 12px over 400ms ─────── */
+            var els = document.querySelectorAll('[data-rv]');
+            if ('IntersectionObserver' in window) {
+                var io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (e.isIntersecting) {
+                            e.target.classList.add('in');
+                            io.unobserve(e.target);
+                        }
+                    });
+                }, { rootMargin: '0px 0px -8% 0px' });
+                els.forEach(function (el) { io.observe(el); });
+            } else {
+                els.forEach(function (el) { el.classList.add('in'); });
+            }
+
+            /* ── Gallery: live published games ────────────────────── */
+            var grid = document.getElementById('gameGrid');
+            var empty = document.getElementById('gameEmpty');
+            var apiBase = (typeof WS_URL !== 'undefined' && WS_URL)
+                ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+            var CUBE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>';
+
+            function card(g) {
+                var a = document.createElement('a');
+                a.className = 'gcard';
+                a.href = '/view.html?id=' + encodeURIComponent(g.id);
+
+                var th = document.createElement('div');
+                th.className = 'gthumb';
+                if (g.thumbnail) {
+                    var im = document.createElement('img');
+                    im.src = g.thumbnail;
+                    im.alt = '';
+                    im.loading = 'lazy';
+                    th.appendChild(im);
+                } else {
+                    th.innerHTML = CUBE;
+                }
+
+                var meta = document.createElement('div');
+                meta.className = 'gmeta';
+                var title = document.createElement('span');
+                title.className = 'gtitle';
+                title.textContent = g.title || 'Untitled';
+                var row = document.createElement('div');
+                row.className = 'grow';
+                var who = document.createElement('span');
+                who.className = 'gcreator';
+                var owner = g.users || {};
+                who.textContent = owner.display_name || 'Unknown';
+                var pub = document.createElement('span');
+                pub.className = 'gpub';
+                pub.textContent = 'published';
+                row.appendChild(who);
+                row.appendChild(pub);
+                meta.appendChild(title);
+                meta.appendChild(row);
+                a.appendChild(th);
+                a.appendChild(meta);
+                return a;
+            }
+
+            fetch(apiBase + '/api/games')
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var list = (d.games || []).slice(0, 3);
+                    if (!list.length) { empty.hidden = false; return; }
+                    list.forEach(function (g) { grid.appendChild(card(g)); });
+                    grid.hidden = false;
+                })
+                .catch(function () { empty.hidden = false; });
+
+            /* ── Split button labels into letters for the serif hover ── */
+            document.querySelectorAll('.btn').forEach(function (b) {
+                var txt = b.textContent;
+                b.setAttribute('aria-label', txt);
+                b.textContent = '';
+                for (var i = 0; i < txt.length; i++) {
+                    var s = document.createElement('span');
+                    s.className = 'ch';
+                    s.style.setProperty('--i', i);
+                    s.textContent = txt[i];
+                    var f = document.createElement('i');
+                    f.setAttribute('aria-hidden', 'true');
+                    f.textContent = txt[i];
+                    s.appendChild(f);
+                    b.appendChild(s);
+                }
+            });
+        })();
+    </script>
+
+    <!-- ── Smooth cursor (Magic UI adaptation) ────────────────────── -->
+    <script>
+        (function(){
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var dot = document.getElementById('cursorDot');
+            var ring = document.getElementById('cursorRing');
+            if (!dot || !ring) return;
+            dot.hidden = false; ring.hidden = false;
+            var px = 0, py = 0, rx = 0, ry = 0;
+            var spring = 0.15; /* stiffness factor */
+            document.addEventListener('mousemove', function(e){
+                px = e.clientX; py = e.clientY;
+            });
+            function step(){
+                rx += (px - rx) * spring;
+                ry += (py - ry) * spring;
+                dot.style.transform = 'translate(' + rx + 'px, ' + ry + 'px) translate(-50%, -50%)';
+                /* ring lags slightly behind */
+                var dx = rx - px, dy = ry - py;
+                var mag = Math.sqrt(dx*dx + dy*dy) > 1;
+                dot.classList.toggle('active', mag);
+                ring.style.transform = 'translate(' + (rx + dx * 0.3) + 'px, ' + (ry + dy * 0.3) + 'px) translate(-50%, -50%)';
+                requestAnimationFrame(step);
+            }
+            step();
+            /* hide on input */
+            ['keydown','wheel','touchstart'].forEach(function(ev){
+                document.addEventListener(ev, function(){
+                    dot.style.display = 'none'; ring.style.display = 'none';
+                });
+            });
+            document.addEventListener('mousemove', function(){
+                dot.style.display = 'block'; ring.style.display = 'block';
+            });
+        })();
+    </script>
+
+    <!-- ── Live feature log (Magic UI-style commit cards) ──────────── -->
+    <script>
+        (function(){
+            var log = document.getElementById('featureLog');
+            if (!log) return;
+            fetch('https://api.github.com/repos/nathent2023-glitch/Cudic/commits?per_page=6')
+                .then(function(r){ return r.json(); })
+                .then(function(data){
+                    if (!Array.isArray(data) || !data.length){
+                        log.innerHTML = '<p class="dim">No recent updates.</p>';
+                        return;
+                    }
+                    log.innerHTML = data.map(function(c){
+                        var msg = c.commit.message.split('\n');
+                        var title = msg[0];
+                        var desc = msg.slice(1).join(' ').trim().substring(0,140) || '';
+                        var d = new Date(c.commit.author.date);
+                        var dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+                        var shortHash = c.sha.substring(0,7);
+                        return '<a class="feat-card" href="https://github.com/nathent2023-glitch/Cudic/commit/' + c.sha + '" target="_blank" rel="noopener noreferrer">'
+                            + '<span class="feat-hash">#' + shortHash + '</span>'
+                            + '<span class="feat-content">'
+                            + '<span class="feat-title">' + title + '</span>'
+                            + (desc ? '<span class="feat-desc">' + desc + '</span>' : '')
+                            + '<span class="feat-date">' + dateStr + '</span>'
+                            + '</span></a>';
+                    }).join('');
+                })
+                .catch(function(){
+                    log.innerHTML = '<p class="dim">No recent updates.</p>';
+                });
+        })();
+    </script>
+
+    <!-- ── Hero entrance animation ──────────────────────────────────── -->
+    <script>
+        (function(){
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var h1 = document.querySelector('.hero h1');
+            var lede = document.querySelector('.hero .lede');
+            if (h1){
+                h1.classList.add('animate-in');
+            }
+            if (lede){
+                setTimeout(function(){
+                    document.querySelector('.hero').classList.add('animate-ready');
+                }, 200);
+            }
+            /* reveal .sec sections on scroll */
+            var rvs = [].slice.call(document.querySelectorAll('[data-rv]'));
+            var reveal = function(){
+                rvs.forEach(function(el){
+                    var rect = el.getBoundingClientRect();
+                    if (rect.top < window.innerHeight * 0.85 && !el.classList.contains('in')){
+                        el.classList.add('in');
+                    }
+                });
+            };
+            reveal();
+            window.addEventListener('scroll', reveal);
+        })();
+    </script>
+</body>
+
+</html>

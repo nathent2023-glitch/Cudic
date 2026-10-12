@@ -151,10 +151,10 @@ Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
 ### HTTP endpoints
 ```
 POST /auth/send-code  POST /auth/verify-code    GET  /auth/check-verified
-GET  /auth/verify               GET  /auth/callback
+GET  /auth/callback (GitHub OAuth)
 GET  /api/session               GET|PUT /api/profile
-GET  /api/messages              POST /api/lobby/persistent
-GET  /api/lobby                 GET|POST /api/servers   GET /api/servers/mine
+GET  /api/messages              (lobby list runs over WS, not REST)
+GET|POST /api/servers           GET /api/servers/mine
 GET  /api/games                 GET|POST /api/games     GET /api/games/mine
 POST /api/ai/fetch              ← the AI proxy (see §7)
 GET  /favicon.ico               → serves public/cudic_sfsvg.svg

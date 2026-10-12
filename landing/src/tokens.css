@@ -1,0 +1,392 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #0d0e10;
+  --color-cream: #161618;
+  --color-ink: #e8eefa;
+  --color-stone: #6b7080;
+  --color-signal: #ff6b9d;
+  --color-signal-soft: #ff7aab;
+  --color-ember: #ff8c1a;
+  --color-muted: #a0a8c4;
+  --color-line: rgba(255, 255, 255, 0.08);
+  --font-display: "Epilogue", system-ui, sans-serif;
+  --font-body: "Satoshi", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Light theme: same vars, flipped surfaces. Every component reads vars,
+// so the toggle just works. */
+[data-theme="light"] {
+  --color-paper: #f4f1ea;
+  --color-cream: #ffffff;
+  --color-ink: #1a1c22;
+  --color-stone: #5b6272;
+  --color-muted: #6b7194;
+  --color-line: rgba(26, 28, 34, 0.12);
+}
+
+html {
+  background: var(--color-paper);
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #4a148c;
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
+
+/* ── Squircle buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.7rem 1.2rem;
+  border-radius: 12px;
+  corner-shape: squircle;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.1s ease;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn-primary {
+  background: var(--color-signal);
+  color: #0d0e10;
+}
+.btn-primary:hover {
+  background: var(--color-signal-soft);
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+.btn-secondary:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+/* ── Interactive hover button (Magic UI port): arrow slides in ── */
+.ihb {
+  position: relative;
+  overflow: hidden;
+}
+.ihb .ihb-label {
+  position: relative;
+  z-index: 1;
+  transition: transform 0.25s ease;
+}
+.ihb .ihb-arrow {
+  position: relative;
+  z-index: 1;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: max-width 0.25s ease, opacity 0.2s ease, transform 0.25s ease;
+  white-space: nowrap;
+}
+.ihb:hover .ihb-arrow {
+  max-width: 2rem;
+  opacity: 1;
+  transform: none;
+}
+.ihb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 120%, rgba(255, 255, 255, 0.25), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.ihb:hover::after {
+  opacity: 1;
+}
+
+/* ── Backlight (Magic UI port): soft glow behind a block ── */
+.backlight {
+  position: relative;
+}
+.backlight::before {
+  content: "";
+  position: absolute;
+  inset: 12% 8% -8% 8%;
+  background: radial-gradient(ellipse at center, var(--color-signal) 0%, transparent 65%);
+  opacity: 0.18;
+  filter: blur(38px);
+  pointer-events: none;
+  z-index: 0;
+}
+.backlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Animated grid backdrop ── */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(140, 150, 190, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140, 150, 190, 0.07) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 30%, black 30%, transparent 75%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Smooth cursor ── */
+.cursor-dot,
+.cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+}
+.cursor-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--color-signal);
+}
+.cursor-ring {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-muted);
+  opacity: 0.55;
+  transition: width 0.2s ease, height 0.2s ease, opacity 0.2s ease;
+}
+.cursor-ring.grow {
+  width: 56px;
+  height: 56px;
+  opacity: 0.9;
+  border-color: var(--color-signal);
+}
+body.has-cursor,
+body.has-cursor a,
+body.has-cursor button {
+  cursor: none;
+}
+
+/* ── Border beam ── */
+.beam-frame {
+  position: relative;
+}
+.beam-frame .beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.35;
+}
+.beam-frame .beam::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 0deg, transparent 74%, var(--color-signal), transparent 82%);
+  filter: blur(8px);
+  animation: beam-spin 4.5s linear infinite;
+}
+@keyframes beam-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.beam-frame.boosted .beam {
+  opacity: 0.95;
+}
+
+/* ── Velocity marquee ── */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-x 28s linear infinite;
+}
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee-x {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Scroll-reveal defaults (JS adds .in; visible without JS) ── */
+.js [data-rv] {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.js [data-rv].in {
+  opacity: 1;
+  transform: none;
+}
+.js [data-clip] {
+  clip-path: inset(0 0 100% 0);
+  transition: clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.js [data-clip].in {
+  clip-path: inset(0 0 0% 0);
+}
+.js [data-draw] {
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.js [data-draw].in {
+  transform: scaleX(1);
+}
+
+/* ── Hero entrance (JS adds .go; visible without JS) ── */
+.js [data-hero-title] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s ease 0.15s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
+}
+.js [data-hero-title].go {
+  opacity: 1;
+  transform: none;
+}
+.js [data-hero-fade] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s ease 0.45s, transform 0.7s ease 0.45s;
+}
+.js [data-hero-fade].go {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Feature/commit cards ── */
+.feat-card {
+  background: var(--color-cream);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  corner-shape: squircle;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.feat-card:hover {
+  border-color: var(--color-signal);
+}
+
+/* ── Floating sprites ── */
+@keyframes floaty {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -14px;
+  }
+}
+.floaty {
+  animation: floaty 5s ease-in-out infinite;
+}
+
+/* ── Underline mark ── */
+.mark-pink {
+  text-decoration: underline;
+  text-decoration-color: var(--color-signal);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 6px;
+}
+
+/* ── Nav scrolled state ── */
+#landing-nav {
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+#landing-nav.scrolled {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* ── Back-to-top ── */
+#to-top {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+#to-top.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+/* ── Theme toggle circle wipe (Magic UI animated-theme-toggler port) ── */
+.theme-wipe {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9990;
+  transform: translate(-50%, -50%) scale(0);
+}
+.theme-wipe.run {
+  animation: wipe-expand 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes wipe-expand {
+  to {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ── Reduced motion: everything still ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .js [data-rv],
+  [data-rv],
+  .js [data-hero-title],
+  .js [data-hero-fade] {
+    opacity: 1;
+    transform: none;
+  }
+  .js [data-clip],
+  [data-clip] {
+    clip-path: none;
+  }
+  .js [data-draw],
+  [data-draw] {
+    transform: none;
+  }
+  .grid-bg,
+  .beam-frame .beam,
+  .cursor-dot,
+  .cursor-ring,
+  .theme-wipe {
+    display: none !important;
+  }
+  body.has-cursor,
+  body.has-cursor a,
+  body.has-cursor button {
+    cursor: auto;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}

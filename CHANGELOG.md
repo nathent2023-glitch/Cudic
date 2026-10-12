@@ -55,8 +55,26 @@ embeddable games**
   heartbeat (no more phantom "other instance" kicks); second tabs stand
   down silently with no banner.
 
+**Next.js landing page** (built in `cudic-test`, shipped as static files)
+- `/` replaced with the new landing: kinetic title, dock nav with hover
+  labels, flying-in sections, tilt cards, magnetic buttons, and a fixed 3D
+  backdrop streaming 7 Kenney CC0 models from the asset library.
+- Static export (`out/`) copied to `public/` (`index.html`, `_next/`,
+  `models/`); old page kept unrouted at `index-legacy.html`. No server,
+  API, or other-page changes; immutable cache on `/_next/static/*` and
+  `/models/*`, `index.html` stays no-store.
+- Theme toggle reads/writes the site's own `glox_theme` preference
+  (dark default) so packs and other pages keep working.
+- Cookie consent: bottom banner (Reject / Choose / Accept) + full settings
+  modal (Essential locked, Preferences, Advertising), choice in a
+  `cudic_consent` cookie; AdSense script loads only after advertising
+  consent; footer gains a Cookie settings link.
+
 ### Fixed
 
+- `GET /api/games/liked` always 404'd — the route sat below the generic
+  `/api/games/:id` handler, which swallowed it. Moved above; profile liked
+  games list works again.
 - Malformed `?token=` values no longer burn Supabase lookups (JWT shape
   check client + server; instant 401).
 - Gallery script killed by a dangling `async` after the tag-listener
@@ -68,6 +86,9 @@ embeddable games**
 
 - `sidebar.js` → v11, `sidebar.css` → v23, `theme-engine.js` → `?v=1`.
 - Rail icons render at full `--text-primary` for contrast.
+- `privacy.html` pins `sidebar.js?v=11` (was v8); sitemap gains `/login`
+  and `/privacy`; endpoint docs drop the deleted `/auth/verify`,
+  `/api/lobby` and `/api/lobby/persistent` routes.
 
 ---
 
