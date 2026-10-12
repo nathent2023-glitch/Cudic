@@ -151,6 +151,7 @@ Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
 ### HTTP endpoints
 ```
 POST /auth/send-code  POST /auth/verify-code    GET  /auth/check-verified
+GET  /auth/verification-required (login hard gate — same rule as needVerified)
 GET  /auth/callback (GitHub OAuth)
 GET  /api/session               GET|PUT /api/profile
 GET  /api/messages              (lobby list runs over WS, not REST)

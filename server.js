@@ -342,6 +342,30 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+// ── API: must this account confirm a code before entering? ─────
+  // Same userUnconfirmed() rule the write gates use (GitHub OAuth +
+  // pre-code accounts exempt), so login can't drift from enforcement.
+  // No token / dead token → false: nothing to hold at the door.
+  if (url.pathname === '/auth/verification-required') {
+    cors(res);
+    const token = String(req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ required: false }));
+      return;
+    }
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      const required = !error && !!user && userUnconfirmed(user);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ required }));
+    } catch (e) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ required: false }));
+    }
+    return;
+  }
+
   // ── Auth callback (server-side fallback) ───────────────────────
   if (url.pathname === '/auth/callback') {
     const code = url.searchParams.get('code');

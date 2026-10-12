@@ -257,6 +257,10 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
         setTimeout(function(){L.setMode('in')},2500);
       }else{
         await signInWithEmail(em.value.trim(),pw.value);
+        // Hard gate: unconfirmed email signups must clear the code
+        // before entering — no walking past the code screen into chat.
+        var s2=null;try{s2=await getSession()}catch(e){}
+        if(s2&&s2.access_token&&await verificationRequired(s2.access_token)){await holdForCode(s2.user);return;}
         location.href='/chat';
       }
     }catch(err){L.say(err&&err.message?err.message:'Something went wrong')}
@@ -274,7 +278,11 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
       try{
         var db=await getSupabase();
         var gu=db?await db.auth.getUser():null;
-        if(gu&&gu.data&&gu.data.user){location.href='/chat';return;}
+        if(gu&&gu.data&&gu.data.user){
+          // Unconfirmed? Code screen, not chat (same hard gate as signin).
+          if(session&&session.access_token&&await verificationRequired(session.access_token)){await holdForCode(gu.data.user);return;}
+          location.href='/chat';return;
+        }
         // Definitive rejection (not a network flak): drop the corpse.
         if(gu&&gu.error&&gu.error.status&&gu.error.status<500){try{await db.auth.signOut();}catch(e){}}
       }catch(e){/* offline: keep the session, no redirect, no loop */}
@@ -287,6 +295,21 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
       verifyBtn=document.getElementById('verifyBtn'),resendBtn=document.getElementById('resendBtn'),
       coolEl=document.getElementById('cool'),coolT=null;
   function apiBase(){try{return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''}catch(e){return ''}}
+  // Server-authoritative "must this account verify?" (GitHub +
+  // pre-code accounts exempt, same rule as the write gates).
+  // Fail-open: on error the write/WS gates still block unverified.
+  async function verificationRequired(token){
+    try{
+      var r=await fetch(apiBase()+'/auth/verification-required',{headers:{'Authorization':'Bearer '+token}});
+      var d=await r.json();
+      return !!(d&&d.required);
+    }catch(e){return false}
+  }
+  async function holdForCode(user){
+    window._pendingEmail=(user&&user.email)||window._pendingEmail;
+    window._pendingUid=(user&&user.id)||window._pendingUid||'';
+    showCode();sendCode(false);
+  }
   function showCode(){
     document.getElementById('auth').classList.add('hide');
     document.querySelector('.gh').classList.add('hide');
