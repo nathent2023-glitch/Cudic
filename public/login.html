@@ -267,7 +267,19 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offs
     var session=null;
     try{session=await getSession()}catch(e){}
     // Signed in already: straight to chat (no guest flow anymore).
-    if(session&&session.user){location.href='/chat';return;}
+    if(session&&session.user){
+      // Validate against the server first: a stored session can outlive
+      // its account (deleted in the dashboard) and redirecting blindly
+      // loops chat<->login forever on the dead token.
+      try{
+        var db=await getSupabase();
+        var gu=db?await db.auth.getUser():null;
+        if(gu&&gu.data&&gu.data.user){location.href='/chat';return;}
+        // Definitive rejection (not a network flak): drop the corpse.
+        if(gu&&gu.error&&gu.error.status&&gu.error.status<500){try{await db.auth.signOut();}catch(e){}}
+      }catch(e){/* offline: keep the session, no redirect, no loop */}
+      return;
+    }
   }
 
   // ---------- magic codes ----------
