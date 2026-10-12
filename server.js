@@ -47,8 +47,10 @@ function clientIp(req) {
 // GMAIL_REFRESH_TOKEN, GMAIL_SENDER env. No domain, no phone, no card.
 let gmailToken = { access: '', exp: 0 };
 async function sendViaGmail(to, subject, html) {
-  const cid = process.env.GMAIL_CLIENT_ID, csec = process.env.GMAIL_CLIENT_SECRET,
-        rtok = process.env.GMAIL_REFRESH_TOKEN, from = process.env.GMAIL_SENDER;
+  // .trim(): dashboards smuggle trailing newlines into pasted values —
+  // one ghost char makes Google report "client not found" (len73 vs 72).
+  const cid = (process.env.GMAIL_CLIENT_ID || '').trim(), csec = (process.env.GMAIL_CLIENT_SECRET || '').trim(),
+        rtok = (process.env.GMAIL_REFRESH_TOKEN || '').trim(), from = (process.env.GMAIL_SENDER || '').trim();
   if (!cid || !csec || !rtok || !from) return new Error('gmail not configured');
   try {
     if (Date.now() > gmailToken.exp - 60000) {
