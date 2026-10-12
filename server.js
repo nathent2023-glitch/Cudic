@@ -2982,4 +2982,11 @@ setTimeout(cleanupNonPersistent, 60*1000); // run 1 min after start
 // ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n  Cudic is running → http://localhost:${PORT}\n`);
+  // Boot fingerprint: proves which Gmail values the running deploy sees.
+  // Safe — client IDs are public by design; secrets are never printed.
+  try {
+    const gid = process.env.GMAIL_CLIENT_ID || '';
+    console.log('Gmail sender:', process.env.GMAIL_REFRESH_TOKEN ? 'configured' : 'missing',
+      '| client:', gid ? gid.substring(0, 12) + '…len' + gid.length : '(none)');
+  } catch (e) {}
 });
