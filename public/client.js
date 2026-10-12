@@ -168,6 +168,13 @@ async function boot() {
     if (!s || !s.user) { window.location.href = '/login'; return; }
     ME = s.user.id;
   } catch (e) { return; }
+  // Hard email gate: unconfirmed accounts can't enter chat even by
+  // typing the URL — login holds the code screen instead. Fail open on
+  // network flakes (WS join re-checks and blocks sending regardless).
+  try {
+    const v = await api('/auth/verification-required');
+    if (v && v.required) { window.location.href = '/login'; return; }
+  } catch (e) { if (e && (e.message === 'seat' || e.message === 'auth')) return; }
   connectWs();
   await refreshConvs();
   const params = new URLSearchParams(window.location.search);
