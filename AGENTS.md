@@ -64,12 +64,20 @@ npm run dev          # same thing
 cd studio
 npm run build        # vite build → ../public/studio/   (~1-2 min, 13MB bundle)
 npm run dev          # vite dev server
+
+# islands (React components inside classic pages — output is COMMITTED)
+cd islands
+npm run build        # vite build (lib IIFE) → ../public/islands/  (~5s, 657KB)
 ```
 
 - Shell is **PowerShell 5.1**: use `;` not `&&`. Quote paths with spaces.
 - **Restart `server.js` after editing it** — no hot reload.
 - **Rebuild Studio after editing anything under `studio/src/`** — `public/studio/`
   is gitignored, so what you see in the browser is always the last build.
+- **Rebuild islands after editing anything under `islands/src/`** — unlike
+  Studio, `public/islands/` IS committed (Vercel builds no JS), so rebuild
+  then commit the bundle. Bump `islands.js?v=N` + `cudic-islands.css?v=N`
+  (currently **v4**) on using pages after rebuilding.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
   (currently **v24**) — pages cache CSS aggressively. Same for
   `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v5**) after editing those.
@@ -471,6 +479,28 @@ list endpoints already supported it; **only Studio lacked a control**.
 - Nav items: Chat, Servers, Games, Themes (`sbItem(href,key,icon,label)`), plus
   per-lobby links and an account row → `/profile`.
 - Theme pack loader lives at the end of `sidebar.js`.
+
+---
+
+## 9b. React islands (`islands/` → `public/islands/`)
+
+- Mount React components inside classic pages **without converting them**:
+  `islands/src/loader.ts` scans `[data-island]` containers and
+  `createRoot`-mounts the registry entry (`REGISTRY` name → component).
+- New island: add `src/islands/foo.tsx` + registry line → `npm run build`
+  → drop `<div data-island="foo">` + `<script src="/islands/islands.js?v=N">`
+  (+ CSS link) in the page. Live example: `new-menu` (New dropdown with
+  Lucide icons) in the games topbar (mounts synchronously during parsing —
+  the page's inline script grabs `#newDropBtn` by id, so deferred mounting
+  throws and kills the rest of its script block).
+- Interop is read-only from host globals (`islands/src/cudic.ts`):
+  `WS_URL` → `apiBase()`, `window.getAuthToken()`, `seatHeaders()` for
+  writes. Never duplicate auth/config.
+- Styles: hand-rolled `.isl-`-prefixed CSS using site vars
+  (`--signal`, `--panel`, …) so islands follow light/dark + packs.
+  No Tailwind in islands (collides with `sidebar.css`), no global selectors.
+- React 19 self-contained in the bundle — independent of `editor.html`'s
+  esm.sh React 18 pin. One bundle (~657KB/199KB gzip, cached) serves all islands.
 
 ---
 

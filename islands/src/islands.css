@@ -1,0 +1,85 @@
+/* ── Island styles: .isl- prefix only, no global selectors. Uses the
+   site's CSS vars so islands follow light/dark + theme packs. ── */
+/* ── New-menu effects (open/close owned by classic .open toggle) ── */
+.isl-newbtn {
+  position: relative;
+  overflow: hidden;
+}
+/* shine sweep */
+.isl-newbtn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.isl-newbtn:hover::after {
+  left: 130%;
+}
+.newdrop-menu a.isl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.isl-ic {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: var(--panel-raised);
+  border: 1px solid var(--line);
+  transition: color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+/* Inline SVGs ride the text baseline, leaving dead space below that
+   pushes the glyph visually up. Block kills the offset. */
+.isl-ic > svg {
+  display: block;
+}
+.newdrop-menu a.isl-row:hover .isl-ic {
+  color: var(--signal);
+  border-color: var(--signal);
+  box-shadow: 0 0 16px -4px var(--signal);
+  transform: scale(1.06) rotate(-4deg);
+}
+.isl-tx {
+  min-width: 0;
+}
+/* staggered rise on open (re-triggers each time .open is added) */
+.newdrop.open .newdrop-menu a.isl-row {
+  animation: isl-rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.newdrop.open .newdrop-menu a.isl-row:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.newdrop.open .newdrop-menu a.isl-row:nth-child(3) {
+  animation-delay: 0.1s;
+}
+@keyframes isl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .isl-newbtn::after {
+    display: none;
+  }
+  .newdrop.open .newdrop-menu a.isl-row {
+    animation: none;
+  }
+  .newdrop-menu a.isl-row:hover .isl-ic {
+    transform: none;
+  }
+}
