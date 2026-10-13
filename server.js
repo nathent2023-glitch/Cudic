@@ -73,7 +73,7 @@ async function sendViaGmail(to, subject, html) {
     const raw = Buffer.from(
       `From: Cudic <${from}>\r\nTo: ${to}\r\nSubject: ${subject}\r\nContent-Type: text/html; charset=utf-8\r\n\r\n${html}`
     ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages.send', {
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + gmailToken.access, 'content-type': 'application/json' },
       body: JSON.stringify({ raw }),
