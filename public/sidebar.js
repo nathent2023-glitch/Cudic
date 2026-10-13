@@ -127,7 +127,7 @@
   nav.className='sidebar';
   nav.innerHTML=''
     +'<div class="sidebar-nav-card">'
-      +'<div class="rail-brand"><span class="rail-word">cudic</span></div>'
+      +'<a class="rail-brand" id="railBrand" href="/" aria-label="Cudic home"><img src="/cudic_sfsvg.svg" alt="Cudic" width="26" height="26"></a>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
@@ -212,6 +212,8 @@
       if((hasCode||hasHash)&&typeof handleAuthCallback==='function'){attempted=true;await handleAuthCallback();}
     }catch(e){window._authError=(e&&e.message)||'Sign-in failed';}
     try{window.currentToken=window.currentToken||await getAuthToken();}catch(e){}
+    // Brand link: games panel when signed in, landing when not.
+    try{var rb=document.getElementById('railBrand');if(rb)rb.href=window.currentToken?'/games':'/';}catch(e){}
     try{window.dispatchEvent(new Event('glox:auth'));}catch(e){}
     // Single-seat sessions: fresh OAuth login mints a new seat (takeover);
     // a missing seat mints + claims once; normal loads only heartbeat

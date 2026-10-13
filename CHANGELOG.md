@@ -30,6 +30,13 @@ embeddable games**
   pre-existing accounts exempt. Reads, playing, browsing stay open.
 - Login card flips to a code screen after signup (resend + cooldown);
   profile gains a verify card for anyone who closes the tab mid-flow.
+- Hard gate, total coverage: login + chat boot bounce unconfirmed accounts
+  to the code screen (`GET /auth/verification-required`); **every**
+  authenticated write (likes, DMs, friends, quests/coins, packs, saves,
+  servers, channels, AI proxy, forks, imports) 403s `email_unconfirmed`
+  via `needVerified()` — reads, play counts, and the session machinery
+  stay open. A daily sweep deletes email accounts still unconfirmed after
+  24h (GitHub + pre-code accounts exempt; everything cascades).
 - Mail goes HTTPS-only: Gmail API first (own Gmail account, `gmail.send`
   scope, `GMAIL_*` env — no domain, phone, or card), Resend SDK second,
   Brevo API third (coded but unconfigured — its phone/address verification
@@ -73,6 +80,16 @@ embeddable games**
   `cudic_consent` cookie; AdSense script loads only after advertising
   consent; footer gains a Cookie settings link.
 
+**Next.js login page** (same `cudic-test` static-export pipeline)
+- `/` login replaced with a Magic UI + Canvas UI build: particle Kenney
+  model stage (push-around particles, 7s rotation), meteor/particle
+  backdrop, MagicCard spotlight form, shimmer submit, animated
+  sign-in/create tabs, shake-on-error, confetti success burst.
+- Real auth, not the demo: same Supabase project (sessions carry over),
+  Render API for codes, hard email gate (unconfirmed lands on a matching
+  6-box code screen with resend cooldown), GitHub OAuth → `/chat`,
+  guest → `/chat`. Old page kept unrouted at `login-legacy.html`.
+
 ### Fixed
 
 - `GET /api/games/liked` always 404'd — the route sat below the generic
@@ -92,6 +109,9 @@ embeddable games**
 - `privacy.html` pins `sidebar.js?v=11` (was v8); sitemap gains `/login`
   and `/privacy`; endpoint docs drop the deleted `/auth/verify`,
   `/api/lobby` and `/api/lobby/persistent` routes.
+- Rail brand is the raw C mark (no wordmark, no chip), linking `/` for
+  guests and `/games` for signed-in users; `sidebar.css` → v24,
+  `sidebar.js` → v12.
 
 ---
 

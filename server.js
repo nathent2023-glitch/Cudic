@@ -449,6 +449,7 @@ const server = http.createServer(async (req, res) => {
 
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401); res.end(); return; }
+    if (!(await needVerified(user, res))) return;
 
     let body = '';
     req.on('data', c => body += c);
@@ -752,6 +753,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req);
     const updates = {};
     if (body.name !== undefined) {
@@ -780,6 +782,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
+    if (!(await needVerified(user, res))) return;
     await supabase.from('servers').delete().eq('id', id).eq('owner_id', user.id);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
@@ -796,6 +799,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
     const { data: server } = await supabase.from('servers').select('id, visibility, invite_code').eq('id', id).single();
     if (!server) { res.writeHead(404); res.end(); return; }
@@ -833,6 +837,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401); res.end(); return; }
     const { data: { user } } = await supabase.auth.getUser(token);
     if (!user) { res.writeHead(401); res.end(); return; }
+    if (!(await needVerified(user, res))) return;
     const newCode = crypto.randomBytes(4).toString('hex');
     const { data } = await supabase.from('servers').update({ invite_code: newCode }).eq('id', id).eq('owner_id', user.id).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -867,6 +872,8 @@ const server = http.createServer(async (req, res) => {
     if (!user) { res.writeHead(401); res.end(); return; }
     if (!isUuid(id)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid server.' })); return; }
     const { data: m } = await supabase.from('server_members').select('server_id').eq('server_id', id).eq('user_id', user.id).single();
+    if (!m) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Join this server first.' })); return; }
+    if (!(await needVerified(user, res))) return;
     if (!m) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Join this server first.' })); return; }
     await supabase.from('server_members').update({ rules_accepted_at: new Date().toISOString() }).eq('server_id', id).eq('user_id', user.id);
     sendConversationsDirty();
@@ -1075,6 +1082,7 @@ const server = http.createServer(async (req, res) => {
     if (!isUuid(targetId) || targetId === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
     const { data: target } = await supabase.from('users').select('id').eq('id', targetId).single();
     if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+    if (!(await needVerified(user, res))) return;
     const { data: mine } = await supabase.from('friendships').select('status').eq('user_id', me).eq('friend_id', targetId).single();
     const { data: theirs } = await supabase.from('friendships').select('status').eq('user_id', targetId).eq('friend_id', me).single();
     if (mine || theirs) {
@@ -1099,6 +1107,7 @@ const server = http.createServer(async (req, res) => {
     const me = user.id;
     const parts = url.pathname.split('/');
     const otherId = parts[3];
+    if (!(await needVerified(user, res))) return;
     const accept = url.pathname.endsWith('/accept');
     if (!isUuid(otherId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
     const { data: req1 } = await supabase.from('friendships').select('user_id').eq('user_id', otherId).eq('friend_id', me).eq('status', 'pending').single();
@@ -1120,6 +1129,7 @@ const server = http.createServer(async (req, res) => {
     const user = await requireUser(req, res); if (!user) return;
     const me = user.id;
     const otherId = url.pathname.split('/')[3];
+    if (!(await needVerified(user, res))) return;
     if (!isUuid(otherId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
     await supabase.from('friendships').delete().eq('user_id', me).eq('friend_id', otherId);
     await supabase.from('friendships').delete().eq('user_id', otherId).eq('friend_id', me);
@@ -1138,6 +1148,7 @@ const server = http.createServer(async (req, res) => {
     if (!isUuid(targetId) || targetId === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
     const { data: target } = await supabase.from('users').select('id').eq('id', targetId).single();
     if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+    if (!(await needVerified(user, res))) return;
     // Open DMs: any signed-in user can message anyone. (Friendship is
     // social, not a gate. Block/mute is the follow-up for abuse.)
     const name = dmRoomName(me, targetId);
@@ -1180,6 +1191,7 @@ const server = http.createServer(async (req, res) => {
     }
     // POST: create channel (owner only)
     if (role !== 'owner') { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the server owner can add channels.' })); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
     const slug = chanSlug(body.name);
     if (slug.length < 2) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel name 2-30 chars (letters, numbers, -, _).' })); return; }
@@ -1196,6 +1208,7 @@ const server = http.createServer(async (req, res) => {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     const me = user.id;
+    if (!(await needVerified(user, res))) return;
     const cid = url.pathname.split('/')[3];
     if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid channel.' })); return; }
     const { data: lobby } = await supabase.from('lobbies').select('id, name, kind, server_id').eq('id', cid).single();
@@ -1227,6 +1240,7 @@ const server = http.createServer(async (req, res) => {
     const me = user.id;
     const parts = url.pathname.split('/');
     const cid = parts[3];
+    if (!(await needVerified(user, res))) return;
     if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid channel.' })); return; }
     const { data: lobby } = await supabase.from('lobbies').select('id, kind, server_id').eq('id', cid).single();
     if (!lobby || lobby.kind !== 'channel') { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Channel not found.' })); return; }
@@ -1346,6 +1360,7 @@ const server = http.createServer(async (req, res) => {
     const me = user.id;
     const body = await readBody(req).catch(() => ({}));
     const q = QUESTS[body && body.quest];
+    if (!(await needVerified(user, res))) return;
     if (!q) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown quest.' })); return; }
     if (await earnCount(me, 'quest:' + body.quest)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1397,6 +1412,7 @@ const server = http.createServer(async (req, res) => {
     const user = await requireUser(req, res); if (!user) return;
     const me = user.id;
     const reason = 'daily:' + new Date().toISOString().slice(0, 10);
+    if (!(await needVerified(user, res))) return;
     if (await earnCount(me, reason)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, already: true, balance: await coinBalance(me) }));
@@ -1594,6 +1610,7 @@ const server = http.createServer(async (req, res) => {
     const key = decodeURIComponent(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
     const name = body.name === undefined ? pack.name : body.name;
     const description = body.description === undefined ? pack.description : body.description;
@@ -1621,6 +1638,7 @@ const server = http.createServer(async (req, res) => {
     const key = decodeURIComponent(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    if (!(await needVerified(user, res))) return;
     await supabase.from('theme_packs').delete().eq('id', pack.id);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
@@ -1635,6 +1653,7 @@ const server = http.createServer(async (req, res) => {
     const key = decodeURIComponent(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
+    if (!(await needVerified(user, res))) return;
     if (pack.owner_id === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You own this pack.' })); return; }
     if (pack.price === 0 || await ownsPack(me, pack.id)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1833,6 +1852,7 @@ const server = http.createServer(async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
     const body = await readBody(req);
     let target;
     try { target = new URL(String(body.url || '')); } catch { target = null; }
@@ -1969,6 +1989,7 @@ const server = http.createServer(async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
     const gid = likeMatch[1];
     if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
     const { data: g } = await supabase.from('games').select('published, owner_id').eq('id', gid).single();
@@ -2040,6 +2061,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const id = url.pathname.split('/')[3];
     const { data: g } = await supabase.from('games').select('*').eq('id', id).single();
     if (!g) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
@@ -2179,6 +2201,7 @@ const server = http.createServer(async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
     if (!rateLimit('scratch:' + user.id, 5, 3600000)) { scratchFail(res, 429, 'Too many imports, slow down.'); return; }
     const body = await readBody(req).catch(() => ({}));
     let title = String(body.title || '').trim().slice(0, 80);
@@ -2370,6 +2393,7 @@ const server = http.createServer(async (req, res) => {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
     const gid = url.pathname.split('/')[3] || '';
     if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
     const { data: g } = await supabase.from('games').select('id, published, owner_id').eq('id', gid).single();
@@ -2391,6 +2415,7 @@ const server = http.createServer(async (req, res) => {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
     const gid = url.pathname.split('/')[3] || '';
     if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
     await supabase.from('game_saves').delete().eq('user_id', user.id).eq('game_id', gid);
@@ -2473,6 +2498,7 @@ const server = http.createServer(async (req, res) => {
     if (!token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+    if (!(await needVerified(user, res))) return;
     const cid = url.pathname.split('/')[3];
     const { data: c } = await supabase.from('game_comments').select('id, user_id, game_id').eq('id', cid).single();
     if (!c) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
@@ -2985,6 +3011,33 @@ async function cleanupNonPersistent(){
 }
 setInterval(cleanupNonPersistent, 2*60*60*1000); // every 2 hours
 setTimeout(cleanupNonPersistent, 60*1000); // run 1 min after start
+
+// ── Purge: delete email accounts that never confirmed (24h grace) ──
+// Drive-by signups vanish instead of rotting in the user list. Reuses
+// userUnconfirmed(), so GitHub OAuth + pre-code accounts are exempt by
+// construction. public.users and everything under it cascade from
+// auth.users, so one delete erases the whole footprint.
+async function purgeUnconfirmed(){
+  try{
+    const before = new Date(Date.now() - 24*3600*1000).toISOString();
+    let page = 1;
+    for (;;) {
+      const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+      const batch = (data && data.users) || [];
+      if (error || !batch.length) break;
+      for (const u of batch) {
+        if (!u || !userUnconfirmed(u)) continue;
+        if (!u.created_at || u.created_at > before) continue;
+        try { await supabase.auth.admin.deleteUser(u.id); console.log('[purge] removed unconfirmed', u.id); }
+        catch (e) { console.error('[purge] delete failed:', u.id, (e && e.message) || e); }
+      }
+      if (batch.length < 100) break;
+      page++;
+    }
+  }catch(e){ console.error('[purge] error:', (e && e.message) || e); }
+}
+setInterval(purgeUnconfirmed, 24*3600*1000); // daily
+setTimeout(purgeUnconfirmed, 5*60*1000); // first run 5 min after start
 
 // ── Start ────────────────────────────────────────────────────────
 server.listen(PORT, () => {

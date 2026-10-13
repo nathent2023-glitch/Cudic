@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="google-site-verification" content="tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs" />
+<title>Sign in — Cudic</title>
+<meta name="description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cudic">
+<meta property="og:title" content="Cudic — build and play small games in your browser">
+<meta property="og:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta property="og:url" content="https://cudic.vercel.app/login">
+<meta property="og:image" content="https://cudic.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cudic — build and play small games in your browser">
+<meta name="twitter:description" content="Cudic is a browser studio for making games, sites, and themes — no install, no setup. Open Studio, drop in your files, publish, and play.">
+<meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
+<link rel="canonical" content="https://cudic.vercel.app/login">
+<link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483499851682563" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Baloo+2:wght@800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg-l:#e9eefc;--bg-r:#fbfbff;--ink:#1d1a3a;--mute:#6b6990;--line:#d6d9f0;--field:#eef1fd;--field-b:#cfd5f2;
+   --brand:#7300FF;--brand-2:#5D00E9;--card:#ffffff;--dot:#b9c0e6;--shadow:0 20px 50px -24px rgba(60,40,140,.35);
+  --display:'Bricolage Grotesque',system-ui,sans-serif;--body:'Figtree',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg-l:#15132b;--bg-r:#0e0d1d;--ink:#eeedff;--mute:#9b98c4;--line:#2d2a52;--field:#1a1836;--field-b:#363264;
+  --card:#14122a;--dot:#38356a;--shadow:0 20px 50px -24px rgba(0,0,0,.8);--brand:#8a64f2;--brand-2:#a785ff}}
+:root[data-theme="dark"]{--bg-l:#15132b;--bg-r:#0e0d1d;--ink:#eeedff;--mute:#9b98c4;--line:#2d2a52;--field:#1a1836;--field-b:#363264;--card:#14122a;--dot:#38356a;--shadow:0 20px 50px -24px rgba(0,0,0,.8);--brand:#8a64f2;--brand-2:#a785ff}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+:root{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{font-family:var(--body);color:var(--ink);background:var(--bg-r);display:grid;grid-template-columns:1.05fr 1fr;min-height:100vh}
+.stage{position:relative;background:var(--bg-l);overflow:hidden;min-height:100vh;cursor:crosshair}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%}
+.logo{position:absolute;top:26px;left:36px;font:800 40px/1 'Baloo 2',var(--display);letter-spacing:-.01em;z-index:2}
+.logo i{font-style:normal;color:var(--brand)}
+.copy{position:absolute;left:36px;right:36px;bottom:40px;z-index:2;pointer-events:none}
+.copy h1{font:800 clamp(34px,4.6vw,64px)/.98 var(--display);letter-spacing:-.035em;margin:0 0 16px;max-width:11em}
+.tag{position:absolute;left:0;top:0;z-index:1;pointer-events:none;will-change:transform}
+.tag svg{display:block;width:18px;height:18px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+.tag span{position:absolute;left:14px;top:16px;font:600 12px/1 var(--body);color:#fff;padding:5px 9px;border-radius:99px;white-space:nowrap}
+.panel{display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.card{width:100%;max-width:400px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+.tabs{position:relative;display:flex;gap:4px;background:var(--field);border:1px solid var(--field-b);border-radius:12px;padding:4px}
+.tabs button{position:relative;z-index:1;border:0;background:none;font:600 14px var(--body);color:var(--mute);padding:9px 18px;border-radius:9px;cursor:pointer;transition:color .2s}
+.tabs button[aria-selected=true]{color:var(--ink)}
+.pill{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;border-radius:9px;background:var(--card);box-shadow:0 2px 8px -2px rgba(60,40,140,.3);transition:transform .3s cubic-bezier(.5,1.4,.5,1),width .3s}
+.theme{border:1px solid var(--field-b);background:var(--field);color:var(--ink);width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:16px}
+h2{font:800 28px/1.1 var(--display);letter-spacing:-.025em;margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 20px;font-size:14px}
+.gh{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--field-b);background:var(--card);color:var(--ink);font:600 14px var(--body);cursor:pointer;transition:transform .15s,box-shadow .2s}
+.gh:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.gh svg{width:18px;height:18px;fill:currentColor}
+label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+.f{position:relative}
+input[type=text],input[type=email],input[type=password]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--field-b);background:var(--field);color:var(--ink);font:500 15px var(--body);transition:border-color .2s,box-shadow .2s,background .2s}
+input::placeholder{color:var(--mute);opacity:.7}
+input:focus{outline:none;border-color:var(--brand);background:var(--card);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand) 22%,transparent)}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--mute);cursor:pointer;padding:8px;font:600 12px var(--body)}
+.primary{width:100%;margin-top:18px;padding:13px;border:0;border-radius:12px;color:#fff;font:700 15px var(--body);cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 10px 24px -10px var(--brand);transition:transform .15s,box-shadow .2s}
+.primary:hover{transform:translateY(-1px);box-shadow:0 14px 28px -10px var(--brand)}
+.primary:active{transform:translateY(1px)}
+.hide{display:none}
+#code{letter-spacing:10px;text-indent:10px;text-align:center;font-size:26px;font-weight:700}
+.linklike{border:0;background:none;color:var(--brand);font:600 14px var(--body);cursor:pointer;padding:0}
+.linklike:disabled{color:var(--mute);cursor:default}
+#cool{color:var(--mute);font-size:13px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;background:var(--ink);color:var(--bg-r);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;transition:.3s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+@media(max-width:860px){
+  body{grid-template-columns:1fr}
+  .stage{min-height:260px;height:260px}
+  .copy{bottom:22px}.copy h1{font-size:30px;margin-bottom:0}
+  .logo{top:22px;left:24px;font-size:28px}
+}
+
+</style>
+</head>
+<body>
+<section class="stage" id="stage" aria-label="Interactive lobby preview">
+  <canvas id="cv"></canvas>
+  <div class="logo">cudic</div>
+  <div class="copy">
+    <h1>Make it your way. Share the link, and anyone can play.</h1>
+  </div>
+</section>
+
+<main class="panel">
+  <div class="card">
+    <div class="top">
+      <div class="tabs" role="tablist" id="tabs">
+        <span class="pill" id="pill"></span>
+        <button role="tab" aria-selected="true" data-m="in">Sign in</button>
+        <button role="tab" aria-selected="false" data-m="up">Create account</button>
+      </div>
+      <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+    </div>
+
+    <h2 id="title">Welcome back</h2>
+    <p class="sub" id="sub">Pick up where you left off.</p>
+
+    <button class="gh" type="button">
+      <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      Continue with GitHub
+    </button>
+
+    <form id="auth" autocomplete="on">
+      <div id="nameWrap" class="hide">
+        <label for="dn">Display name</label>
+        <input id="dn" type="text" placeholder="What should people call you?">
+      </div>
+      <label for="em">Email</label>
+      <input id="em" type="email" placeholder="you@example.com" autocomplete="email" required>
+      <label for="pw">Password</label>
+      <div class="f">
+        <input id="pw" type="password" placeholder="At least 8 characters" autocomplete="current-password" required>
+        <button type="button" class="eye" id="eye">Show</button>
+      </div>
+      <button class="primary" id="go" type="submit">Sign in</button>
+    </form>
+
+    <div id="codeWrap" class="hide">
+      <p class="sub" id="codeSub">We sent a 6-digit code. Type it below to confirm it's really you.</p>
+      <label for="code">Confirmation code</label>
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <button class="primary" id="verifyBtn" type="button">Confirm email</button>
+      <p class="sub" style="margin:14px 0 0">Didn't get it? Check spam, then <button type="button" class="linklike" id="resendBtn">Resend code</button> <span id="cool"></span></p>
+      <p class="sub" style="margin:8px 0 0"><button type="button" class="linklike" id="backBtn">Use a different email</button></p>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script>
+(function(){
+  // ---------- tabs ----------
+  var tabs=document.getElementById('tabs'),pill=document.getElementById('pill'),btns=tabs.querySelectorAll('button');
+  var title=document.getElementById('title'),sub=document.getElementById('sub'),go=document.getElementById('go'),nameWrap=document.getElementById('nameWrap'),pw=document.getElementById('pw');
+  var mode='in';
+  function movePill(b){pill.style.width=b.offsetWidth+'px';pill.style.transform='translateX('+(b.offsetLeft-4)+'px)'}
+  function setMode(m){
+    mode=m;
+    btns.forEach(function(b){var on=b.dataset.m===m;b.setAttribute('aria-selected',on);if(on)movePill(b)});
+    var up=m==='up';
+    title.textContent=up?'Make an account':'Welcome back';
+    sub.textContent=up?'Save your games and chats.':'Pick up where you left off.';
+    go.textContent=up?'Create account':'Sign in';
+    nameWrap.classList.toggle('hide',!up);
+    pw.autocomplete=up?'new-password':'current-password';
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.m)})});
+  window.addEventListener('load',function(){movePill(btns[0])});
+  document.fonts&&document.fonts.ready.then(function(){movePill(tabs.querySelector('[aria-selected=true]'))});
+  window.addEventListener('resize',function(){movePill(tabs.querySelector('[aria-selected=true]'))});
+
+  // ---------- misc ----------
+  var toast=document.getElementById('toast'),tt;
+  function say(t){toast.textContent=t;toast.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){toast.classList.remove('on')},2600)}
+  document.getElementById('eye').addEventListener('click',function(){var s=pw.type==='password';pw.type=s?'text':'password';this.textContent=s?'Hide':'Show'});
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;
+    r.dataset.theme=dark?'light':'dark';
+  });
+
+  window.__login={say:say,setMode:setMode,mode:function(){return mode}};
+
+  // ---------- living lobby ----------
+  var stage=document.getElementById('stage'),cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+  var W,H,dpr,GAP=26,still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  var cur='<svg viewBox="0 0 18 18"><path d="M2 1l13 7-6 2-2 6z" fill="COL" stroke="#fff" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  var src=[
+    {n:'you',c:'#6d45d9',x:-999,y:-999,you:1},
+    {n:'maya',c:'#f0507a',a:.7,b:1.1,p:0,s:.00031},
+    {n:'jo',c:'#16a37f',a:.9,b:.6,p:2,s:.00024},
+    {n:'sam',c:'#f09a1a',a:.55,b:.85,p:4,s:.00037}
+  ];
+  src.forEach(function(o){
+    var d=document.createElement('div');d.className='tag';
+    d.innerHTML=cur.replace('COL',o.c)+'<span style="background:'+o.c+'">'+o.n+'</span>';
+    stage.appendChild(d);o.el=d;
+  });
+  function size(){
+    dpr=Math.min(devicePixelRatio||1,2);W=stage.clientWidth;H=stage.clientHeight;
+    cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  size();addEventListener('resize',size);
+  var tgt={x:W*.6,y:H*.45},moved=false;
+  stage.addEventListener('pointermove',function(e){
+    var r=stage.getBoundingClientRect();tgt.x=e.clientX-r.left;tgt.y=e.clientY-r.top;moved=true;
+  });
+  stage.addEventListener('pointerleave',function(){moved=false});
+  stage.addEventListener('pointerdown',function(e){
+    var r=stage.getBoundingClientRect();pulses.push({x:e.clientX-r.left,y:e.clientY-r.top,t:0,c:src[0].c});
+  });
+  var pulses=[],dot=getComputedStyle(document.documentElement).getPropertyValue('--dot');
+  function hex(c){return c}
+  function frame(t){
+    dot=getComputedStyle(document.documentElement).getPropertyValue('--dot').trim();
+    var me=src[0];
+    if(!moved&&me.x<-900){me.x=tgt.x;me.y=tgt.y}
+    if(moved||me.x>-900){me.x+=(tgt.x-me.x)*.18;me.y+=(tgt.y-me.y)*.18}
+    for(var i=1;i<src.length;i++){var o=src[i];
+      o.x=W*(.5+.38*Math.sin(t*o.s*2+o.p)*o.a+.1*Math.sin(t*o.s*5.3));
+      o.y=H*(.46+.36*Math.cos(t*o.s*2.6+o.p*1.3)*o.b);
+    }
+    src.forEach(function(o){o.el.style.transform='translate('+o.x+'px,'+o.y+'px)'});
+    ctx.clearRect(0,0,W,H);
+    var R=130;
+    for(var x=GAP/2;x<W;x+=GAP)for(var y=GAP/2;y<H;y+=GAP){
+      var best=0,bc=null;
+      for(var k=0;k<src.length;k++){var s=src[k],dx=x-s.x,dy=y-s.y,d=Math.sqrt(dx*dx+dy*dy);
+        if(d<R){var f=1-d/R;f*=f;if(f>best){best=f;bc=s.c}}}
+      for(var p=0;p<pulses.length;p++){var q=pulses[p],pd=Math.abs(Math.hypot(x-q.x,y-q.y)-q.t*420);
+        if(pd<40){var pf=(1-pd/40)*(1-q.t);if(pf>best){best=pf;bc=q.c}}}
+      if(bc){ctx.fillStyle=bc;ctx.globalAlpha=.25+.75*best;ctx.beginPath();ctx.arc(x,y,1.4+4.2*best,0,6.283);ctx.fill()}
+      else{ctx.fillStyle=dot;ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(x,y,1.3,0,6.283);ctx.fill()}
+    }
+    ctx.globalAlpha=1;
+    pulses=pulses.filter(function(q){q.t+=.018;return q.t<1});
+    if(!still)requestAnimationFrame(frame);
+  }
+  if(still){src[0].x=W*.55;src[0].y=H*.4;[1,2,3].forEach(function(i){src[i].s=0});frame(1000)}
+  else requestAnimationFrame(frame);
+  src[0].el.style.opacity=0;
+  stage.addEventListener('pointermove',function(){src[0].el.style.opacity=1},{once:true});
+})();
+</script>
+<script>
+(function(){
+  var L=window.__login;
+  var go=document.getElementById('go'),em=document.getElementById('em'),pw=document.getElementById('pw'),dn=document.getElementById('dn');
+
+  document.querySelector('.gh').addEventListener('click',function(){signInWithGitHub()});
+
+  document.getElementById('auth').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var up=L.mode()==='up',label=go.textContent;
+    go.disabled=true;go.textContent=up?'Creating…':'Signing in…';
+    try{
+      if(up){
+        var res=await signUpWithEmail(em.value.trim(),pw.value,dn.value.trim());
+        if(res&&res.user){window._pendingEmail=em.value.trim();window._pendingPw=pw.value;window._pendingUid=res.user.id;showCode();sendCode(false);return}
+        L.say('Account created! You can sign in now.');
+        setTimeout(function(){L.setMode('in')},2500);
+      }else{
+        await signInWithEmail(em.value.trim(),pw.value);
+        // Hard gate: unconfirmed email signups must clear the code
+        // before entering — no walking past the code screen into chat.
+        var s2=null;try{s2=await getSession()}catch(e){}
+        if(s2&&s2.access_token&&await verificationRequired(s2.access_token)){await holdForCode(s2.user);return;}
+        location.href='/chat';
+      }
+    }catch(err){L.say(err&&err.message?err.message:'Something went wrong')}
+    finally{go.disabled=false;go.textContent=label}
+  });
+
+  async function initPage(){
+    var session=null;
+    try{session=await getSession()}catch(e){}
+    // Signed in already: straight to chat (no guest flow anymore).
+    if(session&&session.user){
+      // Validate against the server first: a stored session can outlive
+      // its account (deleted in the dashboard) and redirecting blindly
+      // loops chat<->login forever on the dead token.
+      try{
+        var db=await getSupabase();
+        var gu=db?await db.auth.getUser():null;
+        if(gu&&gu.data&&gu.data.user){
+          // Unconfirmed? Code screen, not chat (same hard gate as signin).
+          if(session&&session.access_token&&await verificationRequired(session.access_token)){await holdForCode(gu.data.user);return;}
+          location.href='/chat';return;
+        }
+        // Definitive rejection (not a network flak): drop the corpse.
+        if(gu&&gu.error&&gu.error.status&&gu.error.status<500){try{await db.auth.signOut();}catch(e){}}
+      }catch(e){/* offline: keep the session, no redirect, no loop */}
+      return;
+    }
+  }
+
+  // ---------- magic codes ----------
+  var codeWrap=document.getElementById('codeWrap'),codeInput=document.getElementById('code'),
+      verifyBtn=document.getElementById('verifyBtn'),resendBtn=document.getElementById('resendBtn'),
+      coolEl=document.getElementById('cool'),coolT=null;
+  function apiBase(){try{return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''}catch(e){return ''}}
+  // Server-authoritative "must this account verify?" (GitHub +
+  // pre-code accounts exempt, same rule as the write gates).
+  // Fail-open: on error the write/WS gates still block unverified.
+  async function verificationRequired(token){
+    try{
+      var r=await fetch(apiBase()+'/auth/verification-required',{headers:{'Authorization':'Bearer '+token}});
+      var d=await r.json();
+      return !!(d&&d.required);
+    }catch(e){return false}
+  }
+  async function holdForCode(user){
+    window._pendingEmail=(user&&user.email)||window._pendingEmail;
+    window._pendingUid=(user&&user.id)||window._pendingUid||'';
+    showCode();sendCode(false);
+  }
+  function showCode(){
+    document.getElementById('auth').classList.add('hide');
+    document.querySelector('.gh').classList.add('hide');
+    codeWrap.classList.remove('hide');
+    document.getElementById('title').textContent='Check your email';
+    document.getElementById('sub').textContent='Enter the 6-digit code to unlock publishing and chat.';
+    document.getElementById('codeSub').textContent='We sent a 6-digit code to '+window._pendingEmail+'.';
+    codeInput.value='';try{codeInput.focus()}catch(e){}
+  }
+  document.getElementById('backBtn').addEventListener('click',function(){
+    codeWrap.classList.add('hide');
+    document.getElementById('auth').classList.remove('hide');
+    document.querySelector('.gh').classList.remove('hide');
+    L.setMode('up');
+  });
+  function cooldown(sec){
+    clearInterval(coolT);resendBtn.disabled=true;
+    coolEl.textContent='('+sec+'s)';
+    coolT=setInterval(function(){sec--;if(sec<=0){clearInterval(coolT);coolEl.textContent='';resendBtn.disabled=false}else coolEl.textContent='('+sec+'s)'},1000);
+  }
+  async function sendCode(isResend){
+    if(!window._pendingEmail)return;
+    cooldown(60);
+    try{
+      var r=await fetch(apiBase()+'/auth/send-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:window._pendingEmail})});
+      var d=await r.json();
+      if(!r.ok)throw new Error((d&&d.error)||'Could not send code');
+      if(!isResend)L.say('Code sent! Check your inbox.');
+    }catch(err){L.say(err&&err.message?err.message:'Could not send code')}
+  }
+  resendBtn.addEventListener('click',function(){sendCode(true)});
+  verifyBtn.addEventListener('click',async function(){
+    var v=codeInput.value.replace(/\D/g,'');
+    if(v.length!==6){L.say('Type the 6-digit code first.');return}
+    verifyBtn.disabled=true;
+    try{
+      var r=await fetch(apiBase()+'/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:window._pendingEmail,code:v,userId:window._pendingUid||''})});
+      var d=await r.json();
+      if(!r.ok)throw new Error((d&&d.error)||'Could not confirm');
+      L.say('Email confirmed! Signing you in…');
+      try{
+        await signInWithEmail(window._pendingEmail,window._pendingPw||'');
+        window._pendingPw='';
+        location.href='/chat';
+      }catch(se){L.say('Confirmed! Sign in to continue.');backBtn.click();}
+    }catch(err){L.say(err&&err.message?err.message:'Could not confirm')}
+    finally{verifyBtn.disabled=false}
+  });
+
+  if(typeof handleAuthCallback==='function'){
+    handleAuthCallback().then(initPage).catch(initPage);
+  }else{initPage()}
+})();
+</script>
+</body>
+</html>

@@ -116,7 +116,7 @@ body {
   z-index: 0;
 }
 
-/* Rail brand: the plain Baloo 2 wordmark — same logo the sign-in page uses. */
+/* Rail brand: raw C mark, no chip. Links home (games panel when signed in). */
 .rail-brand {
   position: relative;
   height: 32px;
@@ -125,12 +125,16 @@ body {
   justify-content: center;
   margin: 0 auto 8px;
   flex-shrink: 0;
+  cursor: pointer;
 }
-.rail-word {
-  font: 800 15px/1 'Baloo 2', var(--font-head), sans-serif;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-  white-space: nowrap;
+.rail-brand img {
+  width: 26px;
+  height: 26px;
+  display: block;
+  transition: transform 150ms ease;
+}
+.rail-brand:hover img {
+  transform: scale(1.08);
 }
 
 /* Rail card: flush full-height rectangle, icon column only. */

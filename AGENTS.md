@@ -71,8 +71,8 @@ npm run dev          # vite dev server
 - **Rebuild Studio after editing anything under `studio/src/`** — `public/studio/`
   is gitignored, so what you see in the browser is always the last build.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
-  (currently **v19**) — pages cache CSS aggressively. Same for
-  `sidebar.js?v=N` (currently **v3**) / `client.js?v=N` (currently **v3**) after editing those.
+  (currently **v24**) — pages cache CSS aggressively. Same for
+  `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v5**) after editing those.
   New shared scripts take `?v=1` (`ctheme.js`, `csel.js`).
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
   and check the console. Playwright MCP is **disabled**; the browser tools that
@@ -171,6 +171,18 @@ lobby list fanout. Homepage listens as a watcher.
 ### Auth pattern
 Every gated route: pull `Authorization: Bearer <supabase jwt>` →
 `supabase.auth.getUser(token)` → 401 `{"error":"Sign in to ..."}` if bad.
+
+### Email verification (hard gate, total coverage)
+`needVerified(user, res)` 403s `email_unconfirmed` for unconfirmed email
+signups (GitHub OAuth + pre-2026-10-11 accounts exempt via
+`userUnconfirmed()`). Invariant: **every authenticated state-changing
+endpoint calls it** — the only ungated writes are the session/seat trio,
+play counts (open by design), read receipts (read-path), and the auth
+endpoints themselves. Login + chat boot bounce unconfirmed users to the
+code screen (`GET /auth/verification-required`, same rule). A daily
+`purgeUnconfirmed()` sweep deletes email accounts still unconfirmed after
+24h (profile + owned rows cascade from `auth.users`), so the user list
+holds real accounts only.
 
 ### Single-seat sessions (one live seat per account)
 Client mints a random seat id at login (`cudic_seat` in localStorage; fresh
