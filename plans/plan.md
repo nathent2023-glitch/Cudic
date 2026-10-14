@@ -394,6 +394,18 @@ Keep the virtual economy honest without adding intrusive verification.
 - Legitimate creators and buyers are not blocked by normal activity.
 - Duplicate clicks do not create duplicate charges.
 
+#### Implementation status (2026-10-14, uncommitted)
+
+- `COIN_LIMITS` (`dailyEarn` 10000, `dailySpend` 1000, `buysPerHour` 10)
+  plus `coinFlow()`/`dayStartIso()`/`hourAgoIso()` helpers, all ledger-read.
+- Enforced on pack buy (the only open-ended value mover): buyer daily
+  spend, purchase velocity, and seller daily earnings each 429 with a
+  plain message. Free/repeat buys skip caps (no value moves).
+- Already covered before this slice: verified-only quest/daily/pack-buy,
+  self-purchase block, duplicate-key-safe buys, explicit `pack_refund`
+  ledger entries, fixed-schedule quest/daily/trickle rewards, 20/hour
+  report limit. Tipping/paid-game rules land with those features (Phase 1).
+
 ---
 
 ### 2.4 Publish safety validation

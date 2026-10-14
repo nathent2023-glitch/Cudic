@@ -46,8 +46,17 @@ embeddable games**
   `?track=` deep links, track switching via reload.
 - Your Projects tab now lists Studio projects, unpublished theme drafts
   (with `/themes?edit=` deep link into the builder), and music tracks.
+- Pack rows grew up: all own packs listed under Theme packs with
+  Published/Draft badges plus Edit, Publish/Unpublish, and Delete —
+  same actions as Studio project cards.
 - Requires running `supabase/migrations/20261014130000_music_tracks.sql`;
   pre-migration the music section stays empty without errors.
+
+**Coin anti-abuse caps** (plan.md 2.3 — uncommitted, backend only)
+- Ledger-read daily spend (1000), seller daily earnings (10000), and
+  purchase velocity (10/hour) caps on pack buys, each a 429 with a plain
+  message. Free/repeat buys exempt. No migration; tipping/paid-game rules
+  arrive with those features.
 
 **Google AdSense verification** (`f1bc10d`, `fb142d3`)
 - Account-level `adsbygoogle.js` snippet site-wide (static heads + sidebar

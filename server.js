@@ -1329,6 +1329,23 @@ const server = http.createServer(async (req, res) => {
     const { count } = await supabase.from('coin_ledger').select('id', { count: 'exact', head: true }).eq('user_id', me).eq('reason', reason);
     return count || 0;
   }
+  // ── Anti-abuse caps (plan.md 2.3): daily earn/spend limits + purchase
+  // velocity, all read from the append-only ledger so no new state can
+  // drift. Quests/daily/trickle need no caps — they're fixed-schedule by
+  // construction (once-only / once-per-day / 10-per-day). Pack buying is
+  // the only open-ended value mover, so caps bite there. Tune in one place.
+  var COIN_LIMITS = { dailyEarn: 10000, dailySpend: 1000, buysPerHour: 10 };
+  function dayStartIso() { return new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z'; }
+  function hourAgoIso() { return new Date(Date.now() - 3600000).toISOString(); }
+  async function coinFlow(me, dir, sinceIso) {
+    const { data } = await supabase.from('coin_ledger').select('delta').eq('user_id', me).gte('created_at', sinceIso);
+    let sum = 0;
+    for (const r of data || []) {
+      if (dir === 'in' && r.delta > 0) sum += r.delta;
+      if (dir === 'out' && r.delta < 0) sum -= r.delta;
+    }
+    return sum;
+  }
 
   // ── API: coin balance + recent receipts ────────────────────────
   if (url.pathname === '/api/coins' && req.method === 'GET') {
@@ -1655,6 +1672,19 @@ const server = http.createServer(async (req, res) => {
     if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
     if (!(await needVerified(user, res))) return;
     if (pack.owner_id === me) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You own this pack.' })); return; }
+    // Anti-farm caps (plan.md 2.3): bound daily spend, purchase velocity,
+    // and seller-side daily earnings so colluding accounts can't funnel
+    // unbounded coins. Free/repeat buys skip the caps (no value moves).
+    if (pack.price > 0) {
+      const [spentToday, earnedToday] = await Promise.all([
+        coinFlow(me, 'out', dayStartIso()),
+        coinFlow(pack.owner_id, 'in', dayStartIso()),
+      ]);
+      if (spentToday + pack.price > COIN_LIMITS.dailySpend) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Daily spending cap reached — try tomorrow.' })); return; }
+      if (earnedToday + pack.price > COIN_LIMITS.dailyEarn) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'This creator has hit today\u2019s earnings cap — try tomorrow.' })); return; }
+      const { count: recentBuys } = await supabase.from('coin_ledger').select('id', { count: 'exact', head: true }).eq('user_id', me).eq('reason', 'pack_buy').gte('created_at', hourAgoIso());
+      if ((recentBuys || 0) >= COIN_LIMITS.buysPerHour) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Too many purchases — slow down.' })); return; }
+    }
     if (pack.price === 0 || await ownsPack(me, pack.id)) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, already: true, manifest: pack.manifest, slug: pack.slug }));
