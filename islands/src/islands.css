@@ -107,6 +107,45 @@
 .isl-shinebtn:hover::after {
   left: 130%;
 }
+/* Liquid fill (ports the button library's LiquidFillButton): a danger-red
+   pool expands from the cursor with a swift smooth landing. Content rides
+   above it in .isl-filltx. */
+.isl-fillbtn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.isl-fillbtn::before {
+  content: "";
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: var(--danger);
+  transform: scale(0);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+/* Disc is 720px: always covers the whole button no matter where the
+   cursor sits (a fixed small disc leaves the far edge dry). */
+.isl-fillbtn:hover::before {
+  transform: scale(60);
+}
+.isl-fillbtn:hover {
+  color: #fff;
+  border-color: var(--danger);
+}
+.isl-filltx {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .isl-roverlay {
   position: fixed;
   inset: 0;
@@ -204,5 +243,8 @@
   }
   .isl-spin {
     animation: none;
+  }
+  .isl-fillbtn::before {
+    transition: none;
   }
 }

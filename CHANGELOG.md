@@ -49,6 +49,10 @@ embeddable games**
 - Pack rows grew up: all own packs listed under Theme packs with
   Published/Draft badges plus Edit, Publish/Unpublish, and Delete —
   same actions as Studio project cards.
+- Button effects pass (ported library LiquidFillButton/ShineButton, no
+  Tailwind on classic pages): danger-red liquid fill from the cursor on
+  the Report island button, theme Delete buttons, and Studio card
+  Delete/Unpublish; shine sweep on gallery Play buttons. Islands at `?v=6`.
 - Requires running `supabase/migrations/20261014130000_music_tracks.sql`;
   pre-migration the music section stays empty without errors.
 

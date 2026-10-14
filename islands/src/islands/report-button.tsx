@@ -26,6 +26,14 @@ function pageGameId(): string | null {
   }
 }
 
+// Liquid fill origin (ports the button library's LiquidFillButton): the
+// red pool expands from the cursor, not the center.
+function setFillOrigin(e: React.PointerEvent<HTMLButtonElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty('--x', `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty('--y', `${e.clientY - r.top}px`);
+}
+
 export default function ReportButton() {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('broken');
@@ -76,9 +84,17 @@ export default function ReportButton() {
 
   return (
     <>
-      <button type="button" className="btn btn-secondary isl-shinebtn" onClick={openModal}>
-        <Flag size={14} strokeWidth={1.8} aria-hidden="true" />
-        Report
+      <button
+        type="button"
+        className="btn btn-secondary isl-shinebtn isl-fillbtn"
+        onClick={openModal}
+        onPointerEnter={setFillOrigin}
+        onPointerLeave={setFillOrigin}
+      >
+        <span className="isl-filltx">
+          <Flag size={14} strokeWidth={1.8} aria-hidden="true" />
+          Report
+        </span>
       </button>
       {open && (
         <div
