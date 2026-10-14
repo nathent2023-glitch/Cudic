@@ -543,7 +543,7 @@ const server = http.createServer(async (req, res) => {
 
     const { data: messages } = await supabase
       .from('messages')
-      .select('display_name, text, created_at, user_id, users!messages_user_id_fkey(avatar_url)')
+      .select('id, display_name, text, created_at, user_id, users!messages_user_id_fkey(avatar_url)')
       .eq('lobby_id', lobby.id)
       .order('created_at', { ascending: true })
       .limit(100);
@@ -1698,12 +1698,13 @@ const server = http.createServer(async (req, res) => {
   // Evidence uploads go to the private report-evidence bucket; the client
   // sends the storage path (not a URL) and review happens in the dashboard.
   var REPORT_REASONS = ['inappropriate', 'stolen', 'broken', 'spam', 'other'];
-  var REPORT_TYPES = ['pack', 'game'];
+  var REPORT_TYPES = ['pack', 'game', 'message', 'user'];
   if (url.pathname === '/api/reports' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
+    if (!rateLimit('report:' + user.id, 20, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Too many reports, slow down.' })); return; }
     if (!REPORT_TYPES.includes(body.content_type)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown content.' })); return; }
     if (!REPORT_REASONS.includes(body.reason)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pick a reason.' })); return; }
     const details = String(body.details || '').trim().substring(0, 1000);
@@ -1716,6 +1717,23 @@ const server = http.createServer(async (req, res) => {
       const { data: repGame } = await supabase.from('games').select('id, published, owner_id').eq('id', gid).single();
       if (!repGame || (!repGame.published && repGame.owner_id !== user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Game not found.' })); return; }
       contentId = repGame.id;
+    } else if (body.content_type === 'message') {
+      // Message reports (plan.md 2.1): the reporter must be able to see the
+      // room the message lives in, so ids can't be used to probe rooms.
+      const mid = body.content_id;
+      if (typeof mid !== 'string' || !isUuid(mid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown message.' })); return; }
+      const { data: rm } = await supabase.from('messages').select('id, lobby_id, user_id').eq('id', mid).single();
+      if (!rm) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Message not found.' })); return; }
+      const { data: rl } = await supabase.from('lobbies').select('id, name, kind, server_id').eq('id', rm.lobby_id).single();
+      if (!rl || !(await canSeeLobby(user.id, rl))) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Message not found.' })); return; }
+      contentId = rm.id;
+    } else if (body.content_type === 'user') {
+      // User reports: no self-reports, target must be a real profile.
+      const uid = body.content_id;
+      if (typeof uid !== 'string' || !isUuid(uid) || uid === user.id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+      const { data: ru } = await supabase.from('users').select('id').eq('id', uid).single();
+      if (!ru) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+      contentId = ru.id;
     } else if (body.content_id && isUuid(body.content_id)) {
       const pack = await packByKey(body.content_id);
       if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
@@ -1743,6 +1761,109 @@ const server = http.createServer(async (req, res) => {
     if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Report failed.' })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── Moderation (plan.md 2.2): allowlisted moderators only ──────
+  // Membership lives in the moderators table (service-role reads); never
+  // inferred from coins, purchases, or profile fields. Missing table (pre-
+  // migration) reads as "no moderators", so this is deploy-safe.
+  async function isModerator(uid) {
+    if (!uid) return false;
+    try {
+      const { data } = await supabase.from('moderators').select('user_id').eq('user_id', uid).single();
+      return !!data;
+    } catch { return false; }
+  }
+
+  // ── API: my reports (status of things I flagged) ──────────────
+  if (url.pathname === '/api/reports/mine' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data } = await supabase.from('reports')
+      .select('id, content_type, content_id, content_slug, reason, details, status, created_at')
+      .eq('reporter_id', user.id).order('created_at', { ascending: false }).limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ reports: data || [] }));
+    return;
+  }
+
+  // ── API: moderation queue (moderators only) ────────────────────
+  if (url.pathname === '/api/reports/queue' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const status = String(url.searchParams.get('status') || 'open');
+    const type = String(url.searchParams.get('type') || '');
+    if (!['open', 'reviewing', 'actioned', 'dismissed'].includes(status)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad status.' })); return; }
+    if (type && !REPORT_TYPES.includes(type)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad type.' })); return; }
+    let q = supabase.from('reports').select('id, reporter_id, content_type, content_id, content_slug, reason, details, evidence_url, status, created_at').eq('status', status);
+    if (type) q = q.eq('content_type', type);
+    const { data: reps } = await q.order('created_at', { ascending: false }).limit(50);
+    const rows = reps || [];
+    // Previews: one scoped query per target kind, joined client-side.
+    const gids = [...new Set(rows.filter(r => r.content_type === 'game' && r.content_id).map(r => r.content_id))];
+    const mids = [...new Set(rows.filter(r => r.content_type === 'message' && r.content_id).map(r => r.content_id))];
+    const uids = [...new Set(rows.filter(r => r.content_type === 'user' && r.content_id).map(r => r.content_id))];
+    const pids = [...new Set(rows.filter(r => r.content_type === 'pack' && r.content_id).map(r => r.content_id))];
+    const pslugs = [...new Set(rows.filter(r => r.content_type === 'pack' && r.content_slug).map(r => r.content_slug))];
+    const rids = [...new Set(rows.map(r => r.reporter_id))];
+    const [games, packsById, packsBySlug, msgs, usrs, reps2] = await Promise.all([
+      gids.length ? supabase.from('games').select('id, title, published').in('id', gids) : Promise.resolve({ data: [] }),
+      pids.length ? supabase.from('theme_packs').select('id, slug, name, published').in('id', pids) : Promise.resolve({ data: [] }),
+      pslugs.length ? supabase.from('theme_packs').select('id, slug, name, published').in('slug', pslugs) : Promise.resolve({ data: [] }),
+      mids.length ? supabase.from('messages').select('id, text, display_name').in('id', mids) : Promise.resolve({ data: [] }),
+      uids.length ? supabase.from('users').select('id, display_name').in('id', uids) : Promise.resolve({ data: [] }),
+      rids.length ? supabase.from('users').select('id, display_name').in('id', rids) : Promise.resolve({ data: [] }),
+    ]);
+    const byId = (arr, key) => { const m = {}; for (const r of (arr && arr.data) || []) m[r[key || 'id']] = r; return m; };
+    const gById = byId(games), mById = byId(msgs), uById = byId(usrs), rById = byId(reps2);
+    const pById = byId(packsById), pBySlug = byId(packsBySlug, 'slug');
+    const out = rows.map(r => {
+      let preview = null;
+      if (r.content_type === 'game' && gById[r.content_id]) { const g = gById[r.content_id]; preview = g.title + (g.published ? '' : ' (unpublished)'); }
+      else if (r.content_type === 'pack') { const p = (r.content_id && pById[r.content_id]) || (r.content_slug && pBySlug[r.content_slug]); if (p) preview = p.name + (p.published ? '' : ' (unpublished)'); else if (r.content_slug) preview = 'static pack: ' + r.content_slug; }
+      else if (r.content_type === 'message' && mById[r.content_id]) { const m = mById[r.content_id]; preview = (m.display_name || '?') + ': ' + String(m.text || '').substring(0, 140); }
+      else if (r.content_type === 'user' && uById[r.content_id]) preview = uById[r.content_id].display_name;
+      return { ...r, reporter_name: (rById[r.reporter_id] || {}).display_name || '?', preview };
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ reports: out }));
+    return;
+  }
+
+  // ── API: resolve a report (moderators only, every action audited) ──
+  const modActMatch = /^\/api\/reports\/([^/]+)\/action$/.exec(url.pathname);
+  if (modActMatch && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const rid = modActMatch[1];
+    if (!isUuid(rid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad report.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const action = String(body.action || '');
+    if (!['dismiss', 'reviewing', 'actioned', 'unpublish', 'delete_message'].includes(action)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown action.' })); return; }
+    const { data: rep } = await supabase.from('reports').select('*').eq('id', rid).single();
+    if (!rep) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Report not found.' })); return; }
+    // Side effects reuse the same state changes as the owner endpoints.
+    if (action === 'unpublish') {
+      if (rep.content_type === 'game' && rep.content_id) await supabase.from('games').update({ published: false }).eq('id', rep.content_id);
+      else if (rep.content_type === 'pack' && rep.content_id) await supabase.from('theme_packs').update({ published: false }).eq('id', rep.content_id);
+      else if (rep.content_type === 'pack' && rep.content_slug) await supabase.from('theme_packs').update({ published: false }).eq('slug', rep.content_slug);
+      else { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Cannot unpublish that.' })); return; }
+    } else if (action === 'delete_message') {
+      if (rep.content_type !== 'message' || !rep.content_id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not a message report.' })); return; }
+      await supabase.from('messages').delete().eq('id', rep.content_id);
+    }
+    const status = action === 'dismiss' ? 'dismissed' : action === 'reviewing' ? 'reviewing' : 'actioned';
+    await supabase.from('reports').update({ status }).eq('id', rid);
+    await supabase.from('moderation_actions').insert({
+      moderator_id: user.id, report_id: rid, content_type: rep.content_type,
+      content_id: rep.content_id, action, reason: String(body.reason || '').substring(0, 200),
+    });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, status }));
     return;
   }
 
@@ -2558,6 +2679,11 @@ const server = http.createServer(async (req, res) => {
     url.pathname = '/servers.html';
   }
 
+  // ── Redirect /moderate to /moderate.html ───────────────────────
+  if (url.pathname === '/moderate') {
+    url.pathname = '/moderate.html';
+  }
+
   // ── /lobbies is gone: send everyone to chat ────────────────────
   if (url.pathname === '/lobbies') {
     res.writeHead(302, { Location: '/chat' });
@@ -2720,12 +2846,13 @@ async function saveMessage(lobbyName, userId, displayName, text) {
     }
 
     if (lobby) {
-      await supabase.from('messages').insert({
+      const { data: saved } = await supabase.from('messages').insert({
         lobby_id: lobby.id,
         user_id: userId || null,
         display_name: displayName,
         text,
-      });
+      }).select('id').single();
+      if (saved) return saved;
       // Activity trickle: first 10 messages each UTC day earn 1 coin.
       // Best-effort only — never blocks or breaks the save above.
       if (userId) {
@@ -2916,6 +3043,10 @@ wss.on('connection', (ws) => {
 
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+      // Client correlation id (safe chars only): lets every viewer patch
+      // the live message with its saved row id for reporting, without
+      // awaiting the insert before broadcast (chat latency unchanged).
+      const cid = (typeof msg.cid === 'string' ? msg.cid : '').replace(/[^A-Za-z0-9-]/g, '').substring(0, 32) || null;
       broadcast(info.lobby, {
         type: 'message',
         lobby: info.lobby,
@@ -2925,10 +3056,13 @@ wss.on('connection', (ws) => {
         text,
         time,
         ts: new Date().toISOString(),
+        cid,
       });
 
-      // Persist to database
-      saveMessage(info.lobby, info.userId, info.username, text);
+      // Persist to database, then tell the room the saved row id.
+      saveMessage(info.lobby, info.userId, info.username, text).then((row) => {
+        if (row && row.id && cid) broadcast(info.lobby, { type: 'message_saved', lobby: info.lobby, cid, id: row.id });
+      }).catch(() => {});
       // Everyone else's sidebar (previews, unread, order) may be stale
       sendConversationsDirty();
       return;

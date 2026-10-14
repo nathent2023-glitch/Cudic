@@ -205,8 +205,23 @@ For users:
   are ported, never imported directly.
 - v1 omits evidence upload for game reports (reason + details only); the
   `/themes` pack flow keeps picture upload.
-- Still open: message, user/creator, collection, jam-entry, and server
-  report targets; moderator queue (2.2).
+- 2.1 continued (2026-10-14, uncommitted): `POST /api/reports` also
+  accepts `message` (reporter must see the room — no id probing) and
+  `user` (no self-reports, target must exist). Chat has a hover Flag
+  button on others' messages opening a modal with a message/sender
+  toggle, reason select, and details. Message ids reach clients via the
+  history select plus a `message_saved` WS patch correlated by a client
+  `cid` — broadcast stays instant, no insert await on the hot path.
+  Reports rate-limited (20/hour). Still open: collection, jam-entry, and
+  server report targets.
+- 2.2 built, migration NOT yet applied (2026-10-14, uncommitted):
+  `GET /api/reports/mine`, `GET /api/reports/queue` (mod-only, with
+  content previews), `POST /api/reports/:id/action` (dismiss / reviewing
+  / actioned / unpublish game-or-pack / delete message, every action
+  written to `moderation_actions`), and a minimal `/moderate` page.
+  Needs `supabase/migrations/20261014120000_moderation.sql` run in the
+  Supabase SQL editor, then the owner inserts their auth UUID into
+  `moderators`. Pre-migration the queue 403s safely (no moderators).
 
 ---
 

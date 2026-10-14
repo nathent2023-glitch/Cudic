@@ -234,12 +234,16 @@ function onWs(e) {
       break;
     case 'message':
       if (current && msg.lobby === current.name) {
-        addChatMessage(msg.username, msg.text, msg.time, msg.avatar_url, msg.user_id, msg.ts);
+        addChatMessage(msg.username, msg.text, msg.time, msg.avatar_url, msg.user_id, msg.ts, msg.id, msg.cid);
         markReadSoon();
         if (document.hidden) { flashCount++; flashTitle(); }
       } else {
         flashCount++; flashTitle();
       }
+      break;
+    case 'message_saved':
+      // Live message now has a row id: arm its Flag button (plan.md 2.1).
+      armFlagForCid(msg.cid, msg.id);
       break;
     case 'conversation_dirty':
       refreshConvs();
@@ -355,7 +359,7 @@ async function openConv(conv) {
     const d = await api('/api/messages?lobby=' + encodeURIComponent(conv.name));
     if (current !== conv) return;
     if (d.messages && d.messages.length) {
-      d.messages.forEach(m => addChatMessage(m.display_name, m.text, fmtTime(m.created_at), m.users && m.users.avatar_url, m.user_id, m.created_at));
+      d.messages.forEach(m => addChatMessage(m.display_name, m.text, fmtTime(m.created_at), m.users && m.users.avatar_url, m.user_id, m.created_at, m.id, null));
     } else {
       addSystemMessage('No messages yet — say hello.');
     }
@@ -601,10 +605,71 @@ chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = msgInput.value.trim();
   if (!text || !ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type: 'message', text }));
+  // cid correlates this live message with its saved row id (message_saved)
+  // so Flag buttons arm without slowing broadcast. Safe chars only.
+  const cid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  ws.send(JSON.stringify({ type: 'message', text, cid }));
   msgInput.value = '';
   msgInput.focus();
   markReadSoon();
+});
+
+// ── Report modal (message or sender) ─────────────────────────────
+var repMid = null, repUid = null, repName = '';
+function openReport(btn) {
+  repMid = btn.dataset.mid;
+  repUid = btn.dataset.uid;
+  const main = btn.closest('.msg-main');
+  repName = main ? (main.querySelector('.author') || {}).textContent || '' : '';
+  document.getElementById('reportUserLabel').textContent = repName ? 'Its sender (' + repName + ')' : 'Its sender';
+  document.querySelector('input[name="repTarget"][value="message"]').checked = true;
+  document.getElementById('reportReason').value = 'inappropriate';
+  document.getElementById('reportDetails').value = '';
+  const m = document.getElementById('reportMsg');
+  m.textContent = ''; m.className = 'status-msg';
+  document.getElementById('reportTitle').textContent = 'Report message';
+  document.getElementById('reportSend').disabled = false;
+  document.getElementById('reportSend').textContent = 'Send report';
+  document.getElementById('reportOverlay').hidden = false;
+}
+messagesEl.addEventListener('click', (e) => {
+  const b = e.target && e.target.closest ? e.target.closest('.msg-flag') : null;
+  if (b) openReport(b);
+});
+document.getElementById('reportCancel').addEventListener('click', () => {
+  document.getElementById('reportOverlay').hidden = true;
+});
+document.getElementById('reportOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('reportOverlay')) document.getElementById('reportOverlay').hidden = true;
+});
+document.getElementById('reportSend').addEventListener('click', async () => {
+  const btn = document.getElementById('reportSend');
+  const m = document.getElementById('reportMsg');
+  const target = (document.querySelector('input[name="repTarget"]:checked') || {}).value || 'message';
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const d = await api('/api/reports', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_type: target === 'user' ? 'user' : 'message',
+        content_id: target === 'user' ? repUid : repMid,
+        reason: document.getElementById('reportReason').value,
+        details: document.getElementById('reportDetails').value.trim().substring(0, 1000),
+      }),
+    });
+    if (d && d.error) throw new Error(d.error);
+    m.className = 'status-msg ok';
+    m.textContent = 'Report sent — a human will review it.';
+    btn.textContent = 'Sent';
+    setTimeout(() => { document.getElementById('reportOverlay').hidden = true; }, 1400);
+  } catch (err) {
+    m.className = 'status-msg err';
+    m.textContent = (err && err.message) || 'Report failed.';
+    btn.disabled = false;
+    btn.textContent = 'Send report';
+  }
 });
 
 // ── Typing indicator ─────────────────────────────────────────────
@@ -655,10 +720,12 @@ document.getElementById('rulesOverlayAccept').addEventListener('click', async ()
 });
 
 // ── Render functions ─────────────────────────────────────────────
-function addChatMessage(author, text, time, avatar, userId, ts) {
+function addChatMessage(author, text, time, avatar, userId, ts, mid, cid) {
   const div = document.createElement('div');
   const mine = !!(userId && ME && userId === ME);
   div.className = 'msg' + (mine ? ' mine' : '');
+  if (cid && /^[A-Za-z0-9-]{1,32}$/.test(cid)) div.dataset.cid = cid;
+  if (!mine && typeof userId === 'string' && /^[0-9a-f-]{36}$/i.test(userId)) div.dataset.uid = userId;
   const av = avatar
     ? '<img src="' + escapeHtml(avatar) + '" alt="">'
     : escapeHtml(String(author || '?').substring(0, 1).toUpperCase());
@@ -667,8 +734,37 @@ function addChatMessage(author, text, time, avatar, userId, ts) {
     + '<span class="time">' + time + '</span>'
     + '<div class="msg-text">' + escapeHtml(text) + (mine ? ' <span class="ticks" data-ts="' + escapeHtml(ts || '') + '">✓</span>' : '') + '</div></div>';
   messagesEl.appendChild(div);
+  if (!mine && mid) armFlag(div, mid, userId);
   if (mine) paintTicks();
   scrollToBottom();
+}
+
+// ── Message/user reporting (plan.md 2.1) ─────────────────────────
+// Flag buttons arm once a message has a row id: history rows carry it,
+// live rows get it via the message_saved patch (cid correlation keeps
+// broadcast instant — no insert await on the hot path).
+function armFlag(div, mid, uid) {
+  if (!div || div.querySelector('.msg-flag')) return;
+  if (typeof mid !== 'string' || !/^[0-9a-f-]{36}$/i.test(mid)) return;
+  if (typeof uid !== 'string' || !/^[0-9a-f-]{36}$/i.test(uid)) return;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'msg-flag';
+  b.textContent = 'Flag';
+  b.setAttribute('aria-label', 'Report this message');
+  b.dataset.mid = mid;
+  b.dataset.uid = uid;
+  const main = div.querySelector('.msg-main');
+  if (main) main.appendChild(b);
+}
+function armFlagForCid(cid, mid) {
+  if (typeof cid !== 'string' || !/^[A-Za-z0-9-]{1,32}$/.test(cid)) return;
+  const div = messagesEl.querySelector('.msg[data-cid="' + cid + '"]');
+  if (!div || div.querySelector('.msg-flag')) return;
+  // Sender id rides on the div (stashed at render); the patch carries
+  // only cid + row id. Skip rather than guess.
+  const uid = div.dataset.uid || null;
+  if (uid) armFlag(div, mid, uid);
 }
 
 function addSystemMessage(text, cls) {
@@ -726,6 +822,8 @@ function fmtAgo(iso) {
 // ── Keyboard shortcut ────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
+    const rep = document.getElementById('reportOverlay');
+    if (rep && !rep.hidden) { rep.hidden = true; return; }
     if (!searchView.hidden) hideSearch();
     else { msgInput.blur(); sidebar.classList.remove('open'); }
   }

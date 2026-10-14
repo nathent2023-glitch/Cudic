@@ -12,6 +12,7 @@
     { "source": "/editor", "destination": "/editor.html" },
     { "source": "/music", "destination": "/music.html" },
     { "source": "/servers", "destination": "/servers.html" },
+    { "source": "/moderate", "destination": "/moderate.html" },
     { "source": "/studio", "destination": "/studio/index.html" }
   ],
   "redirects": [

@@ -24,6 +24,21 @@ embeddable games**
   Islands rebuilt, `games.html` + `view.html` pinned at `?v=5`.
 - v1 omits evidence upload for game reports; `/themes` keeps picture upload.
 
+**Message/user reporting + moderation queue** (plan.md 2.1–2.2 — uncommitted)
+- `POST /api/reports` accepts `message` (reporter must see the room) and
+  `user` (no self-reports); 20/hour rate limit. Chat gains a hover Flag
+  button on others' messages with a message/sender report modal. Message
+  ids flow via history select + a `message_saved` WS patch keyed by client
+  `cid`, so broadcast latency is unchanged. `client.js` → `?v=6`.
+- New mod-only endpoints (allowlist in `moderators` table):
+  `GET /api/reports/mine`, `GET /api/reports/queue` (status/type filters,
+  content previews), `POST /api/reports/:id/action` (dismiss, reviewing,
+  actioned, unpublish game/pack, delete message — all audited in
+  `moderation_actions`). Minimal `/moderate` page for the queue.
+- Requires running `supabase/migrations/20261014120000_moderation.sql`
+  and inserting your auth UUID into `moderators`; pre-migration the queue
+  safely 403s. `docs.html` reports section updated.
+
 **Google AdSense verification** (`f1bc10d`, `fb142d3`)
 - Account-level `adsbygoogle.js` snippet site-wide (static heads + sidebar
   injection), `ads.txt` with the publisher ID, `/privacy` page + routes,

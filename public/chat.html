@@ -185,6 +185,16 @@
     .msg .ticks.seen { color: var(--signal); }
     .msg .author { font-weight: 600; margin-right: 8px; color: var(--signal); font-family: var(--font-head); }
     .msg .time { color: var(--text-tertiary); font-size: 0.75rem; margin-left: 8px; font-weight: 400; }
+    /* Flag affordance: quiet until hover/focus, never on own messages. */
+    .msg-flag {
+      background: none; border: none; padding: 2px 4px; margin-left: 8px;
+      color: var(--text-tertiary); font-size: 0.72rem; font-family: inherit;
+      cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s;
+    }
+    .msg:hover .msg-flag, .msg-flag:focus-visible { opacity: 1; }
+    .msg-flag:hover { color: var(--danger); text-decoration: underline; }
+    @media (hover: none) { .msg-flag { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .msg-flag { transition: none; } }
     .system { color: var(--text-secondary); font-size: 0.8125rem; text-align: center; margin: 8px 0; font-style: italic; opacity: 0.95; }
     .system.join { color: var(--success); }
     .system.leave { color: var(--danger); }
@@ -219,6 +229,22 @@
     .rules-card h2 { font-family: var(--font-head); font-weight: 600; margin: 0 0 12px; font-size: 1.1rem; }
     .rules-card p { font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap; margin: 0 0 16px; }
     .rules-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    #reportOverlay {
+      position: fixed; inset: 0; z-index: 9000;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .rep-target { display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.85rem; color: var(--text-primary); }
+    .rep-target label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .rep-field { margin-bottom: 12px; }
+    .rep-field label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; }
+    .rep-field select, .rep-field input {
+      width: 100%; box-sizing: border-box; background: var(--panel-raised);
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      padding: 9px 12px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; outline: none;
+    }
+    .rep-field select:focus, .rep-field input:focus { border-color: var(--signal); }
+    #reportOverlay .status-msg { min-height: 0; margin-bottom: 4px; }
   </style></head>
 <body data-page="chat">
   <div class="chat-layout page-panel">
@@ -287,10 +313,33 @@
           </div>
         </div>
       </div>
+      <div id="reportOverlay" hidden>
+        <div class="rules-card">
+          <h2 id="reportTitle">Report message</h2>
+          <p id="reportSub" style="font-size:0.82rem;color:var(--text-secondary)">Flagged content goes to a human for review.</p>
+          <div class="rep-target" role="radiogroup" aria-label="Report target">
+            <label><input type="radio" name="repTarget" value="message" checked> This message</label>
+            <label><input type="radio" name="repTarget" value="user"> <span id="reportUserLabel">Its sender</span></label>
+          </div>
+          <div class="rep-field"><label>Reason</label><select id="reportReason">
+            <option value="inappropriate">Hateful or inappropriate</option>
+            <option value="spam">Spam or scam</option>
+            <option value="stolen">Impersonation or stolen content</option>
+            <option value="broken">Threats or personal info</option>
+            <option value="other">Something else</option>
+          </select></div>
+          <div class="rep-field"><label>Details (optional)</label><input type="text" id="reportDetails" maxlength="1000" placeholder="What did you see?" autocomplete="off"></div>
+          <div class="status-msg" id="reportMsg"></div>
+          <div class="rules-actions">
+            <button class="btn btn-secondary" id="reportCancel">Cancel</button>
+            <button class="btn btn-primary" id="reportSend">Send report</button>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
   <script src="/sidebar.js?v=12"></script>
-  <script src="/client.js?v=5"></script>
+  <script src="/client.js?v=6"></script>
 </body></html>

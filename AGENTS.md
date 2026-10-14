@@ -80,7 +80,7 @@ npm run build        # vite build (lib IIFE) → ../public/islands/  (~5s, 657KB
   (currently **v5**) on using pages after rebuilding.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
   (currently **v24**) — pages cache CSS aggressively. Same for
-  `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v5**) after editing those.
+  `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v6**) after editing those.
   New shared scripts take `?v=1` (`ctheme.js`, `csel.js`).
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
   and check the console. Playwright MCP is **disabled**; the browser tools that
@@ -191,6 +191,17 @@ code screen (`GET /auth/verification-required`, same rule). A daily
 `purgeUnconfirmed()` sweep deletes email accounts still unconfirmed after
 24h (profile + owned rows cascade from `auth.users`), so the user list
 holds real accounts only.
+
+### Reports + moderation (plan.md 2.1–2.2)
+`POST /api/reports` takes pack/game/message/user (reason required, 20/hour
+per user). Message reports require seeing the room; user reports reject
+self-reports. Chat Flag buttons arm from history ids + a `message_saved` WS
+patch keyed by client `cid` — never await the insert before broadcast.
+Mod-only: `GET /api/reports/queue|mine`, `POST /api/reports/:id/action`
+(dismiss/reviewing/actioned/unpublish/delete_message, all in
+`moderation_actions`), `/moderate` page. Moderators = `moderators` table
+(auth UUIDs, service-role only); needs migration
+`20261014120000_moderation.sql`. Pre-migration the queue safely 403s.
 
 ### Single-seat sessions (one live seat per account)
 Client mints a random seat id at login (`cudic_seat` in localStorage; fresh

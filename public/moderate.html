@@ -1,0 +1,134 @@
+<!DOCTYPE html><html lang="en"><head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cudic — Moderation</title>
+  <meta name="description" content="Review reported games, packs, messages, and users. Moderators only.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+  <link rel="stylesheet" href="/sidebar.css?v=24">
+  <style>
+    body { display: flex; overflow: hidden; height: 100%; }
+    .mod-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
+    .mod-content { flex: 1; overflow-y: auto; padding: 28px 32px; max-width: 860px; }
+    .mod-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 4px; }
+    .mod-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; }
+    .mod-filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .mod-filters select {
+      background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-sm);
+      padding: 8px 12px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; outline: none;
+    }
+    .rep-card { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 12px; }
+    .rep-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .rep-kind { font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; color: var(--signal); }
+    .rep-prev { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); overflow-wrap: break-word; }
+    .rep-meta { font-size: 0.75rem; color: var(--text-tertiary); margin-bottom: 8px; }
+    .rep-det { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; overflow-wrap: break-word; }
+    .rep-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+    .rep-acts button { padding: 7px 14px; font-size: 0.78rem; }
+    .rep-acts .danger { color: var(--danger); border-color: var(--line); }
+  </style></head>
+<body data-page="moderate">
+  <div class="mod-layout page-panel"><div class="mod-content">
+    <h1>Moderation</h1>
+    <p class="mod-sub">Reports queue. Every action is logged. <a href="/docs#reports" style="color:var(--signal)">How reporting works</a></p>
+    <div id="modGate" style="display:none" class="rep-card">
+      <div class="rep-prev" id="modGateText">Sign in to continue.</div>
+    </div>
+    <div id="modBody" style="display:none">
+      <div class="mod-filters">
+        <select id="fStatus" aria-label="Filter by status">
+          <option value="open">Open</option>
+          <option value="reviewing">Reviewing</option>
+          <option value="actioned">Actioned</option>
+          <option value="dismissed">Dismissed</option>
+        </select>
+        <select id="fType" aria-label="Filter by type">
+          <option value="">All types</option>
+          <option value="game">Games</option>
+          <option value="pack">Packs</option>
+          <option value="message">Messages</option>
+          <option value="user">Users</option>
+        </select>
+        <button class="btn btn-secondary" id="fGo" style="padding:8px 16px;font-size:0.82rem">Refresh</button>
+      </div>
+      <div class="status-msg" id="modMsg"></div>
+      <div id="repList"></div>
+    </div>
+  </div></div>
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/sidebar.js?v=12"></script>
+  <script>
+  (async function(){
+    var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+    async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
+    function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+    function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+    function gate(text){ document.getElementById('modGate').style.display='block'; document.getElementById('modGateText').textContent=text; }
+    var t = await token();
+    if (!t) { gate('Sign in to continue.'); return; }
+    // Probe: non-moderators get 403 here, which is the whole gate.
+    var probe;
+    try {
+      var pr = await fetch(apiHost() + '/api/reports/queue?status=open', { headers: { 'Authorization': 'Bearer ' + t } });
+      if (pr.status === 403) { gate('Moderators only. If you should be one, your auth UUID goes in the moderators table.'); return; }
+      if (!pr.ok) { gate('Could not load the queue.'); return; }
+      probe = await pr.json();
+    } catch (e) { gate('Could not load the queue.'); return; }
+    document.getElementById('modBody').style.display = 'block';
+    function paint(list) {
+      var box = document.getElementById('repList');
+      if (!list.length) { box.innerHTML = '<p class="mod-sub">Nothing here.</p>'; return; }
+      box.innerHTML = list.map(function(r){
+        var acts = '<button class="btn btn-secondary" data-act="reviewing">Reviewing</button>'
+          + '<button class="btn btn-secondary" data-act="dismiss">Dismiss</button>'
+          + '<button class="btn btn-primary" data-act="actioned">Mark actioned</button>';
+        if (r.content_type === 'game' || r.content_type === 'pack') acts += '<button class="btn btn-secondary danger" data-act="unpublish">Unpublish</button>';
+        if (r.content_type === 'message') acts += '<button class="btn btn-secondary danger" data-act="delete_message">Delete message</button>';
+        return '<div class="rep-card" data-rid="' + r.id + '">'
+          + '<div class="rep-top"><span class="rep-kind">' + esc(r.content_type) + '</span>'
+          + '<span class="rep-prev">' + esc(r.preview || '(content gone)') + '</span></div>'
+          + '<div class="rep-meta">reason: ' + esc(r.reason) + ' · by ' + esc(r.reporter_name || '?') + ' · ' + esc(new Date(r.created_at).toLocaleString()) + '</div>'
+          + (r.details ? '<div class="rep-det">' + esc(r.details) + '</div>' : '')
+          + '<div class="rep-acts">' + acts + '</div></div>';
+      }).join('');
+      box.querySelectorAll('button[data-act]').forEach(function(b){
+        b.addEventListener('click', function(){ act(b.closest('.rep-card').getAttribute('data-rid'), b.getAttribute('data-act'), b); });
+      });
+    }
+    async function act(rid, action, btn) {
+      var m = document.getElementById('modMsg');
+      if ((action === 'unpublish' || action === 'delete_message') && !window.confirm('This changes or deletes user content. Continue?')) return;
+      btn.disabled = true;
+      try {
+        var r = await fetch(apiHost() + '/api/reports/' + encodeURIComponent(rid) + '/action', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+          body: JSON.stringify({ action: action })
+        });
+        var d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Action failed.');
+        m.textContent = 'Done.'; m.className = 'status-msg ok';
+        load();
+      } catch (e) { m.textContent = e.message || 'Action failed.'; m.className = 'status-msg err'; btn.disabled = false; }
+    }
+    async function load() {
+      var m = document.getElementById('modMsg'); m.textContent = ''; m.className = 'status-msg';
+      var qs = '?status=' + encodeURIComponent(document.getElementById('fStatus').value)
+        + '&type=' + encodeURIComponent(document.getElementById('fType').value);
+      try {
+        var r = await fetch(apiHost() + '/api/reports/queue' + qs, { headers: { 'Authorization': 'Bearer ' + t } });
+        var d = await r.json();
+        if (!r.ok) throw new Error(d.error || 'Load failed.');
+        paint(d.reports || []);
+      } catch (e) { m.textContent = e.message || 'Load failed.'; m.className = 'status-msg err'; }
+    }
+    document.getElementById('fGo').addEventListener('click', load);
+    document.getElementById('fStatus').addEventListener('change', load);
+    document.getElementById('fType').addEventListener('change', load);
+    // Seed from the probe so first paint costs no second request.
+    (function(){ var s = document.getElementById('fStatus'); if (s.value !== 'open') s.value = 'open'; })();
+    if (probe && probe.reports) paint(probe.reports);
+    else load();
+  })();
+  </script>
+</body></html>
