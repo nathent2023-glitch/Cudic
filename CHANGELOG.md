@@ -39,6 +39,16 @@ embeddable games**
   and inserting your auth UUID into `moderators`; pre-migration the queue
   safely 403s. `docs.html` reports section updated.
 
+**Music cloud tracks + unified Your Projects** (uncommitted)
+- New `music_tracks` table + `/api/music` CRUD: signed-in users sync
+  tracks to their account (debounced, localStorage mirror), guests stay
+  local. Track title/picker/New/Delete/sync status in the Lab topbar,
+  `?track=` deep links, track switching via reload.
+- Your Projects tab now lists Studio projects, unpublished theme drafts
+  (with `/themes?edit=` deep link into the builder), and music tracks.
+- Requires running `supabase/migrations/20261014130000_music_tracks.sql`;
+  pre-migration the music section stays empty without errors.
+
 **Google AdSense verification** (`f1bc10d`, `fb142d3`)
 - Account-level `adsbygoogle.js` snippet site-wide (static heads + sidebar
   injection), `ads.txt` with the publisher ID, `/privacy` page + routes,

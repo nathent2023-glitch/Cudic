@@ -858,6 +858,26 @@
           await loadMyPacks();
         } catch (e) { bmsg('Save failed.', false); }
       }
+      // Deep link: /themes?edit=<pack-id> opens that draft straight in
+      // the builder (used by Your Projects). Same path as Edit, below.
+      async function openPackEditor(id) {
+        var t2 = await token();
+        if (!t2) return;
+        try {
+          var meta = await (await fetch(apiHost() + '/api/packs?mine=1', { headers: { 'Authorization': 'Bearer ' + t2 } })).json();
+          var found = null;
+          ((meta && meta.packs) || []).forEach(function (x) { if (x.id === id) found = x; });
+          if (!found) { bmsg('Pack not found.', false); return; }
+          var mr = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(id) + '/manifest', { headers: { 'Authorization': 'Bearer ' + t2 } });
+          var md = await mr.json();
+          if (!mr.ok) { bmsg(md.error || 'Load failed.', false); return; }
+          editingId = id;
+          setBuilderOpen(true);
+          setForm({ name: found.name, description: found.description, price: found.price, manifest: md.manifest });
+          document.getElementById('bCancelEdit').style.display = '';
+          bmsg('Editing "' + found.name + '".', true);
+        } catch (e) { bmsg('Load failed.', false); }
+      }
       async function loadMyPacks() {
         var box = document.getElementById('myPacksBody');
         var t = await token();
@@ -883,16 +903,7 @@
               b.addEventListener('click', fn);
               row.appendChild(b);
             }
-            mkBtn('Edit', async function () {
-              var t2 = await token();
-              var mr = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.id) + '/manifest', { headers: { 'Authorization': 'Bearer ' + t2 } });
-              var md = await mr.json();
-              if (!mr.ok) { bmsg(md.error || 'Load failed.', false); return; }
-              editingId = p.id;
-              setForm({ name: p.name, description: p.description, price: p.price, manifest: md.manifest });
-              document.getElementById('bCancelEdit').style.display = '';
-              bmsg('Editing "' + p.name + '".', true);
-            });
+            mkBtn('Edit', function () { openPackEditor(p.id); });
             mkBtn(p.published ? 'Unpublish' : 'Publish', async function () {
               var t2 = await token();
               var r = await fetch(apiHost() + '/api/packs/' + encodeURIComponent(p.id), { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + t2, 'Content-Type': 'application/json' }, body: JSON.stringify({ published: !p.published }) });
@@ -1134,6 +1145,9 @@
         document.getElementById('builderGate').style.display = 'none';
         document.getElementById('builderBody').style.display = '';
         loadMyPacks();
+        var editId = null;
+        try { editId = new URLSearchParams(window.location.search).get('edit'); } catch (e) {}
+        if (editId) openPackEditor(editId);
       });
       waitEngine(50, boot);
     })();

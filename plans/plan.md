@@ -223,6 +223,22 @@ For users:
   Supabase SQL editor, then the owner inserts their auth UUID into
   `moderators`. Pre-migration the queue 403s safely (no moderators).
 
+#### Account-saved themes + music in Your Projects (2026-10-14, uncommitted)
+
+- Theme drafts already persisted to the account (`POST /api/packs`,
+  `?mine=1`); added a `/themes?edit=<id>` deep link so Your Projects
+  rows open drafts straight in the builder (same path as Edit).
+- Music was localStorage-only: new `music_tracks` table + `/api/music`
+  CRUD (verify-gated, seat-checked writes, 100KB cap, owner-scoped).
+  `music.html` gains title/track-picker/New/Delete/sync-status; signed-in
+  users auto-sync (debounced cloud save, localStorage mirror), guests keep
+  local only. Track switching reloads with `?track=` so one-shot UI
+  builders never double-bind listeners.
+- `games.html` Your Projects now unifies Studio projects + unpublished
+  theme drafts + music tracks; empty state shows only when all three are
+  empty. Needs `supabase/migrations/20261014130000_music_tracks.sql` run;
+  pre-migration the music section silently stays empty (fetch fails soft).
+
 ---
 
 ### 2.2 Minimal moderation queue

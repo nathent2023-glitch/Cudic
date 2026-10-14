@@ -1847,14 +1847,34 @@ const server = http.createServer(async (req, res) => {
     const { data: rep } = await supabase.from('reports').select('*').eq('id', rid).single();
     if (!rep) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Report not found.' })); return; }
     // Side effects reuse the same state changes as the owner endpoints.
+    // Every branch verifies a row actually changed: an update matching
+    // zero rows (deleted content, or a static pack with no DB row) must
+    // fail loudly, never report success for a no-op.
+    async function unpublishBy(table, col, val) {
+      const { data } = await supabase.from(table).update({ published: false }).eq(col, val).select('id');
+      return (data || []).length;
+    }
     if (action === 'unpublish') {
-      if (rep.content_type === 'game' && rep.content_id) await supabase.from('games').update({ published: false }).eq('id', rep.content_id);
-      else if (rep.content_type === 'pack' && rep.content_id) await supabase.from('theme_packs').update({ published: false }).eq('id', rep.content_id);
-      else if (rep.content_type === 'pack' && rep.content_slug) await supabase.from('theme_packs').update({ published: false }).eq('slug', rep.content_slug);
+      let changed = 0, gone = false;
+      if (rep.content_type === 'game' && rep.content_id) changed = await unpublishBy('games', 'id', rep.content_id);
+      else if (rep.content_type === 'pack' && rep.content_id) changed = await unpublishBy('theme_packs', 'id', rep.content_id);
+      else if (rep.content_type === 'pack' && rep.content_slug) {
+        changed = await unpublishBy('theme_packs', 'slug', rep.content_slug);
+        if (!changed) gone = true;
+      }
       else { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Cannot unpublish that.' })); return; }
+      if (!changed) {
+        // Slug with no DB row = built-in static pack (ships in public/packs,
+        // not the database). It can't be unpublished from here.
+        const msg = gone && rep.content_slug
+          ? 'Built-in static pack "' + rep.content_slug + '" — remove it from public/packs instead.'
+          : 'Content is already gone.';
+        res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: msg })); return;
+      }
     } else if (action === 'delete_message') {
       if (rep.content_type !== 'message' || !rep.content_id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not a message report.' })); return; }
-      await supabase.from('messages').delete().eq('id', rep.content_id);
+      const { data: del } = await supabase.from('messages').delete().eq('id', rep.content_id).select('id');
+      if (!(del || []).length) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Message is already gone.' })); return; }
     }
     const status = action === 'dismiss' ? 'dismissed' : action === 'reviewing' ? 'reviewing' : 'actioned';
     await supabase.from('reports').update({ status }).eq('id', rid);
@@ -2551,6 +2571,74 @@ const server = http.createServer(async (req, res) => {
     await supabase.from('game_saves').delete().eq('user_id', user.id).eq('game_id', gid);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: music tracks (Music Lab cloud saves — no downloads) ──
+  // Same shape as game_saves: guests keep localStorage only, signed-in
+  // users sync tracks to their account. 100KB cap per track.
+  function musicData(body) {
+    const title = String(body.title || '').trim().substring(0, 60) || 'Untitled track';
+    const data = body.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return { error: 'Track data must be an object.' };
+    if (JSON.stringify(data).length > 100 * 1024) return { error: 'Track too large (100KB max).' };
+    return { title, data };
+  }
+  if (url.pathname === '/api/music' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data } = await supabase.from('music_tracks').select('id, title, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false }).limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ tracks: data || [] }));
+    return;
+  }
+  if (url.pathname === '/api/music' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const body = await readBody(req).catch(() => ({}));
+    const m = musicData(body);
+    if (m.error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: m.error })); return; }
+    const { data, error } = await supabase.from('music_tracks').insert({ owner_id: user.id, title: m.title, data: m.data }).select('id, title, updated_at').single();
+    if (error || !data) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save failed.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ track: data }));
+    return;
+  }
+  const musicMatch = /^\/api\/music\/([^/]+)$/.exec(url.pathname);
+  if (musicMatch && ['GET', 'PUT', 'DELETE'].includes(req.method)) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const tid = musicMatch[1];
+    if (!isUuid(tid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid track.' })); return; }
+    const { data: tr } = await supabase.from('music_tracks').select('*').eq('id', tid).single();
+    if (!tr || tr.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found.' })); return; }
+    if (req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ track: { id: tr.id, title: tr.title, data: tr.data, updated_at: tr.updated_at } }));
+      return;
+    }
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    if (req.method === 'DELETE') {
+      await supabase.from('music_tracks').delete().eq('id', tid);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+    const body = await readBody(req).catch(() => ({}));
+    const updates = { updated_at: new Date().toISOString() };
+    if (body.title !== undefined) updates.title = String(body.title).trim().substring(0, 60) || 'Untitled track';
+    if (body.data !== undefined) {
+      const m = musicData({ title: updates.title, data: body.data });
+      if (m.error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: m.error })); return; }
+      updates.data = m.data;
+    }
+    const { data: nu, error } = await supabase.from('music_tracks').update(updates).eq('id', tid).select('id, title, updated_at').single();
+    if (error || !nu) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save failed.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ track: nu }));
     return;
   }
 

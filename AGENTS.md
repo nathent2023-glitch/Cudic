@@ -203,6 +203,15 @@ Mod-only: `GET /api/reports/queue|mine`, `POST /api/reports/:id/action`
 (auth UUIDs, service-role only); needs migration
 `20261014120000_moderation.sql`. Pre-migration the queue safely 403s.
 
+### Music tracks (account cloud saves)
+`music_tracks` table (owner, title, data jsonb, service-role only) +
+`/api/music` CRUD (verify-gated, seat-checked writes, 100KB cap).
+`music.html` syncs signed-in users (debounced PUT/POST, localStorage
+mirror); guests stay local. `?track=` deep link; switching reloads so
+one-shot builders never double-bind. Needs migration
+`20261014130000_music_tracks.sql`. Your Projects tab unifies Studio
+projects + unpublished pack drafts (`/themes?edit=`) + tracks.
+
 ### Single-seat sessions (one live seat per account)
 Client mints a random seat id at login (`cudic_seat` in localStorage; fresh
 mint = takeover) and the leader tab heartbeats it every 30s

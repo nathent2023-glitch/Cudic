@@ -57,6 +57,44 @@
       flex-wrap: wrap;
     }
 
+    /* ── Cloud tracks (saved to your account, no downloads) ── */
+    .m-track {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    #trackTitle {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 8px 12px;
+      width: 170px;
+      outline: none;
+    }
+    #trackTitle:focus { border-color: var(--signal); }
+    #trackSel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 8px 10px;
+      max-width: 190px;
+      outline: none;
+    }
+    #cloudStatus {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-tertiary);
+      min-width: 150px;
+    }
+
     .m-body {
       flex: 1;
       min-height: 0;
@@ -557,6 +595,14 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
           <span>All notes off</span>
         </button>
+
+        <div class="m-track">
+          <input type="text" id="trackTitle" maxlength="60" value="Untitled track" aria-label="Track title" autocomplete="off">
+          <select id="trackSel" aria-label="Your tracks" style="display:none"></select>
+          <button class="m-btn m-btn-ghost" id="newTrackBtn" title="Start a fresh track">New</button>
+          <button class="m-btn m-btn-ghost" id="delTrackBtn" title="Delete this track" style="display:none">Delete</button>
+          <span id="cloudStatus" aria-live="polite"></span>
+        </div>
       </div>
     </header>
 
@@ -1305,32 +1351,105 @@
           v: S.voice, bpm: S.bpm, swing: S.swing, master: S.master, pattern: S.pattern, mix: S.mix
         }));
       } catch (e) {}
+      scheduleCloudSave();
+    }
+
+    // Shared validation for local + cloud state (same object shape).
+    function applyState(d) {
+      if (!d || typeof d !== 'object') return false;
+      if (d.v && INSTRUMENTS[d.v]) S.voice = d.v;
+      if (typeof d.bpm === 'number') S.bpm = clamp(d.bpm, 60, 180);
+      if (typeof d.swing === 'number') S.swing = clamp(d.swing, 0, 0.6);
+      if (typeof d.master === 'number') S.master = clamp(d.master, 0, 1);
+      if (d.pattern) S.pattern = sanitizePattern(d.pattern);
+      if (d.mix && typeof d.mix === 'object') {
+        for (var k in d.mix) {
+          var m = d.mix[k];
+          if (!m || typeof m !== 'object') continue;
+          S.mix[k] = {
+            v: clamp(typeof m.v === 'number' ? m.v : 80, 0, 100),
+            p: clamp(typeof m.p === 'number' ? m.p : 0, -100, 100),
+            m: m.m ? 1 : 0, s: m.s ? 1 : 0
+          };
+        }
+      }
+      return true;
     }
 
     function load() {
       try {
         var raw = localStorage.getItem('cudic-music');
         if (!raw) return false;
-        var d = JSON.parse(raw);
-        if (!d || typeof d !== 'object') return false;
-        if (d.v && INSTRUMENTS[d.v]) S.voice = d.v;
-        if (typeof d.bpm === 'number') S.bpm = clamp(d.bpm, 60, 180);
-        if (typeof d.swing === 'number') S.swing = clamp(d.swing, 0, 0.6);
-        if (typeof d.master === 'number') S.master = clamp(d.master, 0, 1);
-        if (d.pattern) S.pattern = sanitizePattern(d.pattern);
-        if (d.mix && typeof d.mix === 'object') {
-          for (var k in d.mix) {
-            var m = d.mix[k];
-            if (!m || typeof m !== 'object') continue;
-            S.mix[k] = {
-              v: clamp(typeof m.v === 'number' ? m.v : 80, 0, 100),
-              p: clamp(typeof m.p === 'number' ? m.p : 0, -100, 100),
-              m: m.m ? 1 : 0, s: m.s ? 1 : 0
-            };
-          }
-        }
-        return true;
+        return applyState(JSON.parse(raw));
       } catch (e) { return false; }
+    }
+
+    /* ── Cloud tracks: signed-in users sync to their account, guests keep
+       localStorage only. No downloads, no files — same deal as Studio
+       projects and pack drafts. Track switching reloads (?track=) so the
+       one-shot UI builders never double-bind their listeners. ── */
+    var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+    var currentTrackId = null, pendingTitle = 'Untitled track';
+    var cloudTimer = null, cloudBusy = false;
+    function musicApi() { return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+    async function musicToken() {
+      try { if (typeof getAuthToken === 'function') { var a = await getAuthToken(); if (a) return a; } } catch (e) {}
+      try { var r = localStorage.getItem(TOKEN_KEY); return r ? JSON.parse(r).access_token : null; } catch (e) { return null; }
+    }
+    function seatH(h) { h = h || {}; try { var s = localStorage.getItem('cudic_seat'); if (s) h['X-Seat'] = s; } catch (e) {} return h; }
+    function setCloudStatus(t) { var el = $('cloudStatus'); if (el) el.textContent = t; }
+    function escapeHtmlMusic(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+    function trackSnapshot() {
+      return { v: S.voice, bpm: S.bpm, swing: S.swing, master: S.master, pattern: S.pattern, mix: S.mix };
+    }
+    function scheduleCloudSave() {
+      if (cloudTimer) clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(cloudSaveNow, 1500);
+    }
+    async function cloudSaveNow() {
+      if (cloudBusy) { scheduleCloudSave(); return; }
+      var tok = await musicToken();
+      if (!tok) { setCloudStatus('Sign in to sync tracks'); return; }
+      cloudBusy = true;
+      setCloudStatus('Saving…');
+      try {
+        var body = JSON.stringify({ title: pendingTitle, data: trackSnapshot() });
+        var r;
+        if (currentTrackId) {
+          r = await fetch(musicApi() + '/api/music/' + encodeURIComponent(currentTrackId), { method: 'PUT', headers: seatH({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }), body: body });
+        } else {
+          r = await fetch(musicApi() + '/api/music', { method: 'POST', headers: seatH({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }), body: body });
+        }
+        var d = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error((d && d.error) || 'Save failed.');
+        if (d.track) {
+          if (!currentTrackId && d.track.id) {
+            currentTrackId = d.track.id;
+            try { history.replaceState(null, '', '/music?track=' + encodeURIComponent(currentTrackId)); } catch (e) {}
+            var db = $('delTrackBtn'); if (db) db.style.display = '';
+          }
+          pendingTitle = d.track.title || pendingTitle;
+          var ti = $('trackTitle'); if (ti && document.activeElement !== ti) ti.value = pendingTitle;
+          refreshTrackList(tok);
+        }
+        setCloudStatus('Saved to your account · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (e) {
+        setCloudStatus('Sync failed — kept locally');
+      }
+      cloudBusy = false;
+    }
+    async function refreshTrackList(tok) {
+      var sel = $('trackSel');
+      if (!sel) return;
+      try {
+        var r = await fetch(musicApi() + '/api/music', { headers: { 'Authorization': 'Bearer ' + tok } });
+        var d = await r.json();
+        var tracks = (d && d.tracks) || [];
+        sel.innerHTML = '<option value="">This session (unsaved)</option>' + tracks.map(function (x) {
+          return '<option value="' + x.id + '"' + (x.id === currentTrackId ? ' selected' : '') + '>' + escapeHtmlMusic(x.title || 'Untitled track') + '</option>';
+        }).join('');
+        sel.style.display = '';
+      } catch (e) {}
     }
 
     function syncControls() {
@@ -1397,18 +1516,63 @@
     }
 
     /* ── Boot ───────────────────────────────────────────────── */
-    if (!load()) S.pattern = seedPattern();
-    else if (!S.pattern[ROWS[0].id]) S.pattern = seedPattern();
+    initMusic();
 
-    buildVoices();
-    buildPads();
-    buildKeys();
-    buildMixer();
-    buildSeq();
-    bindTransport();
-    syncControls();
-
-    if (location.search.indexOf('selftest=1') !== -1) selftest();
+    async function initMusic() {
+      var sp = null;
+      try { sp = new URLSearchParams(location.search); } catch (e) {}
+      var wantId = sp ? sp.get('track') : null;
+      if (wantId && !/^[0-9a-f-]{36}$/i.test(wantId)) wantId = null;
+      var tok = await musicToken();
+      var cloud = null;
+      if (wantId && tok) {
+        try {
+          var r = await fetch(musicApi() + '/api/music/' + encodeURIComponent(wantId), { headers: { 'Authorization': 'Bearer ' + tok } });
+          if (r.ok) { var d = await r.json(); if (d && d.track) cloud = d.track; }
+        } catch (e) {}
+        if (!cloud) { try { history.replaceState(null, '', '/music'); } catch (e2) {} wantId = null; }
+      }
+      if (cloud) {
+        currentTrackId = cloud.id;
+        pendingTitle = cloud.title || 'Untitled track';
+        applyState(cloud.data || {});
+        if (!S.pattern[ROWS[0].id]) S.pattern = seedPattern();
+      } else {
+        if (!load()) S.pattern = seedPattern();
+        else if (!S.pattern[ROWS[0].id]) S.pattern = seedPattern();
+      }
+      buildVoices();
+      buildPads();
+      buildKeys();
+      buildMixer();
+      buildSeq();
+      bindTransport();
+      syncControls();
+      var ti = $('trackTitle');
+      if (ti) {
+        ti.value = pendingTitle;
+        ti.addEventListener('change', function () { pendingTitle = ti.value.trim().substring(0, 60) || 'Untitled track'; scheduleCloudSave(); });
+      }
+      var db = $('delTrackBtn');
+      if (db) {
+        db.style.display = currentTrackId ? '' : 'none';
+        db.addEventListener('click', async function () {
+          if (!currentTrackId) return;
+          if (!confirm('Delete "' + pendingTitle + '"? This cannot be undone.')) return;
+          var t2 = await musicToken();
+          if (!t2) return;
+          try { await fetch(musicApi() + '/api/music/' + encodeURIComponent(currentTrackId), { method: 'DELETE', headers: seatH({ 'Authorization': 'Bearer ' + t2 }) }); } catch (e) {}
+          location.href = '/music';
+        });
+      }
+      var nb = $('newTrackBtn');
+      if (nb) nb.addEventListener('click', function () { location.href = '/music'; });
+      var sel = $('trackSel');
+      if (sel) sel.addEventListener('change', function () { if (sel.value) location.href = '/music?track=' + encodeURIComponent(sel.value); });
+      if (tok) refreshTrackList(tok);
+      else setCloudStatus('Sign in to sync tracks');
+      if (location.search.indexOf('selftest=1') !== -1) selftest();
+    }
   })();
   </script>
 </body>
