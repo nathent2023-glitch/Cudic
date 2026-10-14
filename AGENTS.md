@@ -77,7 +77,7 @@ npm run build        # vite build (lib IIFE) → ../public/islands/  (~5s, 657KB
 - **Rebuild islands after editing anything under `islands/src/`** — unlike
   Studio, `public/islands/` IS committed (Vercel builds no JS), so rebuild
   then commit the bundle. Bump `islands.js?v=N` + `cudic-islands.css?v=N`
-  (currently **v4**) on using pages after rebuilding.
+  (currently **v5**) on using pages after rebuilding.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
   (currently **v24**) — pages cache CSS aggressively. Same for
   `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v5**) after editing those.
@@ -489,10 +489,15 @@ list endpoints already supported it; **only Studio lacked a control**.
   `createRoot`-mounts the registry entry (`REGISTRY` name → component).
 - New island: add `src/islands/foo.tsx` + registry line → `npm run build`
   → drop `<div data-island="foo">` + `<script src="/islands/islands.js?v=N">`
-  (+ CSS link) in the page. Live example: `new-menu` (New dropdown with
+  (+ CSS link) in the page. Live examples: `new-menu` (New dropdown with
   Lucide icons) in the games topbar (mounts synchronously during parsing —
   the page's inline script grabs `#newDropBtn` by id, so deferred mounting
-  throws and kills the rest of its script block).
+  throws and kills the rest of its script block); `report-button` (Report
+  button + modal) on game pages (`view.html`, shown after the game loads).
+  Button sweep/send-state styling in islands is adapted from the
+  `cudic-test` button library (`ShineButton`/`LoadingButton`) restyled in
+  `.isl-` CSS — islands ship no Tailwind, so library components are ported,
+  never imported directly.
 - Interop is read-only from host globals (`islands/src/cudic.ts`):
   `WS_URL` → `apiBase()`, `window.getAuthToken()`, `seatHeaders()` for
   writes. Never duplicate auth/config.

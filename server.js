@@ -1698,16 +1698,25 @@ const server = http.createServer(async (req, res) => {
   // Evidence uploads go to the private report-evidence bucket; the client
   // sends the storage path (not a URL) and review happens in the dashboard.
   var REPORT_REASONS = ['inappropriate', 'stolen', 'broken', 'spam', 'other'];
+  var REPORT_TYPES = ['pack', 'game'];
   if (url.pathname === '/api/reports' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     if (!(await needVerified(user, res))) return;
     const body = await readBody(req).catch(() => ({}));
-    if (body.content_type !== 'pack') { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown content.' })); return; }
+    if (!REPORT_TYPES.includes(body.content_type)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown content.' })); return; }
     if (!REPORT_REASONS.includes(body.reason)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pick a reason.' })); return; }
     const details = String(body.details || '').trim().substring(0, 1000);
     var contentId = null, contentSlug = null;
-    if (body.content_id && isUuid(body.content_id)) {
+    if (body.content_type === 'game') {
+      // Game reports (plan.md 2.1): target a published game by id. Owners
+      // may also flag their own draft; nobody else can see it to report it.
+      const gid = body.content_id;
+      if (typeof gid !== 'string' || !isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown game.' })); return; }
+      const { data: repGame } = await supabase.from('games').select('id, published, owner_id').eq('id', gid).single();
+      if (!repGame || (!repGame.published && repGame.owner_id !== user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Game not found.' })); return; }
+      contentId = repGame.id;
+    } else if (body.content_id && isUuid(body.content_id)) {
       const pack = await packByKey(body.content_id);
       if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
       contentId = pack.id;
@@ -1727,7 +1736,7 @@ const server = http.createServer(async (req, res) => {
       evidencePath = body.evidence_path;
     }
     const { error } = await supabase.from('reports').insert({
-      reporter_id: user.id, content_type: 'pack',
+      reporter_id: user.id, content_type: body.content_type,
       content_id: contentId, content_slug: contentSlug,
       reason: body.reason, details, evidence_url: evidencePath, status: 'open',
     });

@@ -3,12 +3,14 @@ import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import './islands.css';
 import NewMenu from './islands/new-menu';
+import ReportButton from './islands/report-button';
 
 // ── Island registry: name -> component ───────────────────────────
 // New island: add the import + entry here, rebuild (npm run build),
 // drop <div data-island="name"> + the islands.js script tag in the page.
 const REGISTRY: Record<string, ComponentType> = {
   'new-menu': NewMenu,
+  'report-button': ReportButton,
 };
 
 function mountAll() {

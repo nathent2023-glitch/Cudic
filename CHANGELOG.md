@@ -13,6 +13,17 @@ embeddable games**
 
 ### Added
 
+**Game reporting** (plan.md 2.1, first slice — uncommitted)
+- `POST /api/reports` accepts `content_type: 'game'`: published games by
+  id (owners may also flag their own draft), same 5 reason values as packs,
+  so both land in one review queue. Pack flow untouched, no migration.
+- New `report-button` React island on game pages: Report button + modal
+  (reason select, details, sign-in prompt for guests), revealed after the
+  game loads. Sweep/send-state styling adapted from the `cudic-test`
+  button library (`ShineButton`/`LoadingButton`) in `.isl-` CSS.
+  Islands rebuilt, `games.html` + `view.html` pinned at `?v=5`.
+- v1 omits evidence upload for game reports; `/themes` keeps picture upload.
+
 **Google AdSense verification** (`f1bc10d`, `fb142d3`)
 - Account-level `adsbygoogle.js` snippet site-wide (static heads + sidebar
   injection), `ads.txt` with the publisher ID, `/privacy` page + routes,

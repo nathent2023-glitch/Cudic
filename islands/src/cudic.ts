@@ -49,3 +49,13 @@ export async function apiGet<T>(path: string, auth?: boolean): Promise<T> {
   if (!r.ok) throw new Error('Request failed: ' + r.status);
   return r.json();
 }
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...seatHeaders() };
+  const t = await getToken();
+  if (t) headers['Authorization'] = 'Bearer ' + t;
+  const r = await fetch(apiBase() + path, { method: 'POST', headers, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data && data.error) || ('Request failed: ' + r.status));
+  return data as T;
+}
