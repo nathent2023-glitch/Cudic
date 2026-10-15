@@ -425,7 +425,7 @@ const server = http.createServer(async (req, res) => {
 
     const { data: profile, error: profErr } = await supabase
       .from('users')
-      .select('user_id, display_name, avatar_url, bio, interests, created_at')
+      .select('user_id, display_name, avatar_url, bio, interests, setup_done, created_at')
       .eq('id', user.id)
       .single();
 
@@ -491,6 +491,9 @@ const server = http.createServer(async (req, res) => {
             updates.avatar_url = null;
           }
         }
+        // Onboarding completion is one-way: the welcome wizard flips it
+        // true, and nothing flips it back.
+        if (body.setup_done === true) updates.setup_done = true;
         if (!Object.keys(updates).length) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Nothing to update.' }));
@@ -508,6 +511,45 @@ const server = http.createServer(async (req, res) => {
         res.end(JSON.stringify({ error: e.message }));
       }
     });
+    return;
+  }
+
+  // ── API: delete my account ─────────────────────────────────────
+  // Auth user delete cascades to public.users and owned rows (same path
+  // as the unconfirmed-account purge). Storage cleanup is best-effort:
+  // orphans cost nothing but space, and a failed delete must never trap
+  // someone in an account they want gone.
+  if (url.pathname === '/api/account' && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    try {
+      const { data: prof } = await supabase.from('users').select('user_id').eq('id', user.id).single();
+      const { data: games } = await supabase.from('games').select('id').eq('owner_id', user.id).limit(200);
+      const bucket = supabase.storage.from('game-assets');
+      for (const g of games || []) {
+        try {
+          const paths = [];
+          async function walk(prefix) {
+            const { data: entries } = await bucket.list(prefix, { limit: 1000 });
+            for (const e of entries || []) {
+              const p = prefix ? prefix + '/' + e.name : e.name;
+              if (e.metadata) paths.push(p);
+              else await walk(p);
+            }
+          }
+          await walk(g.id);
+          if (paths.length) await bucket.remove(paths);
+        } catch {}
+      }
+      if (prof && prof.user_id) {
+        try { await supabase.storage.from('avatars').remove([prof.user_id + '/avatar.jpg']); } catch {}
+      }
+    } catch {}
+    const { error: delErr } = await supabase.auth.admin.deleteUser(user.id);
+    if (delErr) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Delete failed.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -2829,6 +2871,11 @@ const server = http.createServer(async (req, res) => {
   // ── Redirect /login to the sign-in screen ─────────────────────
   if (url.pathname === '/login') {
     url.pathname = '/login.html';
+  }
+
+  // ── Redirect /welcome to the setup wizard ──────────────────────
+  if (url.pathname === '/welcome') {
+    url.pathname = '/welcome.html';
   }
 
   // ── Redirect /profile to /profile.html ─────────────────────────

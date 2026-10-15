@@ -94,6 +94,14 @@
     .track::before { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform 0.15s; }
     .switch input:checked + .track { background: var(--signal); }
     .switch input:checked + .track::before { transform: translateX(18px); }
+    #delOverlay { position: fixed; inset: 0; z-index: 9000; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 20px; }
+    #delOverlay[hidden] { display: none; }
+    .del-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; width: 420px; max-width: 92vw; max-height: 86vh; overflow-y: auto; }
+    .del-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.1rem; margin-bottom: 8px; }
+    .del-code { font-family: var(--font-mono, monospace); font-size: 1.3rem; font-weight: 700; letter-spacing: 6px; text-align: center; background: var(--panel-raised); border: 1px dashed var(--line); border-radius: 8px; padding: 10px; margin: 12px 0; }
+    .holdbtn { position: relative; overflow: hidden; }
+    .holdbtn .holdfill { position: absolute; inset: 0 auto 0 0; background: var(--danger); width: 0%; opacity: 0.35; pointer-events: none; }
+    .holdbtn span { position: relative; }
   </style></head>
 <body data-page="profile">
   <div class="profile-layout page-panel"><div class="profile-content" id="profileContent">
@@ -146,6 +154,23 @@
         <div class="field"><label>Confirm new password</label><input type="password" id="newPass2" autocomplete="new-password"></div>
         <button class="btn btn-secondary" id="savePass">Change password</button>
         <div class="status-msg" id="passMsg"></div>
+        <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+          <button class="btn btn-danger" id="delAccountBtn">Delete my account</button>
+        </div>
+      </div>
+      <div id="delOverlay" hidden>
+        <div class="del-card">
+          <h2>Delete your account?</h2>
+          <p class="sub">Sorry to see you go. This permanently deletes your profile, projects, tracks, packs, coins, and messages — everything tied to your account. Published games vanish from the gallery. This cannot be undone.</p>
+          <p class="sub">To prove it's really you (and not a bot), type this code:</p>
+          <div class="del-code" id="delCode"></div>
+          <div class="field"><label>Type the code above</label><input type="text" id="delCodeInput" autocomplete="off" maxlength="8" style="letter-spacing:4px"></div>
+          <div class="status-msg" id="delMsg"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-secondary" id="delCancel">Keep my account</button>
+            <button class="btn btn-danger holdbtn" id="delConfirm" disabled><span class="holdfill"></span><span>Hold to delete</span></button>
+          </div>
+        </div>
       </div>
       <div class="profile-card" id="sec-coins">
         <h2>Coins &amp; quests</h2>
@@ -205,7 +230,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=12"></script>
+  <script src="/sidebar.js?v=14"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
@@ -550,6 +575,69 @@
     });
 
     document.getElementById('signOutBtn').addEventListener('click', function(){ signOut(); });
+
+    /* Delete account: leaving message + type-the-code + press-and-hold.
+       All three are human-trivial and bot-hostile, with no captcha
+       provider needed. Server does the real enforcement. */
+    var delCode = '';
+    function newDelCode() {
+      var chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', out = '';
+      for (var i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+    function setDelReady(on) { document.getElementById('delConfirm').disabled = !on; }
+    var holdTimer = null, holdStart = 0;
+    function stopHold() {
+      if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
+      var f = document.querySelector('#delConfirm .holdfill');
+      if (f) f.style.width = '0%';
+    }
+    document.getElementById('delAccountBtn').addEventListener('click', function(){
+      delCode = newDelCode();
+      document.getElementById('delCode').textContent = delCode.split('').join(' ');
+      document.getElementById('delCodeInput').value = '';
+      var m = document.getElementById('delMsg');
+      m.textContent = ''; m.className = 'status-msg';
+      setDelReady(false);
+      stopHold();
+      document.getElementById('delOverlay').hidden = false;
+    });
+    document.getElementById('delCancel').addEventListener('click', function(){
+      stopHold();
+      document.getElementById('delOverlay').hidden = true;
+    });
+    document.getElementById('delCodeInput').addEventListener('input', function(){
+      setDelReady(this.value.trim().toUpperCase().replace(/\s+/g, '') === delCode);
+    });
+    (function(){
+      var btn = document.getElementById('delConfirm');
+      btn.addEventListener('pointerdown', function(e){
+        if (btn.disabled) return;
+        e.preventDefault();
+        stopHold();
+        holdStart = Date.now();
+        var f = document.querySelector('#delConfirm .holdfill');
+        holdTimer = setInterval(function(){
+          var p = Math.min(1, (Date.now() - holdStart) / 1200);
+          if (f) f.style.width = (p * 100) + '%';
+          if (p >= 1) { stopHold(); doDeleteAccount(); }
+        }, 50);
+      });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function(ev){ btn.addEventListener(ev, stopHold); });
+    })();
+    async function doDeleteAccount() {
+      var btn = document.getElementById('delConfirm'), m = document.getElementById('delMsg');
+      btn.disabled = true;
+      try {
+        var headers = { 'Authorization': 'Bearer ' + t };
+        try { var s = localStorage.getItem('cudic_seat'); if (s) headers['X-Seat'] = s; } catch (e) {}
+        var r = await fetch(apiHost() + '/api/account', { method: 'DELETE', headers: headers });
+        var d = await r.json().catch(function(){ return {}; });
+        if (!r.ok) throw new Error((d && d.error) || 'Delete failed.');
+        document.getElementById('delOverlay').hidden = true;
+        signOut();
+      } catch (e) { btn.disabled = false; msg(m, (e && e.message) || 'Delete failed.', false); }
+    }
   })();
   </script>
   <script>

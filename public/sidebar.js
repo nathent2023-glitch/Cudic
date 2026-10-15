@@ -212,6 +212,16 @@
       if((hasCode||hasHash)&&typeof handleAuthCallback==='function'){attempted=true;await handleAuthCallback();}
     }catch(e){window._authError=(e&&e.message)||'Sign-in failed';}
     try{window.currentToken=window.currentToken||await getAuthToken();}catch(e){}
+    // Fresh OAuth return with unfinished setup goes to the welcome wizard,
+    // not chat. Explicit false only (missing profile or old rows mean chat).
+    try{
+      if(attempted&&window.currentToken){
+        var _ph=(typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):'';
+        var _pr=await fetch(_ph+'/api/profile',{headers:{'Authorization':'Bearer '+window.currentToken}});
+        var _pd=await _pr.json().catch(function(){return {};});
+        if(_pd&&_pd.profile&&_pd.profile.setup_done===false){window.location.href='/welcome';return;}
+      }
+    }catch(e){}
     // Brand link: games panel when signed in, landing when not.
     try{var rb=document.getElementById('railBrand');if(rb)rb.href=window.currentToken?'/games':'/';}catch(e){}
     try{window.dispatchEvent(new Event('glox:auth'));}catch(e){}
@@ -245,13 +255,24 @@
     }catch(e2){}
   })();
 
+  // JWT payloads are base64url, not base64: raw atob() throws on the
+  // '-'/'_' characters, which silently left signed-in users showing as
+  // Guest (GitHub metadata with avatar URLs hits this almost every time).
+  function jwtPayload(t){
+    try{
+      var p=String(t||'').split('.');
+      if(p.length<3) return null;
+      var b=p[1].replace(/-/g,'+').replace(/_/g,'/');
+      while(b.length%4) b+='=';
+      return JSON.parse(atob(b));
+    }catch(e){ return null; }
+  }
   function loadSidebarUser(){
     getAuthToken().then(function(access_token){
     try{
       if(!access_token) return;
-      var parts=access_token.split('.');
-      if(parts.length<2) return;
-      var payload=JSON.parse(atob(parts[1]));
+      var payload=jwtPayload(access_token);
+      if(!payload) return;
       var name=payload.user_metadata?.full_name||payload.user_metadata?.name||payload.email||'User';
       var initials=name.split(' ').map(function(w){return w[0]}).join('').substring(0,2).toUpperCase();
       document.getElementById('sbAvatar').textContent=initials;

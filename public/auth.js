@@ -197,8 +197,11 @@ function seatHeaders(h) {
 // a kick for the main tab.)
 async function bootSeat(freshLogin) {
   try {
-    if (freshLogin) mintSeat();
-    if (!seatId()) { mintSeat(); await claimSeat(); }
+    // Fresh logins (OAuth return especially) must CLAIM — the seat was
+    // just minted and the server never saw it, so a heartbeat 403s as a
+    // phantom "another device" whenever any other live seat exists.
+    if (freshLogin) { mintSeat(); await claimSeat(); }
+    else if (!seatId()) { mintSeat(); await claimSeat(); }
     else { await heartbeatSeat(); }
   } catch (e) {}
   startSeatSystem();

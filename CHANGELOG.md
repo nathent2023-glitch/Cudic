@@ -66,6 +66,31 @@ embeddable games**
   pages are back to skeletons plus the plain "Loading…" player overlay.
   (`pring.css`/`pring.js` deleted, all hooks reverted.)
 
+**GitHub-login double fix** (uncommitted)
+- Fresh OAuth logins minted a seat then heartbeated instead of claiming,
+  403ing as a phantom "signed in on another device" whenever any other
+  live seat existed. `bootSeat(true)` now claims. (`auth.js`)
+- Raw `atob()` on base64url JWT payloads throws on `-`/`_`, silently
+  leaving signed-in users (GitHub metadata hits this ~1 in 14 tokens)
+  showing as Guest. Sidebar rail and classic editor now decode
+  base64url-safe. (`sidebar.js` → `?v=13` everywhere.)
+
+**Welcome wizard + delete-my-account** (uncommitted)
+- New `/welcome` setup wizard (`cudic-test`, re-exported): Username for
+  everyone, Password for email accounts, Style accent pick — non-skippable
+  pages, no back doors in the UI. Display-name field removed from signup.
+  Entry fenced at login boot, post-auth routing, and classic chat OAuth
+  return (explicit `setup_done === false` only, so old rows and missing
+  profiles fall through to chat).
+- `users.setup_done` (migration `20261015120000_profile_setup.sql`,
+  grandfathered true; new signups false), surfaced in GET /api/profile
+  and flippable once via PUT.
+- Profile Security gains Delete my account: leaving message, type-the-
+  shown-code, press-and-hold confirm. `DELETE /api/account` (seat-checked)
+  best-effort purges storage then deletes the auth user (rows cascade,
+  same path as the purge). No captcha provider: the code + hold *is* the
+  bot gate; Turnstile stays a follow-up needing Cloudflare keys.
+
 **Creator avatars in gallery + game pages** (uncommitted)
 - The games list and single-game endpoints now select the owner's
   `avatar_url`; cards and the game page show the picture with an initial

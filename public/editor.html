@@ -647,7 +647,14 @@ async function loadGame() {
       }
       var uid = null;
       try {
-        if (window.currentToken) uid = JSON.parse(atob(window.currentToken.split('.')[1])).sub || null;
+        // base64url, not base64: normalize '-'/'_' or atob throws and a
+        // signed-in owner gets bounced as a non-owner.
+        if (window.currentToken) {
+          var eparts = window.currentToken.split('.');
+          var eb = eparts[1].replace(/-/g, '+').replace(/_/g, '/');
+          while (eb.length % 4) eb += '=';
+          uid = JSON.parse(atob(eb)).sub || null;
+        }
       } catch (e) {}
       if (!uid || uid !== d.game.owner_id) {
         alert('Only the owner can edit this project.');
