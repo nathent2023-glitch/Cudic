@@ -80,7 +80,7 @@ npm run build        # vite build (lib IIFE) → ../public/islands/  (~5s, 657KB
   (currently **v7**) on using pages after rebuilding.
 - Bump `sidebar.css?v=N` across all pages when editing `public/sidebar.css`
   (currently **v24**) — pages cache CSS aggressively. Same for
-  `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v6**) after editing those.
+  `sidebar.js?v=N` (currently **v12**) / `client.js?v=N` (currently **v7**) after editing those.
   New shared scripts take `?v=1` (`ctheme.js`, `csel.js`).
 - **No test suite exists.** Verification = build + open `http://localhost:3000`
   and check the console. Playwright MCP is **disabled**; the browser tools that

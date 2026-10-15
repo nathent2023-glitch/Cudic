@@ -36,7 +36,11 @@
 <body data-page="privacy" data-no-rail>
     <div class="privacy-layout page-panel">
         <div class="topbar">
-            <h1>Privacy policy</h1>
+            <div style="display:flex;align-items:center;gap:12px">
+                <button class="btn btn-secondary" id="backBtn" style="padding:8px 14px;font-size:0.82rem">← Back</button>
+                <h1>Privacy policy</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
         </div>
         <div class="privacy-scroll">
             <div class="wrap">
@@ -75,6 +79,12 @@
         </div>
     </div>
     <script src="/sidebar.js?v=12"></script>
+    <script>
+    document.getElementById('backBtn').addEventListener('click', function(){
+      if (window.history.length > 1) window.history.back();
+      else window.location.href = '/';
+    });
+    </script>
 </body>
 
 </html>

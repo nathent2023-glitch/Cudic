@@ -1934,7 +1934,7 @@ const server = http.createServer(async (req, res) => {
     cors(res);
     let query = supabase
       .from('games')
-      .select('id, title, description, credits, thumbnail, tags, play_count, owner_id, forked_from, forked_from_title, created_at, updated_at, users!owner_id(display_name, user_id)')
+      .select('id, title, description, credits, thumbnail, tags, play_count, owner_id, forked_from, forked_from_title, created_at, updated_at, users!owner_id(display_name, user_id, avatar_url)')
       .eq('published', true);
     const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
     if (q) {
@@ -2140,7 +2140,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
-    const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(display_name, user_id)').eq('id', id).single();
+    const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(display_name, user_id, avatar_url)').eq('id', id).single();
     if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     // Like count + whether this viewer liked it (optional token).
     const authH = req.headers.authorization || '';
@@ -2672,6 +2672,55 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ── API: creator dashboard stats (own projects only) ───────
+  // One call powers the Your Projects overview: per-game plays/likes/
+  // comments/forks, per-pack downloads/sales/revenue, coin balance +
+  // recent receipts, and open reports against own content. Follow-up
+  // queries stay scoped to the caller's own ids (never whole tables).
+  // shortcut: like/comment/fork/sale lists cap at 5000 rows and counts
+  // saturate there. Move to a count RPC if any creator ever passes that.
+  if (url.pathname === '/api/creator/stats' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const me = user.id;
+    const [gamesRes, packsRes] = await Promise.all([
+      supabase.from('games').select('id, title, published, play_count, updated_at').eq('owner_id', me).order('updated_at', { ascending: false }).limit(100),
+      supabase.from('theme_packs').select('id, name, price, published, downloads').eq('owner_id', me).order('updated_at', { ascending: false }).limit(100),
+    ]);
+    const games = gamesRes.data || [], packs = packsRes.data || [];
+    const gids = games.map(g => g.id), pids = packs.map(p => p.id);
+    const [likeRows, commentRows, forkRows, ownRows, saleRows, ledgerRows, repRows] = await Promise.all([
+      gids.length ? supabase.from('game_likes').select('game_id').in('game_id', gids).limit(5000) : Promise.resolve({ data: [] }),
+      gids.length ? supabase.from('game_comments').select('game_id').in('game_id', gids).limit(5000) : Promise.resolve({ data: [] }),
+      gids.length ? supabase.from('games').select('forked_from').in('forked_from', gids).limit(5000) : Promise.resolve({ data: [] }),
+      pids.length ? supabase.from('pack_ownership').select('pack_id').in('pack_id', pids).limit(5000) : Promise.resolve({ data: [] }),
+      supabase.from('coin_ledger').select('delta, ref_id').eq('user_id', me).eq('reason', 'pack_sale').limit(5000),
+      supabase.from('coin_ledger').select('delta, reason, created_at').eq('user_id', me).order('created_at', { ascending: false }).limit(10),
+      (gids.length || pids.length) ? supabase.from('reports').select('content_type').eq('status', 'open').in('content_id', [...gids, ...pids]).limit(200) : Promise.resolve({ data: [] }),
+    ]);
+    const countBy = (rows, key) => { const m = {}; for (const r of rows || []) { const k = r[key]; if (k) m[k] = (m[k] || 0) + 1; } return m; };
+    const likes = countBy(likeRows.data, 'game_id'), comments = countBy(commentRows.data, 'game_id'),
+      forks = countBy(forkRows.data, 'forked_from'), sales = countBy(ownRows.data, 'pack_id');
+    const revenueBy = {};
+    let packRevenue = 0;
+    for (const r of saleRows.data || []) { if (r.ref_id) revenueBy[r.ref_id] = (revenueBy[r.ref_id] || 0) + (r.delta || 0); packRevenue += r.delta || 0; }
+    const gameStats = games.map(g => ({ id: g.id, title: g.title, published: g.published, plays: g.play_count || 0, likes: likes[g.id] || 0, comments: comments[g.id] || 0, forks: forks[g.id] || 0, updated_at: g.updated_at }));
+    const packStats = packs.map(p => ({ id: p.id, name: p.name, price: p.price, published: p.published, downloads: p.downloads || 0, sales: sales[p.id] || 0, revenue: revenueBy[p.id] || 0 }));
+    const totals = {
+      plays: gameStats.reduce((a, g) => a + g.plays, 0),
+      likes: gameStats.reduce((a, g) => a + g.likes, 0),
+      comments: gameStats.reduce((a, g) => a + g.comments, 0),
+      forks: gameStats.reduce((a, g) => a + g.forks, 0),
+      packDownloads: packStats.reduce((a, p) => a + p.downloads, 0),
+      packSales: packStats.reduce((a, p) => a + p.sales, 0),
+      packRevenue,
+      openReports: (repRows.data || []).length,
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ totals, games: gameStats, packs: packStats, coins: { balance: await coinBalance(me), receipts: ledgerRows.data || [] } }));
+    return;
+  }
+
   // ── API: update game ──────────────────────────────────────────
   if (url.pathname.startsWith('/api/games/') && req.method === 'PUT') {
     cors(res);
@@ -2827,6 +2876,11 @@ const server = http.createServer(async (req, res) => {
   // ── Redirect /privacy to /privacy.html ─────────────────────────
   if (url.pathname === '/privacy') {
     url.pathname = '/privacy.html';
+  }
+
+  // ── Redirect /terms to /terms.html ─────────────────────────────
+  if (url.pathname === '/terms') {
+    url.pathname = '/terms.html';
   }
 
   // ── Redirect /embed to /embed.html ─────────────────────────────

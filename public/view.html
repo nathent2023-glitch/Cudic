@@ -25,6 +25,7 @@
     .game-head h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.3rem; }
     .author { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-secondary); }
     .author-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--signal-tint); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 600; font-size: 0.7rem; flex-shrink: 0; }
+    .author-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
     .spacer { flex: 1; }
     .game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
     .game-grid > * { min-width: 0; }
@@ -33,6 +34,14 @@
     .player-card.scrollable { overflow: auto; }
     .player-card iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
     .player-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #000; color: var(--text-secondary); font-size: 0.9rem; }
+    /* Ring gauge (ports Magic UI's AnimatedCircularProgressBar): staged,
+       honest progress for player boot — fetch, ready, code posted. */
+    .pring { transform: rotate(-90deg); }
+    .pring circle { fill: none; stroke-width: 10; }
+    .pring-track { stroke: var(--line); opacity: 0.45; }
+    .pring-arc { stroke: var(--signal); stroke-linecap: round; stroke-dasharray: 282.74; stroke-dashoffset: 282.74; transition: stroke-dashoffset 0.5s ease; }
+    .pring-pct { font-family: var(--font-mono, monospace); font-size: 0.78rem; color: var(--text-primary); }
+    @media (prefers-reduced-motion: reduce) { .pring-arc { transition: none; } }
     .side-card { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; }
     .side-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; }
     .side-card h3 { font-size: var(--text-xs); font-weight: 600; color: var(--text-secondary); margin: 14px 0 6px; }
@@ -78,7 +87,7 @@
       <span id="playCount" style="font-size:0.8rem;color:var(--text-tertiary);align-self:center"></span>
     </div>
     <div class="game-grid">
-      <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
+      <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><svg class="pring" viewBox="0 0 100 100" width="72" height="72" aria-hidden="true"><circle class="pring-track" cx="50" cy="50" r="45"></circle><circle class="pring-arc" id="ringArc" cx="50" cy="50" r="45"></circle></svg><div class="pring-pct" id="ringPct">10%</div><span id="overlayText">Loading…</span></div></div>
       <div id="playerErr" style="display:none;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:0.8rem;color:#ff7b7b;background:var(--panel-raised)"></div>
       <div class="side-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -188,6 +197,16 @@
       } catch (e) { return Promise.resolve(null); }
     }
     function seatId() { try { return localStorage.getItem('cudic_seat') || ''; } catch (e) { return ''; } }
+    // Ring gauge: staged player-boot progress (fetch → ready → posted).
+    var RING_C = 2 * Math.PI * 45;
+    function setRing(pct, label) {
+      pct = Math.max(0, Math.min(100, pct));
+      var arc = document.getElementById('ringArc'), lab = document.getElementById('ringPct'), ot = document.getElementById('overlayText');
+      if (arc) arc.style.strokeDashoffset = String(RING_C * (1 - pct / 100));
+      if (lab) lab.textContent = Math.round(pct) + '%';
+      if (ot && label) ot.textContent = label;
+    }
+    function killOverlay() { var o = document.getElementById('overlay'); if (o) o.remove(); }
     function countPlay() {
       fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/play', { method: 'POST' })
         .then(function (r) { return r.json(); })
@@ -368,6 +387,7 @@
         document.getElementById('commentPost').addEventListener('click', postComment);
       });
     }
+    setRing(10, 'Finding game…');
     fetch(apiBase() + '/api/games/' + encodeURIComponent(id))
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -387,7 +407,9 @@
         var author = game.users || {};
         var name = author.display_name || 'Unknown';
         document.getElementById('authorName').textContent = name + (author.user_id ? ' #' + author.user_id : '');
-        document.getElementById('authorAvatar').textContent = name.substring(0, 2).toUpperCase();
+        var avEl = document.getElementById('authorAvatar');
+        if (author.avatar_url && String(author.avatar_url).indexOf('"') === -1) avEl.innerHTML = '<img src="' + author.avatar_url + '" alt="">';
+        else avEl.textContent = name.substring(0, 2).toUpperCase();
         if (game.description) { var de = document.getElementById('gameDesc'); de.textContent = game.description; de.classList.remove('dim'); }
         if (game.credits) { var ce = document.getElementById('gameCredits'); ce.textContent = game.credits; ce.classList.remove('dim'); }
         // System-rendered remix credit (Scratch-style): set once at fork time,
@@ -434,7 +456,7 @@
         });
         document.getElementById('content').style.display = 'block';
         var card = document.getElementById('playerCard');
-        document.getElementById('overlay').remove();
+        setRing(35, 'Loading player…');
         var f = document.createElement('iframe');
         f.setAttribute('sandbox', 'allow-scripts');
         f.setAttribute('allowfullscreen', 'true');
@@ -467,13 +489,17 @@
             // Compat rule: keep in step with run.html's ready version.
             if (e.data.v !== 2) {
               window.removeEventListener('message', wait);
+              killOverlay();
               playerFail('Player files are outdated — hard-refresh (Ctrl+Shift+R) to load the latest player.');
               return;
             }
             playerStarted = true;
             window.removeEventListener('message', wait);
             countPlay();
+            setRing(70, 'Starting game…');
             try { f.contentWindow.postMessage({ type: 'code', files: files, assets: game.assets || {}, assetsBase: (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ? SUPABASE_URL + '/storage/v1/object/public/' : '' }, '*'); } catch (err) {}
+            setRing(100, 'Running');
+            setTimeout(killOverlay, 450);
           }
         });
         window.addEventListener('message', function(e){
@@ -484,8 +510,15 @@
         // ── Cloud saves: the game frame is sandboxed and never sees the
         // login token, so this page mediates. Game -> run frame -> here.
         // Guests persist nothing; they get one sign-in nudge per session.
-        var saveSession = null, cloudSave = null;
+        var saveSession = null, cloudSave = null, cloudLoading = true, cloudTimer = null;
         var saveKey = 'cudic-save:' + id;
+        function cloudSettled() {
+          cloudLoading = false;
+          if (cloudTimer) { clearTimeout(cloudTimer); cloudTimer = null; }
+        }
+        // Never leave the game hanging: even if the session/save fetch
+        // stalls, the player must get an answer and fall back to local.
+        cloudTimer = setTimeout(cloudSettled, 8000);
         function saveHeaders(extra) {
           var h = extra || {};
           if (saveSession) h['Authorization'] = 'Bearer ' + saveSession.token;
@@ -504,8 +537,8 @@
               if (!r.ok) return null;
               return r.json();
             })
-            .then(function (d) { if (d && d.data) cloudSave = { data: d.data, updated_at: d.updated_at }; })
-            .catch(function () {});
+            .then(function (d) { if (d && d.data) cloudSave = { data: d.data, updated_at: d.updated_at }; cloudSettled(); })
+            .catch(function () { cloudSettled(); });
         }
         function nagGuest() {
           try {
@@ -531,14 +564,14 @@
         getSession().then(function (s) {
           saveSession = s;
           if (s) loadCloudSave();
-          else nagGuest();
+          else { nagGuest(); cloudSettled(); }
         });
         window.addEventListener('message', function (e) {
           var d = e.data || {};
           if (!d || (d.type !== 'cudic-save-get' && d.type !== 'cudic-save-set' && d.type !== 'cudic-save-del')) return;
           try { if (!f || e.source !== f.contentWindow) return; } catch (err) { return; }
           if (d.type === 'cudic-save-get') {
-            try { f.contentWindow.postMessage({ type: 'cudic-save-data', req: d.req, save: cloudSave, authed: !!saveSession, storageKey: saveKey }, '*'); } catch (err) {}
+            try { f.contentWindow.postMessage({ type: 'cudic-save-data', req: d.req, save: cloudSave, loading: cloudLoading, authed: !!saveSession, storageKey: saveKey }, '*'); } catch (err) {}
           } else if (!saveSession) {
             try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: false, error: 'signed-out' }, '*'); } catch (err) {}
           } else if (d.type === 'cudic-save-set') {
@@ -567,13 +600,17 @@
           }
         });
         setTimeout(function(){
-          if (!playerStarted) playerFail('Player did not start. Hard-refresh (Ctrl+Shift+R); if it persists, open the project in Studio and re-save.');
+          if (!playerStarted) { killOverlay(); playerFail('Player did not start. Hard-refresh (Ctrl+Shift+R); if it persists, open the project in Studio and re-save.'); }
         }, 6000);
         document.getElementById('fsBtn').addEventListener('click', function(){
           if (card.requestFullscreen) card.requestFullscreen();
         });
       })
-      .catch(function(){ document.getElementById('overlayText').textContent = 'Could not load game'; });
+      .catch(function(){
+        var o = document.getElementById('overlay');
+        if (o) o.querySelectorAll('svg, .pring-pct').forEach(function(n){ n.style.display = 'none'; });
+        document.getElementById('overlayText').textContent = 'Could not load game';
+      });
   })();
   </script>
 </body></html>

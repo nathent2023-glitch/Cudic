@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=24">
+  <link rel="stylesheet" href="/pring.css?v=1">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .mod-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -57,14 +58,16 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=12"></script>
+  <script src="/pring.js?v=1"></script>
+<script src="/sidebar.js?v=12"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
     function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
     function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
-    function gate(text){ document.getElementById('modGate').style.display='block'; document.getElementById('modGateText').textContent=text; }
+    function gate(text){ if (window.Pring) Pring.hide(); document.getElementById('modGate').style.display='block'; document.getElementById('modGateText').textContent=text; }
+    if (window.Pring) Pring.show('Loading queue…');
     var t = await token();
     if (!t) { gate('Sign in to continue.'); return; }
     // Probe: non-moderators get 403 here, which is the whole gate.
@@ -75,6 +78,7 @@
       if (!pr.ok) { gate('Could not load the queue.'); return; }
       probe = await pr.json();
     } catch (e) { gate('Could not load the queue.'); return; }
+    if (window.Pring) Pring.hide();
     document.getElementById('modBody').style.display = 'block';
     function paint(list) {
       var box = document.getElementById('repList');
@@ -120,7 +124,8 @@
         var d = await r.json();
         if (!r.ok) throw new Error(d.error || 'Load failed.');
         paint(d.reports || []);
-      } catch (e) { m.textContent = e.message || 'Load failed.'; m.className = 'status-msg err'; }
+        if (window.Pring) Pring.hide();
+      } catch (e) { if (window.Pring) Pring.hide(); m.textContent = e.message || 'Load failed.'; m.className = 'status-msg err'; }
     }
     document.getElementById('fGo').addEventListener('click', load);
     document.getElementById('fStatus').addEventListener('change', load);

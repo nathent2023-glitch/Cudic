@@ -239,6 +239,18 @@ For users:
   empty. Needs `supabase/migrations/20261014130000_music_tracks.sql` run;
   pre-migration the music section silently stays empty (fetch fails soft).
 
+#### Creator dashboard v1 (2026-10-15, uncommitted)
+
+- `GET /api/creator/stats` (auth only): per-game plays/likes/comments/
+  forks, per-pack downloads/sales/revenue, coin balance + 10 recent
+  receipts, open-report count against own content. Follow-ups stay scoped
+  to own ids; no migration.
+- Your Projects gains a Creator overview section: stat tiles (plays,
+  likes, comments, forks, pack downloads/sales, coins earned, balance,
+  open reports) plus a top-5 games list.
+- Still open: tips and paid-unlock stats (land with those features),
+  pack revenue/download analytics beyond totals, recurring quests.
+
 ---
 
 ### 2.2 Minimal moderation queue

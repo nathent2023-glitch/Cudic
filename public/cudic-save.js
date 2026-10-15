@@ -38,7 +38,16 @@
   }
   async function load(opts) {
     opts = opts || {};
-    var ans = await askParent({ type: 'cudic-save-get' });
+    // The parent may still be fetching the cloud save when the game boots
+    // (fresh page load races the API). While it reports loading, re-ask
+    // instead of concluding there is no save — otherwise bests read 0.
+    var ans = null, tries = 0;
+    while (tries < 6) {
+      ans = await askParent({ type: 'cudic-save-get' });
+      if (!ans || !ans.loading) break;
+      tries++;
+      await new Promise(function (r) { setTimeout(r, 700); });
+    }
     if (ans) {
       // Mediated player (game page): parent decides. Guests persist nothing.
       state.authed = !!ans.authed;

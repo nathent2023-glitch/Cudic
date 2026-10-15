@@ -53,6 +53,61 @@ embeddable games**
   Tailwind on classic pages): danger-red liquid fill from the cursor on
   the Report island button, theme Delete buttons, and Studio card
   Delete/Unpublish; shine sweep on gallery Play buttons. Islands at `?v=6`.
+
+**Cloud-save load race fix** (uncommitted)
+- Fresh page loads raced the cloud-save fetch: the game asked before the
+  parent had an answer, concluded "no save", and bests read 0. The parent
+  now reports `loading` while fetching (8s safety cap) and the save
+  library re-asks instead of giving up. (`view.html` mediator +
+  `cudic-save.js`; embed's local-only path untouched and compatible.)
+
+**Shared page-loading ring** (uncommitted)
+- New `pring.css`/`pring.js` (`?v=1`): indeterminate ring veil that only
+  appears past ~350ms so fast loads never flash. Wired into games, chat,
+  servers, themes, profile, and moderate at each page's real ready point.
+  The game player keeps its staged % gauge. Verified in-browser.
+
+**Player loading ring** (uncommitted)
+- Game pages boot behind a ring gauge (ported from Magic UI's
+  AnimatedCircularProgressBar) with staged, honest progress: finding
+  game, loading player, starting, running. Overlay now lives until the
+  player signals ready instead of vanishing at fetch time.
+
+**Creator avatars in gallery + game pages** (uncommitted)
+- The games list and single-game endpoints now select the owner's
+  `avatar_url`; cards and the game page show the picture with an initial
+  fallback. (Cards showed initials because the API never asked for it.)
+
+**Back navigation on railless pages** (uncommitted)
+- Terms, Privacy, and Guide pages (all `data-no-rail`) gain a ← Back
+  button (history-aware, falls back to home) plus a Cudic home link.
+
+**Terms page + profile nav and analytics** (uncommitted)
+- New long-form `/terms` page (routes in `server.js` + `vercel.json`,
+  sitemap entry). Profile sticky nav gains an Analytics section (creator
+  stat tiles + top games via `/api/creator/stats`) and a Site group
+  linking Privacy, Guide, and Terms.
+
+**Profile page rebuild** (uncommitted)
+- Docs-style three-column layout: sticky tab nav (Profile, Security,
+  Coins, Analytics, Liked, Appearance) showing one section at a time with
+  the live "What others see" preview always visible, plus a Site group
+  (Privacy, Guide, Terms). Email confirmation moved under Security; all
+  existing IDs and flows untouched.
+
+**Login spotlight fix** (uncommitted, `cudic-test` + re-export)
+- The form card's MagicCard spotlight was permanently painted (inline
+  opacity beat the hover gating) in dark `#262626` — invisible on dark,
+  a dirty smudge on light. It now appears only on hover and follows the
+  theme (graphite on dark, soft signal-tint on light). Rebuilt export
+  copied to `public/` (`login.html`, `index.html`, `_next`).
+- Follow-up: dark spotlight softened (0.45 opacity, 180px radius) after
+  it read too intense on hover.
+
+**Creator dashboard v1** (uncommitted, backend + Your Projects)
+- `GET /api/creator/stats`: per-game plays/likes/comments/forks,
+  per-pack downloads/sales/revenue, balance + receipts, open reports.
+- Creator overview section with stat tiles and top-5 games. No migration.
 - Requires running `supabase/migrations/20261014130000_music_tracks.sql`;
   pre-migration the music section stays empty without errors.
 

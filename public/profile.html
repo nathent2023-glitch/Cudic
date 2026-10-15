@@ -18,12 +18,47 @@
   <link rel="canonical" content="https://cudic.vercel.app/profile">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=24">
+  <link rel="stylesheet" href="/pring.css?v=1">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .profile-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
-    .profile-content { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; align-items: center; }
-    .profile-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 20px; width: 100%; max-width: 560px; }
-    .profile-card { width: 100%; max-width: 560px; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+    .profile-content { flex: 1; overflow-y: auto; padding: 28px 32px; }
+    .profile-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 4px; }
+    .profile-lead { font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 20px; }
+    /* Docs-style three-column shell: section nav, content, live preview. */
+    #profileBody { display: grid; grid-template-columns: 200px minmax(0, 1fr) 300px; gap: 36px; align-items: start; }
+    .pnav { position: sticky; top: 4px; max-height: calc(100vh - 140px); overflow-y: auto; font-size: 0.875rem; }
+    .pnav .toc-label { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; color: var(--text-primary); margin-bottom: 8px; }
+    .pnav a { display: block; color: var(--text-secondary); text-decoration: none; padding: 5px 10px; border-radius: 8px; line-height: 1.35; }
+    .pnav a:hover { color: var(--signal); }
+    .pnav a.on { color: var(--signal); font-weight: 600; background: var(--signal-tint); }
+    .pcol { min-width: 0; display: flex; flex-direction: column; }
+    .profile-card { width: 100%; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; scroll-margin-top: 8px; }
+    /* Tabbed sections: the nav shows one section at a time. */
+    .pcol .profile-card { display: none; margin-bottom: 0; }
+    .pcol .profile-card.on { display: block; }
+    .profside { position: sticky; top: 4px; min-width: 0; }
+    .preview-card { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; }
+    .preview-card .toc-label { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; color: var(--text-primary); margin-bottom: 12px; }
+    .pv-head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+    .pv-head #publicName { font-weight: 700; font-size: 1.05rem; }
+    #publicBio { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.55; overflow-wrap: break-word; }
+    .stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 8px; margin-bottom: 6px; }
+    .stat-tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+    .stat-num { font-family: var(--font-head); font-weight: 700; font-size: 1.15rem; color: var(--text-primary); }
+    .stat-lab { font-size: 0.72rem; color: var(--text-tertiary); }
+    .stat-top { font-size: 0.83rem; color: var(--text-secondary); margin-top: 10px; line-height: 1.7; }
+    .stat-top b { color: var(--text-primary); }
+    #publicBio:empty { display: none; }
+    #publicInterests { margin-top: 8px; }
+    .pv-picrow { display: flex; gap: 8px; margin-top: 12px; }
+    @media (max-width: 1100px) {
+      #profileBody { grid-template-columns: 1fr; }
+      .pnav { position: static; display: flex; gap: 4px; overflow-x: auto; max-height: none; padding-bottom: 6px; }
+      .pnav .toc-label { display: none; }
+      .pnav a { white-space: nowrap; flex-shrink: 0; }
+      .profside { position: static; }
+    }
 
     .profile-card textarea { width: 100%; background: var(--panel); color: var(--text-primary); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 0.9rem; resize: vertical; }
     .profile-card textarea:focus { border-color: var(--signal); outline: none; }
@@ -62,78 +97,59 @@
     .switch input:checked + .track::before { transform: translateX(18px); }
   </style></head>
 <body data-page="profile">
-  <div class="profile-layout page-panel"><div class="profile-content">
+  <div class="profile-layout page-panel"><div class="profile-content" id="profileContent">
     <h1>Profile</h1>
+    <p class="profile-lead">How you appear, how you sign in, and how the app looks for you.</p>
     <div class="ad-frame ad-leaderboard"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
-    <div id="guestNotice" class="profile-card" style="display:none">
+    <div id="guestNotice" class="profile-card" style="display:none;max-width:560px">
       <h2>You're browsing as a guest</h2>
       <p class="sub">Sign in to edit your profile.</p>
         <a class="btn btn-primary" href="/" style="text-decoration:none">Sign in</a>
     </div>
-    <div id="profileBody" style="display:none;width:100%;max-width:560px">
-      <div class="profile-card" id="verifyCard" style="display:none">
-        <h2>Confirm your email</h2>
-        <p class="sub">Publishing and chat unlock once you prove this address is yours.</p>
-        <div class="field"><label>Confirmation code</label><input type="text" id="verifyCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" style="letter-spacing:8px"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary" id="verifyGo">Confirm email</button>
-          <button class="btn btn-secondary" id="verifySend">Send a new code</button>
-        </div>
-        <div class="status-msg" id="verifyMsg"></div>
-      </div>
-      <div class="profile-card">
+    <div id="profileBody" style="display:none">
+      <nav class="pnav" aria-label="Profile sections"><div class="toc-label">Settings</div>
+        <a href="#sec-profile">Public profile</a>
+        <a href="#sec-security">Security</a>
+        <a href="#sec-coins">Coins &amp; quests</a>
+        <a href="#sec-stats">Analytics</a>
+        <a href="#sec-liked">Liked games</a>
+        <a href="#sec-appearance">Appearance</a>
+        <div class="toc-label" style="margin-top:12px">Site</div>
+        <a href="/privacy">Privacy</a>
+        <a href="/docs">Guide</a>
+        <a href="/terms">Terms</a>
+      </nav>
+      <div class="pcol">
+      <div class="profile-card" id="sec-profile">
         <h2>Public profile</h2>
-        <p class="sub">What other people see in chat and lobbies.</p>
-        <div class="row" style="margin-bottom:16px">
-          <div class="avatar-lg" id="avatarLg">?</div>
-          <div>
-            <div id="publicName" style="font-weight:700;font-size:1.05rem">—</div>
-            <div class="meta">cudic id <b id="publicId">—</b> · joined <b id="publicSince">—</b></div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <label for="avatarFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Change picture</label>
-              <input type="file" id="avatarFile" accept="image/*" style="display:none">
-              <button class="btn btn-danger" id="avatarRemove" style="padding:6px 12px;font-size:0.78rem;display:none">Remove</button>
-            </div>
-          </div>
-        </div>
+        <p class="sub">What other people see in chat and lobbies — previewed live on the right.</p>
         <div class="field"><label>Display name</label><input type="text" id="displayName" maxlength="24"></div>
         <div class="field"><label>Bio <span class="sub" style="display:inline">— what you make, what you're into</span></label><textarea id="bioField" maxlength="200" rows="3" placeholder="I mostly build small arcade games."></textarea></div>
         <div class="field"><label>Interests <span class="sub" style="display:inline">— comma separated</span></label><input type="text" id="interestField" maxlength="200" placeholder="arcade, pixel art, chiptune"></div>
         <button class="btn btn-primary" id="saveName">Save changes</button>
         <div class="status-msg" id="nameMsg"></div>
-        <div id="publicBio" class="sub" style="margin-top:14px"></div>
-        <div id="publicInterests" style="display:none;margin-top:8px"></div>
       </div>
-      <div class="profile-card">
-        <h2>Games you liked</h2>
-        <p class="sub">Saved to your account. Tap the heart on any game in the gallery.</p>
-        <div id="likedList" style="display:flex;flex-direction:column;gap:10px"></div>
-      </div>
-      <div class="profile-card">
-        <h2>Private settings</h2>
+      <div class="profile-card" id="sec-security">
+        <h2>Security</h2>
         <p class="sub">Only you can see these.</p>
+        <div id="verifyCard" style="display:none;margin-bottom:18px">
+          <h2 style="font-size:0.9rem">Confirm your email</h2>
+          <p class="sub">Publishing and chat unlock once you prove this address is yours.</p>
+          <div class="field"><label>Confirmation code</label><input type="text" id="verifyCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" style="letter-spacing:8px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="verifyGo">Confirm email</button>
+            <button class="btn btn-secondary" id="verifySend">Send a new code</button>
+          </div>
+          <div class="status-msg" id="verifyMsg"></div>
+        </div>
         <div class="field"><label>Email</label><input type="text" id="emailField" readonly></div>
         <div class="field"><label>New password</label><input type="password" id="newPass" autocomplete="new-password"></div>
         <div class="field"><label>Confirm new password</label><input type="password" id="newPass2" autocomplete="new-password"></div>
         <button class="btn btn-secondary" id="savePass">Change password</button>
         <div class="status-msg" id="passMsg"></div>
       </div>
-      <div class="profile-card">
-        <h2>Personalization</h2>
-        <p class="sub">Your accent color, applied across the app.</p>
-        <div class="swatches" id="swatches"></div>
-      </div>
-      <div class="profile-card">
-        <h2>Appearance</h2>
-        <p class="sub">Dark surfaces with a teal accent.</p>
-        <div class="seg" id="themeSeg">
-          <button type="button" data-theme-val="light">Light</button>
-          <button type="button" data-theme-val="dark">Dark</button>
-        </div>
-        <div class="status-msg" id="themeMsg"></div>
-      </div>
-      <div class="profile-card">
-        <h2>Coins</h2>
+      <div class="profile-card" id="sec-coins">
+        <h2>Coins &amp; quests</h2>
         <p class="sub">Play money for theme packs. Earn it by using Cudic.</p>
         <div class="meta" style="margin-bottom:12px">Balance <b id="coinBalance" style="font-size:1.1rem">—</b></div>
         <div class="pref-row">
@@ -143,23 +159,57 @@
         <div id="questList"></div>
         <div class="status-msg" id="coinMsg"></div>
       </div>
-      <div class="profile-card">
-        <h2>Performance</h2>
-        <p class="sub">Trade motion for speed on slow devices.</p>
+      <div class="profile-card" id="sec-stats">
+        <h2>Analytics</h2>
+        <p class="sub">How your games and packs are doing. Full breakdown on the Your Projects tab.</p>
+        <div id="statsBody"><p class="sub">Loading…</p></div>
+      </div>
+      <div class="profile-card" id="sec-liked">
+        <h2>Games you liked</h2>
+        <p class="sub">Saved to your account. Tap the heart on any game in the gallery.</p>
+        <div id="likedList" style="display:flex;flex-direction:column;gap:10px"></div>
+      </div>
+      <div class="profile-card" id="sec-appearance">
+        <h2>Appearance</h2>
+        <p class="sub">Your accent color, app theme, and motion preference.</p>
+        <div class="field"><label>Accent color</label><div class="swatches" id="swatches"></div></div>
+        <div class="field"><label>Theme</label><div class="seg" id="themeSeg">
+          <button type="button" data-theme-val="light">Light</button>
+          <button type="button" data-theme-val="dark">Dark</button>
+        </div></div>
+        <div class="status-msg" id="themeMsg"></div>
         <div class="pref-row">
           <div><div class="label">Reduce motion</div><div class="desc">Disables animations and transitions everywhere.</div></div>
           <label class="switch"><input type="checkbox" id="reduceMotion"><span class="track"></span></label>
         </div>
+        <div style="margin-top:18px"><button class="btn btn-danger" id="signOutBtn">Sign out</button></div>
       </div>
-      <div class="profile-card">
-        <button class="btn btn-danger" id="signOutBtn">Sign out</button>
       </div>
+      <aside class="profside"><div class="preview-card" aria-label="Public profile preview">
+        <div class="toc-label">What others see</div>
+        <div class="pv-head">
+          <div class="avatar-lg" id="avatarLg">?</div>
+          <div>
+            <div id="publicName">—</div>
+            <div class="meta">cudic id <b id="publicId">—</b> · joined <b id="publicSince">—</b></div>
+          </div>
+        </div>
+        <div id="publicBio"></div>
+        <div id="publicInterests" style="display:none;margin-top:8px"></div>
+        <div class="pv-picrow">
+          <label for="avatarFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Change picture</label>
+          <input type="file" id="avatarFile" accept="image/*" style="display:none">
+          <button class="btn btn-danger" id="avatarRemove" style="padding:6px 12px;font-size:0.78rem;display:none">Remove</button>
+        </div>
+      </div></aside>
     </div>
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=12"></script>
+  <script src="/pring.js?v=1"></script>
+<script src="/sidebar.js?v=12"></script>
   <script>
+  if (window.Pring) Pring.show('Loading profile…');
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
@@ -180,8 +230,9 @@
     function applyMotion(off){ document.documentElement.classList.toggle('reduce-motion', !!off); }
 
     var t = await token();
-    if (!t) { document.getElementById('guestNotice').style.display = 'block'; return; }
-    document.getElementById('profileBody').style.display = 'block';
+    if (!t) { if (window.Pring) Pring.hide(); document.getElementById('guestNotice').style.display = 'block'; return; }
+    if (window.Pring) Pring.hide();
+    document.getElementById('profileBody').style.display = '';
 
     /* Load profile + session */
     fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + t } })
@@ -503,6 +554,70 @@
     });
 
     document.getElementById('signOutBtn').addEventListener('click', function(){ signOut(); });
+  })();
+  </script>
+  <script>
+  /* Tabbed settings nav: one section visible at a time, preview stays put.
+     Site links (Privacy/Guide/Terms) navigate away untouched. */
+  (function(){
+    var SECTIONS = ['sec-profile', 'sec-security', 'sec-coins', 'sec-stats', 'sec-liked', 'sec-appearance'];
+    var links = Array.prototype.slice.call(document.querySelectorAll('.pnav a[href^="#sec-"]'));
+    if (!links.length) return;
+    function show(id, push) {
+      if (SECTIONS.indexOf(id) === -1) id = 'sec-profile';
+      SECTIONS.forEach(function(sid){
+        var el = document.getElementById(sid);
+        if (el) el.classList.toggle('on', sid === id);
+      });
+      links.forEach(function(a){ a.classList.toggle('on', a.getAttribute('href') === '#' + id); });
+      if (push !== false) {
+        try { history.replaceState(null, '', '/profile#' + id); } catch (e) {}
+      }
+      var box = document.getElementById('profileContent');
+      if (box) box.scrollTop = 0;
+    }
+    links.forEach(function(a){
+      a.addEventListener('click', function(e){ e.preventDefault(); show(a.getAttribute('href').slice(1)); });
+    });
+    var start = null;
+    try { start = (location.hash || '').slice(1); } catch (e) {}
+    show(start, false);
+    window.__profileShow = show;
+  })();
+  </script>
+  <script>
+  /* Analytics section: creator stats for your own games and packs. */
+  (function(){
+    var box = document.getElementById('statsBody');
+    if (!box) return;
+    var KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+    function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+    function esc(s){ var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+    async function token(){
+      try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {}
+      try { var s = JSON.parse(localStorage.getItem(KEY)); return s && s.access_token; } catch (e) { return null; }
+    }
+    token().then(function(t){
+      if (!t) { box.innerHTML = '<p class="sub">Sign in to see analytics.</p>'; return; }
+      fetch(apiHost() + '/api/creator/stats', { headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var t = (d && d.totals) || {};
+          function tile(n, l){ return '<div class="stat-tile"><div class="stat-num">' + n + '</div><div class="stat-lab">' + l + '</div></div>'; }
+          var html = '<div class="stat-tiles">'
+            + tile(t.plays || 0, 'plays') + tile(t.likes || 0, 'likes') + tile(t.comments || 0, 'comments')
+            + tile(t.forks || 0, 'forks') + tile(t.packDownloads || 0, 'pack downloads') + tile(t.packSales || 0, 'pack sales')
+            + tile(t.packRevenue || 0, 'coins earned') + tile(t.openReports || 0, 'open reports') + '</div>';
+          var top = ((d.games || []).slice().sort(function(a, b){ return b.plays - a.plays; })).slice(0, 3);
+          if (top.length) {
+            html += '<div class="stat-top">' + top.map(function(g){
+              return '<div><b>' + esc(g.title) + '</b> — ' + g.plays + ' plays · ' + g.likes + ' likes · ' + g.comments + ' comments</div>';
+            }).join('') + '</div>';
+          }
+          box.innerHTML = html;
+        })
+        .catch(function(){ box.innerHTML = '<p class="sub">Could not load analytics.</p>'; });
+    });
   })();
   </script>
 </body></html>

@@ -21,6 +21,7 @@
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/pring.css?v=1">
     <style>
         body {
             display: flex;
@@ -348,6 +349,7 @@
     <script src="/auth.js"></script>
     <script src="/ctheme.js?v=1"></script>
     <script src="/csel.js?v=1"></script>
+    <script src="/pring.js?v=1"></script>
     <script src="/sidebar.js?v=12"></script>
     <script>
     (function () {
@@ -618,6 +620,7 @@
       document.getElementById('browsePacksBtn').addEventListener('click', function () { document.getElementById('packGrid').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       async function boot() {
         manifests = {}; meta = {}; staticSlugs = [];
+        if (window.Pring) Pring.show('Loading themes…');
         try {
           var idx = await (await fetch('/packs/index.json', { cache: 'no-store' })).json();
           var slugs = idx.packs || [];
@@ -653,9 +656,11 @@
         packOrder = staticSlugs.concat(Object.keys(meta).filter(function (k) { return staticSlugs.indexOf(k) === -1; }));
         if (!packOrder.length) {
           grid.innerHTML = '<div style="color:var(--text-tertiary)">Could not load theme packs.</div>';
+          if (window.Pring) Pring.hide();
           return;
         }
         renderPacks();
+        if (window.Pring) Pring.hide();
       }
       /* ── Pack builder (signed-in only) ── */
       var COLOR_FIELDS = [['ink', 'Ink'], ['panel', 'Panel'], ['raised', 'Raised'], ['line', 'Line'], ['signal', 'Signal'], ['tp', 'Text'], ['ts', 'Text dim'], ['tt', 'Text faint']];

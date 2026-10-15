@@ -176,6 +176,7 @@ async function boot() {
     if (v && v.required) { window.location.href = '/login'; return; }
   } catch (e) { if (e && (e.message === 'seat' || e.message === 'auth')) return; }
   connectWs();
+  if (window.Pring) Pring.show('Loading chats…');
   await refreshConvs();
   const params = new URLSearchParams(window.location.search);
   const cid = params.get('c'), lname = params.get('lobby'), sid = params.get('server');
@@ -281,6 +282,7 @@ async function refreshConvs() {
       if (current) openConv(current); else showEmpty();
     }
     renderConvs();
+    if (window.Pring) Pring.hide();
   } catch (e) {
     if (!convs.length) { convLoadFailed = true; showEmpty(); }
   }
@@ -370,6 +372,7 @@ async function openConv(conv) {
 }
 
 function showEmpty() {
+  if (window.Pring) Pring.hide();
   chatTopbar.hidden = true;
   messagesEl.hidden = true;
   searchView.hidden = true;

@@ -1,0 +1,41 @@
+/* ── Pring: shared page-loading ring (ports Magic UI's
+   AnimatedCircularProgressBar as a spinner — indeterminate, honest:
+   fetch loads have no measurable %, so the arc rotates instead of
+   faking progress). Pages call window.Pring.show/hide. v1. ── */
+.pring-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: var(--panel);
+}
+.pring-veil svg {
+  animation: pring-rot 0.9s linear infinite;
+}
+.pring-veil circle {
+  fill: none;
+  stroke-width: 10;
+}
+.pring-veil .pring-track {
+  stroke: var(--line);
+  opacity: 0.45;
+}
+.pring-veil .pring-arc {
+  stroke: var(--signal);
+  stroke-linecap: round;
+  stroke-dasharray: 70 282.74;
+}
+.pring-veil .pring-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+@keyframes pring-rot {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pring-veil svg { animation: none; }
+}
