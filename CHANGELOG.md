@@ -75,6 +75,14 @@ embeddable games**
   showing as Guest. Sidebar rail and classic editor now decode
   base64url-safe. (`sidebar.js` → `?v=13` everywhere.)
 
+**Email-only signup + password reset** (uncommitted)
+- Signup asks for email only; a random placeholder holds the account
+  until the wizard sets the real password. New "Forgot password?" flow
+  (code + new password, `POST /api/auth/reset-password`) doubles as the
+  rescue for closed tabs — it also confirms the email. No migration.
+- Wizard password step keeps trimmed compare (no more phantom
+  mismatches) and a plain-English same-as-current error.
+
 **Welcome wizard + delete-my-account** (uncommitted)
 - New `/welcome` setup wizard (`cudic-test`, re-exported): Username for
   everyone, Password for email accounts, Style accent pick — non-skippable

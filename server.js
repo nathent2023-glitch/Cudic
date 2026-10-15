@@ -324,6 +324,83 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+// ── API: reset password via email code ─────────────────────────
+// Same proof as verify-code (hashed code, 5 attempts, 10-minute expiry,
+// burn on use) minus the signup binding: the account is found by email
+// scan. Also flips email_confirm — proving the inbox proves the address,
+// which rescues email-only signups whose tab closed before setup.
+// shortcut: user lookup scans auth users (fine at current scale; add a
+// dedicated index/lookup if the user table ever gets big).
+  if (url.pathname === '/api/auth/reset-password' && req.method === 'POST') {
+    cors(res);
+    const body = await readBody(req).catch(() => ({}));
+    const email = String(body.email || '').toLowerCase().trim();
+    const code = String(body.code || '').replace(/\D/g, '').substring(0, 6);
+    const npw = String(body.newPassword || '');
+    if (!email || code.length !== 6) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Email and 6-digit code required' }));
+      return;
+    }
+    if (npw.length < 6 || npw.length > 72) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Password must be 6–72 characters.' }));
+      return;
+    }
+    const { data: row } = await supabase.from('email_codes').select('*').eq('email', email).single();
+    if (!row) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No code for this email. Send a new one.' }));
+      return;
+    }
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Code expired. Send a new one.' }));
+      return;
+    }
+    if ((row.attempts || 0) >= 5) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many tries. Send a new code.' }));
+      return;
+    }
+    let ok = false;
+    try { ok = crypto.timingSafeEqual(Buffer.from(row.code_hash, 'utf8'), Buffer.from(codeHash(email, code), 'utf8')); } catch (e) { ok = false; }
+    if (!ok) {
+      await supabase.from('email_codes').update({ attempts: (row.attempts || 0) + 1 }).eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Wrong code. Try again.' }));
+      return;
+    }
+    let targetId = '';
+    try {
+      for (let page = 1; page <= 3 && !targetId; page++) {
+        const { data: lu } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+        const hit = (lu && lu.users || []).find(u => ((u.email || '').toLowerCase() === email));
+        if (hit) targetId = hit.id;
+        if (lu && lu.users && lu.users.length < 200) break;
+      }
+    } catch (e) {}
+    if (!targetId) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No account uses that email.' }));
+      return;
+    }
+    await supabase.from('email_codes').delete().eq('email', email);
+    try {
+      const { error: upErr } = await supabase.auth.admin.updateUserById(targetId, { password: npw, email_confirm: true });
+      if (upErr) throw upErr;
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Reset failed.' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
 // ── API: check verification status ─────────────────────────────
   if (url.pathname === '/auth/check-verified') {
     cors(res);
