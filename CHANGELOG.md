@@ -82,6 +82,12 @@ embeddable games**
   rescue for closed tabs — it also confirms the email. No migration.
 - Wizard password step keeps trimmed compare (no more phantom
   mismatches) and a plain-English same-as-current error.
+- Every auth await (verify, reset, sign-in, session, code send) now races
+  a 15–30s timeout: a dropped connection (e.g. a deploy restart mid-click)
+  surfaces "taking too long — try again" instead of spinning forever.
+- Verify/reset/profile fetches retry once on dropped connections, and the
+  login + welcome pages pre-warm the sleeping host on load — the timeouts
+  above are now a backstop that should never fire, not the fix.
 
 **Welcome wizard + delete-my-account** (uncommitted)
 - New `/welcome` setup wizard (`cudic-test`, re-exported): Username for
