@@ -61,17 +61,10 @@ embeddable games**
   library re-asks instead of giving up. (`view.html` mediator +
   `cudic-save.js`; embed's local-only path untouched and compatible.)
 
-**Shared page-loading ring** (uncommitted)
-- New `pring.css`/`pring.js` (`?v=1`): indeterminate ring veil that only
-  appears past ~350ms so fast loads never flash. Wired into games, chat,
-  servers, themes, profile, and moderate at each page's real ready point.
-  The game player keeps its staged % gauge. Verified in-browser.
-
-**Player loading ring** (uncommitted)
-- Game pages boot behind a ring gauge (ported from Magic UI's
-  AnimatedCircularProgressBar) with staged, honest progress: finding
-  game, loading player, starting, running. Overlay now lives until the
-  player signals ready instead of vanishing at fetch time.
+**Loading rings removed** (uncommitted)
+- The shared page-loading veil and the player % gauge are gone again —
+  pages are back to skeletons plus the plain "Loading…" player overlay.
+  (`pring.css`/`pring.js` deleted, all hooks reverted.)
 
 **Creator avatars in gallery + game pages** (uncommitted)
 - The games list and single-game endpoints now select the owner's

@@ -18,7 +18,6 @@
   <link rel="canonical" content="https://cudic.vercel.app/profile">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=24">
-  <link rel="stylesheet" href="/pring.css?v=1">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .profile-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -206,10 +205,8 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/pring.js?v=1"></script>
-<script src="/sidebar.js?v=12"></script>
+  <script src="/sidebar.js?v=12"></script>
   <script>
-  if (window.Pring) Pring.show('Loading profile…');
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
@@ -230,8 +227,7 @@
     function applyMotion(off){ document.documentElement.classList.toggle('reduce-motion', !!off); }
 
     var t = await token();
-    if (!t) { if (window.Pring) Pring.hide(); document.getElementById('guestNotice').style.display = 'block'; return; }
-    if (window.Pring) Pring.hide();
+    if (!t) { document.getElementById('guestNotice').style.display = 'block'; return; }
     document.getElementById('profileBody').style.display = '';
 
     /* Load profile + session */
