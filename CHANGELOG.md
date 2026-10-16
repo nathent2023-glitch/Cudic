@@ -89,6 +89,27 @@ embeddable games**
   login + welcome pages pre-warm the sleeping host on load — the timeouts
   above are now a backstop that should never fire, not the fix.
 
+**True deferred registration** (uncommitted)
+- `POST /api/auth/confirm-signup` creates the auth row (pre-confirmed)
+  only after the code proves the inbox — signup itself only sends mail,
+  so nobody is ever registered without verifying. Returning logins keep
+  the classic verify path; double submits return exists-and-sign-in.
+  Verified end-to-end locally (wrong code/short pw/good code, row burn,
+  profile trigger, cleanup).
+- Fixed the wizard Finish "Nothing to update": the PUT handler read
+  `setup_done` off the raw body string instead of the parsed JSON.
+- Fixed the endless "Confirm email" spinner: `run()` set a "loading" status
+  and never cleared it, so the code screen (reached from inside signup, or
+  sign-in when verification is pending) rendered its button permanently
+  `disabled` with a spinner — the click never even fired. Success paths now
+  release the status unless they already moved it to "ok". This was the real
+  cause of the "button circles forever" reports, not the deploy restarts.
+- Login + welcome now follow `config.js`'s rule: on localhost they call the
+  local backend, elsewhere Render. They previously hardcoded Render, so any
+  brand-new endpoint 404'd (no CORS → "Failed to fetch") when testing locally.
+  Full flow verified locally end-to-end: signup → code → account created →
+  wizard (username/password/style) → chat, `setup_done` flipped true.
+
 **Welcome wizard + delete-my-account** (uncommitted)
 - New `/welcome` setup wizard (`cudic-test`, re-exported): Username for
   everyone, Password for email accounts, Style accent pick — non-skippable

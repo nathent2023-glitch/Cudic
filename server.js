@@ -324,6 +324,79 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+    // ── API: confirm a FRESH signup (deferred registration) ──────
+    // No auth row exists until this runs: signup only sends the code,
+    // and the account (already confirmed) is created here, so nobody is
+    // ever registered without proving the inbox. Same code proof as
+    // verify-code (hash, attempts, expiry, burn). Double submits return
+    // exists:true and the client just signs in with the known password.
+    if (url.pathname === '/api/auth/confirm-signup' && req.method === 'POST') {
+    cors(res);
+    const body = await readBody(req).catch(() => ({}));
+    const email = String(body.email || '').toLowerCase().trim();
+    const code = String(body.code || '').replace(/\D/g, '').substring(0, 6);
+    const npw = String(body.password || '');
+    if (!email || code.length !== 6) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Email and 6-digit code required' }));
+      return;
+    }
+    if (npw.length < 6 || npw.length > 72) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Password must be 6–72 characters.' }));
+      return;
+    }
+    const { data: row } = await supabase.from('email_codes').select('*').eq('email', email).single();
+    if (!row) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'No code for this email. Send a new one.' }));
+      return;
+    }
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Code expired. Send a new one.' }));
+      return;
+    }
+    if ((row.attempts || 0) >= 5) {
+      await supabase.from('email_codes').delete().eq('email', email);
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many tries. Send a new code.' }));
+      return;
+    }
+    let ok = false;
+    try { ok = crypto.timingSafeEqual(Buffer.from(row.code_hash, 'utf8'), Buffer.from(codeHash(email, code), 'utf8')); } catch (e) { ok = false; }
+    if (!ok) {
+      await supabase.from('email_codes').update({ attempts: (row.attempts || 0) + 1 }).eq('email', email);
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Wrong code. Try again.' }));
+      return;
+    }
+    await supabase.from('email_codes').delete().eq('email', email);
+    try {
+      const { error: createErr } = await supabase.auth.admin.createUser({
+        email: email,
+        password: npw,
+        email_confirm: true,
+      });
+      if (createErr) {
+        if (String(createErr.message || '').toLowerCase().includes('already')) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, exists: true }));
+          return;
+        }
+        throw createErr;
+      }
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Account creation failed.' }));
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, verified: true }));
+    return;
+  }
+
 // ── API: reset password via email code ─────────────────────────
 // Same proof as verify-code (hashed code, 5 attempts, 10-minute expiry,
 // burn on use) minus the signup binding: the account is found by email
@@ -532,7 +605,8 @@ const server = http.createServer(async (req, res) => {
     req.on('data', c => body += c);
     req.on('end', async () => {
       try {
-        const { display_name, avatar_url, bio, interests } = JSON.parse(body);
+        const parsed = JSON.parse(body);
+        const { display_name, avatar_url, bio, interests } = parsed;
         var updates = {};
         if (bio !== undefined) {
           // Plain text, trimmed and length-capped. Rendered as textContent
@@ -570,7 +644,7 @@ const server = http.createServer(async (req, res) => {
         }
         // Onboarding completion is one-way: the welcome wizard flips it
         // true, and nothing flips it back.
-        if (body.setup_done === true) updates.setup_done = true;
+        if (parsed.setup_done === true) updates.setup_done = true;
         if (!Object.keys(updates).length) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Nothing to update.' }));
