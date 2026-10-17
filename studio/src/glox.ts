@@ -65,6 +65,8 @@ function esc(s: string): string {
 function normalizeRef(ref: string): string {
   return ref
     .trim()
+    // 'app.js?v=3' names app.js — same rule as the player (public/run.html).
+    .split(/[?#]/)[0]
     .replace(/^\.\//, '')
     .replace(/^\/+/, '')
     .replace(/^workspace\//i, '');

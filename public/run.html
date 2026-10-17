@@ -20,7 +20,17 @@ window.addEventListener('message', async (e) => {
   const assets = d.assets || {};
   const assetsBase = d.assetsBase || '';
   function esc(s, tag) { return String(s).replace(new RegExp('</' + tag, 'gi'), '<\\/' + tag); }
-  function find(p) { return Object.keys(files).find(k => k === p || k.endsWith('/' + p)); }
+  // Match a reference the way the Studio preview does (normalizeRef in
+  // studio/src/glox.ts): './app.js', '/app.js', 'app.js?v=3', 'dist/app.js' and
+  // case differences all name the same file. When the two rules drifted, a
+  // project previewed fine and 404'd the moment it was published. Keep in step.
+  function norm(p) {
+    return String(p).trim().split(/[?#]/)[0].replace(/^\.\//, '').replace(/^\/+/, '').replace(/^workspace\//i, '');
+  }
+  function find(p) {
+    const n = norm(p).toLowerCase();
+    return Object.keys(files).find(k => { const l = k.toLowerCase(); return l === n || l.endsWith('/' + n); });
+  }
   function mimeOf(p) {
     if (/\.png$/i.test(p)) return 'image/png';
     if (/\.jpe?g$/i.test(p)) return 'image/jpeg';
@@ -67,20 +77,27 @@ window.addEventListener('message', async (e) => {
     }
     return null;
   }
+  // A relative .js/.css we could not inline is a 404 inside the frame. Say so
+  // in the game console instead of rendering half a page with no explanation.
+  // A leading '/' is a platform path (/cudic-save.js), not a missing file.
+  const missed = [];
   // Inline local stylesheets: <link href="x.css"> -> <style>…</style>
   index = index.replace(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*>/gi, (tag, p) => {
     if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
     const key = find(p);
-    if (!key || !/\.css$/i.test(key) || typeof files[key] !== 'string') return tag;
+    if (!key || !/\.css$/i.test(key) || typeof files[key] !== 'string') { if (/\.css$/i.test(norm(p)) && !/^\//.test(p.trim())) missed.push(p); return tag; }
     return '<style>\n' + esc(files[key], 'style') + '\n</style>';
   });
   // Inline local scripts: script tags with src="x.js" get their content inlined
   index = index.replace(/<script\b([^>]*?)\bsrc=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (tag, pre, p, post) => {
     if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
     const key = find(p);
-    if (!key || !/\.js$/i.test(key) || typeof files[key] !== 'string') return tag;
+    if (!key || !/\.js$/i.test(key) || typeof files[key] !== 'string') { if (/\.(js|mjs)$/i.test(norm(p)) && !/^\//.test(p.trim())) missed.push(p); return tag; }
     return '<script' + pre + post + '>\n' + esc(files[key], 'script') + '\n<\/script>';
   });
+  for (const p of missed) {
+    parent.postMessage({ type: 'console', level: 'error', text: 'Cannot inline "' + p + '": no such file in this project, so the game will not load it.' }, '*');
+  }
   // Remaining relative refs (images, etc.): public asset URL or data: URL
   index = index.replace(/(src|href)=["'](?!https?:|data:|blob:|#)([^"']+)["']/g, (m, attr, p) => {
     const u = assetUrl(p);
