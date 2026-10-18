@@ -16,7 +16,7 @@
 <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=24">
-  <link rel="stylesheet" href="/islands/cudic-islands.css?v=7">
+  <link rel="stylesheet" href="/islands/cudic-islands.css?v=8">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .game-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
@@ -33,6 +33,18 @@
     .player-card { background: #000; border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; position: relative; aspect-ratio: 16/9; }
     .player-card.scrollable { overflow: auto; }
     .player-card iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    /* Live play: --ember is the design system's live/play accent, used here and
+       nowhere structural. The pill shows the room count, the chips name players
+       so a signed-in one can be reported. */
+    .live-pill { display: inline-flex; align-items: center; gap: 6px; align-self: center; font-family: var(--font-head); font-weight: 600; font-size: 0.75rem; color: #8a4a00; background: rgba(255,140,26,0.14); border: 1px solid rgba(255,140,26,0.38); border-radius: 999px; padding: 3px 10px; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ember, #FF8C1A); animation: livePulse 2s ease-out infinite; }
+    @keyframes livePulse { 0% { box-shadow: 0 0 0 0 rgba(255,140,26,0.45); } 70% { box-shadow: 0 0 0 7px rgba(255,140,26,0); } 100% { box-shadow: 0 0 0 0 rgba(255,140,26,0); } }
+    @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+    .player-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    #liveStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); }
+    .live-chip { font: inherit; font-size: 0.78rem; background: var(--panel-raised); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; color: var(--text-primary); }
+    button.live-chip { cursor: pointer; }
+    button.live-chip:hover { border-color: var(--signal); color: var(--signal); }
     .player-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #000; color: var(--text-secondary); font-size: 0.9rem; }
     .side-card { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; }
     .side-card h2 { font-family: var(--font-head); font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; }
@@ -77,9 +89,13 @@
         <span id="likeCount">0</span>
       </button>
       <span id="playCount" style="font-size:0.8rem;color:var(--text-tertiary);align-self:center"></span>
+      <span id="livePill" class="live-pill" style="display:none"></span>
     </div>
     <div class="game-grid">
-      <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
+      <div class="player-col">
+        <div class="player-card" id="playerCard"><div class="player-overlay" id="overlay"><span id="overlayText">Loading…</span></div></div>
+        <div id="liveStrip" style="display:none"></div>
+      </div>
       <div id="playerErr" style="display:none;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;font-size:0.8rem;color:#ff7b7b;background:var(--panel-raised)"></div>
       <div class="side-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -148,7 +164,7 @@
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
   <script src="/sidebar.js?v=14"></script>
-  <script src="/islands/islands.js?v=7"></script>
+  <script src="/islands/islands.js?v=8"></script>
   <script>
   (function(){
     var id = new URLSearchParams(location.search).get('id');
@@ -165,6 +181,26 @@
     // not on page load, and the server rate-limits it per IP/hour anyway.
     var likeBtn = document.getElementById('likeBtn'), likeCount = document.getElementById('likeCount');
     var playCount = document.getElementById('playCount');
+// How many are in a room for this game, as of the game fetch. The multiplayer
+// block below takes over with its exact per-room list once the game joins.
+var liveOnPage = 0;
+// Live-list state. Declared here, not with the socket plumbing further down,
+// because loadGame() (which paints them) runs before that block is reached.
+var multiPeers = null;   // null = the game has not asked to join a room yet
+var myPeerId = null;     // server-assigned peer id once joined
+// The count above is only a snapshot, so keep asking while this page is open —
+// otherwise the pill claims people are playing long after they left. Stops
+// itself once the game joins a room (its pushed peer list is exact), and skips
+// hidden tabs.
+setInterval(function () {
+  if (document.hidden || multiPeers !== null || !id) return;
+  fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/live')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (d && typeof d.playing === 'number' && multiPeers === null) { liveOnPage = d.playing; paintLive(); }
+    })
+    .catch(function () {});
+}, 15000);
     function paintLikes(n, on) { likeCount.textContent = n; likeBtn.classList.toggle('btn-primary', !!on); likeBtn.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none'); }
     function paintPlays(n) { playCount.textContent = n > 0 ? n + (n === 1 ? ' play' : ' plays') : ''; }
     likeBtn.addEventListener('click', function(){
@@ -385,7 +421,11 @@
         document.getElementById('islReportSlot').style.display = '';
         paintLikes(game.likes || 0, !!game.liked);
         paintPlays(game.play_count || 0);
-        var author = game.users || {};
+        // Room head-count from the fetch: shown until the game itself joins a
+        // room, at which point the live peer list takes over (it is per-room
+        // and exact, where this number spans every room code).
+        liveOnPage = game.playing || 0;
+        paintLive();        var author = game.users || {};
         var name = author.display_name || 'Unknown';
         document.getElementById('authorName').textContent = name + (author.user_id ? ' #' + author.user_id : '');
         var avEl = document.getElementById('authorAvatar');
@@ -498,7 +538,9 @@
         cloudTimer = setTimeout(cloudSettled, 8000);
         function saveHeaders(extra) {
           var h = extra || {};
-          if (saveSession) h['Authorization'] = 'Bearer ' + saveSession.token;
+          // A Supabase session carries access_token; `token` was undefined here,
+          // so every cloud save went out as "Bearer undefined" and 401'd.
+          if (saveSession) h['Authorization'] = 'Bearer ' + saveSession.access_token;
           try { if (typeof seatId === 'function') { var s = seatId(); if (s) h['X-Seat'] = s; } } catch (e) {}
           return h;
         }
@@ -574,6 +616,129 @@
               .then(function () { cloudSave = null; })
               .catch(function () {});
             try { f.contentWindow.postMessage({ type: 'cudic-save-ack', req: d.req, ok: true }, '*'); } catch (err) {}
+          }
+        });
+        // ── In-game multiplayer: same shape as cloud saves — the sandboxed
+        // game holds neither the login token nor the socket. It asks here,
+        // this page owns one socket for the room and relays.
+        // Rooms are anonymous on purpose: guests must be able to play along.
+        var multiWs = null, multiWanted = false, multiRetry = null;
+        var multiReq = null, multiRoom = '';
+        var multiId = 'p' + Math.random().toString(36).slice(2, 10);
+        function multiReply(msg) { try { if (f && f.contentWindow) f.contentWindow.postMessage(msg, '*'); } catch (err) {} }
+        function multiReady() { return !!multiWs && multiWs.readyState === 1; }
+        // Account ids stop at this page: the game gets names only.
+        function multiPublic(peers) {
+          return (peers || []).map(function (p) { return { id: p.id, name: p.name }; });
+        }
+        // Built as DOM nodes, never as an HTML string: display names are other
+        // people's text and must not be able to inject markup or attributes.
+        function paintLive() {
+          var pill = document.getElementById('livePill');
+          var strip = document.getElementById('liveStrip');
+          if (!pill || !strip) return;
+          var n = multiPeers === null ? liveOnPage : multiPeers.length;
+          pill.style.display = n > 0 ? '' : 'none';
+          pill.innerHTML = n > 0 ? '<span class="live-dot"></span>' + n + ' playing' : '';
+          var list = multiPeers || [];
+          strip.textContent = '';
+          if (list.length < 2) { strip.style.display = 'none'; return; }
+          strip.style.display = '';
+          var head = document.createElement('span');
+          head.style.color = 'var(--text-tertiary)';
+          head.textContent = 'Playing now:';
+          strip.appendChild(head);
+          list.forEach(function (p) {
+            var mine = p.id === myPeerId;
+            // Signed-in players are reportable by account; guests have no
+            // account to report, and you cannot report yourself.
+            var reportable = !!p.userId && !mine;
+            var chip = document.createElement(reportable ? 'button' : 'span');
+            chip.className = 'live-chip';
+            chip.textContent = p.name + (mine ? ' (you)' : '');
+            if (reportable) {
+              chip.type = 'button';
+              chip.setAttribute('data-uid', p.userId);
+              chip.setAttribute('title', 'Report ' + p.name);
+            } else {
+              chip.setAttribute('title', mine ? 'That’s you' : 'Guest — no account to report');
+            }
+            strip.appendChild(chip);
+          });
+        }
+        document.getElementById('liveStrip').addEventListener('click', function (e) {
+          var chip = e.target && e.target.closest ? e.target.closest('[data-uid]') : null;
+          if (!chip || !window.CudicReport) return;
+          window.CudicReport.open({ content_type: 'user', content_id: chip.getAttribute('data-uid'), label: chip.textContent });
+        });
+        function multiToken() {
+          try { return (saveSession && saveSession.access_token) || ''; } catch (err) { return ''; }
+        }
+        function multiJoinMsg() {
+          // No name in here: the server derives it from the token, so a
+          // signed-in player cannot be impersonated and guests stay 'Guest'.
+          return JSON.stringify({ type: 'multi_join', game: id, room: multiRoom, id: multiId, token: multiToken() });
+        }
+        function multiConnect() {
+          if (multiReady() || !multiWanted) return;
+          var host = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
+          var proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.indexOf('wss') === 0)
+            ? 'wss' : (location.protocol === 'https:' ? 'wss' : 'ws');
+          try { multiWs = new WebSocket(proto + '://' + host); } catch (err) {
+            multiReply({ type: 'cudic-multi-error', req: multiReq, text: 'Could not reach the game server.' });
+            multiWanted = false;
+            return;
+          }
+          multiWs.onopen = function () { try { multiWs.send(multiJoinMsg()); } catch (err) {} };
+          multiWs.onmessage = function (ev) {
+            var d = {};
+            try { d = JSON.parse(ev.data); } catch (err) { return; }
+            var t = d && d.type;
+            if (t === 'multi_joined') {
+              myPeerId = d.id;
+              multiPeers = d.peers || [];
+              paintLive();
+              multiReply({ type: 'cudic-multi-joined', req: multiReq, id: d.id, peers: multiPublic(multiPeers) });
+            } else if (t === 'multi_peers') {
+              multiPeers = d.peers || [];
+              paintLive();
+              multiReply({ type: 'cudic-multi-peers', req: multiReq, peers: multiPublic(multiPeers) });
+            } else if (t === 'multi_msg') {
+              multiReply({ type: 'cudic-multi-msg', req: multiReq, from: d.from, data: d.data });
+            } else if (t === 'multi_error') {
+              multiReply({ type: 'cudic-multi-error', req: multiReq, text: d.text });
+            }
+          };
+          multiWs.onclose = function () {
+            // Still wanted (the game has not left): rejoin, so a dropped
+            // socket costs a couple of seconds instead of the session.
+            if (multiWanted) { if (multiRetry) clearTimeout(multiRetry); multiRetry = setTimeout(multiConnect, 2000); }
+          };
+        }
+        window.addEventListener('message', function (e) {
+          var d = e.data || {};
+          if (!d || String(d.type || '').indexOf('cudic-multi-') !== 0) return;
+          try { if (!f || e.source !== f.contentWindow) return; } catch (err) { return; }
+          if (d.type === 'cudic-multi-hello') {
+            // Answer even before connecting: tells the game a host exists.
+            multiReply({ type: 'cudic-multi-host', req: d.req });
+          } else if (d.type === 'cudic-multi-join') {
+            multiReq = d.req;
+            multiRoom = String(d.room || '').replace(/[^A-Za-z0-9_-]/g, '').substring(0, 24);
+            multiWanted = true;
+            multiConnect();
+            // Rejoining a room the socket is already in (room code changed).
+            if (multiReady()) { try { multiWs.send(multiJoinMsg()); } catch (err) {} }
+          } else if (d.type === 'cudic-multi-send') {
+            if (multiReady()) { try { multiWs.send(JSON.stringify({ type: 'multi_msg', data: d.data })); } catch (err) {} }
+          } else if (d.type === 'cudic-multi-leave') {
+            multiWanted = false;
+            if (multiRetry) { clearTimeout(multiRetry); multiRetry = null; }
+            if (multiReady()) { try { multiWs.send(JSON.stringify({ type: 'multi_leave' })); } catch (err) {} }
+            try { if (multiWs) multiWs.close(); } catch (err) {}
+            multiWs = null;
+            multiPeers = null; myPeerId = null;
+            paintLive();
           }
         });
         setTimeout(function(){

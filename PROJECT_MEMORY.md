@@ -15,6 +15,11 @@
 - Anon key / Service role key / DB password: MOVED to local `.env` (gitignored) — never commit secrets
 - CLI access: `SUPABASE_ACCESS_TOKEN` user env var (read-only token, revoke at supabase.com/dashboard/account/tokens)
 
+## Test Inbox (throwaway Proton account for automated signup tests)
+- Address: `opencodeaccount@proton.me` (password in local `.env`: `PROTON_TEST_EMAIL` / `PROTON_TEST_PASSWORD`)
+- Read it by driving the browser to `https://mail.proton.me/u/1/inbox` — no IMAP/API on free Proton
+- Login confirmed working 2026-10-16 at `account.proton.me/mail` (email + password in `.env`); a captcha can still appear on odd logins
+
 ## GitHub OAuth App (for Supabase GitHub login)
 - Client ID: `Ov23IioZd8mBTSsE5VAq` (public identifier, safe to keep)
 - Client Secret: MOVED to local `.env` — never commit

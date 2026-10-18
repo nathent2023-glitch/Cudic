@@ -37,7 +37,7 @@ let registered: monaco.IDisposable[] = [];
 // Paths currently held as raw bytes (imported/loaded binaries — never re-encoded).
 const binaryPaths = new Set<string>();
 
-function getToken(): string | null {
+export function getToken(): string | null {
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -66,6 +66,15 @@ async function apiBase(): Promise<string> {
     // same-origin fallback
   }
   return '';
+}
+
+// WebSocket endpoint for the in-game multiplayer relay (preview mediator).
+// Mirrors config.js: local dev always talks to the local server on :3000, even
+// when Vite is serving the workbench from another port.
+export async function relayWsUrl(): Promise<string> {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return 'ws://localhost:3000';
+  const cfg = await getCfg();
+  return cfg.api.replace(/^https/, 'wss');
 }
 
 function headers(json: boolean): Record<string, string> {
@@ -326,6 +335,11 @@ export function applyProjectToProvider(
 // state to IndexedDB on a timer and on the way out, and put it back on boot.
 const SNAP_DB = 'cudic-studio';
 const SNAP_STORE = 'unsaved';
+// Restore points are count-capped, not byte-capped: a project carrying large
+// assets can eventually hit an IndexedDB quota error (every write here is
+// already .catch()-swallowed). Lower MAX_SNAPS if that shows up in practice.
+const MAX_SNAPS = 10;
+const SNAP_SPACING_MS = 60_000;
 
 interface Snapshot {
   id: string;
@@ -334,8 +348,22 @@ interface Snapshot {
   savedAt: number;
 }
 
-function snapKey(): string {
+// Identifies the open project: its saved id, or 'draft' for a new one. Used by
+// the snapshot ring and by the preview's multiplayer room.
+export function projectKey(): string {
   return projectId ?? 'draft';
+}
+
+function snapKey(): string {
+  return projectKey();
+}
+
+// Stored value is Snapshot[] newest-first; a bare Snapshot is an older build's
+// record, so read it as a one-entry history.
+function toHistory(v: unknown): Snapshot[] {
+  if (Array.isArray(v)) return v as Snapshot[];
+  if (v != null && typeof v === 'object') return [v as Snapshot];
+  return [];
 }
 
 function openSnapDb(): Promise<IDBDatabase> {
@@ -351,26 +379,55 @@ function openSnapDb(): Promise<IDBDatabase> {
   });
 }
 
-async function snapPut(s: Snapshot): Promise<void> {
-  const db = await openSnapDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SNAP_STORE, 'readwrite');
-    tx.objectStore(SNAP_STORE).put(s, s.id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-
-async function snapGet(id: string): Promise<Snapshot | null> {
-  const db = await openSnapDb();
+function readHistory(db: IDBDatabase, id: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const req = db
       .transaction(SNAP_STORE, 'readonly')
       .objectStore(SNAP_STORE)
       .get(id);
-    req.onsuccess = () => resolve((req.result as Snapshot) ?? null);
+    req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
+
+function writeHistory(db: IDBDatabase, id: string, list: Snapshot[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SNAP_STORE, 'readwrite');
+    tx.objectStore(SNAP_STORE).put(list, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function snapList(id: string): Promise<Snapshot[]> {
+  return toHistory(await readHistory(await openSnapDb(), id));
+}
+
+async function snapGet(id: string): Promise<Snapshot | null> {
+  return (await snapList(id))[0] ?? null;
+}
+
+// Without force the head is rewritten for 60s and the tail grows one entry a
+// minute — a 15s snapshot timer costs a 10-point trail, not 10 writes.
+async function snapPut(s: Snapshot, force = false): Promise<void> {
+  const db = await openSnapDb();
+  const prev = toHistory(await readHistory(db, s.id));
+  const head = prev[0];
+  const list =
+    !force && head != null && s.savedAt - head.savedAt < SNAP_SPACING_MS
+      ? [s, ...prev.slice(1)]
+      : [s, ...prev];
+  await writeHistory(db, s.id, list.slice(0, MAX_SNAPS));
+}
+
+// Boot reads the head, so promoting an older point + reload restores it.
+async function snapPromote(id: string, savedAt: number): Promise<boolean> {
+  const db = await openSnapDb();
+  const list = toHistory(await readHistory(db, id));
+  const pick = list.find((s) => s.savedAt === savedAt);
+  if (pick == null) return false;
+  await writeHistory(db, id, [pick, ...list.filter((s) => s.savedAt !== savedAt)]);
+  return true;
 }
 
 async function snapDelete(id: string): Promise<void> {
@@ -396,9 +453,13 @@ async function snapshotFiles(): Promise<FileMap> {
 }
 
 let snapTimer: number | null = null;
+// Set just before a deliberate reload: the live files are about to be replaced
+// by an older snapshot, and the beforeunload tick would otherwise persist them
+// straight back over that choice.
+let snapFrozen = false;
 
 function persistSnapshot(): void {
-  if (provider == null) return;
+  if (provider == null || snapFrozen) return;
   snapshotFiles()
     .then((files) =>
       snapPut({ id: snapKey(), title: projectTitle, files, savedAt: Date.now() })
@@ -413,6 +474,44 @@ export function startSnapshotWatcher(): void {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') persistSnapshot();
   });
+}
+
+const GUEST_HINT = 'cudic_guest_hint';
+
+function agoLabel(ts: number): string {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'just now';
+  return mins === 1 ? '1 minute ago' : mins + ' minutes ago';
+}
+
+async function restoreSnapshot(): Promise<void> {
+  const id = snapKey();
+  const list = await snapList(id).catch(() => []);
+  if (list.length === 0) {
+    vscode.window.showInformationMessage('Cudic: no restore points for this project yet.');
+    return;
+  }
+  const pick = await vscode.window.showQuickPick(
+    list.map((s) => ({
+      label: agoLabel(s.savedAt),
+      description: Object.keys(s.files).length + ' files',
+      savedAt: s.savedAt
+    })),
+    {
+      title: 'Restore a previous version',
+      placeHolder: 'Where you are now is kept as the next entry back'
+    }
+  );
+  if (pick == null) return;
+  // Record the state being left behind, so restoring is itself undoable.
+  await snapPut(
+    { id, title: projectTitle, files: await snapshotFiles(), savedAt: Date.now() },
+    true
+  ).catch(() => {});
+  if (!(await snapPromote(id, pick.savedAt).catch(() => false))) return;
+  // Boot prefers the snapshot head, so reloading is the whole restore.
+  snapFrozen = true;
+  location.reload();
 }
 
 async function setPublished(pub: boolean): Promise<void> {
@@ -589,7 +688,13 @@ async function deleteProject(): Promise<void> {
 async function saveProject(): Promise<void> {
   const token = getToken();
   if (token == null) {
-    vscode.window.showWarningMessage('Sign in to save projects to Cudic.');
+    const pick = await vscode.window.showWarningMessage(
+      'Sign in to save projects to Cudic. Until then this project lives in this browser only.',
+      'Export .zip',
+      'Sign in'
+    );
+    if (pick === 'Export .zip') await vscode.commands.executeCommand('glox.exportProject');
+    else if (pick === 'Sign in') window.open('/login', '_blank');
     return;
   }
   const files = await collectFiles();
@@ -996,6 +1101,27 @@ export function registerProjectCommands(): void {
     class extends Action2 {
       constructor() {
         super({
+          id: 'glox.restoreSnapshot',
+          title: {
+            value: 'Cudic: Restore a previous version',
+            original: 'Cudic: Restore a previous version'
+          },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        await restoreSnapshot();
+      }
+    }
+  );
+
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
           id: 'glox.setThumbnail',
           title: { value: 'Cudic: Set thumbnail', original: 'Cudic: Set thumbnail' },
           menu: [
@@ -1161,4 +1287,24 @@ export function registerProjectCommands(): void {
       }
     }
   );
+
+  // A signed-out builder has no way to know their project lives only in this
+  // browser until a save fails. Say it once, with the two exits that work.
+  try {
+    if (getToken() == null && localStorage.getItem(GUEST_HINT) == null) {
+      localStorage.setItem(GUEST_HINT, '1');
+      void vscode.window
+        .showInformationMessage(
+          'You are not signed in — this project is saved in this browser only.',
+          'Export .zip',
+          'Sign in'
+        )
+        .then((pick) => {
+          if (pick === 'Export .zip') void vscode.commands.executeCommand('glox.exportProject');
+          else if (pick === 'Sign in') window.open('/login', '_blank');
+        });
+    }
+  } catch {
+    // private mode etc. — non-fatal
+  }
 }

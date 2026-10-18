@@ -163,20 +163,25 @@ async function boot() {
     TOKEN = (typeof getAuthToken === 'function') ? await getAuthToken() : null;
   } catch (e) { TOKEN = null; }
   if (!TOKEN) { window.location.href = '/login'; return; }
-  try {
-    const s = await api('/api/session');
-    if (!s || !s.user) { window.location.href = '/login'; return; }
-    ME = s.user.id;
-  } catch (e) { return; }
+  // Every API call is a full round trip to one small instance (~0.8s each),
+  // so the three that need nothing but the token go out together. Nothing
+  // renders until the gates below pass.
+  const convPromise = refreshConvs();
+  const sessionPromise = api('/api/session').then(s => ({ s }), e => ({ e }));
+  const verifyPromise = api('/auth/verification-required').then(v => ({ v }), e => ({ e }));
+  const { s: session, e: sessionErr } = await sessionPromise;
+  if (sessionErr) return;
+  if (!session || !session.user) { window.location.href = '/login'; return; }
+  ME = session.user.id;
+  renderConvs();   // the list may have painted before ME was known ("you:")
   // Hard email gate: unconfirmed accounts can't enter chat even by
   // typing the URL — login holds the code screen instead. Fail open on
   // network flakes (WS join re-checks and blocks sending regardless).
-  try {
-    const v = await api('/auth/verification-required');
-    if (v && v.required) { window.location.href = '/login'; return; }
-  } catch (e) { if (e && (e.message === 'seat' || e.message === 'auth')) return; }
+  const { v, e: verifyErr } = await verifyPromise;
+  if (verifyErr) { if (verifyErr.message === 'seat' || verifyErr.message === 'auth') return; }
+  else if (v && v.required) { window.location.href = '/login'; return; }
   connectWs();
-  await refreshConvs();
+  await convPromise;
   const params = new URLSearchParams(window.location.search);
   const cid = params.get('c'), lname = params.get('lobby'), sid = params.get('server');
   var target = null;
@@ -282,6 +287,7 @@ async function refreshConvs() {
     }
     renderConvs();
   } catch (e) {
+    if (e && e.message === 'seat') return;   // paused banner owns this case
     if (!convs.length) { convLoadFailed = true; showEmpty(); }
   }
 }

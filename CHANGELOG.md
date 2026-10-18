@@ -13,6 +13,76 @@ embeddable games**
 
 ### Added
 
+**Chat history stopped disappearing** (uncommitted)
+- `cleanupNonPersistent()` ran at boot +1 min and every 2h, deleting every
+  message older than 2h in any lobby with `persistent = false` — which was
+  **every** channel and DM, since the chat rebuild defaulted that column to
+  false while its own header promised "everything persistent". History was
+  being emptied on a timer. The sweeper is gone; only the moderator
+  `delete_message` action removes a message now, and every existing lobby was
+  backfilled to `persistent = true` (the column is vestigial).
+- That same query also returned the **oldest** 100 messages (`order asc` +
+  `limit 100`), so a busy room showed its first 100 for ever and never the
+  recent ones. `GET /api/messages` now takes the newest 100 and flips them
+  back to oldest-first for the client — matching `client.js`'s "only ever
+  holds the last 100".
+
+**In-game multiplayer** (uncommitted)
+- `public/cudic-multi.js` gives a published game a room: `CudicMulti.join('code')`
+  → `net.send(obj)`, `net.on('open'|'peers'|'msg'|'error')`, `net.id`, `net.leave()`.
+  Same security shape as `cudic-save.js`: the sandboxed game frame holds neither
+  the login token nor a socket — the host page owns one connection per game room
+  and relays. Room codes are optional (`'main'` by default), so private sessions
+  come for free. The Studio preview hosts rooms too now
+  (`registerPreviewMulti` in `studio/src/glox.ts`), joining `<project>:preview`
+  so you can test multiplayer while building, without touching the published
+  game's rooms.
+- `server.js` serves anonymous game rooms over the existing WebSocket
+  (`multi_join` / `multi_msg` / `multi_leave`) — guests can play along, unlike chat
+  which gates on sign-in. Caps: 32 per room, 8 KB per message, and **per
+  connection** 20 joins/min + 200 messages/10s, with a loose per-IP backstop
+  (400 joins/min, 8000 msgs/10s) so one school NAT no longer shares one budget.
+  A game room never touches `lobbies`/`clients`, so chat, seats and the lobby
+  list are unaffected.
+- Players are named by the server: a join may carry the login token, and a
+  verified one shows `users.display_name` (plus the account id, kept on the host
+  page for reporting). Guests are `'Guest'`, a client-supplied name is ignored,
+  and a peer id already in the room is replaced — so a name or a session cannot
+  be cloned.
+- "Playing now" shows up for free: `liveCount()` over the in-memory rooms rides
+  on the existing `GET /api/games` and single-game responses, so gallery cards
+  get an ember badge and the game page gets a live pill that switches to the
+  exact per-room peer list once the game joins. No polling, no new endpoint.
+- Game chat is unreviewable after the fact (nothing is stored), so the game
+  page's "playing now" strip reports a **player's account** through the existing
+  report modal (`window.CudicReport.open`), with copy that asks for the details
+  because the note is the only evidence a moderator gets. Guests have no account
+  to report.
+- Outside any host page (a local .html file, plain embed, `play.html`) there is
+  nothing to relay through, so `join()` reports an error instead of going quiet —
+  the host handshake is page-local, not a network timeout.
+- Found while wiring the above: `view.html` sent cloud saves as
+  `Bearer undefined` (a Supabase session has `access_token`, not `token`), so
+  signed-in cloud saves silently never reached the server.
+
+**Studio: guest guide + restore points** (uncommitted)
+- Signed-out builders are told once, on Studio boot, that the project lives in
+  this browser only — with "Export .zip" and "Sign in" buttons. The
+  save-when-signed-out warning offers the same two exits instead of a dead end.
+  New command `glox.restoreSnapshot` (palette + File menu) picks from a ring of
+  10 restore points per project, most recent minute-by-minute, and reloads into
+  the chosen one; the state left behind stays selectable.
+
+**Multi-file ES modules in previews *and* published games** (uncommitted)
+- A relative `import './x.js'` between project files is rewritten to an
+  import-map id (`cudic~<path>`) targeting a `data:` URL of that file, gathered
+  transitively including cycles — same algorithm in `studio/src/npmutil.ts`
+  (preview) and `public/run.html` (player), so a published game matches what
+  you tested. Merged into the project's own `<script type="importmap">` when
+  present. Legacy single-file projects take the byte-identical old path.
+- Limits: CSS `@import './y.css'` between files, and paths built in JS
+  (`new URL('./a.png', import.meta.url)`); JSON imports need `with { type: 'json' }`.
+
 **Game reporting** (plan.md 2.1, first slice — uncommitted)
 - `POST /api/reports` accepts `content_type: 'game'`: published games by
   id (owners may also flag their own draft), same 5 reason values as packs,

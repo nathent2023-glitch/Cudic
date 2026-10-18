@@ -356,7 +356,7 @@
           if (!rows.length) { box.innerHTML = '<p class="sub">Nothing liked yet. Tap the heart on a game in the gallery.</p>'; return; }
           box.innerHTML = rows.map(function (g) {
             return '<a class="liked-card" href="/view.html?id=' + encodeURIComponent(g.id) + '">' +
-              '<div class="liked-thumb">' + (g.thumbnail ? '<img src="' + g.thumbnail + '" alt="">' : '') + '</div>' +
+              '<div class="liked-thumb">' + (g.thumbnail || g.has_thumb ? '<img src="' + (g.has_thumb ? apiHost() + '/api/games/' + encodeURIComponent(g.id) + '/thumbnail' : g.thumbnail) + '" alt="" loading="lazy">' : '') + '</div>' +
               '<div><div class="liked-title">' + String(g.title || 'Untitled') + '</div>' +
               '<div class="sub">' + (g.tags || []).join(' · ') + '</div></div></a>';
           }).join('');

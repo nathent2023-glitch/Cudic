@@ -1776,3 +1776,125 @@ Do not build these as part of this expansion without a separate decision:
 - Full rebuild of the classic editor.
 - Replacement of the existing hand-rolled backend with a framework.
 - Conversion of the entire classic frontend to a new framework.
+
+---
+
+## 12. Community research — what Scratch / TurboWarp / GDevelop users ask for
+
+Status: **Research complete (2026-10-16). Not scheduled.** Read alongside §3–§6 when
+sequencing milestones; several findings confirm existing sections, two are not in
+this plan at all (§12.4).
+
+This section records external demand evidence. It does not change the roadmap by
+itself — §12.3 maps each finding onto the phase that already owns it.
+
+### 12.1 Method and confidence
+
+Sources (two passes, last ~12 months): `r/scratch`, `r/turbowarp`, `r/PenguinMod`,
+`r/gdevelop`, `r/gamedev`. Read-only inspection of posts and comment threads.
+
+| Confidence | Findings |
+|---|---|
+| **High** | The editor-vs-platform gap; discovery feed requested by name; text/code mode; moderation as the reason people leave. Each appears independently in two or more communities. |
+| **Medium** | Browser engines assumed slow; resentment of monetisation; abandoned-mod risk. |
+| **Low** | Mobile editor demand. No Scratch users found complaining about it; one GDevelop developer shipped a game from a phone, which is not demand evidence. |
+| **Negative finding** | Code.org and MakeCode are not viable communities (see §12.2 row 12). |
+
+Caveat: this is a handful of threads, not a survey. Top comments cited range from
+8 to 24 upvotes; the signals are trusted because they repeat across communities,
+not because the samples are large.
+
+### 12.2 Ranked actions
+
+P0 = do first. P1 = high value. P2 = worth doing. P3 = do not bother.
+
+| # | P | Action | Type | Evidence |
+|---|---|---|---|---|
+| 1 | **P0** | Build one genuinely good game in Cudic, then promote *that game* — not the tool | Growth | r/gdevelop "top tier engine" thread, top comment (24 up): *"all engines are graded by what they produce. No one has used GDevelop and produced a massive hit yet"*; repeated independently as *"it needs a hit"* |
+| 2 | **P0** | Position as "editor AND community in one place" | Positioning | r/turbowarp (36 up): *"turbowarp doesn't have its own platform like Scratch does. Would've been SO much better if they did"* + r/scratch PenguinMod thread: *"CodeTorch, it's just penguinmod but you can share projects"* — the same gap, two people, months apart |
+| 3 | **P0** | Real discovery feed in the gallery (Trending / New / For You) | Product | r/scratch, requested by name: *"If TurboWarp added a text mode and a for you page there would be no need for Scratch to exist"* |
+| 4 | **P1** | Surface "edit as real code" as a headline feature, not an implementation detail | Positioning | Same quote, plus three rival projects exist for this alone: **Glitter IDE** (`glitter.nz`, a text language compiling to Scratch projects), **CodeTorch**, PenguinMod text extensions |
+| 5 | **P1** | Make moderation predictable and non-punitive, and say so publicly | Trust | r/scratch migration thread (10 up): *"penguinmod does NOT have discriminatory ban waves OR awful moderation"* |
+| 6 | **P1** | Prove the speed — a benchmark or a "look what it runs" demo | Product / Growth | TurboWarp's entire reason to exist is performance; r/scratch's top posts of the year are engine flexes (Mario 64 ported, 1440 up; Half-Life 2 WIP, 979 up; GTA 6 WIP, 840 up) |
+| 7 | **P1** | A few templates **and tutorials** — polish over documentation | Growth | *"it needs a hit and a lot more advanced tutorials"*; *"I don't think it's the documentation… it's more about the overall polish"* |
+| 8 | **P2** | Frame "Publish" like export/packaging | Product | *"Plus it has the built-in project packager!"* — the web-native version already exists |
+| 9 | **P2** | Say "free" plainly, in one line | Positioning | *"the way they monetize… It doesnt hold to other engines"* |
+| 10 | **P2** | Visible momentum — public changelog / recent-updates signal | Trust | *"Penguinmod is abandoned. It's literally broken now and it still is"* — mods die, maintained platforms win |
+| 11 | **P2** | More capability / extensions | Product | r/PenguinMod: *"I love the Objects extension"* — extensions are PenguinMod's main draw |
+| 12 | **P3** | ~~Code.org / MakeCode outreach~~ **Skip** | Growth | r/codeorg's best posts of the year have 2–5 upvotes; r/makecode is micro:bit hardware, not games; searching `code.org` across Reddit returned nothing. They are classrooms, not communities |
+| 13 | **P3** | ~~Mobile editor~~ **Defer** | Product | No Scratch users found asking for it. See §12.1 confidence table |
+
+### 12.3 Mapping onto this plan
+
+| Research item | Already in this plan? | Action |
+|---|---|---|
+| Discovery feed (row 3) | Yes — §5.1 trending, §5.2 featured | Confirm; this is the single most explicit community request. Consider pulling forward within Milestone D. |
+| Templates (row 7) | Yes — §4.1 templates, §6.3 snippets | Extend: templates are not enough, the evidence asks for **tutorials and worked examples**. Add an explicit tutorials deliverable to §4.1. |
+| Moderation predictability (row 5) | Yes — §2.1, §2.2 | Extend: the plan builds the tooling but never says how moderation is *communicated*. Add a public, plain-language moderation policy to Phase 0 output. |
+| Performance (row 6) | Partly — §9 Milestone E lists "performance" as polish | Reframe: performance is a **launch asset**, not a polish task. Move the benchmark/demo out of Milestone E. |
+| More capability (row 11) | Partly — §6.3 snippets | Keep as planned. |
+| Publish-as-export (row 8) | Yes — §3.3, publish flow | Framing only, no new build. |
+| Free positioning (row 9) | **No** | Marketing copy, not a build task. |
+| "Edit as code" headline (row 4) | **No** — Studio is already code-first but nothing says so | Framing only. |
+| Flagship game (row 1) | **No** | See §12.4 — the largest gap in this plan. |
+
+### 12.4 Promotion plan — the gap this document does not cover
+
+Every section above is product work. The research says the binding constraint is
+not features but **what people can point at**, so this plan needs a promotion
+track it currently lacks.
+
+The core finding, stated twice by different people:
+
+> *"For better or worse all engines are graded by what they produce."*
+> *"it needs a hit and a lot more advanced tutorials"*
+
+**Action:** build one flagship game in Cudic to a standard worth showing on its
+own, then promote the **game**. The tool is the second message, never the first.
+
+**Channels, in current order of viability:**
+
+1. **PostYourGame** (`postyourgame.com`) — external game listing, no account
+   required, first post goes to review before publication. Submitted 2026-10-16
+   (title *"Cudic — make and play small games in your browser, no install"*,
+   categories *Building & simulation* + *Party & social*, platform *Browser*,
+   stage *Early access*).
+2. **Discord** — the Skool server `#general` channel. Posted 2026-10-16.
+3. **Reddit** — **gated**. Do not post links from a low-trust account: that is the
+   exact pattern that returns *"removed by Reddit"* (site-wide spam filter, not a
+   shadowban — verified via the public r/ShadowBan feed). Build comment karma in
+   no-threshold subreddits first; links only after ~50 comment karma and no
+   repeated posting of the same domain.
+
+**Do not:** link-drop the same domain repeatedly, post from a 0-day account, run
+two accounts against each other, or appeal-spam. Each removed post reinforces the
+filter.
+
+### 12.5 Evidence appendix
+
+| Quote | Source | Score |
+|---|---|---|
+| *"all engines are graded by what they produce. No one has used GDevelop and produced a massive hit yet"* | r/gdevelop, "Why isn't GDevelop considered a 'top tier' engine yet?" (59 comments) | 24 |
+| *"turbowarp doesn't have its own platform like Scratch does. Would've been SO much better if they did"* | r/turbowarp, "turbowarp is LITERALLY better than Scratch" | 1 (thread 36) |
+| *"CodeTorch, it's just penguinmod but you can share projects"* | r/scratch, "I am migrating to penguinmod" | 3 |
+| *"If TurboWarp added a text mode and a for you page there would be no need for Scratch to exist"* | r/scratch | 8 |
+| *"penguinmod does NOT have discriminatory ban waves OR awful moderation"* | r/scratch, migration thread | 10 |
+| *"Penguinmod is abandoned. It's literally broken now and it still is."* | r/scratch, migration thread | 1 |
+| *"Plus it has the built-in project packager!"* | r/scratch, migration thread | 2 |
+| *"I love the Objects extension"* | r/PenguinMod | 12 |
+| *"the way they monetize… It doesnt hold to other engines"* | r/gdevelop, top-tier thread | 6 |
+| *"I don't think it's the documentation… it's more about the overall polish of the engine"* | r/gdevelop, top-tier thread | 2 |
+| *"mostly because of the no-code thing… it's a bit hard to make something that's not built in"* | r/gdevelop, top-tier thread | 2 |
+
+### 12.6 Not verified
+
+- **No benchmark** of Cudic's preview/runner against TurboWarp. Row 6 assumes Cudic
+  is genuinely fast; if it is not, that row becomes a liability rather than a
+  selling point. Measure before claiming.
+- **Rival tool liveness unchecked** — Glitter IDE and CodeTorch may be abandoned;
+  that would weaken row 4's competitive framing.
+- **Non-English demand** is unmeasured. One Japanese-language thread surfaced the
+  recurring "Scratch or MakeCode Arcade first?" question, so the comparison question
+  appears in other locales, but no data was gathered.
+- **GDevelop forum threads** (off-Reddit) were not read, including a referenced
+  discussion about developer frustration with functions.

@@ -81,6 +81,122 @@ export function rewriteBareImports(
   return /<\/head\s*>/i.test(out) ? out.replace(/<\/head\s*>/i, links + '</head>') : links + out;
 }
 
+// ── Multi-file ES modules ───────────────────────────────────────────────────
+// A relative `import './x.js'` between workspace files cannot resolve in the
+// preview frame: the document is a sandboxed srcdoc, so the specifier resolves
+// against the frame itself and 404s (parent-created blob: URLs are blocked
+// there by design, and an unsaved project has no server path). Rewrite those
+// specifiers to import-map ids whose targets are data: URLs of the files,
+// transitively, cycles included. The published player (public/run.html) does
+// the same thing with the same ids — keep the two in step.
+export interface ModuleSlots {
+  [id: string]: { path: string; code: string | null };
+}
+
+export const moduleId = (path: string): string => 'cudic~' + path.toLowerCase();
+
+const MODULE_FILE = /\.(m?js|json)$/i;
+export const moduleMime = (path: string): string =>
+  /\.json$/i.test(path) ? 'application/json' : 'text/javascript';
+
+const cleanPath = (p: string): string =>
+  p.trim().split(/[?#]/)[0].replace(/^\/+/, '').replace(/^workspace\//i, '');
+
+// Resolve a specifier against the importing file's own directory, so
+// src/main.js importing './util.js' finds src/util.js.
+export function resolveModuleRef(
+  fromPath: string,
+  spec: string,
+  find: (ref: string) => string | null
+): string | null {
+  if (!/^\.\.?\//.test(spec)) return null; // bare, CDN or absolute: not ours
+  const parts = cleanPath(fromPath).split('/');
+  parts.pop();
+  for (const seg of spec.split('/')) {
+    if (seg === '.' || seg === '') continue;
+    if (seg === '..') parts.pop();
+    else parts.push(seg);
+  }
+  const hit = find(parts.join('/'));
+  return hit != null && MODULE_FILE.test(hit) ? hit : null;
+}
+
+export function mapModuleImports(
+  code: string,
+  fromPath: string,
+  find: (ref: string) => string | null,
+  mods: ModuleSlots
+): string {
+  return code.replace(
+    /(from\s+|import\s*\(\s*|import\s+)(["'])([^"']+)\2/g,
+    (m, pre: string, q: string, spec: string) => {
+      const hit = resolveModuleRef(fromPath, spec, find);
+      if (hit == null) return m;
+      const id = moduleId(hit);
+      if (mods[id] == null) mods[id] = { path: hit, code: null }; // queued
+      return pre + q + id + q;
+    }
+  );
+}
+
+// Mapped files import further mapped files: keep going until the queue is dry.
+export function drainModuleSlots(
+  files: Record<string, string>,
+  mods: ModuleSlots,
+  find: (ref: string) => string | null
+): void {
+  for (;;) {
+    const id = Object.keys(mods).find((k) => mods[k].code == null);
+    if (id == null) return;
+    const slot = mods[id];
+    const src = files[slot.path] ?? '';
+    // Same escaping the inliner uses: this source is not inside a <script> tag
+    // any more, but a stray `</script` in the data URL would break the map tag.
+    slot.code = mapModuleImports(
+      /\.json$/i.test(slot.path) ? src : src.replace(/<\/script/gi, '<\\/script'),
+      slot.path,
+      find,
+      mods
+    );
+  }
+}
+
+export function moduleDataUrls(mods: ModuleSlots): Record<string, string> {
+  const mine: Record<string, string> = {};
+  for (const id of Object.keys(mods)) {
+    const m = mods[id];
+    mine[id] = 'data:' + moduleMime(m.path) + ';base64,' +
+      btoa(unescape(encodeURIComponent(m.code ?? '')));
+  }
+  return mine;
+}
+
+// Add the map to the document. When the project already has an importmap, ours
+// is merged into it: a second map tag is newer-Chrome-only, and older Chrome
+// then drops the document's maps entirely. Ids never collide, so merge is safe.
+export function finishModuleMap(html: string, mine: Record<string, string>): string {
+  if (Object.keys(mine).length === 0) return html;
+  const tag = '<script type="importmap">' + JSON.stringify({ imports: mine }) + '</script>';
+  const found = /<script\b[^>]*type=["']importmap["'][^>]*>([\s\S]*?)<\/script\s*>/i.exec(html);
+  if (found != null) {
+    let replacement = tag;
+    try {
+      const theirs = JSON.parse(found[1]) as { imports?: Record<string, string> };
+      theirs.imports = { ...theirs.imports, ...mine };
+      replacement = '<script type="importmap">' + JSON.stringify(theirs) + '</script>';
+    } catch {
+      // Not valid JSON, so the browser rejects their map anyway — replace it.
+    }
+    return html.replace(found[0], () => replacement);
+  }
+  // Before the first module script: into <head>, else after <html>, else after
+  // the doctype (a tag before the doctype drops the document into quirks mode).
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, (m) => m + tag);
+  if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, (m) => m + tag);
+  const dt = /^\s*<!doctype[^>]*>/i.exec(html);
+  return dt == null ? tag + html : html.slice(0, dt[0].length) + tag + html.slice(dt[0].length);
+}
+
 // Split "name[@version]" —/npm version pinning rides the esm.sh URL.
 export function splitVersion(clean: string): { name: string; version: string } {
   const at = clean.lastIndexOf('@');

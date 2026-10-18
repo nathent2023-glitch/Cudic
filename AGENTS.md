@@ -153,7 +153,6 @@ Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
 | 872 / 952 | `walk()` — studio project file tree + assets |
 | 1080–1114 | `broadcast`, `getLobbyList`, `sendLobbyListToAll` |
 | 1114 | `saveMessage(lobby, userId, displayName, text)` |
-| 1318 | `cleanupNonPersistent()` |
 | 1333 | `server.listen(PORT)` — logs `Cudic is running → http://localhost:${PORT}` |
 
 ### HTTP endpoints
@@ -162,9 +161,12 @@ POST /auth/send-code  POST /auth/verify-code    GET  /auth/check-verified
 GET  /auth/verification-required (login hard gate — same rule as needVerified)
 GET  /auth/callback (GitHub OAuth)
 GET  /api/session               GET|PUT /api/profile
-GET  /api/messages              (lobby list runs over WS, not REST)
+GET  /api/messages              (newest 100, oldest-first; lobby list runs over WS, not REST)
 GET|POST /api/servers           GET /api/servers/mine
 GET  /api/games                 GET|POST /api/games     GET /api/games/mine
+GET  /api/games/:id/thumbnail   ← card art as real image bytes (1-day cache)
+GET  /api/games/:id/live        ← in-memory room head-count (`{playing}`) for the
+                                  game page's pill; unauth, no-store, no DB
 POST /api/ai/fetch              ← the AI proxy (see §7)
 GET  /favicon.ico               → serves public/cudic_sfsvg.svg
 GET  /themes                    theme pack store
@@ -247,6 +249,46 @@ guests a one-time sign-in nudge (no guest persistence). Last-write-wins by
 `updated_at`; mid-run boards don't sync (bests + full clicker-style state
 only). Tested end-to-end (17 checks, temp user+games, cleaned up).
 
+### In-game multiplayer (rooms over the same WebSocket)
+`public/cudic-multi.js` is the game-side API: `CudicMulti.join('code')` →
+`net.send(obj)` / `net.on('open'|'peers'|'msg'|'error')` / `net.id` / `net.leave()`.
+Same security shape as saves — the sandboxed frame holds neither the token nor a
+socket; the host page mediates (`multi_join`/`multi_msg`/`multi_leave` over the
+existing WS, one connection per room, `onclose` rejoins while the game still
+wants the room). Two hosts: **`view.html`** for players, and **`glox.ts`
+(`registerPreviewMulti`)** for the Studio preview, which joins `<project>:preview`
+so a preview never collides with the published game's rooms. `embed.html` and
+`play.html`/`run.html` do not mediate — `join()` reports a clear error there
+instead of going quiet. Rooms are **anonymous on purpose** (guests must be able
+to play along) and keyed `game:room`, room code defaulting to `'main'`.
+
+Identity comes from the server, never the client: a join may carry the login
+token, and if it verifies the peer is `users.display_name` with their account id
+attached; otherwise the peer is `'Guest'` (a client-supplied name is ignored, and
+a peer id already taken in the room is replaced, so nobody can clone a name or a
+session). Caps live in `server.js`: 32 per room, 8 KB per message, **per
+connection** 20 joins/min and 200 msgs/10s (the IP buckets — 400 joins/min, 8000
+msgs/10s — are only a backstop against one host opening a socket fleet; per-IP
+keying made a whole school share one budget). Each peer's account id stays on the
+host page: the game frame receives names only.
+
+"Playing now" is `liveCount(game)` over the in-memory rooms, served as `playing`
+on `GET /api/games` and on the single-game `GET` (so the gallery badge needs no
+extra request and the game page has a number before the game joins). Game rooms
+are separate from `lobbies`/`clients`, so chat, seats and the lobby list are
+untouched. Verified with a 30-check Node WS test (incl. shared-IP fairness,
+name/id spoofing, live counts returning to 0) + a real browser frame relaying to
+a Node peer both ways. **Restart `server.js` after editing this path**, and
+remember a new mediator must stamp `req` on every reply it sends to the game or
+the game-side router drops it.
+
+Moderation: nothing in a room is stored, so a game's chat is not reviewable after
+the fact. The game page's live strip therefore reports a **player by account**
+(`content_type: 'user'` through the existing report modal — `window.CudicReport`
+in `islands/src/islands/report-button.tsx`), and the copy tells the reporter to
+write what happened because the note is the only evidence. Guests have no
+account and cannot be reported by id; report the game there.
+
 ### Env (all in gitignored `.env`, never commit)
 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `PORT`,
 plus optional `GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN/SENDER`, `RESEND_API_KEY`, `GITHUB_CLIENT_SECRET`.
@@ -260,6 +302,13 @@ plus optional `GMAIL_CLIENT_ID/CLIENT_SECRET/REFRESH_TOKEN/SENDER`, `RESEND_API_
 Supabase project `opimjwmgmzwapkzgxvhk`.
 Tables: `users`, `lobbies`, `messages`, `games`, `game_comments`, `servers`,
 `server_members`, `active_sessions`, `game_saves`. Trigger `on_auth_user_created` creates the profile on signup.
+
+**Chat history is permanent.** Nothing deletes `messages` except the moderator
+`delete_message` action. `lobbies.persistent` is vestigial (the old 2h sweeper
+that emptied `persistent = false` rooms was removed — do not bring it back); it
+is written `true` on create and every existing row was backfilled to `true`.
+`GET /api/messages` serves the **newest** 100, reversed to oldest-first, because
+the client renders history top-down.
 
 Migrations:
 - `20260919181404_studio_files.sql` — `games.files jsonb` + storage policies
@@ -448,6 +497,20 @@ legacy single-file games. `assemble()` / `injectAssetUrls()` / `previewHtmlFor()
   unit-test with `esbuild src/npmutil.ts --format=cjs` + node assertions.
   Limits (physics, not missing features): no Node built-ins (`fs`, `net`,
   `child_process`), no native binaries, no `require()`, no build scripts.
+- **Multi-file ES modules** run in the preview *and* in published games: a
+  relative `import './x.js'` between project files is rewritten to an import-map
+  id (`cudic~<path>`) whose target is a `data:` URL of that file — transitively,
+  cycles included. Preview side: `mapModuleImports` / `drainModuleSlots` /
+  `finishModuleMap` in `studio/src/npmutil.ts`. Player side: the same algorithm,
+  mirrored in `public/run.html`. The map is merged into the project's own
+  `<script type="importmap">` when it has one (a second map tag is
+  newer-Chrome-only and older Chrome then drops both). Two limits stay: CSS
+  `@import './y.css'` between files, and paths built in JS
+  (`new URL('./a.png', import.meta.url)` — the base is a data: URL).
+- **`fwd` in `public/run.html` is two `<script>` tags** (console shim, then
+  `__CUDIC_BIN__`), not one. A missing `<\/script>` between them made Chrome
+  throw on every `document.write` *and* left `window.__CUDIC_BIN__` undefined,
+  so runtime-fetched assets silently had no map — keep them separate.
 - **Legacy scene games**: classic-editor rows carry code in `scene` with no
   `files`; Studio `bootProject` converts them on the fly via `sceneToFiles`
   (same module) into an editable single-file game — saving persists it.
@@ -478,7 +541,7 @@ and returns 4 files Studio drops into the workspace: `index.html` (player shell)
 `games.thumbnail` (text, data-URL) — column, PUT field, and both `/api/games`
 list endpoints already supported it; **only Studio lacked a control**.
 `glox.setThumbnail` offers Upload / Capture-from-preview / Remove → `PUT`.
-- Gallery card renders `g.thumbnail` as `<img>` (fallback: cube SVG).
+- Gallery card renders card art from `GET /api/games/:id/thumbnail` (fallback: cube SVG). The list endpoints (`/api/games`, `/api/games/mine`, `/api/games/liked`) send `has_thumb`, never the data URL — one 266KB list became 4KB. Single-game GETs still carry `thumbnail`.
 - Images are downscaled to ≤1000px JPEG before saving (keeps rows small).
 - **Capture is best-effort**: the preview iframe is `sandbox="allow-scripts"`
   (opaque origin) so the parent can't read it. Instead `mount()` appends

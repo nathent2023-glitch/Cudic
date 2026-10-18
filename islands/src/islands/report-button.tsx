@@ -10,13 +10,32 @@ import { apiPost, getToken } from '../cudic';
 // shortcut: no evidence upload in v1 — reason + details only. The pack
 // report flow on /themes keeps picture upload; add it here if game-report
 // volume ever needs screenshots.
-const REASONS = [
+const GAME_REASONS = [
   { value: 'broken', label: 'Broken or unplayable' },
   { value: 'stolen', label: 'Stolen or copied work' },
   { value: 'spam', label: 'Spam or misleading listing' },
   { value: 'inappropriate', label: 'Inappropriate content' },
   { value: 'other', label: 'Something else' },
 ];
+
+// A person, not a listing: "broken or unplayable" and "stolen work" are
+// nonsense things to say about an account. Values stay in the server's
+// REPORT_REASONS so both kinds land in the same review queue.
+const USER_REASONS = [
+  { value: 'inappropriate', label: 'Harassment or abuse' },
+  { value: 'spam', label: 'Spam or advertising' },
+  { value: 'other', label: 'Something else' },
+];
+
+// What is being reported: this game by default, or a player's account when the
+// game page's multiplayer strip calls window.CudicReport.open().
+type ReportTarget = { content_type: 'game' | 'user'; content_id: string; label?: string };
+
+declare global {
+  interface Window {
+    CudicReport?: { open: (t: ReportTarget) => void };
+  }
+}
 
 function pageGameId(): string | null {
   try {
@@ -36,12 +55,15 @@ function setFillOrigin(e: React.PointerEvent<HTMLButtonElement>) {
 
 export default function ReportButton() {
   const [open, setOpen] = useState(false);
+  const [target, setTarget] = useState<ReportTarget | null>(null);
   const [reason, setReason] = useState('broken');
   const [details, setDetails] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [error, setError] = useState('');
   const [needSignin, setNeedSignin] = useState(false);
   const id = pageGameId();
+  const forUser = target?.content_type === 'user';
+  const reasons = forUser ? USER_REASONS : GAME_REASONS;
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -50,11 +72,23 @@ export default function ReportButton() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open ]);
+  // The game page's "playing now" strip reports a player by account, so it
+  // needs this same modal pointed somewhere else.
+  useEffect(() => {
+    window.CudicReport = { open: (t) => void openModal(t) };
+    return () => {
+      delete window.CudicReport;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   if (!id) return null;
 
-  async function openModal() {
-    const t = await getToken();
-    setNeedSignin(!t);
+  async function openModal(t?: ReportTarget) {
+    const next: ReportTarget = t ?? { content_type: 'game', content_id: id as string };
+    setTarget(next);
+    setReason((next.content_type === 'user' ? USER_REASONS : GAME_REASONS)[0].value);
+    const tok = await getToken();
+    setNeedSignin(!tok);
     setState('idle');
     setError('');
     setOpen(true);
@@ -65,8 +99,8 @@ export default function ReportButton() {
     setError('');
     try {
       await apiPost('/api/reports', {
-        content_type: 'game',
-        content_id: id,
+        content_type: target?.content_type ?? 'game',
+        content_id: target?.content_id ?? id,
         reason,
         details: details.trim().substring(0, 1000),
       });
@@ -87,7 +121,7 @@ export default function ReportButton() {
       <button
         type="button"
         className="btn btn-secondary isl-shinebtn isl-fillbtn"
-        onClick={openModal}
+        onClick={() => void openModal()}
         onPointerEnter={setFillOrigin}
         onPointerLeave={setFillOrigin}
       >
@@ -103,11 +137,11 @@ export default function ReportButton() {
             if (e.target === e.currentTarget) setOpen(false);
           }}
         >
-          <div className="isl-rmodal" role="dialog" aria-modal="true" aria-label="Report this game">
-            <h3>Report this game</h3>
+          <div className="isl-rmodal" role="dialog" aria-modal="true" aria-label={forUser ? `Report ${target?.label ?? 'player'}` : 'Report this game'}>
+            <h3>{forUser ? `Report ${target?.label ?? 'player'}` : 'Report this game'}</h3>
             {needSignin ? (
               <>
-                <p className="isl-rsub">Sign in to flag this game for review.</p>
+                <p className="isl-rsub">{forUser ? 'Sign in to flag this player for review.' : 'Sign in to flag this game for review.'}</p>
                 <div className="isl-ractions">
                   <button type="button" className="btn btn-secondary" onClick={() => setOpen(false)}>
                     Cancel
@@ -119,11 +153,15 @@ export default function ReportButton() {
               </>
             ) : (
               <>
-                <p className="isl-rsub">Flagged games go to a human for review.</p>
+                <p className="isl-rsub">
+                  {forUser
+                    ? 'Room chat is never stored, so write what happened — your note is all the reviewer sees.'
+                    : 'Flagged games go to a human for review.'}
+                </p>
                 <label className="isl-rfield">
                   <span>Reason</span>
                   <select value={reason} onChange={(e) => setReason(e.target.value)}>
-                    {REASONS.map((r) => (
+                    {reasons.map((r) => (
                       <option key={r.value} value={r.value}>
                         {r.label}
                       </option>
@@ -131,11 +169,11 @@ export default function ReportButton() {
                   </select>
                 </label>
                 <label className="isl-rfield">
-                  <span>Details (optional)</span>
+                  <span>Details {forUser ? '' : '(optional)'}</span>
                   <textarea
                     rows={3}
                     maxLength={1000}
-                    placeholder="What did you see?"
+                    placeholder={forUser ? 'What did they say or do?' : 'What did you see?'}
                     value={details}
                     onChange={(e) => setDetails(e.target.value)}
                   />
@@ -150,7 +188,7 @@ export default function ReportButton() {
                     type="button"
                     className="btn btn-primary isl-rsend"
                     onClick={send}
-                    disabled={state === 'sending' || state === 'sent'}
+                    disabled={state === 'sending' || state === 'sent' || (forUser && !details.trim())}
                   >
                     {state === 'sending' && <Loader2 size={14} className="isl-spin" aria-hidden="true" />}
                     {state === 'sending' ? 'Sending…' : state === 'sent' ? 'Sent' : 'Send report'}

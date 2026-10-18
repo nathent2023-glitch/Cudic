@@ -23,7 +23,7 @@ import {
   Action2,
   MenuId
 } from '@codingame/monaco-vscode-api/vscode/vs/platform/actions/common/actions';
-import { mimeOf, collectBinaryFiles, collectTextFiles, previewBridge } from './project';
+import { mimeOf, collectBinaryFiles, collectTextFiles, previewBridge, getToken, projectKey, relayWsUrl } from './project';
 import {
   importMapNames,
   needsModule,
@@ -31,7 +31,12 @@ import {
   rewriteBareImports,
   splitVersion,
   isValidPackageName,
-  identFor
+  identFor,
+  mapModuleImports,
+  drainModuleSlots,
+  moduleDataUrls,
+  finishModuleMap,
+  type ModuleSlots
 } from './npmutil';
 import mammoth from 'mammoth';
 import JSZip from 'jszip';
@@ -136,17 +141,20 @@ const REMOTE_REF = /^(https?:|data:|blob:|#|[a-z][a-z0-9+.-]*:|\/\/)/i;
 // CDNs and importmaps pass through untouched.
 async function assemble(baseHtml: string, selfName: string, selfCode: string): Promise<string> {
   const project = await collectTextFiles();
+  // The open file's live editor text wins over what is on disk.
+  const files: Record<string, string> = { ...project };
+  if (selfName) files[selfName] = selfCode;
   const selfLower = selfName.toLowerCase();
+  const find = (ref: string): string | null => lookupFile(files, ref);
+  const mods: ModuleSlots = {};
+  const basePath = /\.html?$/i.test(selfName) ? selfName : 'index.html';
   let cssUsed = false;
   let jsUsed = false;
-  const sibling = (ref: string, markUsed: () => void): string | null => {
-    const hit = lookupFile(project, ref);
+  const sibling = (ref: string, markUsed: () => void): { path: string; code: string } | null => {
+    const hit = find(ref);
     if (hit == null) return null;
-    if (hit.toLowerCase() === selfLower) {
-      markUsed();
-      return selfCode;
-    }
-    return project[hit];
+    if (hit.toLowerCase() === selfLower) markUsed();
+    return { path: hit, code: files[hit] };
   };
   let html = baseHtml.replace(
     /<link\b[^>]*rel\s*=\s*(["'])stylesheet\1[^>]*href\s*=\s*(["'])([^"']+)\2[^>]*>/gi,
@@ -156,7 +164,7 @@ async function assemble(baseHtml: string, selfName: string, selfCode: string): P
         cssUsed = true;
       });
       if (css == null) return m;
-      return '<style>' + css.replace(/<\/style/gi, '<\\/style') + '</style>';
+      return '<style>' + css.code.replace(/<\/style/gi, '<\\/style') + '</style>';
     }
   );
   html = html.replace(
@@ -167,7 +175,7 @@ async function assemble(baseHtml: string, selfName: string, selfCode: string): P
         jsUsed = true;
       });
       if (js == null) return m;
-      return scriptTag(pre + post, js);
+      return scriptTag(pre + post, mapModuleImports(js.code, js.path, find, mods));
     }
   );
   if (/\.css$/i.test(selfName) && !cssUsed) {
@@ -175,10 +183,19 @@ async function assemble(baseHtml: string, selfName: string, selfCode: string): P
     html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : html + tag;
   }
   if (/\.m?jsx?$/i.test(selfName) && !jsUsed) {
-    const tag = scriptTag('', selfCode);
+    const tag = scriptTag('', mapModuleImports(selfCode, selfName, find, mods));
     html = /<\/body\s*>/i.test(html) ? html.replace(/<\/body\s*>/i, tag + '</body>') : html + tag;
   }
-  html = rewriteBareImports(html, importMapNames(baseHtml), (ref) => REMOTE_REF.test(ref) || ref.startsWith('.'));
+  // Our ids must survive the npm pass, which would otherwise read `cudic~a.js`
+  // as a package name and point it at esm.sh.
+  const skip = new Set([...importMapNames(baseHtml), ...Object.keys(mods)]);
+  html = rewriteBareImports(html, skip, (ref) => REMOTE_REF.test(ref) || ref.startsWith('.'));
+  // `<script>` blocks written straight into the HTML resolve from its own folder.
+  html = html.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (m, attrs: string, code: string) =>
+    /\bsrc\s*=/.test(attrs) ? m : '<script' + attrs + '>' + mapModuleImports(code, basePath, find, mods) + '</script>'
+  );
+  drainModuleSlots(files, mods, find);
+  html = finishModuleMap(html, moduleDataUrls(mods));
   return injectAssetUrls(html);
 }
 
@@ -457,6 +474,93 @@ function capturePreviewThumbnail(): Promise<{ data: string } | { error: string }
   });
 }
 
+// ---- CudicMulti host for the preview (twin of public/view.html) -----------
+// The preview frame is sandboxed, so a game inside it holds neither the socket
+// nor the login token: this page owns one socket per join and relays, exactly
+// as the game page does for players. Rooms are keyed <project>:preview, so two
+// Studio windows on the same project meet each other and a preview never
+// collides with real players in the published game's rooms.
+let previewMultiReady = false;
+function registerPreviewMulti(): void {
+  if (previewMultiReady) return;
+  previewMultiReady = true;
+
+  let ws: WebSocket | null = null;
+  let wanted = false;
+  let retry = 0;
+  let joinedReq: unknown = null;
+  let room = '';
+  let replyTo: HTMLIFrameElement | null = null;
+  const id = 'p' + Math.random().toString(36).slice(2, 10);
+
+  const paneFrames = (): HTMLIFrameElement[] =>
+    PreviewPane.livePanes()
+      .map((p) => p.frameEl())
+      .filter((f): f is HTMLIFrameElement => f != null);
+  const ready = (): boolean => ws != null && ws.readyState === WebSocket.OPEN;
+  const post = (frame: HTMLIFrameElement, msg: unknown): void => {
+    try { frame.contentWindow?.postMessage(msg, '*'); } catch { /* frame gone */ }
+  };
+  const joinMsg = (): string =>
+    // No name: the server derives it from the token, so a signed-in author
+    // cannot be impersonated and guests stay 'Guest'.
+    JSON.stringify({ type: 'multi_join', game: projectKey(), room: room || 'preview', id, token: getToken() ?? '' });
+
+  const connect = (): void => {
+    if (ready() || !wanted) return;
+    void relayWsUrl().then((url) => {
+      if (!wanted || ready() || url === '') return;
+      try { ws = new WebSocket(url); } catch { ws = null; return; }
+      ws.onopen = (): void => { try { ws?.send(joinMsg()); } catch { /* dropped */ } };
+      ws.onmessage = (ev): void => {
+        let d: { type?: string; id?: string; peers?: unknown; from?: string; data?: unknown; text?: string };
+        try { d = JSON.parse(ev.data as string) as typeof d; } catch { return; }
+        const frame = replyTo;
+        if (frame == null) return;
+        if (d.type === 'multi_joined') post(frame, { type: 'cudic-multi-joined', req: joinedReq, id: d.id, peers: d.peers });
+        else if (d.type === 'multi_peers') post(frame, { type: 'cudic-multi-peers', req: joinedReq, peers: d.peers });
+        else if (d.type === 'multi_msg') post(frame, { type: 'cudic-multi-msg', req: joinedReq, from: d.from, data: d.data });
+        else if (d.type === 'multi_error') post(frame, { type: 'cudic-multi-error', req: joinedReq, text: d.text });
+      };
+      ws.onclose = (): void => {
+        ws = null;
+        // Still wanted (the game has not left): rejoin, so a dropped socket
+        // costs a couple of seconds instead of the session.
+        if (wanted) { if (retry) clearTimeout(retry); retry = window.setTimeout(connect, 2000); }
+      };
+    });
+  };
+
+  window.addEventListener('message', (e: MessageEvent) => {
+    const d = e.data as { type?: string; req?: unknown; room?: unknown; data?: unknown } | null;
+    if (d == null || typeof d.type !== 'string' || !d.type.startsWith('cudic-multi-')) return;
+    // Only a live preview frame may host a room — the AI panel and anything
+    // else on this page can post messages too, and none of it is a game.
+    const frame = paneFrames().find((f) => {
+      try { return f.contentWindow === e.source; } catch { return false; }
+    });
+    if (frame == null) return;
+    replyTo = frame;
+    if (d.type === 'cudic-multi-hello') {
+      post(frame, { type: 'cudic-multi-host', req: d.req });
+    } else if (d.type === 'cudic-multi-join') {
+      joinedReq = d.req;
+      room = String(d.room ?? '').replace(/[^A-Za-z0-9_-]/g, '').substring(0, 24);
+      wanted = true;
+      // Already connected: this is the room code changing, so re-join.
+      if (ready()) { try { ws?.send(joinMsg()); } catch { /* dropped */ } } else connect();
+    } else if (d.type === 'cudic-multi-send') {
+      if (ready()) { try { ws?.send(JSON.stringify({ type: 'multi_msg', data: d.data })); } catch { /* dropped */ } }
+    } else if (d.type === 'cudic-multi-leave') {
+      wanted = false;
+      if (retry) { clearTimeout(retry); retry = 0; }
+      if (ready()) { try { ws?.send(JSON.stringify({ type: 'multi_leave' })); } catch { /* dropped */ } }
+      try { ws?.close(); } catch { /* already closing */ }
+      ws = null;
+    }
+  });
+}
+
 class PreviewPane extends SimpleEditorPane {
   static readonly ID = 'workbench.editors.gloxPreview';
   private static live = new Set<PreviewPane>();
@@ -482,6 +586,7 @@ class PreviewPane extends SimpleEditorPane {
   // stops navigating in restored/background states — replace, never reuse.
   private mount(html: string): void {
     if (this.slot == null) return;
+    registerPreviewMulti(); // multiplayer in the preview: see the note above
     const fresh = document.createElement('iframe');
     fresh.setAttribute('sandbox', 'allow-scripts');
     fresh.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';

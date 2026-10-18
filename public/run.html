@@ -55,6 +55,90 @@ window.addEventListener('message', async (e) => {
       } catch (err) { rej(err); }
     });
   }
+  // ── Multi-file ES modules ────────────────────────────────────────────────
+  // A relative `import './x.js'` between project files cannot resolve in this
+  // frame: the inlined document's base URL is run.html, so the specifier 404s.
+  // Rewrite those specifiers to import-map ids whose targets are data: URLs of
+  // the files (published files live in the database, so there is no server
+  // path for them, and blob: is blocked in this sandbox by design).
+  // The Studio preview does the same with the same ids — keep the two in step.
+  const mods = {}; // 'cudic~a.js' -> { path, code }
+  const modId = (p) => 'cudic~' + p.toLowerCase();
+  const MODULE_FILE = /\.(m?js|json)$/i;
+  // Resolve a specifier against the importing file's own directory, so
+  // src/main.js importing './util.js' finds src/util.js.
+  function resolveSpec(from, spec) {
+    if (!/^\.\.?\//.test(spec)) return null; // bare, CDN or absolute: not ours
+    const parts = norm(from).split('/').slice(0, -1);
+    for (const seg of String(spec).split('/')) {
+      if (seg === '.' || seg === '') continue;
+      if (seg === '..') parts.pop();
+      else parts.push(seg);
+    }
+    const hit = find(parts.join('/'));
+    return hit && MODULE_FILE.test(hit) ? hit : null;
+  }
+  function mapImports(code, from) {
+    return String(code).replace(/(from\s+|import\s*\(\s*|import\s+)(["'])([^"']+)\2/g, (m, pre, q, spec) => {
+      const hit = resolveSpec(from, spec);
+      if (!hit) return m;
+      const id = modId(hit);
+      if (!mods[id]) mods[id] = { path: hit, code: null }; // queued
+      return pre + q + id + q;
+    });
+  }
+  // Mapped files import further mapped files: keep going until the queue is dry.
+  function drainModules() {
+    for (;;) {
+      const id = Object.keys(mods).find((k) => mods[k].code === null);
+      if (!id) return;
+      const m = mods[id];
+      const src = files[m.path] || '';
+      m.code = mapImports(/\.json$/i.test(m.path) ? src : esc(src, 'script'), m.path);
+    }
+  }
+  function moduleImports() {
+    const mine = {};
+    for (const id of Object.keys(mods)) {
+      const m = mods[id];
+      mine[id] = 'data:' + (/\.json$/i.test(m.path) ? 'application/json' : 'text/javascript') +
+        ';base64,' + btoa(unescape(encodeURIComponent(m.code || '')));
+    }
+    return mine;
+  }
+  // Returns a tag to inject, or '' when the project already has an importmap —
+  // then ours is merged into it, because a second map is newer-Chrome-only and
+  // older Chrome drops a document's maps entirely. Ids never collide.
+  function mergeMapTag(mine) {
+    const ids = Object.keys(mine);
+    if (!ids.length) return '';
+    const tag = '<script type="importmap">' + JSON.stringify({ imports: mine }) + '<\/script>';
+    const found = /<script\b[^>]*type=["']importmap["'][^>]*>([\s\S]*?)<\/script\s*>/i.exec(index);
+    if (!found) return tag;
+    try {
+      const theirs = JSON.parse(found[1]);
+      theirs.imports = Object.assign({}, theirs.imports, mine);
+      // Function replacement: the tag is emitted verbatim, never $-expanded.
+      index = index.replace(found[0], () => '<script type="importmap">' + JSON.stringify(theirs) + '<\/script>');
+    } catch (err) {
+      // Not valid JSON, so the browser rejects their map anyway — replace it.
+      parent.postMessage({ type: 'console', level: 'warn', text: "This project's importmap is not valid JSON, so it was replaced (" + err.message + ').' }, '*');
+      index = index.replace(found[0], () => tag);
+    }
+    return '';
+  }
+  // `<script>` blocks written straight into index.html belong to index.html, so
+  // their relative refs resolve from the root.
+  function mapInlineScripts() {
+    index = index.replace(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi, (m, attrs, code) =>
+      /\bsrc\s*=/.test(attrs) ? m : '<script' + attrs + '>' + mapImports(code, 'index.html') + '<\/script>');
+  }
+  // Inline JS carrying import/export needs type="module" — a plain <script>
+  // throws on it. Same rule as the Studio preview (scriptTag in glox.ts).
+  function needsModule(js) {
+    return /(^|[;{}])\s*import\b\s*(?:["'{*]|[A-Za-z_$])/.test(js) ||
+      /(^|[;{}])\s*export\s/.test(js) || /\bimport\.meta\b/.test(js);
+  }
   let index = files['index.html'] || '';
   if (!index) {
     parent.postMessage({ type: 'console', level: 'error', text: 'No index.html in project' }, '*');
@@ -93,11 +177,16 @@ window.addEventListener('message', async (e) => {
     if (/^(https?:|data:|blob:|#)/.test(p)) return tag;
     const key = find(p);
     if (!key || !/\.js$/i.test(key) || typeof files[key] !== 'string') { if (/\.(js|mjs)$/i.test(norm(p)) && !/^\//.test(p.trim())) missed.push(p); return tag; }
-    return '<script' + pre + post + '>\n' + esc(files[key], 'script') + '\n<\/script>';
+    const code = esc(files[key], 'script');
+    const attrs = pre + post + (needsModule(code) && !/\btype\s*=/i.test(pre + post) ? ' type="module"' : '');
+    return '<script' + attrs + '>\n' + mapImports(code, key) + '\n<\/script>';
   });
   for (const p of missed) {
     parent.postMessage({ type: 'console', level: 'error', text: 'Cannot inline "' + p + '": no such file in this project, so the game will not load it.' }, '*');
   }
+  mapInlineScripts();
+  drainModules();
+  const mapTag = mergeMapTag(moduleImports());
   // Remaining relative refs (images, etc.): public asset URL or data: URL
   index = index.replace(/(src|href)=["'](?!https?:|data:|blob:|#)([^"']+)["']/g, (m, attr, p) => {
     const u = assetUrl(p);
@@ -112,7 +201,7 @@ window.addEventListener('message', async (e) => {
     if (p) binMap[p] = assetsBase + assets[k];
   }
   const binTag = '<script>window.__CUDIC_BIN__ = ' + JSON.stringify(binMap).replace(/<\//g, '<\\/') + ';<\/script>';
-  const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})' + binTag + '<\/script>';
+  const fwd = '<script>["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){var t=Array.prototype.map.call(arguments,String).join(" ");parent.postMessage({type:"console",level:k==="log"?"info":k,text:t},"*");o.apply(console,arguments)}});window.addEventListener("error",function(e){parent.postMessage({type:"console",level:"error",text:e.message},"*")})<\/script>' + binTag + mapTag;
   parent.postMessage({ type: 'console', level: 'info', text: 'Running' }, '*');
   // ponytail: doctype must stay first or the frame renders in quirks mode
   const doc = (/^\s*<!doctype html>/i.test(index))

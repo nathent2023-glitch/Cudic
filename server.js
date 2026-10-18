@@ -734,15 +734,17 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const { data: messages } = await supabase
+    // Newest 100, then flipped back to oldest-first for the client.
+    const { data: recent } = await supabase
       .from('messages')
       .select('id, display_name, text, created_at, user_id, users!messages_user_id_fkey(avatar_url)')
       .eq('lobby_id', lobby.id)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100);
+    const messages = (recent || []).reverse();
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ messages: messages || [], persistent: true }));
+    res.end(JSON.stringify({ messages: messages, persistent: true }));
     return;
   }
 
@@ -2166,8 +2168,11 @@ const server = http.createServer(async (req, res) => {
     }
     const tags = [...new Set((tagsRes.data || []).flatMap((g) => g.tags || []))].sort();
     res.writeHead(200, { 'Content-Type': 'application/json' });
+    // Thumbnails are ~40KB data URLs each; a 50-game page would be megabytes.
+    // Ship a flag instead and let the browser fetch image bytes from
+    // /api/games/:id/thumbnail (cached a day) per card it actually shows.
     res.end(JSON.stringify({
-      games: rows.map((g) => ({ ...g, likes: counts[g.id] || 0, liked: liked.has(g.id) })),
+      games: rows.map(({ thumbnail, ...g }) => ({ ...g, has_thumb: !!thumbnail, likes: counts[g.id] || 0, liked: liked.has(g.id), playing: liveCount(g.id) })),
       tags,
       error: error?.message
     }));
@@ -2193,7 +2198,7 @@ const server = http.createServer(async (req, res) => {
     if (!user) { res.writeHead(401); res.end(); return; }
     const { data } = await supabase.from('games').select('id, title, description, thumbnail, published, forked_from, forked_from_title, created_at, updated_at').eq('owner_id', user.id).order('updated_at', { ascending: false });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ games: data || [] }));
+    res.end(JSON.stringify({ games: (data || []).map(({ thumbnail, ...g }) => ({ ...g, has_thumb: !!thumbnail })) }));
     return;
   }
 
@@ -2325,11 +2330,22 @@ const server = http.createServer(async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(50);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ games: (rows || []).map((r) => ({ ...r.games, likes: 1 })).filter((g) => g && g.id) }));
+    res.end(JSON.stringify({ games: (rows || []).map((r) => r.games).filter((g) => g && g.id).map(({ thumbnail, ...g }) => ({ ...g, has_thumb: !!thumbnail, likes: 1 })) }));
     return;
   }
 
   // ── API: get single game ───────────────────────────────────────
+  // Just the live room count — the game page polls this while it is open, so
+  // the "playing now" pill is not a page-load snapshot. Must stay above the
+  // generic /api/games/:id GET below, which would swallow it. No auth: it
+  // reads an in-memory number and stores nothing.
+  if (url.pathname.startsWith('/api/games/') && url.pathname.endsWith('/live') && req.method === 'GET') {
+    cors(res);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify({ playing: liveCount(url.pathname.split('/')[3]) }));
+    return;
+  }
+
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
@@ -2346,7 +2362,7 @@ const server = http.createServer(async (req, res) => {
       liked = !!mine;
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ game: { ...data, likes: likeCount || 0, liked } }));
+    res.end(JSON.stringify({ game: { ...data, likes: likeCount || 0, liked, playing: liveCount(id) } }));
     return;
   }
 
@@ -3131,6 +3147,54 @@ const clients = new Map();
 // All connected WebSocket connections (including homepage watchers)
 const allConnections = new Set();
 
+// ── In-game multiplayer rooms ─────────────────────────────────────
+// `game:room` → Set of { ws, id, name }. Deliberately anonymous: anyone
+// playing a published game can join, same stance as play counts. The caps
+// below are what keep it from being a free relay between strangers.
+const gameRooms = new Map();
+const gameMulti = new Map(); // ws → { room, id }
+const GAME_ROOM_MAX = 32;
+const GAME_PAYLOAD_MAX = 8 * 1024;
+let wsSeq = 0;
+
+// `userId` is the account behind a peer when they are signed in (the game page
+// reports players by account, so it needs a real target). Guests have none.
+function gamePeers(room) {
+  return [...room].map((e) => ({ id: e.id, name: e.name, userId: e.userId || null }));
+}
+
+// How many people are in this game right now, across every room code. Reads
+// the live relay map — nothing stored, nothing to expire.
+function liveCount(game) {
+  let n = 0;
+  for (const [key, room] of gameRooms) {
+    if (key.startsWith(game + ':')) n += room.size;
+  }
+  return n;
+}
+
+function broadcastGame(roomKey, msg, excludeWs = null) {
+  const room = gameRooms.get(roomKey);
+  if (!room) return;
+  const data = JSON.stringify(msg);
+  for (const e of room) {
+    if (e.ws !== excludeWs && e.ws.readyState === 1) e.ws.send(data);
+  }
+}
+
+function leaveGame(ws) {
+  const cur = gameMulti.get(ws);
+  if (!cur) return;
+  gameMulti.delete(ws);
+  const room = gameRooms.get(cur.room);
+  if (!room) return;
+  for (const e of room) {
+    if (e.ws === ws) { room.delete(e); break; }
+  }
+  if (room.size === 0) gameRooms.delete(cur.room);
+  else broadcastGame(cur.room, { type: 'multi_peers', peers: gamePeers(room) });
+}
+
 function broadcast(lobbyName, msg, excludeWs = null) {
   const room = lobbies.get(lobbyName);
   if (!room) return;
@@ -3206,10 +3270,10 @@ async function saveMessage(lobbyName, userId, displayName, text) {
       .single();
 
     if (!lobby) {
-      const isDefault2 = ['welcome','hello'].includes(lobbyName);
+      // Chat history is permanent everywhere — nothing sweeps messages.
       const { data: newLobby } = await supabase
         .from('lobbies')
-        .insert({ name: lobbyName, persistent: isDefault2 })
+        .insert({ name: lobbyName, persistent: true })
         .select('id')
         .single();
       lobby = newLobby;
@@ -3291,9 +3355,13 @@ function sendConversationsDirty() {
   }
 }
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   // Track all connections for lobby list broadcasts
   allConnections.add(ws);
+  const ip = clientIp(req);
+  // Per-connection rate-limit key: a game room's fair-use budget belongs to the
+  // player, not to everyone sharing their IP.
+  ws._mid = 'w' + (++wsSeq);
 
   // Send current lobby list immediately
   ws.send(JSON.stringify({ type: 'lobby_list', lobbies: getLobbyList() }));
@@ -3446,6 +3514,70 @@ wss.on('connection', (ws) => {
       return;
     }
 
+    // ── In-game multiplayer ───────────────────────────────────────
+    // No token required: a room only carries game traffic, so guests may play
+    // along (chat's sign-in gate exists to keep messages attributable). A token
+    // is optional and only upgrades you from 'Guest' to your profile name.
+    if (msg.type === 'multi_join') {
+      const game = String(msg.game || '').replace(/[^A-Za-z0-9_-]/g, '').substring(0, 48);
+      const roomName = String(msg.room || 'main').replace(/[^A-Za-z0-9_-]/g, '').substring(0, 24) || 'main';
+      if (!game) return;
+      // Fair-use limits are per connection; the IP buckets are just a backstop
+      // against one host opening a fleet of sockets. Keying only by IP made a
+      // whole school (one NAT address) share one budget.
+      if (!rateLimit('mj:' + ws._mid, 20, 60000) || !rateLimit('gj:' + ip, 400, 60000)) {
+        ws.send(JSON.stringify({ type: 'multi_error', text: 'Too many joins — slow down.' }));
+        return;
+      }
+      leaveGame(ws); // one room per socket
+      const roomKey = game + ':' + roomName;
+      let room = gameRooms.get(roomKey);
+      if (!room) { room = new Set(); gameRooms.set(roomKey, room); }
+      if (room.size >= GAME_ROOM_MAX) {
+        ws.send(JSON.stringify({ type: 'multi_error', text: 'This game is full right now.' }));
+        return;
+      }
+      // A requested id is honoured unless it is already taken in this room, so
+      // a peer cannot clone someone else's identity to confuse their client.
+      // (A reconnect reuses its own id: the old socket is gone by then.)
+      let id = String(msg.id || '').replace(/[^A-Za-z0-9]/g, '').substring(0, 24);
+      if (!id || [...room].some((e) => e.id === id)) id = 'p' + Math.random().toString(36).slice(2, 10);
+      // Name and account come from the token, never from the client, so a
+      // signed-in player is their real profile name and cannot be impersonated.
+      let userId = null, name = 'Guest';
+      if (msg.token) {
+        const { data: { user: mu } } = await supabase.auth.getUser(String(msg.token));
+        if (mu) {
+          const { data: prof } = await supabase.from('users').select('display_name').eq('id', mu.id).single();
+          userId = mu.id;
+          name = (prof && prof.display_name) || String(mu.email || '').split('@')[0] || 'Guest';
+        }
+      }
+      name = name.replace(/[\u0000-\u001f<>]/g, '').trim().substring(0, 24) || 'Guest';
+      room.add({ ws, id, name, userId });
+      gameMulti.set(ws, { room: roomKey, id });
+      ws.send(JSON.stringify({ type: 'multi_joined', game, room: roomName, id, name, peers: gamePeers(room) }));
+      broadcastGame(roomKey, { type: 'multi_peers', peers: gamePeers(room) }, ws);
+      return;
+    }
+
+    if (msg.type === 'multi_msg') {
+      const cur = gameMulti.get(ws);
+      if (!cur) return;
+      // 20 messages/second per connection covers ~10Hz state updates with
+      // headroom; the IP bucket only catches many-socket floods.
+      if (!rateLimit('mm:' + ws._mid, 200, 10000) || !rateLimit('gm:' + ip, 8000, 10000)) return;
+      const payload = JSON.stringify(msg.data === undefined ? null : msg.data);
+      if (payload == null || payload.length > GAME_PAYLOAD_MAX) return;
+      broadcastGame(cur.room, { type: 'multi_msg', from: cur.id, data: msg.data }, ws);
+      return;
+    }
+
+    if (msg.type === 'multi_leave') {
+      leaveGame(ws);
+      return;
+    }
+
     // ── Request lobby list refresh ────────────────────────────────
     if (msg.type === 'get_lobbies') {
       ws.send(JSON.stringify({ type: 'lobby_list', lobbies: getLobbyList() }));
@@ -3458,6 +3590,11 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     allConnections.delete(ws);
+    leaveGame(ws);
+    // Per-connection buckets die with the connection: their keys are unique per
+    // socket, so they would pile up forever otherwise.
+    rateBuckets.delete('mj:' + ws._mid);
+    rateBuckets.delete('mm:' + ws._mid);
     const info = clients.get(ws);
     if (info) {
       const room = lobbies.get(info.lobby);
@@ -3485,6 +3622,9 @@ setInterval(() => {
   for (const ws of allConnections) {
     if (ws.isAlive === false) {
       allConnections.delete(ws);
+      leaveGame(ws);
+      rateBuckets.delete('mj:' + ws._mid);
+      rateBuckets.delete('mm:' + ws._mid);
       const info = clients.get(ws);
       if (info) {
         const room = lobbies.get(info.lobby);
@@ -3509,21 +3649,6 @@ setInterval(() => {
   }
   sendLobbyListToAll();
 }, 5000);
-
-// ── Cleanup: delete messages in non-persistent lobbies older than 2h ─
-async function cleanupNonPersistent(){
-  try{
-    const twoHoursAgo = new Date(Date.now() - 2*60*60*1000).toISOString();
-    // Get non-persistent lobby ids
-    const { data: lobbies } = await supabase.from('lobbies').select('id').eq('persistent', false);
-    if(!lobbies || !lobbies.length) return;
-    const ids = lobbies.map(l=>l.id);
-    const { error } = await supabase.from('messages').delete().in('lobby_id', ids).lt('created_at', twoHoursAgo);
-    if(!error) console.log('[cleanup] removed old messages from', ids.length, 'non-persistent lobbies');
-  }catch(e){ console.error('[cleanup] error:', e.message); }
-}
-setInterval(cleanupNonPersistent, 2*60*60*1000); // every 2 hours
-setTimeout(cleanupNonPersistent, 60*1000); // run 1 min after start
 
 // ── Purge: delete email accounts that never confirmed (24h grace) ──
 // Drive-by signups vanish instead of rotting in the user list. Reuses
