@@ -27,6 +27,15 @@ embeddable games**
   back to oldest-first for the client — matching `client.js`'s "only ever
   holds the last 100".
 
+**Preview saves are test saves** (uncommitted)
+- `CudicSave` had no host inside Studio's preview: the sandboxed frame asked its
+  parent, got no answer, fell back to a local mirror a sandboxed frame isn't
+  allowed, and lost everything silently. `glox.ts` now mediates
+  (`registerPreviewSave`, twin of the multiplayer bridge), giving the preview
+  its own storage slot — keyed by project id, working signed out, and never
+  touching the cloud row a player or the author has. Testing can't overwrite
+  real progress; live saves are still tested on the game page.
+
 **In-game multiplayer** (uncommitted)
 - `public/cudic-multi.js` gives a published game a room: `CudicMulti.join('code')`
   → `net.send(obj)`, `net.on('open'|'peers'|'msg'|'error')`, `net.id`, `net.leave()`.

@@ -245,9 +245,14 @@ Endpoints above; all seat-checked (403 `session_superseded`). Games never
 touch the token (sandboxed iframes) — `public/cudic-save.js` (`CudicSave.load/
 save/clear`, local mirror + debounced cloud, legacy-key import) talks to the
 parent via postMessage; `view.html` mediates with its own session and shows
-guests a one-time sign-in nudge (no guest persistence). Last-write-wins by
-`updated_at`; mid-run boards don't sync (bests + full clicker-style state
-only). Tested end-to-end (17 checks, temp user+games, cleaned up).
+guests a one-time sign-in nudge (no guest persistence). The Studio preview
+mediates too (`registerPreviewSave` in `glox.ts`), but keeps testing **local**:
+its own slot in the workbench's storage keyed by project id, never the cloud
+row — a preview cannot overwrite a player's save (or the author's), and it
+works signed out. A never-saved project shares the `draft` slot.
+Last-write-wins by `updated_at`; mid-run boards don't sync (bests + full
+clicker-style state only). Tested end-to-end (17 checks, temp user+games,
+cleaned up).
 
 ### In-game multiplayer (rooms over the same WebSocket)
 `public/cudic-multi.js` is the game-side API: `CudicMulti.join('code')` →

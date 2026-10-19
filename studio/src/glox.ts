@@ -561,6 +561,60 @@ function registerPreviewMulti(): void {
   });
 }
 
+// ---- CudicSave host for the preview (twin of public/view.html) ------------
+// Same reason as the multiplayer bridge above: the sandboxed frame holds no
+// storage and no token, so a game's CudicSave asks this page. Testing must
+// never clobber the save a player has out there, so the preview keeps its own
+// slot in this page's storage — keyed by the open project, never the cloud
+// row the published game uses, and working even when signed out.
+let previewSaveReady = false;
+function registerPreviewSave(): void {
+  if (previewSaveReady) return;
+  previewSaveReady = true;
+
+  // A project that was never saved ('draft') has no id yet: those share a slot.
+  const keyFor = (): string => 'cudic-save-preview:' + projectKey();
+  const read = (k: string): { data: unknown; updated_at?: string } | null => {
+    try {
+      const raw = localStorage.getItem(k);
+      return raw == null ? null : (JSON.parse(raw) as { data: unknown; updated_at?: string });
+    } catch { return null; }
+  };
+  const write = (k: string, data: unknown): void => {
+    try { localStorage.setItem(k, JSON.stringify({ data, updated_at: new Date().toISOString() })); } catch { /* full/blocked */ }
+  };
+
+  window.addEventListener('message', (e: MessageEvent) => {
+    const d = e.data as { type?: string; req?: unknown; data?: unknown } | null;
+    if (d == null || typeof d.type !== 'string' || !d.type.startsWith('cudic-save-')) return;
+    const frame = PreviewPane.livePanes()
+      .map((p) => p.frameEl())
+      .find((f): f is HTMLIFrameElement => f != null && f.contentWindow === e.source);
+    if (frame == null) return;
+    const post = (msg: unknown): void => {
+      try { frame.contentWindow?.postMessage(msg, '*'); } catch { /* frame gone */ }
+    };
+    const key = keyFor();
+    if (d.type === 'cudic-save-get') {
+      // authed: true means "this host handles saves" — the flag that makes the
+      // library route writes here instead of its own (storage-less) mirror.
+      post({ type: 'cudic-save-data', req: d.req, save: read(key), loading: false, authed: true, storageKey: key });
+    } else if (d.type === 'cudic-save-del') {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      post({ type: 'cudic-save-ack', req: d.req, ok: true });
+    } else {
+      // Same shape rule the API enforces (object, 100KB) so a game that would
+      // fail for a player fails here too, at the same size.
+      if (d.data == null || typeof d.data !== 'object' || Array.isArray(d.data) || JSON.stringify(d.data).length > 100 * 1024) {
+        post({ type: 'cudic-save-ack', req: d.req, ok: false, error: 'bad-data' });
+        return;
+      }
+      write(key, d.data);
+      post({ type: 'cudic-save-ack', req: d.req, ok: true });
+    }
+  });
+}
+
 class PreviewPane extends SimpleEditorPane {
   static readonly ID = 'workbench.editors.gloxPreview';
   private static live = new Set<PreviewPane>();
@@ -587,6 +641,7 @@ class PreviewPane extends SimpleEditorPane {
   private mount(html: string): void {
     if (this.slot == null) return;
     registerPreviewMulti(); // multiplayer in the preview: see the note above
+    registerPreviewSave(); // saves in the preview: see the note above
     const fresh = document.createElement('iframe');
     fresh.setAttribute('sandbox', 'allow-scripts');
     fresh.style.cssText = 'flex:1;width:100%;border:none;background:#fff;';
