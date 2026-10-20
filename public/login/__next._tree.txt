@@ -1,0 +1,6 @@
+:HL["/_next/static/chunks/0dad1cyd09b7y.css","style"]
+:HL["/_next/static/media/cb065f3ef140709c-s.p.1eqdc75fykitr.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/fonts/satoshi/Satoshi-Regular.woff2","font",{"crossOrigin":"anonymous","type":"font/woff2"}]
+2:[["children",{"s":"__PAGE__","h":160}]]
+1:[["children",{"s":"login","h":96,"c":"$Q2"}]]
+0:{"b":"oRmBr7xEATb06WFOh5x-v","t":{"t":{"s":"","h":80,"c":"$Q1"}}}

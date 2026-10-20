@@ -1,0 +1,48 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/42onvq6nokjl2.js"
+3:I[39756,["$2"],"default"]
+4:I[37457,["$2"],"default"]
+8:"/_next/static/chunks/32-qued04fqkb.js"
+9:"/_next/static/chunks/2z8w_bxu1m9wt.js"
+a:"/_next/static/chunks/2kyssq-v72cb2.js"
+b:I[60281,["$2","$8","$9","$a"],"default"]
+c:I[97367,["$2"],"OutletBoundary"]
+d:"$Sreact.suspense"
+10:"ViewportBoundary"
+11:I[97367,["$2"],"$10"]
+12:"MetadataBoundary"
+13:I[97367,["$2"],"$12"]
+:HL["/_next/static/chunks/0dad1cyd09b7y.css","style"]
+:HL["/fonts/satoshi/Satoshi-Regular.woff2","font",{"crossOrigin":"anonymous","type":"font/woff2"}]
+6:X
+7:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$Lb",null,{}],[["$","script","script-0",{"src":"/_next/static/chunks/32-qued04fqkb.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/2z8w_bxu1m9wt.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/2kyssq-v72cb2.js","async":true}]],["$","$Lc",null,{"children":["$","$d",null,{"name":"Next.MetadataOutlet","children":"$@e"}]}]]}],"p":"$@f","v":null,"s":"$6"}}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/0dad1cyd09b7y.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/42onvq6nokjl2.js","async":true}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"className":"D3tUpa_variable","children":[["$","head",null,{"children":[["$","link",null,{"rel":"preload","href":"/fonts/satoshi/Satoshi-Regular.woff2","as":"font","type":"font/woff2","crossOrigin":"anonymous"}],["$","style",null,{"dangerouslySetInnerHTML":{"__html":"@font-face{font-family:'Satoshi';src:url('/fonts/satoshi/Satoshi-Regular.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}@font-face{font-family:'Satoshi';src:url('/fonts/satoshi/Satoshi-Medium.woff2') format('woff2');font-weight:500;font-style:normal;font-display:swap}@font-face{font-family:'Satoshi';src:url('/fonts/satoshi/Satoshi-Bold.woff2') format('woff2');font-weight:700;font-style:normal;font-display:swap}@font-face{font-family:'Satoshi';src:url('/fonts/satoshi/Satoshi-Black.woff2') format('woff2');font-weight:900;font-style:normal;font-display:swap}"}}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var t=localStorage.getItem('glox_theme');if(t!=='light'){document.documentElement.dataset.theme='dark';document.documentElement.classList.add('dark');}}catch(e){document.documentElement.dataset.theme='dark';document.documentElement.classList.add('dark');}"}}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"(function(){function ok(){try{var m=document.cookie.match(/(?:^|; )cudic_consent=([^;]*)/);if(!m)return false;var c=JSON.parse(decodeURIComponent(m[1]));return !!(c&&c.advertising);}catch(e){return false;}}function load(){if(window.__cudicAds||!ok())return;window.__cudicAds=true;var s=document.createElement('script');s.async=true;s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483499851682563';s.crossOrigin='anonymous';document.head.appendChild(s);}if(ok()){if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',load);}else{load();}}else{window.addEventListener('cudic-consent',function(){load();});}})();"}}],["$","script",null,{"src":"/ads.js?v=1","defer":true}]]}],["$","body",null,{"style":{"fontFamily":"'Satoshi', system-ui, sans-serif"},"children":["$","$L3",null,{"parallelRouterKey":"children","template":["$","$L4",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}]}]]}]]}],"p":"$@5","v":null,"s":"$6"},"c":"$Q7"},"h":{"r":["$","$1","h",{"children":[null,["$","$L11",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#0d0e10"}]]}],["$","$L13",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$d",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Cudic - build and play small games in your browser"}],"$L14","$L15","$L16","$L17","$L18","$L19","$L1a","$L1b","$L1c","$L1d","$L1e","$L1f","$L20","$L21","$L22","$L23","$L24","$L25","$L26"]}]}],null]}],"$L27"]}],"p":"$@28","v":null,"s":"$6"}},"a":"$@29","u":"$@2a","b":"oRmBr7xEATb06WFOh5x-v"}
+2b:I[27201,["$2"],"IconMark"]
+e:null
+14:["$","meta","1",{"name":"description","content":"Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play."}]
+15:["$","meta","2",{"name":"google-adsense-account","content":"ca-pub-9483499851682563"}]
+16:["$","link","3",{"rel":"canonical","href":"https://cudic.vercel.app/"}]
+17:["$","meta","4",{"name":"google-site-verification","content":"tKz5wSVpAh2rRjqYNIzJVQwTJ56ZrQ2vusZAUHy6mAs"}]
+18:["$","meta","5",{"property":"og:title","content":"Cudic - build and play small games in your browser"}]
+19:["$","meta","6",{"property":"og:description","content":"Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play."}]
+1a:["$","meta","7",{"property":"og:url","content":"https://cudic.vercel.app/"}]
+1b:["$","meta","8",{"property":"og:site_name","content":"Cudic"}]
+1c:["$","meta","9",{"property":"og:image","content":"https://cudic.vercel.app/og.png"}]
+1d:["$","meta","10",{"property":"og:image:width","content":"1200"}]
+1e:["$","meta","11",{"property":"og:image:height","content":"630"}]
+1f:["$","meta","12",{"property":"og:type","content":"website"}]
+20:["$","meta","13",{"name":"twitter:card","content":"summary_large_image"}]
+21:["$","meta","14",{"name":"twitter:title","content":"Cudic - build and play small games in your browser"}]
+22:["$","meta","15",{"name":"twitter:description","content":"Cudic is a browser studio for making games, sites, and themes. No install, no setup. Open Studio, drop in your files, publish, and play."}]
+23:["$","meta","16",{"name":"twitter:image","content":"https://cudic.vercel.app/twitter.png"}]
+24:["$","link","17",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}]
+25:["$","link","18",{"rel":"icon","href":"/cudic_sfsvg.svg"}]
+26:["$","$L2b","19",{}]
+27:["$","meta",null,{"name":"next-size-adjust","content":""}]
+6:300
+2a:true
+6:C
+29:0
+5:"$undefined"
+28:"$undefined"
+f:"$undefined"
