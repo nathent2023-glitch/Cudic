@@ -6,12 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node prerender.mjs",
-    "build:client": "vite build"
+    "build:client": "vite build",
+    "build:404": "vite build --config vite.404.config.ts && vite build --config vite.404-server.config.ts && node copy-404.mjs"
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "gsap": "^3.13.0",
+    "lucide-react": "^1.60.0",
+    "motion": "^14.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.7.0",
     "three": "^0.170.0"
   },
   "devDependencies": {

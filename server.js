@@ -3376,8 +3376,19 @@ const server = http.createServer(async (req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not found');
+      // Missing pages get the 404 screen; missing assets/APIs keep their plain/JSON reply.
+      const isApi = url.pathname.startsWith('/api/');
+      const wantsPage = (!ext || ext === '.html') && (req.method === 'GET' || req.method === 'HEAD');
+      if (!isApi && wantsPage) {
+        fs.readFile(path.join(__dirname, 'public', '404.html'), (e2, page) => {
+          if (e2) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found'); return; }
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end(req.method === 'HEAD' ? undefined : page);
+        });
+        return;
+      }
+      res.writeHead(404, { 'Content-Type': isApi ? 'application/json' : 'text/plain' });
+      res.end(isApi ? JSON.stringify({ error: 'Not found.' }) : 'Not found');
       return;
     }
     const headers = { 'Content-Type': MIME[ext] || 'application/octet-stream' };

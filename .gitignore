@@ -11,6 +11,7 @@ public/studio/
 public/landing-assets/
 landing/dist/
 landing/dist-server/
+landing/dist-404-server/
 # Local-only, never commit: agent skills, lockfiles, CLI temp, personal assets
 .agents/
 skills-lock.json
