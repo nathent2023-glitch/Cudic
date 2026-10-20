@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #FFF6E7; --card: #FFFDF7; --ink: #1B1712; --muted: #6E6555;
+    --primary: #FF4E1A; --gold: #FFC93C; --mint: #5BD695; --berry: #FF3B6B; --sky: #6FB7FF;
+    --head: 'Baloo 2', system-ui, sans-serif;
+    --shadow: 4px 4px 0 var(--ink);
+  }
+  html, body, button { touch-action: manipulation; }
+  body { background: var(--paper); color: var(--ink); font-family: system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    min-height: 100vh; padding: 18px 12px 32px; }
+  h1 { font-family: var(--head); font-weight: 800; font-size: 1.9rem; line-height: 1;
+    letter-spacing: -0.02em; display: flex; align-items: center; gap: 4px; }
+  h1 .dot { width: 15px; height: 15px; border-radius: 50%; border: 3px solid var(--ink); display: inline-block; }
+  h1 .dot.a { background: var(--berry); }
+  h1 .dot.b { background: var(--sky); margin-left: -9px; margin-right: 6px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    width: min(94vw, 520px); }
+
+  .btn { font-family: var(--head); font-weight: 800; font-size: 1rem; color: var(--ink);
+    background: var(--gold); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 12px 18px; cursor: pointer; white-space: nowrap;
+    transition: transform .12s ease, box-shadow .12s ease; }
+  .btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+  .btn:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+  .btn[aria-disabled="true"] { opacity: .4; cursor: default; pointer-events: none; }
+  .btn-primary { background: var(--primary); }
+  .btn-sky { background: var(--sky); }
+  .btn-mint { background: var(--mint); }
+  .btn.small { font-size: .85rem; padding: 7px 12px; border-radius: 10px;
+    box-shadow: 3px 3px 0 var(--ink); }
+  .btn.small:hover { box-shadow: 5px 5px 0 var(--ink); }
+
+  .status { display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--head); font-weight: 800; font-size: 1.05rem;
+    min-height: 1.5em; width: min(94vw, 520px); text-align: center; }
+  .tdot { width: 15px; height: 15px; border-radius: 50%; border: 3px solid var(--ink); flex: 0 0 auto; }
+  .tdot.d1 { background: var(--berry); }
+  .tdot.d2 { background: var(--sky); }
+  .tdot.off { display: none; }
+
+  .hud { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: min(94vw, 520px); }
+  .plate { font-family: var(--head); font-weight: 800; font-size: .82rem; background: var(--card);
+    border: 3px solid var(--ink); border-radius: 10px; box-shadow: 3px 3px 0 var(--ink); padding: 5px 10px; }
+  .plate.off { display: none; }
+
+  .boardwrap { position: relative; width: min(94vw, 520px); background: var(--paper);
+    border: 3px solid var(--ink); border-radius: 16px; box-shadow: var(--shadow); padding: 10px; }
+  .feeder { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    height: clamp(26px, 7.4vw, 42px); margin-bottom: 6px; }
+  .feeder .gt { display: flex; align-items: center; justify-content: center; }
+  .ghost { display: none; width: clamp(20px, 5.6vw, 34px); height: clamp(20px, 5.6vw, 34px);
+    border-radius: 50%; border: 3px solid var(--ink); opacity: .5; }
+  .gt.on .ghost { display: block; }
+  .ghost.d1 { background: var(--berry); }
+  .ghost.d2 { background: var(--sky); }
+  .cols { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .col { display: flex; flex-direction: column; gap: 6px; background: none; border: none;
+    padding: 0; cursor: pointer; font-family: inherit; border-radius: 12px; }
+  .col:focus-visible, .col.sel { outline: 3px solid var(--sky); outline-offset: 2px; }
+  .col[aria-disabled="true"] { cursor: default; }
+  .col:not([aria-disabled="true"]):hover .slot:not(.d1):not(.d2) { background: var(--paper); }
+  .slot { aspect-ratio: 1; border-radius: 50%; background: var(--card);
+    border: 3px solid var(--ink); transition: background .12s ease; }
+  .slot.d1 { background: var(--berry); box-shadow: inset 0 -4px 0 rgba(27, 23, 18, .18); }
+  .slot.d2 { background: var(--sky); box-shadow: inset 0 -4px 0 rgba(27, 23, 18, .18); }
+  .slot.drop { animation: drop .18s ease-out; }
+  @keyframes drop { from { transform: translateY(-34%); opacity: .55; } }
+  .slot.win { box-shadow: 0 0 0 4px var(--gold), inset 0 -4px 0 rgba(27, 23, 18, .18);
+    animation: ring 1.1s ease-in-out infinite alternate; }
+  @keyframes ring {
+    from { box-shadow: 0 0 0 3px var(--gold), inset 0 -4px 0 rgba(27, 23, 18, .18); }
+    to { box-shadow: 0 0 0 7px var(--gold), inset 0 -4px 0 rgba(27, 23, 18, .18); } }
+
+  .overlay { position: absolute; inset: 0; z-index: 2; background: var(--paper);
+    border-radius: 13px; display: none; align-items: center; justify-content: center; padding: 12px; }
+  .overlay.on { display: flex; }
+  .pick { width: min(100%, 320px); background: var(--card); border: 3px solid var(--ink);
+    border-radius: 14px; box-shadow: var(--shadow); padding: 16px;
+    display: flex; flex-direction: column; gap: 10px; text-align: center; }
+  .pick h2 { font-family: var(--head); font-weight: 800; font-size: 1.25rem; }
+  .pick p { color: var(--muted); font-size: .9rem; line-height: 1.45; }
+  .pick .btn { width: 100%; }
+  .note { background: var(--gold); border: 3px solid var(--ink); border-radius: 10px;
+    padding: 8px 10px; font-size: .85rem; color: var(--ink); }
+  .note[hidden] { display: none; }
+
+  .stamp { position: absolute; left: 50%; top: 46%; z-index: 3; display: none;
+    transform: translate(-50%, -50%) rotate(-4deg); font-family: var(--head); font-weight: 800;
+    font-size: 1.35rem; background: var(--gold); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 9px 16px; white-space: nowrap; }
+  .stamp.on { display: block; animation: stamp .22s ease-out; }
+  @keyframes stamp { from { transform: translate(-50%, -50%) rotate(-4deg) scale(.55); } }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    justify-content: center; width: min(94vw, 520px); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important;
+      transition-duration: .001s !important; }
+  }
+</style>
+</head>
+<body>
+  <header class="top">
+    <h1><span class="dot a" aria-hidden="true"></span><span class="dot b" aria-hidden="true"></span>Four</h1>
+    <button class="btn small" id="muteBtn" aria-pressed="true">Sound on</button>
+  </header>
+
+  <div class="status" aria-live="polite"><span class="tdot off" id="tdot"></span><span id="statusText">Pick a mode to start</span></div>
+
+  <div class="hud">
+    <span class="plate off" id="pWins">Berry wins <b id="nWins">0</b></span>
+    <span class="plate off" id="pLoss">Sky wins <b id="nLoss">0</b></span>
+    <span class="plate off" id="pMode">&mdash;</span>
+  </div>
+
+  <div class="boardwrap" id="boardwrap">
+    <div class="feeder" id="feeder" aria-hidden="true"></div>
+    <div class="cols" id="cols"></div>
+    <div class="overlay on" id="overlay">
+      <div class="pick">
+        <h2>Four in a row</h2>
+        <button class="btn btn-primary" id="mLocal">Play on one device</button>
+        <button class="btn btn-sky" id="mNet">Play online</button>
+        <button class="btn btn-gold" id="mBot">Play the bot</button>
+        <p class="note" id="note" hidden></p>
+      </div>
+    </div>
+    <div class="stamp" id="stamp" aria-hidden="true">Berry wins</div>
+  </div>
+
+  <div class="row">
+    <button class="btn btn-primary" id="againBtn">Play again</button>
+    <button class="btn small" id="modeBtn">Change mode</button>
+  </div>
+
+<script src="/cudic-save.js?v=1"></script>
+<script src="/cudic-multi.js?v=2"></script>
+<script>
+(function () {
+  'use strict';
+  var COLS = 7, ROWS = 6, N = COLS * ROWS;
+  var board = [];              /* flat, index r*7+c, row 0 = top; 0 empty, 1 berry, 2 sky */
+  var turn = 1, over = false, winner = 0, winCells = [], justPlaced = -1;
+  var mode = 'none';           /* none | local | bot | online */
+  var selCol = 3, hoverCol = -1, botBusy = false;
+  var wins = 0, losses = 0, mute = false;
+  var net = null, lastReset = 0, actx = null;
+  for (var b0 = 0; b0 < N; b0++) board.push(0);
+
+  var canHover = window.matchMedia && window.matchMedia('(hover: hover)').matches;
+  var slotEls = [], colBtns = [], ghostEls = [];
+  var el = {
+    cols: document.getElementById('cols'),
+    feeder: document.getElementById('feeder'),
+    overlay: document.getElementById('overlay'),
+    note: document.getElementById('note'),
+    stamp: document.getElementById('stamp'),
+    statusText: document.getElementById('statusText'),
+    tdot: document.getElementById('tdot'),
+    pWins: document.getElementById('pWins'),
+    pLoss: document.getElementById('pLoss'),
+    nWins: document.getElementById('nWins'),
+    nLoss: document.getElementById('nLoss'),
+    pMode: document.getElementById('pMode'),
+    againBtn: document.getElementById('againBtn'),
+    muteBtn: document.getElementById('muteBtn')
+  };
+
+  (function build() {
+    for (var c = 0; c < COLS; c++) {
+      var gt = document.createElement('div'); gt.className = 'gt';
+      var gh = document.createElement('span'); gh.className = 'ghost d1';
+      gt.appendChild(gh); el.feeder.appendChild(gt);
+      ghostEls.push({ box: gt, disc: gh });
+
+      var btn = document.createElement('button');
+      btn.setAttribute('type', 'button');
+      btn.setAttribute('aria-label', 'Drop in column ' + (c + 1));
+      (function (cc, b) {
+        b.addEventListener('click', function () { selCol = cc; humanDrop(cc); });
+        if (canHover) {
+          b.addEventListener('pointerenter', function () { hoverCol = cc; paintGhost(); });
+          b.addEventListener('pointerleave', function () {
+            if (hoverCol === cc) { hoverCol = -1; paintGhost(); }
+          });
+        }
+      })(c, btn);
+      var colSlots = [];
+      for (var r = 0; r < ROWS; r++) {
+        var s = document.createElement('span'); s.className = 'slot';
+        btn.appendChild(s); colSlots.push(s);
+      }
+      slotEls.push(colSlots);
+      el.cols.appendChild(btn);
+      colBtns.push(btn);
+    }
+  })();
+
+  /* ── rules ─────────────────────────────────────────────────── */
+  function lowest(b, c) {
+    for (var r = ROWS - 1; r >= 0; r--) if (!b[r * COLS + c]) return r;
+    return -1;
+  }
+  function winFrom(b, r, c, p) {
+    var dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (var d = 0; d < 4; d++) {
+      var dr = dirs[d][0], dc = dirs[d][1], cells = [r * COLS + c];
+      for (var s = -1; s <= 1; s += 2) {
+        var rr = r + dr * s, cc = c + dc * s;
+        while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && b[rr * COLS + cc] === p) {
+          cells.push(rr * COLS + cc); rr += dr * s; cc += dc * s;
+        }
+      }
+      if (cells.length >= 4) return cells;
+    }
+    return null;
+  }
+  function scanWinner(b) {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var p = b[r * COLS + c];
+      if (!p) continue;
+      var w = winFrom(b, r, c, p);
+      if (w) return { p: p, cells: w };
+    }
+    return null;
+  }
+  function noSpace() {
+    for (var i = 0; i < N; i++) if (!board[i]) return false;
+    return true;
+  }
+
+  /* ── online sides: same set of ids ⇒ same sorted order on every peer,
+     no negotiation; first id is berry, second is sky, the rest watch ── */
+  function order() {
+    var ids = [];
+    if (net && net.id) ids.push(net.id);
+    var ps = (net && net.peers) || [];
+    for (var i = 0; i < ps.length; i++) if (ps[i] && ps[i].id) ids.push(ps[i].id);
+    ids.sort();
+    var u = [];
+    for (i = 0; i < ids.length; i++) if (u.indexOf(ids[i]) < 0) u.push(ids[i]);
+    return u;
+  }
+  function myRole() {
+    if (mode !== 'online' || !net || !net.id) return 0;
+    var i = order().indexOf(net.id);
+    return i < 0 ? 0 : i === 0 ? 1 : i === 1 ? 2 : 3;
+  }
+  function roleOf(id) {
+    if (!id) return 0;
+    var i = order().indexOf(id);
+    return i < 0 ? 0 : i === 0 ? 1 : i === 1 ? 2 : 3;
+  }
+  function nameOf(side) {
+    var id = order()[side - 1];
+    var ps = (net && net.peers) || [];
+    for (var i = 0; i < ps.length; i++) {
+      if (ps[i] && ps[i].id === id) return ps[i].name || 'Guest';
+    }
+    return side === 1 ? 'Berry' : 'Sky';
+  }
+  function ready() {
+    if (mode === 'local') return !over;
+    if (mode === 'bot') return !over && turn === 1 && !botBusy;
+    if (mode === 'online') {
+      var r = myRole();
+      return !over && (r === 1 || r === 2) && r === turn && order().length >= 2;
+    }
+    return false;
+  }
+  /* ── paint: every mutation ends here, state in, pixels out ── */
+  function paint() {
+    var play = ready();
+    for (var c = 0; c < COLS; c++) {
+      var full = lowest(board, c) < 0;
+      for (var r = 0; r < ROWS; r++) {
+        var i = r * COLS + c, v = board[i], cls = 'slot';
+        if (v) cls += ' d' + v;
+        if (winCells.indexOf(i) >= 0) cls += ' win';
+        if (i === justPlaced) cls += ' drop';
+        slotEls[c][r].className = cls;
+      }
+      colBtns[c].className = 'col' + (c === selCol ? ' sel' : '');
+      colBtns[c].setAttribute('aria-disabled', (!play || full) ? 'true' : 'false');
+      colBtns[c].setAttribute('aria-label', 'Drop in column ' + (c + 1) + (full ? ' (full)' : ''));
+    }
+    justPlaced = -1;
+    paintGhost();
+    paintHud();
+    paintStatus();
+    paintMute();
+  }
+  function paintGhost() {
+    var play = ready();
+    for (var c = 0; c < COLS; c++) {
+      var on = c === hoverCol && play && lowest(board, c) >= 0;
+      ghostEls[c].box.className = 'gt' + (on ? ' on' : '');
+      ghostEls[c].disc.className = 'ghost d' + (turn === 1 ? 1 : 2);
+    }
+  }
+  function paintHud() {
+    var bot = mode === 'bot';
+    el.pWins.className = 'plate' + (bot ? '' : ' off');
+    el.pLoss.className = 'plate' + (bot ? '' : ' off');
+    el.nWins.textContent = wins;
+    el.nLoss.textContent = losses;
+    el.pMode.className = 'plate' + (mode === 'none' ? ' off' : '');
+    el.pMode.textContent = modeLabel();
+    var watch = mode === 'online' && myRole() === 3;
+    el.againBtn.setAttribute('aria-disabled', (mode === 'none' || watch) ? 'true' : 'false');
+  }
+  function modeLabel() {
+    if (mode === 'local') return 'One device';
+    if (mode === 'bot') return 'Bot';
+    if (mode === 'online') {
+      if (order().length < 2) return 'Online';
+      var r = myRole();
+      if (r === 1) return 'Online \u00b7 berry';
+      if (r === 2) return 'Online \u00b7 sky';
+      if (r === 3) return 'Online \u00b7 watching';
+      return 'Online';
+    }
+    return '\u2014';
+  }
+  function statusText() {
+    if (mode === 'none') return 'Pick a mode to start';
+    if (over) {
+      if (!winner) return 'Board full \u2014 nobody got four';
+      if (mode === 'bot') return winner === 1 ? 'You win' : 'Bot wins';
+      return winner === 1 ? 'Berry wins' : 'Sky wins';
+    }
+    if (mode === 'online') {
+      if (order().length < 2) return 'Waiting for someone to join\u2026';
+      return nameOf(turn) + "'s turn";
+    }
+    if (mode === 'bot') return turn === 1 ? 'Your turn' : 'Bot is thinking\u2026';
+    return turn === 1 ? "Berry's turn" : "Sky's turn";
+  }
+  function paintStatus() {
+    el.statusText.textContent = statusText();
+    var dot = 0;
+    if (mode !== 'none' && !over && !(mode === 'online' && order().length < 2)) dot = turn;
+    el.tdot.className = 'tdot' + (dot ? ' d' + dot : ' off');
+    el.stamp.className = 'stamp' + (mode !== 'none' && over && winner ? ' on' : '');
+    if (over && winner) el.stamp.textContent = winner === 1 ? 'Berry wins' : 'Sky wins';
+  }
+
+  /* ── one drop ──────────────────────────────────────────────── */
+  function clack() {          /* WebAudio, only inside a user gesture */
+    if (mute) return;
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      actx = actx || new AC();
+      if (actx.state === 'suspended') actx.resume();
+      var t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(170, t);
+      o.frequency.exponentialRampToValueAtTime(70, t + 0.09);
+      g.gain.setValueAtTime(0.45, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t + 0.13);
+    } catch (e) {}
+  }
+  function place(col, side) {
+    var r = lowest(board, col);
+    if (r < 0) return false;
+    board[r * COLS + col] = side;
+    justPlaced = r * COLS + col;
+    winCells = winFrom(board, r, col, side) || [];
+    if (winCells.length) { over = true; winner = side; }
+    else if (noSpace()) { over = true; winner = 0; }
+    else turn = side === 1 ? 2 : 1;
+    clack();
+    return true;
+  }
+  function humanDrop(col) {
+    if (!ready() || col < 0 || col > COLS - 1) return;
+    if (lowest(board, col) < 0) return;
+    place(col, turn);
+    if (mode === 'online' && net) net.send({ t: 'move', col: col });
+    afterMove();
+  }
+  function afterMove() {
+    if (mode === 'bot' && over) {     /* wins and losses are bot games only */
+      if (winner === 1) wins++;
+      else if (winner === 2) losses++;
+      persist();
+    }
+    paint();
+    if (mode === 'bot' && !over && turn === 2) botTurn();
+  }
+
+  /* ── the bot: win, block, else centre-weighted noise ───────── */
+  function botCol() {
+    var legal = [], c, i, r;
+    for (c = 0; c < COLS; c++) if (lowest(board, c) >= 0) legal.push(c);
+    if (!legal.length) return -1;
+    for (i = 0; i < legal.length; i++) {
+      c = legal[i]; r = lowest(board, c);
+      board[r * COLS + c] = 2;
+      var take = winFrom(board, r, c, 2);
+      board[r * COLS + c] = 0;
+      if (take) return c;
+    }
+    for (i = 0; i < legal.length; i++) {
+      c = legal[i]; r = lowest(board, c);
+      board[r * COLS + c] = 1;
+      var block = winFrom(board, r, c, 1);
+      board[r * COLS + c] = 0;
+      if (block) return c;
+    }
+    var w = [1, 2, 3, 4, 3, 2, 1], total = 0;
+    for (i = 0; i < legal.length; i++) total += w[legal[i]];
+    var roll = Math.random() * total;
+    for (i = 0; i < legal.length; i++) {
+      roll -= w[legal[i]];
+      if (roll <= 0) return legal[i];
+    }
+    return legal[legal.length - 1];
+  }
+  function botTurn() {
+    botBusy = true; paint();
+    setTimeout(function () {
+      if (mode !== 'bot' || over || turn !== 2) { botBusy = false; paint(); return; }
+      var c = botCol();
+      botBusy = false;
+      if (c >= 0 && place(c, 2)) afterMove(); else paint();
+    }, 300 + Math.random() * 280);
+  }
+  /* ── modes and rounds ─────────────────────────────────────── */
+  function newRound() {
+    for (var i = 0; i < N; i++) board[i] = 0;
+    turn = 1; over = false; winner = 0; winCells = []; justPlaced = -1;
+    hoverCol = -1; botBusy = false;
+    paint();
+  }
+  function showPick(msg) {
+    if (net) { net.leave(); net = null; }
+    mode = 'none';
+    el.overlay.className = 'overlay on';
+    if (msg) el.note.textContent = msg;
+    el.note.hidden = !msg;
+    paint();
+  }
+  function startMode(m) {
+    mode = m;
+    el.note.hidden = true;
+    el.overlay.className = 'overlay';
+    newRound();
+    if (m === 'online') startNet();
+  }
+  function startNet() {
+    var noHost = 'Online play needs the game page \u2014 open it from the gallery.';
+    if (!window.CudicMulti) { showPick(noHost); return; }
+    net = window.CudicMulti.join('main');
+    net.on('error', function () { net = null; showPick(noHost); });
+    net.on('peers', function () {
+      /* berry holds the board and hands it to anyone arriving or returning */
+      if (myRole() === 1 && net) net.send({ t: 'state', board: board.slice(), turn: turn });
+      paint();
+    });
+    net.on('msg', onMsg);
+  }
+  function validBoard(b) {
+    if (!b || b.length !== N) return false;
+    for (var i = 0; i < N; i++) if (b[i] !== 0 && b[i] !== 1 && b[i] !== 2) return false;
+    return true;
+  }
+  function onMsg(m) {
+    if (mode !== 'online') return;
+    var d = (m && m.data) || {}, r = roleOf(m && m.from);
+    if (d.t === 'state') {
+      if (r !== 1 || myRole() === 1) return;     /* only berry's board is authoritative */
+      if (!validBoard(d.board) || (d.turn !== 1 && d.turn !== 2)) return;
+      board = d.board.slice();
+      var w = scanWinner(board);
+      over = !!(w || noSpace());
+      winner = w ? w.p : 0;
+      winCells = w ? w.cells : [];
+      turn = d.turn;
+      paint();
+      return;
+    }
+    if (d.t === 'move') {
+      if (over || (r !== 1 && r !== 2) || r !== turn) return;  /* only the side to move */
+      var col = d.col;
+      if (typeof col !== 'number' || col % 1 !== 0 || col < 0 || col > COLS - 1) return;
+      if (lowest(board, col) < 0) return;
+      place(col, r);
+      paint();
+      return;
+    }
+    if (d.t === 'reset') {
+      if (r !== 1 && r !== 2) return;
+      var now = Date.now();
+      if (now - lastReset < 1000) return;        /* debounce */
+      lastReset = now;
+      newRound();
+    }
+  }
+  function again() {
+    if (mode === 'none' || (mode === 'online' && myRole() === 3)) return;
+    newRound();
+    if (mode === 'online' && net) {
+      lastReset = Date.now();
+      net.send({ t: 'reset' });
+    }
+  }
+
+  /* ── input ────────────────────────────────────────────────── */
+  document.addEventListener('keydown', function (e) {
+    if (mode === 'none' || e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k >= '1' && k <= '7') { humanDrop(k.charCodeAt(0) - 49); e.preventDefault(); return; }
+    if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      selCol = (selCol + (k === 'ArrowLeft' ? COLS - 1 : 1)) % COLS;
+      try { colBtns[selCol].focus({ preventScroll: true }); }
+      catch (err) { colBtns[selCol].focus(); }
+      paint();
+      e.preventDefault(); return;
+    }
+    var isBtn = e.target && e.target.tagName === 'BUTTON';
+    if ((k === 'Enter' || k === ' ' || k === 'Spacebar') && !isBtn) {
+      humanDrop(selCol); e.preventDefault();
+    }
+  });
+  document.getElementById('mLocal').addEventListener('click', function () { startMode('local'); });
+  document.getElementById('mBot').addEventListener('click', function () { startMode('bot'); });
+  document.getElementById('mNet').addEventListener('click', function () { startMode('online'); });
+  el.againBtn.addEventListener('click', again);
+  document.getElementById('modeBtn').addEventListener('click', function () { showPick(null); });
+  el.muteBtn.addEventListener('click', function () { mute = !mute; paintMute(); persist(); });
+  function paintMute() {
+    el.muteBtn.textContent = mute ? 'Sound off' : 'Sound on';
+    el.muteBtn.setAttribute('aria-pressed', mute ? 'false' : 'true');
+  }
+  /* ── saves: wins/losses are bot games only, mute rides along ── */
+  var CS = window.CudicSave || null;
+  if (!CS) { try { wins = parseInt(localStorage.getItem('cudic-four-wins'), 10) || 0; } catch (e) {} }
+  CS && CS.load({ legacyKey: 'cudic-four-wins', legacyMap: function (raw) { return { wins: parseInt(raw, 10) || 0 }; } })
+    .then(function (d) {
+      if (d && typeof d.wins === 'number') wins = d.wins;
+      if (d && typeof d.losses === 'number') losses = d.losses;
+      if (d && typeof d.mute === 'boolean') mute = d.mute;
+      paint();
+    })
+    .catch(function () {});
+  function persist() {
+    if (CS) { CS.save({ wins: wins, losses: losses, mute: mute }); return; }
+    try { localStorage.setItem('cudic-four-wins', String(wins)); } catch (e) {}
+  }
+
+  paint();
+})();
+</script>
+</body>
+</html>

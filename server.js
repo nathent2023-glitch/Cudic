@@ -1923,7 +1923,7 @@ const server = http.createServer(async (req, res) => {
   // Evidence uploads go to the private report-evidence bucket; the client
   // sends the storage path (not a URL) and review happens in the dashboard.
   var REPORT_REASONS = ['inappropriate', 'stolen', 'broken', 'spam', 'other'];
-  var REPORT_TYPES = ['pack', 'game', 'message', 'user'];
+  var REPORT_TYPES = ['pack', 'game', 'message', 'user', 'thread', 'comment'];
   if (url.pathname === '/api/reports' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
@@ -1959,6 +1959,14 @@ const server = http.createServer(async (req, res) => {
       const { data: ru } = await supabase.from('users').select('id').eq('id', uid).single();
       if (!ru) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
       contentId = ru.id;
+    } else if (body.content_type === 'thread' || body.content_type === 'comment') {
+      // Forum posts are public to read, so any signed-in reader can report
+      // one. The row must exist — no reporting made-up ids.
+      const pid = body.content_id;
+      if (typeof pid !== 'string' || !isUuid(pid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown post.' })); return; }
+      const { data: post } = await supabase.from(body.content_type === 'thread' ? 'forum_threads' : 'forum_comments').select('id').eq('id', pid).single();
+      if (!post) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Post not found.' })); return; }
+      contentId = post.id;
     } else if (body.content_id && isUuid(body.content_id)) {
       const pack = await packByKey(body.content_id);
       if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
@@ -2033,23 +2041,30 @@ const server = http.createServer(async (req, res) => {
     const pids = [...new Set(rows.filter(r => r.content_type === 'pack' && r.content_id).map(r => r.content_id))];
     const pslugs = [...new Set(rows.filter(r => r.content_type === 'pack' && r.content_slug).map(r => r.content_slug))];
     const rids = [...new Set(rows.map(r => r.reporter_id))];
-    const [games, packsById, packsBySlug, msgs, usrs, reps2] = await Promise.all([
+    const ttids = [...new Set(rows.filter(r => r.content_type === 'thread' && r.content_id).map(r => r.content_id))];
+    const ccids = [...new Set(rows.filter(r => r.content_type === 'comment' && r.content_id).map(r => r.content_id))];
+    const [games, packsById, packsBySlug, msgs, usrs, reps2, threads, threads2] = await Promise.all([
       gids.length ? supabase.from('games').select('id, title, published').in('id', gids) : Promise.resolve({ data: [] }),
       pids.length ? supabase.from('theme_packs').select('id, slug, name, published').in('id', pids) : Promise.resolve({ data: [] }),
       pslugs.length ? supabase.from('theme_packs').select('id, slug, name, published').in('slug', pslugs) : Promise.resolve({ data: [] }),
       mids.length ? supabase.from('messages').select('id, text, display_name').in('id', mids) : Promise.resolve({ data: [] }),
       uids.length ? supabase.from('users').select('id, display_name').in('id', uids) : Promise.resolve({ data: [] }),
       rids.length ? supabase.from('users').select('id, display_name').in('id', rids) : Promise.resolve({ data: [] }),
+      ttids.length ? supabase.from('forum_threads').select('id, title').in('id', ttids) : Promise.resolve({ data: [] }),
+      ccids.length ? supabase.from('forum_comments').select('id, text, display_name').in('id', ccids) : Promise.resolve({ data: [] }),
     ]);
     const byId = (arr, key) => { const m = {}; for (const r of (arr && arr.data) || []) m[r[key || 'id']] = r; return m; };
     const gById = byId(games), mById = byId(msgs), uById = byId(usrs), rById = byId(reps2);
     const pById = byId(packsById), pBySlug = byId(packsBySlug, 'slug');
+    const tById = byId(threads), cById = byId(threads2);
     const out = rows.map(r => {
       let preview = null;
       if (r.content_type === 'game' && gById[r.content_id]) { const g = gById[r.content_id]; preview = g.title + (g.published ? '' : ' (unpublished)'); }
       else if (r.content_type === 'pack') { const p = (r.content_id && pById[r.content_id]) || (r.content_slug && pBySlug[r.content_slug]); if (p) preview = p.name + (p.published ? '' : ' (unpublished)'); else if (r.content_slug) preview = 'static pack: ' + r.content_slug; }
       else if (r.content_type === 'message' && mById[r.content_id]) { const m = mById[r.content_id]; preview = (m.display_name || '?') + ': ' + String(m.text || '').substring(0, 140); }
       else if (r.content_type === 'user' && uById[r.content_id]) preview = uById[r.content_id].display_name;
+      else if (r.content_type === 'thread' && tById[r.content_id]) preview = tById[r.content_id].title;
+      else if (r.content_type === 'comment' && cById[r.content_id]) { const c = cById[r.content_id]; preview = (c.display_name || '?') + ': ' + String(c.text || '').substring(0, 140); }
       return { ...r, reporter_name: (rById[r.reporter_id] || {}).display_name || '?', preview };
     });
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -2068,7 +2083,7 @@ const server = http.createServer(async (req, res) => {
     if (!isUuid(rid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad report.' })); return; }
     const body = await readBody(req).catch(() => ({}));
     const action = String(body.action || '');
-    if (!['dismiss', 'reviewing', 'actioned', 'unpublish', 'delete_message'].includes(action)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown action.' })); return; }
+    if (!['dismiss', 'reviewing', 'actioned', 'unpublish', 'delete_message', 'delete_post'].includes(action)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown action.' })); return; }
     const { data: rep } = await supabase.from('reports').select('*').eq('id', rid).single();
     if (!rep) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Report not found.' })); return; }
     // Side effects reuse the same state changes as the owner endpoints.
@@ -2100,6 +2115,21 @@ const server = http.createServer(async (req, res) => {
       if (rep.content_type !== 'message' || !rep.content_id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not a message report.' })); return; }
       const { data: del } = await supabase.from('messages').delete().eq('id', rep.content_id).select('id');
       if (!(del || []).length) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Message is already gone.' })); return; }
+    } else if (action === 'delete_post') {
+      if (!rep.content_id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not a forum post.' })); return; }
+      if (rep.content_type === 'comment') {
+        const { data: c } = await supabase.from('forum_comments').select('id, thread_id').eq('id', rep.content_id).single();
+        if (!c) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Reply is already gone.' })); return; }
+        await supabase.from('forum_comments').delete().eq('id', c.id);
+        // Keep the thread's reply count honest, same as the owner endpoint.
+        const { data: th } = await supabase.from('forum_threads').select('comment_count').eq('id', c.thread_id).single();
+        if (th) await supabase.from('forum_threads').update({ comment_count: Math.max(0, (th.comment_count || 1) - 1) }).eq('id', c.thread_id);
+      } else if (rep.content_type === 'thread') {
+        const { data: del } = await supabase.from('forum_threads').delete().eq('id', rep.content_id).select('id');
+        if (!(del || []).length) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread is already gone.' })); return; }
+      } else {
+        res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not a forum post.' })); return;
+      }
     }
     const status = action === 'dismiss' ? 'dismissed' : action === 'reviewing' ? 'reviewing' : 'actioned';
     await supabase.from('reports').update({ status }).eq('id', rid);
@@ -2139,12 +2169,23 @@ const server = http.createServer(async (req, res) => {
     const tag = String(url.searchParams.get('tag') || '').trim().toLowerCase().slice(0, 24);
     if (tag) query = query.contains('tags', [tag]);
     const sort = String(url.searchParams.get('sort') || 'new');
+    const trending = sort === 'trending';
     if (sort === 'plays') query = query.order('play_count', { ascending: false }).order('updated_at', { ascending: false });
+    else if (trending) query = query.order('play_count', { ascending: false });
     else if (sort === 'old') query = query.order('created_at', { ascending: true });
     else if (sort === 'az') query = query.order('title', { ascending: true });
     else query = query.order('updated_at', { ascending: false });
     const { data, error } = await query.limit(50);
     const rows = data || [];
+    // Trending = plays against age: total plays weighted down by how many
+    // hours the game has existed, so a fresh game with a few plays can outrank
+    // an old one coasting on history. (age + 2) keeps brand-new games from
+    // dividing by zero and gives a few hours of grace.
+    if (trending) {
+      const nowMs = Date.now();
+      const score = (g) => (g.play_count || 0) / Math.pow((nowMs - new Date(g.created_at).getTime()) / 3600000 + 2, 1.5);
+      rows.sort((a, b) => score(b) - score(a));
+    }
     const ids = rows.map((g) => g.id);
     const counts = {};
     const liked = new Set();
@@ -2291,6 +2332,142 @@ const server = http.createServer(async (req, res) => {
     }).select().single();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ comment: data, error: error?.message }));
+    return;
+  }
+
+  // ── API: forums — threads and replies ─────────────────────────
+  // Public to read (same stance as the gallery), sign-in to write. The OP of
+  // a thread can stamp each reply with a short label ("answered", "solved") —
+  // that is the feature the forum exists for: a question thread that tells
+  // you the answer at a glance. Writes are seat-checked like everything else.
+  const forumName = async (uid) => {
+    const { data } = await supabase.from('users').select('display_name').eq('id', uid).single();
+    return (data && data.display_name) || 'Unknown';
+  };
+  if (url.pathname === '/api/forums/threads' && req.method === 'GET') {
+    cors(res);
+    const sort = String(url.searchParams.get('sort') || 'active');
+    const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
+    let query = supabase.from('forum_threads')
+      .select('id, title, body, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url)')
+      .order('pinned', { ascending: false })
+      .limit(60);
+    if (q) query = query.or(`title.ilike.%${q.replace(/[%_\\]/g, '')}%,body.ilike.%${q.replace(/[%_\\]/g, '')}%`);
+    query = sort === 'new' ? query.order('created_at', { ascending: false }) : query.order('last_at', { ascending: false });
+    const { data, error } = await query;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      threads: (data || []).map((t) => ({ ...t, body: String(t.body || '').slice(0, 160) })),
+      error: error?.message
+    }));
+    return;
+  }
+  if (url.pathname === '/api/forums/threads' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    if (!rateLimit('fthread:' + user.id, 5, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Five threads an hour is plenty — slow down.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const title = String(body.title || '').trim().replace(/[\u0000-\u001f<>]/g, '').substring(0, 90);
+    const text = String(body.body || '').trim().substring(0, 5000);
+    if (title.length < 4) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Give the thread a title (at least 4 characters).' })); return; }
+    const { data, error } = await supabase.from('forum_threads').insert({ user_id: user.id, title, body: text }).select().single();
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ thread: data, error: error?.message }));
+    return;
+  }
+  const labelMatch = /^\/api\/forums\/threads\/([^/]+)\/comments\/([^/]+)\/label$/.exec(url.pathname);
+  if (labelMatch && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const [, tid, cid] = labelMatch;
+    if (!isUuid(tid) || !isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
+    const { data: th } = await supabase.from('forum_threads').select('user_id').eq('id', tid).single();
+    if (!th) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread not found.' })); return; }
+    // Labels belong to the thread's author — that is what makes them an
+    // answer rather than a popularity vote.
+    if (th.user_id !== user.id) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the thread author labels replies.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const label = String(body.label || '').replace(/[\u0000-\u001f<>]/g, '').trim().substring(0, 24);
+    const { data: upd } = await supabase.from('forum_comments').update({ label: label || null }).eq('id', cid).eq('thread_id', tid).select('id, label');
+    if (!(upd || []).length) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Reply not found.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, label: upd[0].label }));
+    return;
+  }
+  const threadMatch = /^\/api\/forums\/threads\/([^/]+)$/.exec(url.pathname);
+  if (threadMatch && req.method === 'GET') {
+    cors(res);
+    const tid = threadMatch[1];
+    if (!isUuid(tid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
+    const [{ data: thread }, { data: comments }] = await Promise.all([
+      supabase.from('forum_threads').select('id, title, body, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url)').eq('id', tid).single(),
+      supabase.from('forum_comments').select('id, user_id, display_name, text, label, created_at').eq('thread_id', tid).order('created_at', { ascending: true }).limit(500)
+    ]);
+    if (!thread) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread not found.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ thread, comments: comments || [] }));
+    return;
+  }
+  if (threadMatch && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const tid = threadMatch[1];
+    if (!isUuid(tid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
+    const { data: th } = await supabase.from('forum_threads').select('user_id').eq('id', tid).single();
+    if (!th) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread not found.' })); return; }
+    if (th.user_id !== user.id && !(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Only the author can delete a thread.' })); return; }
+    await supabase.from('forum_threads').delete().eq('id', tid);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  const replyMatch = /^\/api\/forums\/threads\/([^/]+)\/comments$/.exec(url.pathname);
+  if (replyMatch && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    if (!rateLimit('fcomment:' + user.id, 30, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Too many replies — slow down.' })); return; }
+    const tid = replyMatch[1];
+    if (!isUuid(tid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const text = String(body.text || '').trim().substring(0, 2000);
+    if (!text) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Write something first.' })); return; }
+    const { data: th } = await supabase.from('forum_threads').select('id, comment_count').eq('id', tid).single();
+    if (!th) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread not found.' })); return; }
+    const name = await forumName(user.id);
+    const { data, error } = await supabase.from('forum_comments').insert({ thread_id: tid, user_id: user.id, display_name: name, text }).select().single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
+    // Non-atomic on purpose: a lost increment is cosmetic here, and the reply
+    // itself is the thing that must not be lost.
+    await supabase.from('forum_threads').update({ comment_count: (th.comment_count || 0) + 1, last_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', tid);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ comment: data }));
+    return;
+  }
+  const commentDelMatch = /^\/api\/forums\/comments\/([^/]+)$/.exec(url.pathname);
+  if (commentDelMatch && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const cid = commentDelMatch[1];
+    if (!isUuid(cid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
+    const { data: c } = await supabase.from('forum_comments').select('id, user_id, thread_id').eq('id', cid).single();
+    if (!c) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Reply not found.' })); return; }
+    const { data: th } = await supabase.from('forum_threads').select('user_id, comment_count').eq('id', c.thread_id).single();
+    const owner = th && th.user_id === user.id;
+    if (c.user_id !== user.id && !owner && !(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not yours to delete.' })); return; }
+    await supabase.from('forum_comments').delete().eq('id', cid);
+    if (th) await supabase.from('forum_threads').update({ comment_count: Math.max(0, (th.comment_count || 1) - 1) }).eq('id', c.thread_id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 
@@ -3065,6 +3242,20 @@ const server = http.createServer(async (req, res) => {
     url.pathname = '/moderate.html';
   }
 
+  // ── Redirect /forums to /forums.html ───────────────────────────
+  if (url.pathname === '/forums') {
+    url.pathname = '/forums.html';
+  }
+  // Thread permalinks: /forums/<id> is the shareable thread link.
+  if (url.pathname.startsWith('/forums/')) {
+    url.pathname = '/forums.html';
+  }
+
+  // ── Redirect /kit to /kit.html ─────────────────────────────────
+  if (url.pathname === '/kit') {
+    url.pathname = '/kit.html';
+  }
+
   // ── /lobbies is gone: send everyone to chat ────────────────────
   if (url.pathname === '/lobbies') {
     res.writeHead(302, { Location: '/chat' });
@@ -3111,6 +3302,73 @@ const server = http.createServer(async (req, res) => {
   // ── Redirect /music to /music.html ───────────────────────────
   if (url.pathname === '/music') {
     url.pathname = '/music.html';
+  }
+
+  // ── /g/:id — the short shareable game link ────────────────────
+  // Link scrapers (Discord, Slack, iMessage, X) run no JavaScript, so the
+  // preview has to be real HTML served from here — /view is a static page and
+  // cannot vary its og tags per game. Humans get bounced to the player.
+  // /g/:id/thumb is the same bytes as the thumbnail endpoint, at a stable
+  // share-host URL (the Vercel rewrite proxies both paths to this server).
+  if (url.pathname.startsWith('/g/')) {
+    const parts = url.pathname.slice(3).split('/');
+    const gid = parts[0];
+    if (!isUuid(gid)) { res.writeHead(302, { Location: '/games' }); res.end(); return; }
+    const { data: g } = await supabase.from('games')
+      .select('id, title, description, thumbnail, published, users!games_owner_id_fkey(display_name)')
+      .eq('id', gid).single();
+    if (!g || !g.published) {
+      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end('<!DOCTYPE html><meta charset="utf-8"><title>Game not found — Cudic</title><body style="font-family:sans-serif;background:#141414;color:#fff;display:grid;place-items:center;height:100vh;margin:0"><p>That game is not on Cudic. <a href="/games" style="color:#FF8C1A">Browse the gallery</a>.</p></body>');
+      return;
+    }
+    const attr = (s) => escHtml(s).replace(/"/g, '&quot;');
+    if (parts[1] === 'thumb') {
+      const m = typeof g.thumbnail === 'string' ? /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i.exec(g.thumbnail) : null;
+      if (!m) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('No thumbnail'); return; }
+      const buf = Buffer.from(m[2], 'base64');
+      res.writeHead(200, { 'Content-Type': m[1], 'Content-Length': buf.length, 'Cache-Control': 'public, max-age=86400' });
+      res.end(buf);
+      return;
+    }
+    const host = String(req.headers.host || 'cudic.vercel.app');
+    const base = (/^(localhost|127\.)/.test(host) ? 'http://' : 'https://') + host;
+    const viewUrl = '/view?id=' + gid;
+    const title = String(g.title || 'Untitled');
+    const by = g.users && g.users.display_name ? ' by ' + g.users.display_name : '';
+    const desc = String(g.description || '').trim().slice(0, 180) ||
+      'Play ' + title + ' in your browser — built with Cudic Studio, free to fork and remix.';
+    const titleShort = title.slice(0, 70);
+    const img = g.thumbnail ? base + '/g/' + gid + '/thumb' : base + '/og.png';
+    const page = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+      + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>' + escHtml(titleShort) + ' — play on Cudic</title>'
+      + '<meta name="description" content="' + attr(desc) + '">'
+      + '<link rel="canonical" href="' + attr(base + '/g/' + gid) + '">'
+      + '<meta property="og:type" content="website">'
+      + '<meta property="og:site_name" content="Cudic">'
+      + '<meta property="og:url" content="' + attr(base + '/g/' + gid) + '">'
+      + '<meta property="og:title" content="' + attr(titleShort + ' — play on Cudic') + '">'
+      + '<meta property="og:description" content="' + attr(desc) + '">'
+      + '<meta property="og:image" content="' + attr(img) + '">'
+      + '<meta name="twitter:card" content="summary_large_image">'
+      + '<meta name="twitter:title" content="' + attr(titleShort + ' — play on Cudic') + '">'
+      + '<meta name="twitter:description" content="' + attr(desc) + '">'
+      + '<meta name="twitter:image" content="' + attr(img) + '">'
+      + '<script>location.replace(' + JSON.stringify(viewUrl) + ')</script>'
+      + '<noscript><meta http-equiv="refresh" content="0;url=' + attr(viewUrl) + '"></noscript>'
+      + '<style>body{font-family:system-ui,sans-serif;background:#141414;color:#fff;margin:0;display:grid;place-items:center;min-height:100vh}'
+      + 'main{text-align:center;padding:24px;max-width:420px}img{max-width:100%;border-radius:10px;border:1px solid #343434;margin-bottom:16px}'
+      + 'h1{font-size:1.3rem;margin:0 0 6px}p{color:#a6a6a6;font-size:.9rem;margin:0 0 18px}'
+      + 'a{display:inline-block;background:#FF8C1A;color:#141414;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:8px}</style>'
+      + '</head><body><main>'
+      + (g.thumbnail ? '<img src="/g/' + gid + '/thumb" alt="">' : '')
+      + '<h1>' + escHtml(title) + '</h1><p>' + escHtml(desc) + ' Opening the player…</p>'
+      + '<a href="' + attr(viewUrl) + '">Play ' + escHtml(titleShort) + by + '</a>'
+      + '</main></body></html>';
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=120' });
+    res.end(page);
+    return;
   }
 
   let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);

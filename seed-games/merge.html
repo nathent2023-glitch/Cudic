@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Merge</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FFF6E7;
+    --card: #FFFDF7;
+    --ink: #1B1712;
+    --muted: #6E6555;
+    --primary: #FF4E1A;
+    --gold: #FFC93C;
+    --mint: #5BD695;
+    --berry: #FF3B6B;
+    --sky: #6FB7FF;
+    --bw: min(92vw, 460px);
+    /* tile edge: board minus padding, gaps and borders */
+    --tile: calc((var(--bw) - 56px) / 4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    padding: 18px 12px 26px; }
+
+  .bar { width: var(--bw); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  h1 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.75rem; }
+
+  button { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1rem;
+    color: var(--ink); background: var(--card); border: 3px solid var(--ink); border-radius: 12px;
+    padding: 8px 16px; cursor: pointer; box-shadow: 4px 4px 0 var(--ink);
+    transition: transform 0.1s ease, box-shadow 0.1s ease; }
+  button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  button:active { transform: translate(3px, 3px); box-shadow: none; }
+  button:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+  button.primary { background: var(--primary); }
+
+  .hud { width: var(--bw); display: flex; gap: 12px; margin: 16px 0 12px; }
+  .plate { flex: 1; display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    background: var(--card); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink); padding: 6px 12px; }
+  .plate span { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+  .plate b { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.4rem;
+    font-variant-numeric: tabular-nums; }
+
+  .stage { position: relative; width: var(--bw); }
+  .board { width: var(--bw); aspect-ratio: 1; display: grid;
+    grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(4, 1fr); gap: 10px;
+    padding: 10px; background: var(--card); border: 3px solid var(--ink); border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--ink); touch-action: none; }
+
+  .tile { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: var(--paper); color: var(--ink); user-select: none;
+    -webkit-user-select: none; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; }
+  .tile.on { border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
+    font-size: calc(var(--tile) * 0.44); }
+  .tile.f3 { font-size: calc(var(--tile) * 0.34); }
+  .tile.f4 { font-size: calc(var(--tile) * 0.27); }
+  .tile.f5 { font-size: calc(var(--tile) * 0.21); }
+  /* tier fills: card, gold, primary, mint, sky, berry — ink text on all of them */
+  .t2, .t4 { background: var(--card); }
+  .t8, .t16 { background: var(--gold); }
+  .t32, .t64 { background: var(--primary); }
+  .t128, .t256 { background: var(--mint); }
+  .t512, .t1024 { background: var(--sky); }
+  .t2048 { background: var(--berry); }
+
+  @keyframes pop { from { transform: scale(0.35); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes bump { 0% { transform: scale(1); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
+  .tile.pop { animation: pop 0.16s ease-out both; }
+  .tile.bump { animation: bump 0.12s ease-out both; }
+
+  .banner { position: absolute; left: 50%; top: 14px; transform: translate(-50%, -8px); opacity: 0;
+    pointer-events: none; background: var(--gold); border: 3px solid var(--ink); border-radius: 12px;
+    box-shadow: 4px 4px 0 var(--ink); padding: 8px 14px; font-family: 'Baloo 2', system-ui, sans-serif;
+    font-weight: 800; text-align: center; transition: opacity 0.25s ease, transform 0.25s ease; }
+  .banner.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .over { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    padding: 16px; }
+  .over.show { display: flex; }
+  .overcard { background: var(--paper); border: 3px solid var(--ink); border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--ink); padding: 20px 24px; text-align: center;
+    display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .overcard h2 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.4rem; }
+  .overcard p { color: var(--muted); font-size: 0.9rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile.pop, .tile.bump { animation: none; }
+    button, .banner { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h1>Merge</h1>
+    <button id="newBtn">New game</button>
+  </div>
+
+  <div class="hud">
+    <div class="plate"><span>Score</span><b id="score">0</b></div>
+    <div class="plate"><span>Best</span><b id="best">0</b></div>
+  </div>
+
+  <div class="stage">
+    <div class="board" id="board"></div>
+    <div class="banner" id="banner">You made 2048 — keep going?</div>
+    <div class="over" id="over">
+      <div class="overcard">
+        <h2>No moves left.</h2>
+        <p id="overLine">Score 0 · Best 0</p>
+        <button class="primary" id="againBtn">New game</button>
+      </div>
+    </div>
+  </div>
+
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+
+  var SIZE = 4, N = 16, SWIPE = 30;
+  var state = { best: 0, score: 0, board: null, over: false };
+  var shown2048 = false;
+
+  var boardEl = document.getElementById('board');
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var overEl = document.getElementById('over');
+  var overLine = document.getElementById('overLine');
+  var bannerEl = document.getElementById('banner');
+
+  var CS = window.CudicSave || null;
+
+  function blank() { var b = [], i; for (i = 0; i < N; i++) b.push(0); return b; }
+
+  function persist() {
+    if (CS) { CS.save({ best: state.best, score: state.score, board: state.board, over: state.over }); return; }
+    try { localStorage.setItem('cudic-merge-best', String(state.best)); } catch (e) {}
+  }
+
+  /* index groups for each direction: rows left/right, columns up/down */
+  var LINES = { left: [], right: [], up: [], down: [] };
+  (function () {
+    var r, c, row, col;
+    for (r = 0; r < SIZE; r++) {
+      row = []; col = [];
+      for (c = 0; c < SIZE; c++) { row.push(r * SIZE + c); col.push(c * SIZE + r); }
+      LINES.left.push(row);
+      LINES.right.push(row.slice().reverse());
+      LINES.up.push(col);
+      LINES.down.push(col.slice().reverse());
+    }
+  })();
+
+  /* one line in travel order: push to the wall, then merge equal pairs once each */
+  function collapse(vals) {
+    var i, t = [], out = [], pos = [], gain = 0;
+    for (i = 0; i < SIZE; i++) { if (vals[i]) t.push(vals[i]); }
+    for (i = 0; i < t.length; i++) {
+      if (i + 1 < t.length && t[i] === t[i + 1]) {
+        gain += t[i] * 2;
+        pos.push(out.length);   /* where on this line the merged tile lands */
+        out.push(t[i] * 2);
+        i++;
+      } else { out.push(t[i]); }
+    }
+    while (out.length < SIZE) out.push(0);
+    return { out: out, pos: pos, gain: gain };
+  }
+
+  function canMove() {
+    var i, col, row;
+    for (i = 0; i < N; i++) {
+      if (!state.board[i]) return true;
+      col = i % SIZE; row = (i / SIZE) | 0;
+      if (col < SIZE - 1 && state.board[i] === state.board[i + 1]) return true;
+      if (row < SIZE - 1 && state.board[i] === state.board[i + SIZE]) return true;
+    }
+    return false;
+  }
+
+  function spawn() {
+    var empty = [], i;
+    for (i = 0; i < N; i++) { if (!state.board[i]) empty.push(i); }
+    if (!empty.length) return -1;
+    i = empty[(Math.random() * empty.length) | 0];
+    state.board[i] = Math.random() < 0.9 ? 2 : 4;
+    return i;
+  }
+
+  function paint(anim) {
+    anim = anim || {};
+    var pop = anim.pop || [], bump = anim.bump || [], html = '', i, v, cls;
+    for (i = 0; i < N; i++) {
+      v = state.board[i];
+      cls = 'tile';
+      if (v) {
+        cls += ' on t' + (v >= 2048 ? 2048 : v) + ' f' + String(v).length;
+        if (pop.indexOf(i) >= 0) cls += ' pop';
+        if (bump.indexOf(i) >= 0) cls += ' bump';
+        html += '<div class="' + cls + '">' + v + '</div>';
+      } else {
+        html += '<div class="' + cls + '"></div>';
+      }
+    }
+    boardEl.innerHTML = html;
+    scoreEl.textContent = state.score;
+    bestEl.textContent = state.best;
+  }
+
+  function celebrate() {
+    shown2048 = true;
+    bannerEl.classList.add('show');
+    setTimeout(function () { bannerEl.classList.remove('show'); }, 3000);
+  }
+
+  function move(dir) {
+    if (state.over || !state.board) return;
+    var before = state.board.join(','), bumps = [], gain = 0, l, k, line, vals, res;
+    for (l = 0; l < SIZE; l++) {
+      line = LINES[dir][l];
+      vals = [];
+      for (k = 0; k < SIZE; k++) { vals.push(state.board[line[k]]); }
+      res = collapse(vals);
+      gain += res.gain;
+      for (k = 0; k < SIZE; k++) {
+        state.board[line[k]] = res.out[k];
+        if (res.pos.indexOf(k) >= 0) bumps.push(line[k]);
+      }
+    }
+    if (state.board.join(',') === before) return;   /* nothing slid: not a move */
+    state.score += gain;
+    if (state.score > state.best) state.best = state.score;
+    var popped = spawn();
+    paint({ pop: [popped], bump: bumps });
+    if (!shown2048 && state.board.indexOf(2048) >= 0) celebrate();
+    if (!canMove()) {
+      state.over = true;
+      overLine.textContent = 'Score ' + state.score + ' · Best ' + state.best;
+      overEl.classList.add('show');
+    }
+    persist();
+  }
+
+  function newGame() {
+    state.board = blank();
+    state.score = 0;
+    state.over = false;
+    overEl.classList.remove('show');
+    paint({ pop: [spawn(), spawn()] });
+    persist();
+  }
+
+  function boot(d) {
+    if (d) {
+      if (typeof d.best === 'number') state.best = d.best;
+      /* resume only a live board — a finished game starts fresh */
+      if (d.board && d.board.length === N && !d.over) {
+        state.board = d.board.slice();
+        state.score = d.score || 0;
+      }
+    } else {
+      try { state.best = parseInt(localStorage.getItem('cudic-merge-best'), 10) || 0; } catch (e) {}
+    }
+    if (state.score > state.best) state.best = state.score;
+    if (state.board) { paint(); } else { newGame(); }
+  }
+
+  if (CS) {
+    CS.load({ legacyKey: 'cudic-merge-best', legacyMap: function (raw) { return { best: parseInt(raw, 10) || 0 }; } })
+      .then(boot)
+      .catch(function () { boot(null); });
+  } else {
+    boot(null);
+  }
+
+  /* ── Controls ─────────────────────────────────────────────────── */
+  var KEYS = { arrowleft: 'left', arrowright: 'right', arrowup: 'up', arrowdown: 'down',
+               a: 'left', d: 'right', w: 'up', s: 'down' };
+  document.addEventListener('keydown', function (e) {
+    var dir = KEYS[(e.key || '').toLowerCase()];
+    if (!dir) return;
+    e.preventDefault();
+    move(dir);
+  });
+
+  var tracking = false, sx = 0, sy = 0;
+  boardEl.addEventListener('pointerdown', function (e) { tracking = true; sx = e.clientX; sy = e.clientY; });
+  boardEl.addEventListener('pointerup', function (e) {
+    if (!tracking) return;
+    tracking = false;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  });
+  boardEl.addEventListener('pointercancel', function () { tracking = false; });
+
+  document.getElementById('newBtn').addEventListener('click', newGame);
+  document.getElementById('againBtn').addEventListener('click', newGame);
+})();
+</script>
+</body>
+</html>

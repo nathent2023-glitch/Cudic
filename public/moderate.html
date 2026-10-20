@@ -48,6 +48,8 @@
           <option value="pack">Packs</option>
           <option value="message">Messages</option>
           <option value="user">Users</option>
+          <option value="thread">Forum threads</option>
+          <option value="comment">Forum replies</option>
         </select>
         <button class="btn btn-secondary" id="fGo" style="padding:8px 16px;font-size:0.82rem">Refresh</button>
       </div>
@@ -57,7 +59,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=14"></script>
+  <script src="/sidebar.js?v=15"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
@@ -85,6 +87,7 @@
           + '<button class="btn btn-primary" data-act="actioned">Mark actioned</button>';
         if (r.content_type === 'game' || r.content_type === 'pack') acts += '<button class="btn btn-secondary danger" data-act="unpublish">Unpublish</button>';
         if (r.content_type === 'message') acts += '<button class="btn btn-secondary danger" data-act="delete_message">Delete message</button>';
+        if (r.content_type === 'thread' || r.content_type === 'comment') acts += '<button class="btn btn-secondary danger" data-act="delete_post">Delete post</button>';
         return '<div class="rep-card" data-rid="' + r.id + '">'
           + '<div class="rep-top"><span class="rep-kind">' + esc(r.content_type) + '</span>'
           + '<span class="rep-prev">' + esc(r.preview || '(content gone)') + '</span></div>'
@@ -98,7 +101,7 @@
     }
     async function act(rid, action, btn) {
       var m = document.getElementById('modMsg');
-      if ((action === 'unpublish' || action === 'delete_message') && !window.confirm('This changes or deletes user content. Continue?')) return;
+      if ((action === 'unpublish' || action === 'delete_message' || action === 'delete_post') && !window.confirm('This changes or deletes user content. Continue?')) return;
       btn.disabled = true;
       try {
         var r = await fetch(apiHost() + '/api/reports/' + encodeURIComponent(rid) + '/action', {

@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bop — tap to the beat</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FFF6E7; --card:#FFFDF7; --ink:#1B1712; --muted:#6E6555;
+  --prim:#FF4E1A; --gold:#FFC93C; --mint:#5BD695; --berry:#FF3B6B; --sky:#6FB7FF;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--paper); color:var(--ink); font-family:system-ui,sans-serif;
+  font-size:16px; line-height:1.5; padding:22px 16px 28px; min-height:100vh;
+  display:flex; flex-direction:column; justify-content:center;
+  -webkit-text-size-adjust:100%; -webkit-tap-highlight-color:transparent;
+}
+.wrap{width:100%; max-width:900px; margin:0 auto}
+.bar{display:flex; align-items:center; justify-content:space-between; gap:12px}
+h1{font-family:'Baloo 2',system-ui,sans-serif; font-weight:800; line-height:1;
+  font-size:clamp(30px,6vw,44px); margin:0; text-shadow:3px 3px 0 var(--gold)}
+.hud{display:flex; flex-wrap:wrap; gap:10px; margin:16px 0 14px}
+.plate{flex:1 1 110px; min-width:0; background:var(--card); border:3px solid var(--ink);
+  border-radius:12px; box-shadow:4px 4px 0 var(--ink); padding:7px 12px 9px;
+  display:flex; flex-direction:column; gap:2px}
+.lab{font-family:'Baloo 2',system-ui,sans-serif; font-weight:700; font-size:13px; color:var(--muted)}
+.val{font-family:'Baloo 2',system-ui,sans-serif; font-weight:800; font-size:26px; line-height:1}
+.row{display:flex; align-items:center; gap:8px}
+.chip{font-family:'Baloo 2',system-ui,sans-serif; font-weight:800; font-size:14px;
+  background:var(--gold); border:3px solid var(--ink); border-radius:8px; padding:0 6px}
+.sub{font-size:12px; color:var(--muted)}
+.lives{display:flex; gap:6px; padding-top:5px}
+.lives i{width:20px; height:20px; background:var(--berry); border:3px solid var(--ink); border-radius:6px}
+.lives i.off{background:var(--muted)}
+.stage{position:relative}
+canvas{display:block; width:100%; height:clamp(124px,22vw,190px); background:var(--card);
+  border:3px solid var(--ink); border-radius:14px; box-shadow:4px 4px 0 var(--ink);
+  touch-action:none; cursor:pointer}
+button{font-family:'Baloo 2',system-ui,sans-serif; font-weight:800; font-size:18px;
+  color:var(--ink); background:var(--prim); border:3px solid var(--ink); border-radius:12px;
+  padding:9px 22px; box-shadow:4px 4px 0 var(--ink); cursor:pointer;
+  transition:transform .08s ease, box-shadow .08s ease; touch-action:manipulation}
+button:hover{transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink)}
+button:active{transform:translate(3px,3px); box-shadow:none}
+button:focus-visible{outline:3px solid var(--sky); outline-offset:3px}
+.mini{font-size:15px; padding:6px 14px; background:var(--card); border-radius:10px; box-shadow:3px 3px 0 var(--ink)}
+.mini:hover{box-shadow:5px 5px 0 var(--ink)}
+.over{position:absolute; inset:0; background:var(--card); border:3px solid var(--ink);
+  border-radius:14px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:12px; text-align:center; padding:16px}
+.over.hide{display:none}
+.over h2{font-family:'Baloo 2',system-ui,sans-serif; font-weight:800; margin:0;
+  font-size:clamp(21px,4.2vw,30px); line-height:1.15}
+.over h2.big{font-size:clamp(34px,7vw,52px); text-shadow:3px 3px 0 var(--gold)}
+.over p{margin:0; max-width:36ch; color:var(--ink)}
+.stamps{position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:12px}
+.stamp{position:absolute; left:62%; top:50%; font-family:'Baloo 2',system-ui,sans-serif;
+  font-weight:800; font-size:clamp(19px,3.2vw,28px); color:var(--ink); padding:3px 13px;
+  border:3px solid var(--ink); border-radius:12px; box-shadow:4px 4px 0 var(--ink);
+  white-space:nowrap; opacity:0; animation:pop .46s ease-out forwards}
+.stamp.fast{left:50%; top:22%}
+@keyframes pop{
+  0%{transform:rotate(-4deg) translate(-50%,-50%) scale(.45); opacity:0}
+  22%{transform:rotate(-4deg) translate(-50%,-50%) scale(1.12); opacity:1}
+  68%{transform:rotate(-4deg) translate(-50%,-50%) scale(1); opacity:1}
+  100%{transform:rotate(-4deg) translate(-50%,-50%) scale(1); opacity:0}
+}
+@media (prefers-reduced-motion: reduce){
+  button{transition:none}
+  .stamp{animation-duration:.01s}
+}
+@media (max-width:520px){
+  .val{font-size:22px}
+  .plate{flex:1 1 46%}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="bar">
+    <h1>Bop</h1>
+    <button id="snd" class="mini" type="button" aria-pressed="true">Sound on</button>
+  </div>
+  <div class="hud">
+    <div class="plate"><span class="lab">Score</span><span class="row"><span class="val" id="score">0</span><span class="chip" id="mult">&times;1</span></span></div>
+    <div class="plate"><span class="lab">Combo</span><span class="val" id="combo">0</span></div>
+    <div class="plate"><span class="lab">BPM</span><span class="val" id="bpm">90</span><span class="sub" id="bar">bar 1</span></div>
+    <div class="plate"><span class="lab">Lives</span><span class="lives" id="lives"><i></i><i></i><i></i></span></div>
+  </div>
+  <div class="stage">
+    <canvas id="lane" aria-label="Beat lane"></canvas>
+    <div class="stamps" id="stamps"></div>
+    <div class="over" id="ovStart">
+      <h2 class="big">Bop</h2>
+      <button id="startBtn" type="button">Start</button>
+    </div>
+    <div class="over hide" id="ovEnd">
+      <h2 id="endLine">0 points · best combo 0</h2>
+      <p id="bestLine">Best 0</p>
+      <button id="againBtn" type="button">Play again</button>
+    </div>
+  </div>
+</main>
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var cv = $('lane'), g = cv.getContext('2d');
+  var elScore = $('score'), elMult = $('mult'), elCombo = $('combo'), elBpm = $('bpm'),
+      elBar = $('bar'), elLives = $('lives'), box = $('stamps');
+  var ovStart = $('ovStart'), ovEnd = $('ovEnd'), endLine = $('endLine'),
+      bestLine = $('bestLine'), sndBtn = $('snd');
+
+  var INK = '#1B1712', MUTED = '#6E6555', GOLD = '#FFC93C', MINT = '#5BD695',
+      BERRY = '#FF3B6B', SKY = '#6FB7FF', PRIM = '#FF4E1A';
+
+  var TRAVEL = 3;                    // beats a square takes to cross the lane
+  var PERFECT = 0.07, GOOD = 0.13, MAXLIVES = 3, BASE = 90, STEP = 8, MUTE_GAIN = 0.4;
+
+  // ---- saves
+  var best = 0, bestCombo = 0, mute = false, CS = window.CudicSave || null;
+  CS && CS.load({ legacyKey: 'cudic-bop-best', legacyMap: function (raw) { return { best: parseInt(raw, 10) || 0 }; } })
+    .then(function (d) {
+      if (d && typeof d.best === 'number' && d.best > best) { best = d.best; paint(); }
+      if (d && typeof d.combo === 'number' && d.combo > bestCombo) { bestCombo = d.combo; paint(); }
+      if (d && typeof d.mute === 'boolean') { mute = d.mute; sound(); }
+    })
+    .catch(function () {});
+  function saveBest() {
+    if (CS) { CS.save({ best: best, combo: bestCombo, mute: mute }); return; }
+    try { localStorage.setItem('cudic-bop-best', String(best)); } catch (e) {}
+  }
+
+  // ---- state
+  var actx = null, master = null, hatBuf = null, timer = null;
+  var state = 'idle';                            // idle | play | over
+  var beats = [], first = 0, sndIdx = 0, marks = [];
+  var nextIdx = 0, nextT = 0, lastDur = 60 / BASE;
+  var score = 0, combo = 0, mult = 1, lives = MAXLIVES, bpmShown = BASE, barShown = 1;
+  var W = 0, H = 0, lineX = 0;
+
+  // ---- clock: sounds and squares both read this, so they can never drift apart
+  function clock() { return actx ? actx.currentTime : performance.now() / 1000; }
+  function heard() {  // what is leaving the speaker right now
+    var l = actx ? (actx.outputLatency || actx.baseLatency || 0) : 0;
+    return clock() - l;
+  }
+
+  // ---- audio (created on the first gesture, browsers block it otherwise)
+  function ensureAudio() {
+    if (actx) { if (actx.state === 'suspended') actx.resume(); return; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { mute = true; sound(); return; }
+    actx = new AC();
+    master = actx.createGain();
+    master.gain.value = mute ? 0 : MUTE_GAIN;
+    master.connect(actx.destination);
+    var n = Math.floor(actx.sampleRate * 0.05), buf = actx.createBuffer(1, n, actx.sampleRate),
+        d = buf.getChannelData(0), i;
+    for (i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    hatBuf = buf;
+    if (actx.state === 'suspended') actx.resume();
+  }
+  function kick(t) {
+    if (!actx) return;
+    var o = actx.createOscillator(), gn = actx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(50, t + 0.13);
+    gn.gain.setValueAtTime(0.9, t);
+    gn.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    o.connect(gn); gn.connect(master);
+    o.start(t); o.stop(t + 0.26);
+  }
+  function hat(t) {
+    if (!actx) return;
+    var s = actx.createBufferSource(), f = actx.createBiquadFilter(), gn = actx.createGain();
+    s.buffer = hatBuf;
+    f.type = 'highpass'; f.frequency.value = 6500;
+    gn.gain.setValueAtTime(0.2, t);
+    gn.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    s.connect(f); f.connect(gn); gn.connect(master);
+    s.start(t); s.stop(t + 0.06);
+  }
+  function buzz(t) {
+    if (!actx) return;
+    var o = actx.createOscillator(), gn = actx.createGain();
+    o.type = 'square'; o.frequency.value = 110;
+    gn.gain.setValueAtTime(0.16, t);
+    gn.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    o.connect(gn); gn.connect(master);
+    o.start(t); o.stop(t + 0.16);
+  }
+  function sound() {
+    if (master) master.gain.value = mute ? 0 : MUTE_GAIN;
+    sndBtn.textContent = mute ? 'Sound off' : 'Sound on';
+    sndBtn.setAttribute('aria-pressed', mute ? 'false' : 'true');
+  }
+
+  // ---- beat train: one beat per hat, kick on 1 and 3; tempo steps up every 8 bars
+  function pushBeat() {
+    var idx = nextIdx++, bar = (idx / 4) | 0, inBar = idx & 3,
+        bpm = BASE + STEP * ((bar / 8) | 0), dur = 60 / bpm, t = nextT;
+    nextT += dur; lastDur = dur;
+    beats.push({ t: t, dur: dur, j: 0, k: inBar === 0 || inBar === 2 });
+    if (inBar === 0) marks.push({ t: t, bpm: bpm, bar: bar, fast: bar > 0 && bar % 8 === 0 });
+  }
+  function pump() {
+    if (state !== 'play') return;
+    var nowA = clock();
+    while (nextT < nowA + TRAVEL * lastDur + 0.3) pushBeat();   // squares known well before they arrive
+    while (sndIdx < beats.length && beats[sndIdx].t < nowA + 0.15) {   // lookahead
+      var b = beats[sndIdx++];
+      hat(b.t);
+      if (b.k) kick(b.t);
+    }
+  }
+
+  // ---- judgement
+  function doTap() {
+    if (state !== 'play') return;
+    var vt = heard(), i, b, d, bi = -1, bd = 1e9;
+    for (i = first; i < beats.length; i++) {
+      b = beats[i];
+      if (b.j || b.t < vt - GOOD) continue;
+      d = Math.abs(b.t - vt);
+      if (d < bd) { bd = d; bi = i; }
+    }
+    if (bi >= 0 && bd <= GOOD) {
+      beats[bi].j = 1;
+      hit(bd <= PERFECT ? 2 : 1);
+    } else { miss(); }
+  }
+  function hit(kind) {
+    combo++;
+    if (combo > bestCombo) bestCombo = combo;
+    mult = Math.min(5, 1 + ((combo / 8) | 0));
+    score += (kind === 2 ? 100 : 50) * mult;
+    stamp(kind === 2 ? 'PERFECT' : 'GOOD', kind === 2 ? GOLD : SKY, false);
+    paint();
+  }
+  function miss() {
+    combo = 0; mult = 1; lives--;
+    buzz(clock() + 0.02);
+    stamp('MISS', BERRY, false);
+    paint();
+    if (lives <= 0) over();
+  }
+  function over() {
+    state = 'over';
+    if (timer) { clearInterval(timer); timer = null; }
+    if (score > best) best = score;
+    saveBest();
+    endLine.textContent = score + ' points · best combo ' + bestCombo;
+    bestLine.textContent = 'Best ' + best;
+    ovEnd.classList.remove('hide');
+  }
+  function stamp(text, color, fast) {
+    var el = document.createElement('div');
+    el.className = fast ? 'stamp fast' : 'stamp';
+    el.textContent = text;
+    el.style.background = color;
+    box.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 470);
+  }
+  function paint() {
+    elScore.textContent = score;
+    elMult.textContent = '\u00d7' + mult;
+    elCombo.textContent = combo;
+    elBpm.textContent = bpmShown;
+    elBar.textContent = 'bar ' + barShown;
+    for (var i = 0; i < elLives.children.length; i++)
+      elLives.children[i].className = i < lives ? '' : 'off';
+  }
+
+  // ---- run control
+  function start() {
+    ensureAudio();
+    if (timer) clearInterval(timer);
+    state = 'play';
+    score = 0; combo = 0; mult = 1; lives = MAXLIVES; bpmShown = BASE; barShown = 1;
+    beats.length = 0; first = 0; sndIdx = 0; marks.length = 0;
+    nextIdx = 0; lastDur = 60 / BASE;
+    nextT = clock() + 1;                 // one second of quiet before the first beat
+    ovStart.classList.add('hide');
+    ovEnd.classList.add('hide');
+    paint();
+    pump();
+    timer = setInterval(pump, 25);
+  }
+  function btn(el, fn) {
+    el.addEventListener('click', function (e) {
+      fn();
+      if (e.detail > 0) el.blur();       // pointer users: leave Space free for tapping
+    });
+  }
+  btn($('startBtn'), start);
+  btn($('againBtn'), start);
+  btn(sndBtn, function () { mute = !mute; sound(); saveBest(); });
+
+  cv.addEventListener('pointerdown', function (e) { e.preventDefault(); doTap(); });
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'Spacebar') return;
+    var t = e.target;
+    if (t && t.tagName === 'BUTTON') return;                 // let the button do its thing
+    e.preventDefault();
+    if (state === 'play') doTap();
+    else if (state === 'idle') start();
+  });
+  // rAF stops in a hidden tab while the audio clock keeps running, so end the run there
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && state === 'play') over();
+  });
+
+  // ---- drawing
+  function size() {
+    var w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(w * dpr));
+    cv.height = Math.max(1, Math.round(h * dpr));
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    W = w; H = h; lineX = Math.round(w * 0.78);
+  }
+  function rr(x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+  function mx(b, vt) { return lineX - (b.t - vt) * lineX / (TRAVEL * b.dur); }
+  function draw(vt) {
+    if (!W) return;
+    var cy = H / 2, i, b, x, sp = lineX / TRAVEL;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = INK;
+    g.fillRect(0, cy - 2, W, 4);                                   // rail
+    g.fillStyle = MUTED;                                           // beat ticks (fixed grid)
+    for (x = sp; x < lineX - 10; x += sp) g.fillRect(x - 1.5, cy - 14, 3, 28);
+    g.fillRect(lineX - 2, 0, 4, H);                                // judgement line
+    g.fillStyle = GOLD; g.strokeStyle = INK; g.lineWidth = 3;
+    rr(lineX - 20, cy - 20, 40, 40, 9); g.fill(); g.stroke();      // target plate
+    while (first < beats.length && mx(beats[first], vt) > W + 40) first++;
+    for (i = first; i < beats.length; i++) {
+      b = beats[i];
+      x = mx(b, vt);
+      if (x < -26) continue;
+      g.fillStyle = b.j === 1 ? MINT : (b.j === 2 ? BERRY : PRIM);
+      rr(x - 11, cy - 11, 22, 22, 6); g.fill(); g.stroke();
+    }
+  }
+  function frame() {
+    requestAnimationFrame(frame);
+    var vt = heard();
+    if (state === 'play') {
+      while (marks.length && vt >= marks[0].t) {       // tempo/bar readout follows the same clock
+        var m = marks.shift();
+        bpmShown = m.bpm; barShown = m.bar + 1;
+        if (m.fast) stamp('faster!', GOLD, true);
+        paint();
+      }
+      for (var i = first; i < beats.length; i++) {
+        if (!beats[i].j && beats[i].t < vt - GOOD) {
+          beats[i].j = 2;
+          miss();
+          if (state !== 'play') break;
+        }
+      }
+    }
+    draw(vt);
+  }
+
+  size();
+  window.addEventListener('resize', size);
+  paint();
+  sound();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

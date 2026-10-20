@@ -1,0 +1,13 @@
+{
+  "note": "One prompt per week. The gallery picks prompts[isoWeek % length], so edit the list freely — add, remove, reorder — it keeps rotating on its own.",
+  "prompts": [
+    { "text": "Build a game you can finish in one sitting.", "hint": "One screen, one rule, sixty seconds." },
+    { "text": "Make a game with only one button.", "hint": "Tap or Space. Everything else is the design." },
+    { "text": "Put a paper game on a screen.", "hint": "Dots and boxes, sprouts, hangman — anything pen and paper." },
+    { "text": "Make something two people can play on one keyboard.", "hint": "Pass-and-play counts. CudicMulti works too." },
+    { "text": "Build a game that ends with a score and a reason to try again.", "hint": "Save the best run with CudicSave." },
+    { "text": "Take a classic and make it shorter.", "hint": "Any classic — but the whole game has to fit in a minute." },
+    { "text": "Make a game about waiting.", "hint": "A timer, a queue, a slow thing — a mechanic you don't usually play." },
+    { "text": "Build a game with no words in it.", "hint": "Colour, icons, motion. Explain it by letting people play." }
+  ]
+}

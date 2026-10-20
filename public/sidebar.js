@@ -72,6 +72,7 @@
   var icons={
     home:'<svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>',
     chat:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4V5Z"/></svg>',
+    forum:'<svg viewBox="0 0 24 24"><path d="M3 5h11v8H7l-4 3V5Z"/><path d="M10 10h11v7l-3-3h-5"/>',
     games:'<svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="9" rx="3"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 14h.01"/></svg>',
     editor:'<svg viewBox="0 0 24 24"><path d="M14 4 20 10 8 22H4v-4L16 6Z"/></svg>',
     cube:'<svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>'
@@ -132,6 +133,7 @@
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
+      +sbItem('/forums','forums','forum','Forums')
       +sbItem('/themes','themes','palette','Themes')
       +'<div id="serversSection" style="margin-top:16px">'
         +'<div class="nav-section-label" style="display:flex;align-items:center;justify-content:space-between">Your servers <span id="serverCount" style="font-size:0.7rem;color:var(--text-tertiary)">0/50</span></div>'

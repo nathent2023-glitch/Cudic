@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #FFF6E7; --card: #FFFDF7; --ink: #1B1712; --muted: #6E6555;
+    --primary: #FF4E1A; --gold: #FFC93C; --mint: #5BD695; --berry: #FF3B6B; --sky: #6FB7FF;
+  }
+  body {
+    background: var(--paper); color: var(--ink); font-family: system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+    padding: 16px 12px 24px; -webkit-tap-highlight-color: transparent;
+  }
+  .frame { width: min(94vw, 500px, 52vh); }
+  .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  h1 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.7rem; line-height: 1; }
+  button {
+    font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1rem; color: var(--ink);
+    background: var(--card); border: 3px solid var(--ink); border-radius: 12px;
+    padding: 8px 16px; box-shadow: 4px 4px 0 var(--ink); cursor: pointer; transition: .12s;
+  }
+  button:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  button:active { transform: translate(3px, 3px); box-shadow: none; }
+  button:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+  #snd { font-size: .85rem; padding: 6px 10px; border-radius: 10px; }
+  #snd[aria-pressed="true"] { background: var(--mint); }
+  .chips { display: flex; gap: 8px; margin-bottom: 12px; }
+  .chip { font-size: .85rem; color: var(--muted); background: var(--card); border: 3px solid var(--ink);
+    border-radius: 10px; padding: 4px 10px; box-shadow: 4px 4px 0 var(--ink); }
+  .chip b { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.05rem;
+    color: var(--ink); margin-left: 2px; }
+  .stage { position: relative; overflow: hidden; background: var(--paper); border: 3px solid var(--ink);
+    border-radius: 16px; box-shadow: 6px 6px 0 var(--ink); }
+  canvas { display: block; width: 100%; aspect-ratio: 520 / 650; touch-action: none; }
+  #over { position: absolute; inset: 12px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 8px; text-align: center; padding: 20px; background: var(--paper);
+    border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); }
+  #over[hidden] { display: none; }
+  #fell { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.5rem; }
+  #bestline { color: var(--muted); }
+  #again { background: var(--primary); margin-top: 6px; }
+  @media (prefers-reduced-motion: no-preference) {
+    #over:not([hidden]) { animation: pop .16s ease-out; }
+    @keyframes pop { from { transform: scale(.94); } }
+  }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="bar">
+    <h1>Stack</h1>
+    <button id="snd" type="button" aria-pressed="true">Sound on</button>
+  </div>
+  <div class="chips">
+    <span class="chip">Height <b id="hgt">0</b></span>
+    <span class="chip">Best <b id="bst">0</b></span>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="Stack board"></canvas>
+    <div id="over" hidden>
+      <p id="fell">Tower fell at 0.</p>
+      <p id="bestline">Best 0.</p>
+      <button id="again" type="button">Stack again</button>
+    </div>
+  </div>
+</div>
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+  // fixed world, scaled to the canvas so speed feels the same on phone and desktop
+  var W = 520, H = 650, SH = 34, BASE_W = 200, BASE_Y = H - 70;
+  var SP0 = 2.6, SP_STEP = 0.06, SP_MAX = 7, PERFECT = 5;
+  var COLORS = ['#FF4E1A', '#FFC93C', '#5BD695', '#6FB7FF'];
+  var INK = '#1B1712', PAPER = '#FFF6E7', DOT = '#EADFC8', GOLD = '#FFC93C';
+  var FONT = "'Baloo 2', system-ui, sans-serif";
+
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var hgtEl = document.getElementById('hgt'), bstEl = document.getElementById('bst');
+  var over = document.getElementById('over'), fellEl = document.getElementById('fell');
+  var bestlineEl = document.getElementById('bestline');
+  var sndBtn = document.getElementById('snd'), againBtn = document.getElementById('again');
+
+  var slabs, mover, fallen, stamp, height = 0, best = 0, mute = false, combo = 0;
+  var state = 'play', camY = 0, sc = 1, ac = null, last = 0;
+
+  var CS = window.CudicSave || null;
+  CS && CS.load({ legacyKey: 'cudic-stack-best', legacyMap: function (raw) { return { best: parseInt(raw, 10) || 0 }; } })
+    .then(function (d) {
+      if (!d) return;
+      if (typeof d.best === 'number' && d.best > best) { best = d.best; paint(); }
+      if (typeof d.mute === 'boolean') { mute = d.mute; paintSound(); }
+    })
+    .catch(function () {});
+  function saveBest() {
+    if (CS) { CS.save({ best: best, mute: mute }); return; }
+    try { localStorage.setItem('cudic-stack-best', String(best)); } catch (e) {}
+  }
+  try { best = parseInt(localStorage.getItem('cudic-stack-best') || '0', 10) || 0; } catch (e) { best = 0; }
+
+  function paint() { hgtEl.textContent = height; bstEl.textContent = best; }
+  function paintSound() {
+    sndBtn.textContent = mute ? 'Sound off' : 'Sound on';
+    sndBtn.setAttribute('aria-pressed', mute ? 'false' : 'true');
+  }
+
+  // --- sound (oscillators only, created after a gesture) ---
+  function audioInit() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; } }
+    if (ac && ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }
+  }
+  function beep(freq, dur, type, vol) {
+    if (mute || !ac) return;
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + dur);
+  }
+
+  function spawn() {
+    var w = slabs[slabs.length - 1].w;
+    var sp = Math.min(SP_MAX, SP0 + SP_STEP * (slabs.length - 1));
+    var dir = slabs.length % 2 ? 1 : -1;   // alternate entry side
+    mover = { x: dir > 0 ? 0 : W - w, w: w, dir: dir, sp: sp };
+  }
+  function reset() {
+    slabs = [{ x: (W - BASE_W) / 2, w: BASE_W }];
+    height = 0; combo = 0; state = 'play'; stamp = null; fallen = null;
+    over.hidden = true;
+    spawn(); paint();
+  }
+  function miss() {
+    state = 'over';
+    var n = slabs.length;
+    fallen = { x: mover.x, y: BASE_Y - (n + 1) * SH, w: mover.w, vy: 0, fill: COLORS[n % 4] };
+    mover = null;
+    if (height > best) { best = height; saveBest(); }
+    fellEl.textContent = 'Tower fell at ' + height + '.';
+    bestlineEl.textContent = 'Best ' + best + '.';
+    paint();
+    over.hidden = false;
+    againBtn.focus();
+    beep(110, 0.4, 'sawtooth', 0.05);
+  }
+  function drop() {
+    if (!mover || state !== 'play') return;
+    var prev = slabs[slabs.length - 1];
+    var ov = Math.min(mover.x + mover.w, prev.x + prev.w) - Math.max(mover.x, prev.x);
+    if (ov <= 0) { miss(); return; }
+    var perfect = Math.abs(mover.x - prev.x) <= PERFECT;
+    slabs.push({ x: perfect ? prev.x : Math.max(mover.x, prev.x), w: perfect ? prev.w : ov });
+    height = slabs.length - 1;
+    combo = perfect ? combo + 1 : 0;
+    if (perfect) { stamp = { t: 0 }; beep(420 + Math.min(combo, 9) * 70, 0.09, 'square', 0.05); }
+    else beep(190, 0.07, 'triangle', 0.05);
+    paint(); spawn();
+  }
+  function act() { if (state === 'over') { reset(); return; } drop(); }
+
+  // --- geometry / draw ---
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, r);
+  }
+  function slabRect(x, y, w, fill, shadow, k) {
+    var r = Math.min(8 * k, w / 2, SH / 2);
+    if (shadow) { ctx.fillStyle = INK; roundRect(x + 4 * k, y + 4 * k, w, SH, r); ctx.fill(); }
+    ctx.fillStyle = fill; roundRect(x, y, w, SH, r); ctx.fill();
+    ctx.lineWidth = 3 * k; ctx.strokeStyle = INK; ctx.stroke();
+  }
+  function drawStamp(k) {
+    var t = stamp.t;
+    var a = t < 0.72 ? 1 : 1 - (t - 0.72) / 0.28;
+    if (a <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(W / 2, H * 0.34 - t * 16 * k);
+    ctx.rotate(-4 * Math.PI / 180);
+    var pop = t < 0.12 ? 0.7 + 2.5 * t : 1;
+    ctx.scale(pop, pop);
+    ctx.font = '800 ' + (20 * k) + 'px ' + FONT;
+    var bw = ctx.measureText('PERFECT').width + 30 * k, bh = 42 * k;
+    ctx.fillStyle = INK; roundRect(-bw / 2 + 4 * k, -bh / 2 + 4 * k, bw, bh, 10 * k); ctx.fill();
+    ctx.fillStyle = GOLD; roundRect(-bw / 2, -bh / 2, bw, bh, 10 * k); ctx.fill();
+    ctx.lineWidth = 3 * k; ctx.strokeStyle = INK; ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('PERFECT', 0, 1 * k);
+    ctx.restore();
+  }
+  function render() {
+    var k = 1 / sc;
+    var unit = cv.width / W;
+    ctx.setTransform(unit, 0, 0, unit, 0, 0);
+    ctx.fillStyle = PAPER;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = DOT;
+    for (var y = 18; y < H; y += 46) for (var x = 18; x < W; x += 46) ctx.fillRect(x, y, 4, 4);
+
+    ctx.save();
+    ctx.translate(0, camY);
+    ctx.fillStyle = INK;
+    ctx.fillRect(0, BASE_Y, W, 10);
+    for (var i = 0; i < slabs.length; i++) slabRect(slabs[i].x, BASE_Y - (i + 1) * SH, slabs[i].w, COLORS[i % 4], false, k);
+    if (mover) {
+      var n = slabs.length;
+      slabRect(mover.x, BASE_Y - (n + 1) * SH, mover.w, COLORS[n % 4], true, k);
+    }
+    if (fallen) slabRect(fallen.x, fallen.y, fallen.w, fallen.fill, false, k);
+    ctx.restore();
+
+    if (stamp) drawStamp(k);
+  }
+  function update(dt) {
+    if (state === 'play' && mover) {
+      mover.x += mover.dir * mover.sp * dt;
+      if (mover.x < 0) { mover.x = 0; mover.dir = 1; }
+      if (mover.x + mover.w > W) { mover.x = W - mover.w; mover.dir = -1; }
+    }
+    var target = Math.max(0, H * 0.6 - (BASE_Y - slabs.length * SH));
+    camY += (target - camY) * Math.min(1, 0.15 * dt);
+    if (stamp) { stamp.t += dt / 50; if (stamp.t > 1) stamp = null; }
+    if (fallen) {
+      fallen.vy += 0.9 * dt;
+      fallen.y += fallen.vy * dt;
+      if (fallen.y > H - camY + 300) fallen = null;
+    }
+  }
+  function frame(now) {
+    var dt = last ? Math.min(2.5, (now - last) / 16.67) : 1;
+    last = now;
+    update(dt); render();
+    requestAnimationFrame(frame);
+  }
+  function fit() {
+    var r = cv.getBoundingClientRect();
+    if (r.width < 8) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+    sc = r.width / W;
+  }
+
+  window.addEventListener('resize', fit);
+  stage.addEventListener('pointerdown', function (e) {
+    if (e.target && e.target.tagName === 'BUTTON') return;   // let the buttons be buttons
+    e.preventDefault();
+    audioInit(); act();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.repeat || (e.target && e.target.tagName === 'BUTTON')) return;
+    if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ') { e.preventDefault(); audioInit(); act(); }
+  });
+  againBtn.addEventListener('click', function () { audioInit(); reset(); });
+  sndBtn.addEventListener('click', function () {
+    mute = !mute;
+    paintSound();
+    saveBest();                                    // persists the mute choice too
+    if (!mute) { audioInit(); beep(660, 0.08, 'square', 0.04); }
+  });
+
+  paintSound();
+  reset();
+  fit();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

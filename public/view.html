@@ -163,7 +163,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=14"></script>
+  <script src="/sidebar.js?v=15"></script>
   <script src="/islands/islands.js?v=8"></script>
   <script>
   (function(){
@@ -260,6 +260,11 @@ setInterval(function () {
       } else legacy();
     }
     document.getElementById('shareBtn').addEventListener('click', function(){
+      // Published games share as the short /g/<id> link — it renders real OG
+      // tags for Discord/X/Slack previews. Drafts keep the plain /view link
+      // because /g refuses unpublished games.
+      pageUrl = location.origin + ((game ? !!game.published : true) ? '/g/' : '/view?id=') + encodeURIComponent(id);
+      document.getElementById('shareLink').value = pageUrl;
       if ((navigator.maxTouchPoints || 0) > 0 && navigator.share) {
         navigator.share({ title: document.title, url: pageUrl }).catch(function(){});
         return;

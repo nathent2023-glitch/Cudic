@@ -1,0 +1,442 @@
+<!DOCTYPE html><html lang="en"><head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cudic — Forums</title>
+  <meta name="description" content="Talk about what you are building, ask for help, and get answers from the people making games on Cudic.">
+  <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+  <link rel="stylesheet" href="/sidebar.css?v=24">
+  <link rel="stylesheet" href="/cudic-kit.css?v=1">
+  <style>
+    body { display: flex; overflow: hidden; height: 100%; }
+    .forums-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+    .f-top { display: flex; align-items: center; gap: 14px; padding: 22px 32px 14px; border-bottom: var(--ck-bw, 3px) solid color-mix(in srgb, var(--ck-ink) 12%, transparent); flex-wrap: wrap; }
+    .f-top h1 { margin: 0; font-size: 1.7rem; }
+    .f-top .f-sub { color: var(--ck-muted); font-size: .88rem; margin: 2px 0 0; }
+    .f-main { flex: 1; overflow-y: auto; padding: 22px 32px 80px; }
+    .f-inner { max-width: 820px; margin: 0 auto; }
+    .f-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .f-bar .ck-input { flex: 1; min-width: 200px; }
+    .f-list { display: flex; flex-direction: column; gap: 14px; }
+    .f-thread { display: flex; gap: 16px; align-items: flex-start; text-decoration: none; color: inherit; }
+    .f-thread:hover h3 { background: var(--ck-gold); }
+    .f-thread-main { flex: 1; min-width: 0; }
+    .f-thread h3 { display: inline; font-size: 1.08rem; margin: 0; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .f-snip { margin: 6px 0 10px; color: var(--ck-muted); font-size: .9rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .f-meta { display: flex; align-items: center; gap: 8px; font-size: .82rem; flex-wrap: wrap; }
+    .f-meta b { font-weight: 700; }
+    .f-side { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+    .f-h2 { font-size: 1.05rem; margin: 26px 0 12px; }
+    .f-threadbody { font-size: .98rem; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .f-replies { display: flex; flex-direction: column; gap: 12px; }
+    .f-reply { padding: 16px 18px; }
+    .f-reply-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; font-size: .88rem; margin-bottom: 8px; }
+    .f-reply-head .f-when { margin-left: auto; color: var(--ck-muted); font-size: .78rem; }
+    .f-reply-text { margin: 0; font-size: .95rem; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .f-labelrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 2px dashed color-mix(in srgb, var(--ck-ink) 18%, transparent); }
+    .f-labelrow .f-lab-lbl { font-size: .78rem; color: var(--ck-muted); font-weight: 700; }
+    .f-reply-acts { display: inline-flex; gap: 6px; }
+    .f-composer { margin-top: 22px; }
+    .f-composer .ck-btn-row { margin-top: 12px; }
+    .f-back { margin-bottom: 16px; }
+    .f-empty-plate svg { width: 26px; height: 26px; stroke: var(--ck-on-accent); stroke-width: 2; fill: none; }
+    .f-ava { font-size: .72rem; width: 30px; height: 30px; box-shadow: 1px 1px 0 var(--ck-shadow-col); }
+    @media (max-width: 640px) {
+      .f-top, .f-main { padding-left: 16px; padding-right: 16px; }
+      .f-side { display: none; }
+    }
+  </style>
+</head>
+
+<body data-page="forums">
+  <div class="forums-layout page-panel ck ck-page">
+    <header class="f-top">
+      <div>
+        <h1>Forums</h1>
+        <p class="f-sub">Ask for help, show what you made, answer someone else.</p>
+      </div>
+      <div style="flex:1"></div>
+      <button class="ck-btn ck-btn-primary ck-btn-sm" id="newBtn" type="button">New thread</button>
+    </header>
+    <main class="f-main" id="fMain">
+      <div class="f-inner">
+
+        <section id="listView">
+          <div class="f-bar">
+            <input class="ck-input" id="q" type="search" placeholder="Search threads" aria-label="Search threads">
+            <div class="ck-chips" id="sortChips" role="group" aria-label="Sort threads">
+              <button class="ck-chip" type="button" data-sort="active" aria-pressed="true">Active</button>
+              <button class="ck-chip" type="button" data-sort="new" aria-pressed="false">Newest</button>
+            </div>
+          </div>
+          <div class="f-list" id="list">
+            <div class="ck-loading" aria-label="Loading threads"><i></i><i></i><i></i></div>
+          </div>
+        </section>
+
+        <section id="threadView" hidden>
+          <button class="ck-btn ck-btn-sm f-back" id="backBtn" type="button">All threads</button>
+          <article class="ck-card" id="threadCard"></article>
+          <h2 class="f-h2" id="repliesHead">Replies</h2>
+          <div class="f-replies" id="replies"></div>
+          <div class="f-composer" id="composer"></div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <dialog class="ck-dialog" id="newDlg" aria-labelledby="newDlgTitle">
+    <h2 id="newDlgTitle">Start a thread</h2>
+    <div class="ck-field">
+      <label class="ck-label" for="ntTitle">Title</label>
+      <input class="ck-input" id="ntTitle" maxlength="90" placeholder="What is this about?">
+      <span class="ck-hint">A question, a bug, something you made.</span>
+    </div>
+    <div class="ck-field" style="margin-top:16px">
+      <label class="ck-label" for="ntBody">First post</label>
+      <textarea class="ck-textarea" id="ntBody" maxlength="5000" placeholder="Say more about it (optional)"></textarea>
+    </div>
+    <div class="ck-btn-row">
+      <button class="ck-btn" id="ntCancel" type="button">Never mind</button>
+      <button class="ck-btn ck-btn-primary" id="ntCreate" type="button">Post thread</button>
+    </div>
+  </dialog>
+
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/sidebar.js?v=15"></script>
+  <script src="/csel.js?v=1"></script>
+  <script src="/cudic-kit.js?v=1"></script>
+  <script>
+    var apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
+    var LABELS = ['answered', 'solved', 'good point', 'funny', 'off-topic'];
+    var listEl = document.getElementById('list');
+    var listView = document.getElementById('listView');
+    var threadView = document.getElementById('threadView');
+    var threadCard = document.getElementById('threadCard');
+    var repliesEl = document.getElementById('replies');
+    var composerEl = document.getElementById('composer');
+    var sort = 'active';
+    var q = '';
+    var me = null;          // auth user id once known, else null
+    var current = null;     // { thread, comments }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function rel(ts) {
+      var d = (Date.now() - new Date(ts).getTime()) / 1000;
+      if (isNaN(d)) return '';
+      if (d < 60) return 'just now';
+      if (d < 3600) return Math.floor(d / 60) + 'm ago';
+      if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+      if (d < 604800) return Math.floor(d / 86400) + 'd ago';
+      return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+    function initial(name) { return String(name || '?').trim().charAt(0).toUpperCase() || '?'; }
+    function ava(u) {
+      var name = (u && u.display_name) || 'Unknown';
+      if (u && u.avatar_url && String(u.avatar_url).indexOf('"') === -1) {
+        return '<img class="ck-ava f-ava" src="' + esc(u.avatar_url) + '" alt="">';
+      }
+      return '<span class="ck-ava f-ava">' + esc(initial(name)) + '</span>';
+    }
+    async function getToken() {
+      var p = new URLSearchParams(window.location.search).get('token');
+      if (p && p.split('.').length === 3) return p;
+      try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {}
+      try {
+        var r = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+        return r ? JSON.parse(r).access_token : null;
+      } catch (e) { return null; }
+    }
+    async function api(path, opts) {
+      opts = opts || {};
+      var headers = {};
+      if (opts.body) headers['Content-Type'] = 'application/json';
+      if (opts.auth) {
+        var t = await getToken();
+        if (!t) { location.href = '/login'; throw new Error('Sign in first.'); }
+        headers['Authorization'] = 'Bearer ' + t;
+        try { var s = localStorage.getItem('cudic_seat'); if (s) headers['X-Seat'] = s; } catch (e) {}
+      }
+      var r = await fetch(apiBase + path, {
+        method: opts.method || 'GET',
+        headers: headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined
+      });
+      var d = null;
+      try { d = await r.json(); } catch (e) {}
+      if (!r.ok) {
+        var msg = (d && d.error) || 'Something went wrong.';
+        if (msg === 'email_unconfirmed') msg = 'Confirm your email first — check your inbox.';
+        if (msg === 'session_superseded') msg = 'Another tab took over. Reload to keep going here.';
+        throw new Error(msg);
+      }
+      return d || {};
+    }
+
+    // ── List view ────────────────────────────────────────────────
+    function threadRow(t) {
+      var u = t.users || {};
+      var name = u.display_name || 'Unknown';
+      var replies = t.comment_count || 0;
+      return '<a class="ck-card ck-card-hover f-thread" href="/forums/' + t.id + '" data-id="' + t.id + '">'
+        + '<span class="f-thread-main">'
+        + '<h3>' + esc(t.title) + '</h3>'
+        + (t.body ? '<p class="f-snip">' + esc(t.body) + '</p>' : '<p class="f-snip"></p>')
+        + '<span class="f-meta">' + ava(u) + '<b>' + esc(name) + '</b>'
+        + (u.user_id ? '<span class="ck-muted">#' + esc(u.user_id) + '</span>' : '')
+        + '<span class="ck-muted">' + rel(t.last_at || t.created_at) + '</span></span>'
+        + '</span>'
+        + '<span class="f-side"><span class="ck-badge' + (replies ? ' ck-badge-mint' : ' ck-badge-ghost') + '">' + replies + (replies === 1 ? ' reply' : ' replies') + '</span>'
+        + (t.pinned ? '<span class="ck-stamp ck-stamp-gold">pinned</span>' : '')
+        + '</span>'
+        + '</a>';
+    }
+    function emptyList() {
+      return '<div class="ck-empty"><div class="plate f-empty-plate">'
+        + '<svg viewBox="0 0 24 24"><path d="M3 5h11v8H7l-4 3V5Z"/><path d="M10 10h11v7l-3-3h-5"/></svg></div>'
+        + '<h3>' + (q ? 'Nothing matches that.' : 'No threads yet.') + '</h3>'
+        + '<p>' + (q ? 'Try a shorter search.' : 'Ask a question or post what you are building — the first thread sets the tone.') + '</p>'
+        + (q ? '' : '<button class="ck-btn ck-btn-primary" type="button" id="emptyNew">Start the first thread</button>')
+        + '</div>';
+    }
+    async function loadList() {
+      listView.hidden = false;
+      threadView.hidden = true;
+      listEl.innerHTML = '<div class="ck-loading" aria-label="Loading threads"><i></i><i></i><i></i></div>';
+      try {
+        var d = await api('/api/forums/threads?sort=' + encodeURIComponent(sort) + (q ? '&q=' + encodeURIComponent(q) : ''));
+        var threads = d.threads || [];
+        listEl.innerHTML = threads.length ? threads.map(threadRow).join('') : emptyList();
+        var en = document.getElementById('emptyNew');
+        if (en) en.addEventListener('click', openNewDialog);
+      } catch (e) {
+        listEl.innerHTML = '<div class="ck-empty"><h3>Could not load the forum.</h3><p>' + esc(e.message) + '</p><button class="ck-btn" type="button" id="retryBtn">Try again</button></div>';
+        var rb = document.getElementById('retryBtn');
+        if (rb) rb.addEventListener('click', loadList);
+      }
+    }
+
+    // ── Thread view ──────────────────────────────────────────────
+    function labelStamp(label) {
+      if (!label) return '';
+      var cls = label === 'answered' || label === 'solved' ? '' : label === 'funny' ? ' ck-stamp-gold' : ' ck-stamp-sky';
+      return '<span class="ck-stamp' + cls + '">' + esc(label) + '</span>';
+    }
+    function replyHtml(c, isOpThread) {
+      var mine = me && c.user_id === me;
+      var op = c.user_id === current.thread.user_id;
+      return '<div class="ck-card f-reply" data-cid="' + c.id + '">'
+        + '<div class="f-reply-head">' + ava({ display_name: c.display_name })
+        + '<b>' + esc(c.display_name) + '</b>'
+        + (op ? '<span class="ck-badge ck-badge-ghost">thread author</span>' : '')
+        + labelStamp(c.label)
+        + '<span class="f-when">' + rel(c.created_at) + '</span>'
+        + '</div>'
+        + '<p class="f-reply-text">' + esc(c.text) + '</p>'
+        + (isOpThread || mine ? '<div class="f-labelrow" hidden data-for="' + c.id + '">'
+          + '<span class="f-lab-lbl">Label</span>'
+          + LABELS.map(function (l) {
+              return '<button class="ck-chip" type="button" data-label="' + esc(l) + '" aria-pressed="' + (c.label === l) + '">' + esc(l) + '</button>';
+            }).join('')
+          + '<button class="ck-chip" type="button" data-label="">Clear</button>'
+          + '</div>' : '')
+        + '<div class="f-reply-acts">'
+        + (isOpThread ? '<button class="ck-btn ck-btn-sm" type="button" data-act="label">Label</button>' : '')
+        + (mine || isOpThread ? '<button class="ck-btn ck-btn-sm" type="button" data-act="del">Delete</button>' : '')
+        + '</div>'
+        + '</div>';
+    }
+    function composerHtml() {
+      if (!me) {
+        return '<div class="ck-card"><div class="ck-empty" style="padding:24px 12px"><h3>Sign in to reply</h3>'
+          + '<p>Anyone can read the forum. Signing in lets you post.</p>'
+          + '<a class="ck-btn ck-btn-primary" href="/login">Sign in</a></div></div>';
+      }
+      return '<div class="ck-card"><div class="ck-field"><label class="ck-label" for="replyText">Your reply</label>'
+        + '<textarea class="ck-textarea" id="replyText" maxlength="2000" placeholder="Write a reply"></textarea></div>'
+        + '<div class="ck-btn-row"><button class="ck-btn ck-btn-primary" type="button" id="replyBtn">Post reply</button></div></div>';
+    }
+    function paintThread() {
+      var t = current.thread;
+      var u = t.users || {};
+      var opThread = me && me === t.user_id;
+      threadCard.innerHTML = '<h1 style="margin:0 0 10px">' + esc(t.title) + '</h1>'
+        + '<div class="f-meta" style="margin-bottom:14px">' + ava(u) + '<b>' + esc(u.display_name || 'Unknown') + '</b>'
+        + '<span class="ck-muted">started ' + rel(t.created_at) + '</span></div>'
+        + (t.body ? '<p class="f-threadbody">' + esc(t.body) + '</p>' : '')
+        + (opThread ? '<div class="ck-btn-row" style="margin-top:16px"><button class="ck-btn ck-btn-sm ck-btn-berry" type="button" id="delThread">Delete thread</button></div>' : '');
+      var comments = current.comments || [];
+      repliesHead.textContent = comments.length ? (comments.length === 1 ? '1 reply' : comments.length + ' replies') : 'No replies yet';
+      repliesEl.innerHTML = comments.map(function (c) { return replyHtml(c, opThread); }).join('')
+        || '<p class="ck-muted">Be the first to reply.</p>';
+      composerEl.innerHTML = composerHtml();
+      wireThread();
+    }
+    function wireThread() {
+      var dt = document.getElementById('delThread');
+      if (dt) dt.addEventListener('click', deleteThread);
+      var rb = document.getElementById('replyBtn');
+      if (rb) rb.addEventListener('click', postReply);
+      repliesEl.querySelectorAll('.ck-card[data-cid]').forEach(function (box) {
+        var cid = box.getAttribute('data-cid');
+        var labelRow = box.querySelector('.f-labelrow[data-for="' + cid + '"]');
+        box.querySelectorAll('[data-act]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var act = b.getAttribute('data-act');
+            if (act === 'label' && labelRow) { labelRow.hidden = !labelRow.hidden; return; }
+            if (act === 'del') deleteComment(cid, box);
+          });
+        });
+        if (labelRow) {
+          labelRow.querySelectorAll('[data-label]').forEach(function (chip) {
+            chip.addEventListener('click', function () { setLabel(cid, chip.getAttribute('data-label')); });
+          });
+        }
+      });
+    }
+    async function openThread(id, push) {
+      listView.hidden = true;
+      threadView.hidden = false;
+      threadCard.innerHTML = '<div class="ck-loading" aria-label="Loading thread"><i></i><i></i><i></i></div>';
+      repliesEl.innerHTML = '';
+      composerEl.innerHTML = '';
+      document.getElementById('fMain').scrollTop = 0;
+      try {
+        var d = await api('/api/forums/threads/' + encodeURIComponent(id));
+        current = d;
+        if (push !== false) history.pushState({ forum: id }, '', '/forums/' + id);
+        paintThread();
+      } catch (e) {
+        current = null;
+        threadCard.innerHTML = '<h2>Thread not found.</h2><p class="ck-muted">' + esc(e.message) + '</p>'
+          + '<button class="ck-btn" type="button" id="toList">Back to all threads</button>';
+        var tl = document.getElementById('toList');
+        if (tl) tl.addEventListener('click', function () { closeThread(); });
+      }
+    }
+    function closeThread(push) {
+      current = null;
+      if (push !== false && /^\/forums\//.test(location.pathname)) history.pushState({}, '', '/forums');
+      threadView.hidden = true;
+      listView.hidden = false;
+      loadList();
+    }
+    async function postReply() {
+      var el = document.getElementById('replyText');
+      var text = (el && el.value || '').trim();
+      if (!text) { CudicKit.toast('Write something first.', 'bad'); return; }
+      var btn = document.getElementById('replyBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
+      try {
+        await api('/api/forums/threads/' + current.thread.id + '/comments', { method: 'POST', auth: true, body: { text: text } });
+        CudicKit.toast('Reply posted', 'ok');
+        openThread(current.thread.id, false);
+      } catch (e) {
+        CudicKit.toast(e.message, 'bad');
+        if (btn) { btn.disabled = false; btn.textContent = 'Post reply'; }
+      }
+    }
+    async function setLabel(cid, label) {
+      try {
+        await api('/api/forums/threads/' + current.thread.id + '/comments/' + cid + '/label', { method: 'POST', auth: true, body: { label: label } });
+        CudicKit.toast(label ? 'Labelled "' + label + '"' : 'Label removed', 'ok');
+        openThread(current.thread.id, false);
+      } catch (e) { CudicKit.toast(e.message, 'bad'); }
+    }
+    async function deleteComment(cid, box) {
+      var ok = await CudicKit.confirm('Delete this reply? It cannot be undone.', { ok: 'Delete reply', danger: true });
+      if (!ok) return;
+      try {
+        await api('/api/forums/comments/' + cid, { method: 'DELETE', auth: true });
+        CudicKit.toast('Reply deleted', 'ok');
+        openThread(current.thread.id, false);
+      } catch (e) { CudicKit.toast(e.message, 'bad'); }
+    }
+    async function deleteThread() {
+      var ok = await CudicKit.confirm('Delete this thread and every reply in it? It cannot be undone.', { ok: 'Delete thread', danger: true });
+      if (!ok) return;
+      try {
+        await api('/api/forums/threads/' + current.thread.id, { method: 'DELETE', auth: true });
+        CudicKit.toast('Thread deleted', 'ok');
+        closeThread();
+      } catch (e) { CudicKit.toast(e.message, 'bad'); }
+    }
+
+    // ── New thread ───────────────────────────────────────────────
+    var newDlg = document.getElementById('newDlg');
+    function openNewDialog() {
+      if (!me) { location.href = '/login'; return; }
+      document.getElementById('ntTitle').value = '';
+      document.getElementById('ntBody').value = '';
+      newDlg.showModal();
+      document.getElementById('ntTitle').focus();
+    }
+    document.getElementById('newBtn').addEventListener('click', openNewDialog);
+    document.getElementById('ntCancel').addEventListener('click', function () { newDlg.close(); });
+    document.getElementById('ntCreate').addEventListener('click', async function () {
+      var title = document.getElementById('ntTitle').value.trim();
+      var body = document.getElementById('ntBody').value.trim();
+      if (title.length < 4) { CudicKit.toast('Give the thread a title (at least 4 characters).', 'bad'); return; }
+      this.disabled = true;
+      this.textContent = 'Posting…';
+      try {
+        var d = await api('/api/forums/threads', { method: 'POST', auth: true, body: { title: title, body: body } });
+        newDlg.close();
+        CudicKit.toast('Thread posted', 'ok');
+        if (d.thread && d.thread.id) openThread(d.thread.id); else loadList();
+      } catch (e) {
+        CudicKit.toast(e.message, 'bad');
+      }
+      this.disabled = false;
+      this.textContent = 'Post thread';
+    });
+
+    // ── Search, sort, routing ────────────────────────────────────
+    var qTimer = null;
+    document.getElementById('q').addEventListener('input', function () {
+      var v = this.value;
+      clearTimeout(qTimer);
+      qTimer = setTimeout(function () { q = v.trim(); loadList(); }, 320);
+    });
+    document.getElementById('sortChips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-sort]');
+      if (!b) return;
+      sort = b.getAttribute('data-sort');
+      this.querySelectorAll('[data-sort]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      loadList();
+    });
+    document.getElementById('backBtn').addEventListener('click', function () { closeThread(); });
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest('.f-thread[data-id]');
+      if (!a) return;
+      // Left click only — let middle-click and ctrl-click open a real tab.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      openThread(a.getAttribute('data-id'));
+    });
+    window.addEventListener('popstate', function () {
+      var id = threadIdFromUrl();
+      if (id) openThread(id, false); else { current = null; listView.hidden = false; threadView.hidden = true; loadList(); }
+    });
+    function threadIdFromUrl() {
+      var m = /^\/forums\/([0-9a-fA-F-]{36})\/?$/.exec(location.pathname);
+      if (m) return m[1];
+      var qid = new URLSearchParams(location.search).get('id');
+      return qid && /^[0-9a-fA-F-]{36}$/.test(qid) ? qid : null;
+    }
+
+    (async function boot() {
+      try {
+        var d = await api('/api/session');
+        me = d.user && d.user.id ? d.user.id : null;
+      } catch (e) { me = null; }
+      var id = threadIdFromUrl();
+      if (id) openThread(id, false);
+      else loadList();
+    })();
+  </script>
+</body>
+</html>

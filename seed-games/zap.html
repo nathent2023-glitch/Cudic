@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Zap</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: #FFF6E7; color: #1B1712; font-family: system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 18px 12px 30px; }
+  .wrap { width: min(94vw, 820px); display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.6rem; line-height: 1; }
+
+  .hud { display: flex; flex-wrap: wrap; gap: 10px; }
+  .plate { flex: 1 1 0; min-width: 100px; display: flex; align-items: baseline; gap: 8px;
+    background: #FFFDF7; border: 3px solid #1B1712; border-radius: 12px;
+    box-shadow: 4px 4px 0 #1B1712; padding: 5px 12px; }
+  .plate span { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 700; font-size: .78rem; color: #6E6555; }
+  .plate b { margin-left: auto; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800;
+    font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  #mult { font-style: normal; font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800;
+    font-size: .8rem; padding: 0 6px; border: 3px solid #1B1712; border-radius: 10px;
+    color: #6E6555; background: #FFFDF7; }
+  #mult.on { background: #FFC93C; color: #1B1712; }
+
+  .timer { display: flex; align-items: center; gap: 12px; }
+  .bar { flex: 1; height: 20px; background: #FFFDF7; border: 3px solid #1B1712;
+    border-radius: 12px; box-shadow: 4px 4px 0 #1B1712; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: #FF4E1A; }
+  .bar i.low { background: #FF3B6B; }
+  #secs { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.2rem;
+    min-width: 2.4ch; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .btn { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1rem;
+    background: #FF4E1A; color: #1B1712; border: 3px solid #1B1712; border-radius: 12px;
+    box-shadow: 4px 4px 0 #1B1712; padding: 9px 22px; cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease; }
+  .btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #1B1712; }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #1B1712; }
+  .btn:focus-visible { outline: 3px solid #6FB7FF; outline-offset: 2px; }
+  .btn.small { font-size: .85rem; padding: 6px 12px; border-radius: 10px; background: #FFFDF7; }
+
+  #arena { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden;
+    background: #FFFDF7; border: 3px solid #1B1712; border-radius: 16px;
+    box-shadow: 4px 4px 0 #1B1712; touch-action: none; user-select: none;
+    -webkit-user-select: none; cursor: crosshair; }
+  #arena.shake { animation: shake .3s linear; }
+  @keyframes shake { 25% { transform: translate(-6px, 2px); } 50% { transform: translate(5px, -3px); }
+    75% { transform: translate(-3px, 3px); } }
+  .t { position: absolute; border: 3px solid #1B1712; border-radius: 50%; background: #FF4E1A;
+    box-shadow: 3px 3px 0 #1B1712; transform: translate(-50%, -50%); }
+  .t.late { background: #FFC93C; }
+  .bomb { position: absolute; background: #1B1712; transform: translate(-50%, -50%);
+    clip-path: polygon(50% 0%, 63.5% 31.4%, 97.6% 34.6%, 71.9% 57.1%, 79.4% 90.4%, 50% 73%,
+      20.6% 90.4%, 28.1% 57.1%, 2.4% 34.6%, 36.5% 31.4%); }
+  .bomb i { position: absolute; inset: 4px; display: block; background: #FF3B6B;
+    clip-path: polygon(50% 0%, 63.5% 31.4%, 97.6% 34.6%, 71.9% 57.1%, 79.4% 90.4%, 50% 73%,
+      20.6% 90.4%, 28.1% 57.1%, 2.4% 34.6%, 36.5% 31.4%); }
+
+  .pop { animation: pop .2s ease-out forwards; }
+  @keyframes pop { to { transform: translate(-50%, -50%) scale(1.55); opacity: 0; } }
+  .float { position: absolute; z-index: 4; pointer-events: none; color: #1B1712;
+    font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.25rem;
+    transform: translate(-50%, -50%); animation: rise .7s ease-out forwards; }
+  .float.bad { color: #FF3B6B; }
+  @keyframes rise { to { transform: translate(-50%, -150%); opacity: 0; } }
+  .miss { position: absolute; z-index: 4; pointer-events: none; color: #1B1712;
+    font-weight: 800; font-size: 1.1rem; transform: translate(-50%, -50%);
+    animation: missfade .4s linear forwards; }
+  @keyframes missfade { 0%, 65% { opacity: 1; } 100% { opacity: 0; } }
+
+  #over { position: absolute; inset: 0; z-index: 5; display: none; align-items: center;
+    justify-content: center; background: #FFF6E7; }
+  #over.show { display: flex; }
+  .card { max-width: 88%; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    background: #FFFDF7; border: 3px solid #1B1712; border-radius: 16px;
+    box-shadow: 4px 4px 0 #1B1712; padding: 20px 26px; text-align: center; }
+  .card h2 { font-family: 'Baloo 2', system-ui, sans-serif; font-weight: 800; font-size: 1.35rem; }
+  .card p { font-size: .9rem; color: #6E6555; max-width: 36ch; }
+  .card #overP { color: #1B1712; font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #arena.shake, .pop, .float, .miss { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Zap</h1>
+  <div class="hud">
+    <div class="plate"><span>Score</span><em id="mult">&times;1</em><b id="score">0</b></div>
+    <div class="plate"><span>Combo</span><b id="combo">0</b></div>
+    <div class="plate"><span>Best</span><b id="best">0</b></div>
+    <button type="button" id="snd" class="btn small">Sound on</button>
+  </div>
+  <div class="timer"><div class="bar"><i id="fill"></i></div><b id="secs">45</b></div>
+  <div id="arena">
+    <div id="over" class="show">
+      <div class="card">
+        <h2 id="overTitle">Zap</h2>
+        <p id="overP"></p>
+        <p id="overB">Best 0</p>
+        <button type="button" id="play" class="btn">Play</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  'use strict';
+  var DUR = 45000, MAXT = 3, MAXB = 2;
+  var arena = document.getElementById('arena');
+  var over = document.getElementById('over');
+  var overTitle = document.getElementById('overTitle');
+  var overP = document.getElementById('overP');
+  var overB = document.getElementById('overB');
+  var playBtn = document.getElementById('play');
+  var sndBtn = document.getElementById('snd');
+  var scoreEl = document.getElementById('score');
+  var comboEl = document.getElementById('combo');
+  var bestEl = document.getElementById('best');
+  var multEl = document.getElementById('mult');
+  var secsEl = document.getElementById('secs');
+  var fillEl = document.getElementById('fill');
+
+  var CS = window.CudicSave || null;
+  var best = 0, mute = false, bestAtStart = 0;
+  var score = 0, combo = 0, hits = 0, misses = 0, mult = 1;
+  var state = 'menu', live = [], endsAt = 0, nextT = 0, nextB = 0;
+  var actx = null;
+
+  function saveBest() {
+    if (CS) { CS.save({ best: best, mute: mute }); return; }
+    try { localStorage.setItem('cudic-zap-best', String(best)); } catch (e) {}
+    try { localStorage.setItem('cudic-zap-mute', mute ? '1' : ''); } catch (e) {}
+  }
+  function paint() {
+    scoreEl.textContent = score;
+    comboEl.textContent = combo;
+    bestEl.textContent = best;
+    multEl.textContent = '\u00d7' + mult;
+    multEl.className = mult > 1 ? 'on' : '';
+    overB.textContent = 'Best ' + best;
+  }
+  function paintSound() { sndBtn.textContent = mute ? 'Sound off' : 'Sound on'; }
+
+  // audio is built on the first gesture so browsers allow it to play
+  function audio() {
+    if (!actx) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (C) { try { actx = new C(); } catch (e) { actx = null; } }
+    }
+    if (actx && actx.state === 'suspended') { try { actx.resume(); } catch (e) {} }
+    return actx;
+  }
+  function blip(freq, dur, type, vol) {
+    var a = audio();
+    if (!a || mute) return;
+    try {
+      var o = a.createOscillator(), g = a.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+      o.connect(g); g.connect(a.destination);
+      o.start(); o.stop(a.currentTime + dur + 0.02);
+    } catch (e) {}
+  }
+  function hitSound() { blip(320 + combo * 26, 0.14, 'triangle', 0.16); }
+  function bombSound() { blip(90, 0.28, 'sawtooth', 0.2); }
+
+  function unitR(bomb) {
+    var w = arena.clientWidth || 800;
+    return Math.max(48, Math.min(68, w * (bomb ? 0.09 : 0.084))) / 2;
+  }
+  function freeAt(x, y, r) {
+    for (var i = 0; i < live.length; i++) {
+      var e = live[i], dx = e.x - x, dy = e.y - y, gap = r + e.r + 8;
+      if (dx * dx + dy * dy < gap * gap) return false;
+    }
+    return true;
+  }
+  function spot(r) {
+    var W = arena.clientWidth, H = arena.clientHeight, m = r + 10;
+    for (var i = 0; i < 24; i++) {
+      var x = m + Math.random() * Math.max(1, W - m * 2);
+      var y = m + Math.random() * Math.max(1, H - m * 2);
+      if (freeAt(x, y, r)) return { x: x, y: y };
+    }
+    return null;
+  }
+  function spawn(bomb, now) {
+    var r = unitR(bomb), p = spot(r);
+    if (!p) return false;
+    var el = document.createElement('div');
+    el.className = bomb ? 'bomb' : 't';
+    if (bomb) el.appendChild(document.createElement('i'));
+    el.style.width = el.style.height = (r * 2) + 'px';
+    el.style.left = p.x + 'px';
+    el.style.top = p.y + 'px';
+    el.style.transform = 'translate(-50%, -50%) scale(1)';
+    arena.appendChild(el);
+    // later targets live shorter: 1.2s at the start, 0.64s at the whistle
+    var life = bomb ? 1700 : 640 + 560 * Math.max(0, (endsAt - now) / DUR);
+    live.push({ el: el, x: p.x, y: p.y, r: r, s: 1, born: now, life: life, bomb: bomb });
+    return true;
+  }
+  function clearLive() {
+    for (var i = 0; i < live.length; i++) {
+      if (live[i].el.parentNode) live[i].el.parentNode.removeChild(live[i].el);
+    }
+    live = [];
+  }
+  function float(x, y, text, bad) {
+    var el = document.createElement('div');
+    el.className = 'float' + (bad ? ' bad' : '');
+    el.textContent = text;
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    arena.appendChild(el);
+    window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 720);
+  }
+  function missMark(x, y) {
+    var el = document.createElement('div');
+    el.className = 'miss';
+    el.textContent = '\u2715';
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    arena.appendChild(el);
+    window.setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 430);
+  }
+  function shake() {
+    arena.classList.remove('shake');
+    void arena.offsetWidth; // restart the animation
+    arena.classList.add('shake');
+    window.setTimeout(function () { arena.classList.remove('shake'); }, 340);
+  }
+
+  function start() {
+    bestAtStart = best;
+    score = 0; combo = 0; hits = 0; misses = 0; mult = 1;
+    clearLive();
+    over.classList.remove('show');
+    var now = performance.now();
+    state = 'play';
+    endsAt = now + DUR;
+    nextT = now + 300;
+    nextB = now + 4200;
+    fillEl.classList.remove('low');
+    fillEl.style.width = '100%';
+    secsEl.textContent = '45';
+    audio();
+    paint();
+  }
+  function endRound() {
+    state = 'over';
+    clearLive();
+    fillEl.style.width = '0%';
+    secsEl.textContent = '0';
+    var total = hits + misses;
+    overTitle.textContent = score > bestAtStart ? 'New best!' : 'Time is up!';
+    overP.textContent = score + ' points \u00b7 accuracy ' + (total ? Math.round(hits / total * 100) : 0) + '%';
+    over.classList.add('show');
+    playBtn.textContent = 'Play again';
+    paint();
+    saveBest();
+  }
+  function tick(now) {
+    if (state === 'play') {
+      var left = endsAt - now;
+      if (left <= 0) {
+        endRound();
+      } else {
+        fillEl.style.width = (left / DUR * 100) + '%';
+        secsEl.textContent = Math.ceil(left / 1000);
+        if (left < 10000) fillEl.classList.add('low');
+        var nt = 0, nb = 0, i;
+        for (i = 0; i < live.length; i++) { if (live[i].bomb) nb++; else nt++; }
+        if (nt < MAXT && now >= nextT) nextT = now + (spawn(false, now) ? 400 : 120);
+        if (nb < MAXB && now >= nextB && now > endsAt - DUR + 4000) nextB = now + (spawn(true, now) ? 1700 : 300);
+        for (i = live.length - 1; i >= 0; i--) {
+          var e = live[i], age = now - e.born;
+          if (age >= e.life) {
+            if (e.el.parentNode) e.el.parentNode.removeChild(e.el);
+            live.splice(i, 1);
+            continue;
+          }
+          e.s = 1 - 0.55 * (age / e.life);
+          e.el.style.transform = 'translate(-50%, -50%) scale(' + e.s.toFixed(3) + ')';
+          if (!e.bomb && e.s < 0.6) e.el.classList.add('late');
+        }
+      }
+    }
+    window.requestAnimationFrame(tick);
+  }
+
+  arena.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+  arena.addEventListener('pointerdown', function (ev) {
+    if (state !== 'play' || ev.button > 0) return;
+    ev.preventDefault();
+    audio();
+    var b = arena.getBoundingClientRect();
+    var x = ev.clientX - b.left - arena.clientLeft; // children sit inside the border
+    var y = ev.clientY - b.top - arena.clientTop;
+    var hit = null, hd = Infinity, hi = -1, i;
+    for (i = 0; i < live.length; i++) {
+      var e = live[i], dx = e.x - x, dy = e.y - y, rr = e.r * e.s, d2 = dx * dx + dy * dy;
+      if (d2 <= rr * rr && d2 < hd) { hd = d2; hit = e; hi = i; }
+    }
+    if (hit) {
+      live.splice(hi, 1);
+      hit.el.classList.add('pop');
+      var dying = hit.el;
+      window.setTimeout(function () { if (dying.parentNode) dying.parentNode.removeChild(dying); }, 220);
+      if (hit.bomb) {
+        score -= 8; combo = 0; mult = 1; misses++;
+        float(x, y, '\u22128', true);
+        shake();
+        bombSound();
+      } else {
+        hits++; combo++;
+        mult = Math.min(4, 1 + Math.floor(combo / 5));
+        var pts = (10 + (hit.s < 0.6 ? 5 : 0)) * mult;
+        score += pts;
+        float(x, y, '+' + pts, false);
+        hitSound();
+      }
+      if (score > best) best = score;
+      paint();
+    } else {
+      combo = 0; mult = 1; misses++;
+      missMark(x, y);
+      paint();
+    }
+  });
+
+  playBtn.addEventListener('click', start);
+  sndBtn.addEventListener('click', function () {
+    mute = !mute;
+    paintSound();
+    saveBest();
+  });
+
+  paint();
+  paintSound();
+  if (CS) {
+    CS.load({ legacyKey: 'cudic-zap-best', legacyMap: function (raw) { return { best: parseInt(raw, 10) || 0 }; } })
+      .then(function (d) {
+        if (d && typeof d.best === 'number' && d.best > best) { best = d.best; }
+        if (d && d.mute === true) { mute = true; }
+        paint(); paintSound();
+      })
+      .catch(function () {});
+  } else {
+    try { best = parseInt(localStorage.getItem('cudic-zap-best') || '0', 10) || 0; } catch (e) {}
+    try { mute = localStorage.getItem('cudic-zap-mute') === '1'; } catch (e) {}
+    paint(); paintSound();
+  }
+  window.requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

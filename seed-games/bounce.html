@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bounce — Cudic</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#FFF6E7;--card:#FFFDF7;--ink:#1B1712;--muted:#6E6555;--primary:#FF4E1A;--gold:#FFC93C;--mint:#5BD695;--berry:#FF3B6B;--sky:#6FB7FF}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--paper);color:var(--ink);font:400 15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:14px 14px 18px}
+  #app{max-width:820px;margin:0 auto}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+  h1{font:800 30px/1 "Baloo 2",system-ui;margin:0}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .plate{font:800 14px "Baloo 2",system-ui;background:var(--card);border:3px solid var(--ink);border-radius:11px;padding:7px 11px;box-shadow:4px 4px 0 var(--ink)}
+  button{font:800 14px "Baloo 2",system-ui;color:var(--ink);background:var(--card);border:3px solid var(--ink);border-radius:11px;padding:8px 12px;box-shadow:4px 4px 0 var(--ink);cursor:pointer;transition:transform .1s ease,box-shadow .1s ease}
+  button:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+  button:active{transform:translate(3px,3px);box-shadow:none}
+  button:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+  #stage{width:min(100%,calc((100vh - 215px) * 1.5384));margin:0 auto}
+  canvas{display:block;width:100%;aspect-ratio:800/520;border:3px solid var(--ink);border-radius:14px;background:var(--paper);box-shadow:4px 4px 0 var(--ink);touch-action:none}
+  #over{position:fixed;inset:0;background:rgba(27,23,18,.45);display:flex;align-items:center;justify-content:center;padding:18px;z-index:5}
+  #over[hidden]{display:none}
+  .card{background:var(--card);border:3px solid var(--ink);border-radius:16px;box-shadow:4px 4px 0 var(--ink);padding:22px 24px;max-width:390px;text-align:center}
+  .card h2{font:800 24px/1.25 "Baloo 2",system-ui;margin:0 0 8px}
+  .card p{margin:0 0 18px;font:800 17px "Baloo 2",system-ui;color:var(--muted)}
+  .card p b{color:var(--ink);font-size:22px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <h1>Bounce</h1>
+    </div>
+    <div class="bar">
+      <span class="plate" id="pLv">Level 1/10</span>
+      <span class="plate" id="pSh">Shots 0</span>
+      <span class="plate" id="pBs">Best —</span>
+      <button id="bRestart">Restart run</button>
+      <button id="bSound">Sound on</button>
+    </div>
+  </header>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="over" hidden>
+  <div class="card">
+    <h2 id="oTitle">Run finished</h2>
+    <p id="oBest">Best —</p>
+    <button id="bAgain">Play again</button>
+  </div>
+</div>
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---- saves: one run, resumable across levels -----------------------------
+  var CS = window.CudicSave || null;
+  var run = { level: 1, strokes: 0, best: null };
+  var mute = false;
+  CS && CS.load({ legacyKey: "cudic-bounce-best", legacyMap: function (raw) { return { best: parseInt(raw, 10) || null }; } })
+    .then(function (d) {
+      if (!d) return;
+      if (typeof d.best === "number") run.best = d.best;
+      // Resume only an unfinished run; a finished one starts again at level 1.
+      if (d.level >= 1 && d.level <= 10 && !d.done) { run.level = d.level; run.strokes = d.strokes || 0; }
+      if (d.mute) mute = true;
+      if (!shots) load(run.level);   // save landed before the first putt: jump to it
+      paint();
+    })
+    .catch(function () {});
+  function persist(done) {
+    if (CS) { CS.save({ level: run.level, strokes: run.strokes, best: run.best, done: !!done, mute: mute }); return; }
+    try { localStorage.setItem("cudic-bounce-best", String(run.best)); } catch (e) {}
+  }
+
+  // ---- board ---------------------------------------------------------------
+  var W = 800, H = 520;            // logical units: every screen plays identically
+  var R = 11, HR = 18, M = 23;     // M = wall inset for the ball centre
+  var LX = M, TY = M, RXW = W - M, BYT = H - M;
+
+  var LEVELS = [
+    { s: [140, 260], h: [430, 260], o: [] },                                  // 1 straight in
+    { s: [150, 150], h: [470, 390], o: [] },                                  // 2 across
+    { s: [200, 290], h: [280, 220], o: [] },                                  // 3 soft touch: close cup
+    { s: [140, 260], h: [470, 260], o: [[300, 205, 46, 110]] },               // 4 around the block
+    { s: [160, 140], h: [520, 180], o: [[280, 50, 46, 220], [420, 290, 46, 180]] }, // 5 corridor
+    { s: [180, 300], h: [560, 300], o: [[330, 23, 46, 170], [330, 330, 46, 167]] }, // 6 gate
+    { s: [180, 420], h: [600, 180], o: [[380, 23, 46, 227], [380, 380, 46, 117]] }, // 7 wall gap
+    { s: [160, 200], h: [560, 300], o: [[330, 300, 46, 197]] },               // 8 over the top
+    { s: [200, 300], h: [520, 300], o: [[380, 23, 46, 297]] },                // 9 under the wall
+    { s: [160, 380], h: [560, 160], o: [[300, 23, 46, 217], [300, 340, 46, 157], [500, 23, 46, 120]] } // 10 finale
+  ];
+
+  var PAPER = "#FFF6E7", CARD = "#FFFDF7", INK = "#1B1712", PRIMARY = "#FF4E1A"
+    , GOLD = "#FFC93C", MINT = "#5BD695", BERRY = "#FF3B6B", MUTED = "#6E6555";
+
+  var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  function fit() {
+    var d = Math.min(2, window.devicePixelRatio || 1);   // cap: 2x is plenty for flat colour
+    cv.width = Math.round(W * d); cv.height = Math.round(H * d);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  fit();
+  window.addEventListener("resize", fit);
+
+  var state = "aim", ball = { x: 0, y: 0, vx: 0, vy: 0 }, hole = { x: 0, y: 0 };
+  var lv = LEVELS[0], view = 1, lvShots = 0, shots = 0, lipped = false, sunkAt = 0, finished = false;
+  var drag = false, aim = { x: 0, y: 0 };
+
+  function load(n) {
+    lv = LEVELS[n - 1];
+    view = n; lipped = false; finished = false;
+    ball.x = lv.s[0]; ball.y = lv.s[1]; ball.vx = 0; ball.vy = 0;
+    hole.x = lv.h[0]; hole.y = lv.h[1];
+    lvShots = 0; state = "aim"; drag = false;
+    paint();
+  }
+
+  // ---- physics: fixed 60Hz steps, all in logical units ---------------------
+  function phys() {
+    if (state !== "roll") return;
+    ball.vx *= 0.988; ball.vy *= 0.988;               // rolling friction
+    if (Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy) < 0.25) {
+      ball.vx = 0; ball.vy = 0; state = "aim"; return; // rest, aim again
+    }
+    ball.x += ball.vx; ball.y += ball.vy;
+
+    if (ball.x < LX) { ball.x = LX; ball.vx = -ball.vx * 0.92; thud(); }
+    if (ball.x > RXW) { ball.x = RXW; ball.vx = -ball.vx * 0.92; thud(); }
+    if (ball.y < TY) { ball.y = TY; ball.vy = -ball.vy * 0.92; thud(); }
+    if (ball.y > BYT) { ball.y = BYT; ball.vy = -ball.vy * 0.92; thud(); }
+
+    for (var i = 0; i < lv.o.length; i++) {
+      var o = lv.o[i], cx = o[0] + o[2] / 2, cy = o[1] + o[3] / 2;
+      var ox = o[2] / 2 + R - Math.abs(ball.x - cx);
+      var oy = o[3] / 2 + R - Math.abs(ball.y - cy);
+      if (ox <= 0 || oy <= 0) continue;
+      if (ox < oy) { ball.x += ball.x < cx ? -ox : ox; ball.vx = -ball.vx * 0.92; }
+      else { ball.y += ball.y < cy ? -oy : oy; ball.vy = -ball.vy * 0.92; }
+      thud();
+    }
+
+    var dx = ball.x - hole.x, dy = ball.y - hole.y, d2 = dx * dx + dy * dy;
+    if (d2 < HR * HR) {
+      var sp = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+      if (sp < 4) { sink(); return; }
+      if (!lipped) {                                  // too quick: off the rim, same energy loss
+        lipped = true;
+        var d = Math.sqrt(d2) || 1, nx = dx / d, ny = dy / d;
+        var dot = ball.vx * nx + ball.vy * ny;
+        if (dot < 0) { ball.vx = (ball.vx - 2 * dot * nx) * 0.92; ball.vy = (ball.vy - 2 * dot * ny) * 0.92; thud(); }
+      }
+    } else { lipped = false; }
+  }
+
+  // ---- shot, hole-out, HUD -------------------------------------------------
+  function shoot(px, py) {
+    var dx = px - ball.x, dy = py - ball.y, d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 8) return;                                 // a stray tap is not a putt
+    var pow = Math.min(320, d * 2.2);                  // px/s launch speed
+    var sp = pow / 40;                                 // -> px per 60Hz step; a full drag rolls ~660px
+    ball.vx = dx / d * sp; ball.vy = dy / d * sp;
+    state = "roll"; lipped = false; shots++; run.strokes++; lvShots++;
+    persist(false);
+    paint();
+  }
+
+  function sink() {
+    state = "sunk"; sunkAt = performance.now(); ding();
+    if (view === 10) {                                 // a finished run is the only place best is set
+      finished = true;
+      if (run.best === null || run.strokes < run.best) run.best = run.strokes;
+      persist(true);
+    } else {
+      run.level = view + 1;                            // saved now, so a mid-stamp exit resumes ahead
+      persist(false);
+    }
+    paint();
+  }
+
+  function paint() {
+    pLv.textContent = "Level " + view + "/10";
+    pSh.textContent = "Shots " + run.strokes;
+    pBs.textContent = run.best === null ? "Best —" : "Best " + run.best;
+    bSound.textContent = mute ? "Sound off" : "Sound on";
+  }
+
+  function restart() {
+    run.level = 1; run.strokes = 0;
+    over.hidden = true;
+    load(1); persist(false);
+  }
+
+  function showOver() {
+    oTitle.textContent = "Run finished — " + run.strokes + (run.strokes === 1 ? " shot." : " shots.");
+    oBest.innerHTML = "Best <b>" + run.best + "</b>";
+    over.hidden = false;
+  }
+
+  var pLv = document.getElementById("pLv"), pSh = document.getElementById("pSh"), pBs = document.getElementById("pBs")
+    , bSound = document.getElementById("bSound"), over = document.getElementById("over")
+    , oTitle = document.getElementById("oTitle"), oBest = document.getElementById("oBest");
+
+  // ---- sound: short, throttled, only after a gesture -----------------------
+  var actx = null, lastThud = 0;
+  function audio() {
+    if (mute) return null;
+    if (!actx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      actx = new AC();
+    }
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+  function beep(f, type, dur, vol, to) {
+    var a = audio(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), n = a.currentTime;
+    o.type = type; o.frequency.setValueAtTime(f, n);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, n + dur);
+    g.gain.setValueAtTime(vol, n);
+    g.gain.exponentialRampToValueAtTime(0.0001, n + dur);
+    o.connect(g); g.connect(a.destination); o.start(n); o.stop(n + dur);
+  }
+  function thud() {
+    var n = performance.now();
+    if (n - lastThud < 90) return;                     // a fast ball must not buzz
+    lastThud = n;
+    beep(150, "triangle", 0.09, 0.16, 80);
+  }
+  function ding() { beep(880, "sine", 0.2, 0.18, 1320); }
+
+  // ---- drawing -------------------------------------------------------------
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
+  function drawAim() {
+    var dx = aim.x - ball.x, dy = aim.y - ball.y, d = Math.sqrt(dx * dx + dy * dy) || 1;
+    var ux = dx / d, uy = dy / d, len = Math.min(d, 130);
+    var ex = ball.x + ux * len, ey = ball.y + uy * len;
+    ctx.save(); rr(12, 12, W - 24, H - 24, 12); ctx.clip();   // quiet guide line: aiming on a phone needs a read
+    ctx.setLineDash([9, 9]); ctx.lineWidth = 3; ctx.strokeStyle = MUTED;
+    ctx.beginPath(); ctx.moveTo(ball.x, ball.y); ctx.lineTo(ball.x + ux * 1400, ball.y + uy * 1400); ctx.stroke();
+    ctx.restore();
+    ctx.lineCap = "round"; ctx.setLineDash([10, 8]); ctx.lineWidth = 3; ctx.strokeStyle = INK;
+    ctx.beginPath(); ctx.moveTo(ball.x + ux * R, ball.y + uy * R); ctx.lineTo(ex, ey); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(ex + ux * 13, ey + uy * 13);
+    ctx.lineTo(ex - uy * 8, ey + ux * 8);
+    ctx.lineTo(ex + uy * 8, ey - ux * 8);
+    ctx.closePath(); ctx.fillStyle = INK; ctx.fill();
+
+    var f = Math.min(1, d * 2.2 / 320), bw = 86, bh = 12, bx = ball.x - bw / 2, by = ball.y + R + 8;
+    ctx.fillStyle = CARD; rr(bx, by, bw, bh, 7); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    if (f > 0.03) {
+      ctx.save(); rr(bx, by, bw, bh, 7); ctx.clip();
+      ctx.fillStyle = f > 0.93 ? BERRY : PRIMARY;       // max power is where the ball lips out
+      ctx.fillRect(bx, by, bw * f, bh); ctx.restore();
+    }
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; rr(10, 10, W - 20, H - 20, 14); ctx.stroke();
+
+    for (var i = 0; i < lv.o.length; i++) {
+      var o = lv.o[i];
+      ctx.fillStyle = INK; rr(o[0] + 4, o[1] + 4, o[2], o[3], 10); ctx.fill();
+      ctx.fillStyle = CARD; rr(o[0], o[1], o[2], o[3], 10); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    }
+
+    ctx.beginPath(); ctx.arc(lv.s[0], lv.s[1], 7, 0, 6.2832);   // tee mark
+    ctx.fillStyle = GOLD; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(hole.x, hole.y, HR, 0, 6.2832);
+    ctx.fillStyle = MINT; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+    if (state === "sunk") {
+      ctx.beginPath(); ctx.arc(hole.x, hole.y, HR + 30 * Math.min(1, (t - sunkAt) / 450), 0, 6.2832);
+      ctx.strokeStyle = MINT; ctx.lineWidth = 4; ctx.stroke();
+    }
+
+    var bx = ball.x, by = ball.y, br = R;
+    if (state === "sunk") {
+      var q = Math.min(1, (t - sunkAt) / 380);
+      bx += (hole.x - bx) * q; by += (hole.y - by) * q; br = R * (1 - 0.78 * q);
+    } else {
+      ctx.beginPath(); ctx.arc(bx + 3, by + 3, br - 1, 0, 6.2832); ctx.fillStyle = INK; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.2832);
+    ctx.fillStyle = PRIMARY; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+
+    if (state === "aim" && drag) drawAim();
+
+    if (state === "sunk") {
+      var txt = "IN — " + lvShots + (lvShots === 1 ? " shot" : " shots");
+      ctx.save();
+      ctx.translate(W / 2, H / 2 - 40); ctx.rotate(-0.08);
+      ctx.font = "800 34px \"Baloo 2\", system-ui";
+      var tw = ctx.measureText(txt).width + 46, th = 64;
+      ctx.fillStyle = INK; rr(-tw / 2 + 4, -th / 2 + 4, tw, th, 12); ctx.fill();
+      ctx.fillStyle = CARD; rr(-tw / 2, -th / 2, tw, th, 12); ctx.fill();
+      ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = INK; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(txt, 0, 2);
+      ctx.restore();
+    }
+  }
+
+  // ---- input: drag anywhere, the ball never moves while aiming -------------
+  function local(e) {
+    var r = cv.getBoundingClientRect(), cw = cv.clientWidth || 1, s = W / cw;
+    return { x: (e.clientX - r.left - cv.clientLeft) * s, y: (e.clientY - r.top - cv.clientTop) * s };
+  }
+  cv.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    audio();                                           // sound waits for a real gesture
+    if (state !== "aim") return;
+    drag = true; aim = local(e);
+    if (cv.setPointerCapture) { try { cv.setPointerCapture(e.pointerId); } catch (err) {} }
+  });
+  cv.addEventListener("pointermove", function (e) { if (drag) aim = local(e); });
+  cv.addEventListener("pointerup", function (e) {
+    if (!drag) return;
+    drag = false;
+    var p = local(e);
+    shoot(p.x, p.y);
+  });
+  cv.addEventListener("pointercancel", function () { drag = false; });
+
+  bSound.addEventListener("click", function () { mute = !mute; paint(); persist(false); });
+  document.getElementById("bRestart").addEventListener("click", restart);
+  document.getElementById("bAgain").addEventListener("click", restart);
+
+  // ---- loop: fixed step so a 120Hz screen plays like a 60Hz one ------------
+  var last = 0, acc = 0;
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (!last) last = t;
+    acc += Math.min(0.1, (t - last) / 1000); last = t;
+    var n = 0;
+    while (acc >= 1 / 60 && n++ < 8) { phys(); acc -= 1 / 60; }
+    if (state === "sunk" && t - sunkAt > 700) {
+      if (finished) { state = "done"; showOver(); }
+      else load(run.level);
+    }
+    draw(t);
+  }
+
+  load(1);
+  paint();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

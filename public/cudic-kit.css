@@ -1,0 +1,394 @@
+/* ── Cudic Kit — the neubrutalist component library ──────────────
+   One file, plain CSS, no build step. Scope: put class="ck" on a
+   container (body.ck on a whole page) and every component below works
+   inside it. Nothing leaks out, so a kit surface can live next to the
+   classic chrome without touching it.
+
+   House rules, in the same spirit as the rest of the site:
+   - flat colour, 3px ink border, hard offset shadow (never a blur)
+   - every accent fill carries ink text — the only combination that
+     clears WCAG AA and the look neubrutalism actually wants
+   - motion is short and physical: hover lifts, press squashes back to
+     the paper. Everything honours prefers-reduced-motion.
+   - page defaults follow the site theme via [data-theme="dark"]
+
+   Components: card · button · field/input · select (via csel.js) ·
+   check/radio/switch · range · chips · tabs · badge/stamp · stat ·
+   progress · dialog · toast · tooltip · empty state · skeleton/loading. */
+
+.ck {
+  --ck-paper: #FFF6E7;
+  --ck-card: #FFFDF7;
+  --ck-ink: #1B1712;
+  --ck-muted: #6E6555;
+  --ck-line: #1B1712;
+  --ck-shadow-col: #1B1712;
+  --ck-primary: #FF4E1A;
+  --ck-gold: #FFC93C;
+  --ck-mint: #5BD695;
+  --ck-berry: #FF3B6B;
+  --ck-sky: #6FB7FF;
+  --ck-on-accent: #1B1712;
+  --ck-radius: 12px;
+  --ck-radius-sm: 8px;
+  --ck-bw: 3px;
+  --ck-shadow: 4px 4px 0 var(--ck-shadow-col);
+  --ck-shadow-lg: 7px 7px 0 var(--ck-shadow-col);
+  --ck-font-head: 'Baloo 2', 'Epilogue', sans-serif;
+  --ck-font-body: 'Satoshi', system-ui, sans-serif;
+  --ck-font-mono: 'JetBrains Mono', monospace;
+  font-family: var(--ck-font-body);
+  color: var(--ck-ink);
+}
+.ck-page {
+  background: var(--ck-paper);
+  color: var(--ck-ink);
+  min-height: 100vh;
+}
+:root[data-theme="dark"] .ck {
+  --ck-paper: #17130E;
+  --ck-card: #221B14;
+  --ck-ink: #FFF3DF;
+  --ck-muted: #B5A88F;
+  --ck-line: #FFF3DF;
+  --ck-shadow-col: #000;
+}
+/* Accent fills keep ink text in both themes — they are light colours. */
+.ck ::selection { background: var(--ck-gold); color: #1B1712; }
+
+/* ── Type ───────────────────────────────────────────────────────── */
+.ck h1, .ck h2, .ck h3, .ck h4 { font-family: var(--ck-font-head); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+.ck h1 { font-size: 2rem; }
+.ck h2 { font-size: 1.4rem; }
+.ck h3 { font-size: 1.1rem; }
+.ck p { line-height: 1.65; }
+.ck-muted { color: var(--ck-muted); }
+.ck-small { font-size: 0.85rem; }
+.ck-mono { font-family: var(--ck-font-mono); font-size: 0.85em; }
+.ck-link { color: inherit; font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.ck-link:hover { background: var(--ck-gold); }
+.ck-divider { border: none; border-top: var(--ck-bw) dashed var(--ck-line); margin: 20px 0; opacity: .28; }
+
+/* ── Card ───────────────────────────────────────────────────────── */
+.ck-card {
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius);
+  box-shadow: var(--ck-shadow);
+  padding: 20px;
+}
+.ck-card-hover { transition: transform .12s ease, box-shadow .12s ease; }
+.ck-card-hover:hover { transform: translate(-2px, -2px); box-shadow: var(--ck-shadow-lg); }
+.ck-card-flat { box-shadow: none; }
+
+/* ── Button ─────────────────────────────────────────────────────
+   The signature move: hover lifts the button out of the paper, press
+   slams it back flat. Same physics on every variant. */
+.ck-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.95rem;
+  line-height: 1; color: var(--ck-on-accent);
+  background: var(--ck-gold);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  box-shadow: 4px 4px 0 var(--ck-shadow-col);
+  padding: 12px 18px; cursor: pointer; user-select: none;
+  text-decoration: none; white-space: nowrap;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.ck-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ck-shadow-col); }
+.ck-btn:active:not(:disabled) { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ck-shadow-col); }
+.ck-btn:focus-visible { outline: 3px solid var(--ck-sky); outline-offset: 2px; }
+.ck-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: 2px 2px 0 var(--ck-shadow-col); }
+.ck-btn-primary { background: var(--ck-primary); }
+.ck-btn-mint { background: var(--ck-mint); }
+.ck-btn-berry { background: var(--ck-berry); }
+.ck-btn-sky { background: var(--ck-sky); }
+.ck-btn-ink { background: var(--ck-ink); color: var(--ck-card); }
+:root[data-theme="dark"] .ck-btn-ink { background: var(--ck-card); color: var(--ck-ink); }
+.ck-btn-ghost { background: transparent; box-shadow: none; border-color: transparent; }
+.ck-btn-ghost:hover:not(:disabled) { background: var(--ck-gold); border-color: var(--ck-line); transform: none; box-shadow: none; }
+.ck-btn-ghost:active:not(:disabled) { transform: none; background: var(--ck-primary); }
+.ck-btn-sm { font-size: 0.8rem; padding: 8px 12px; border-width: 2px; box-shadow: 3px 3px 0 var(--ck-shadow-col); }
+.ck-btn-sm:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--ck-shadow-col); }
+.ck-btn-sm:active:not(:disabled) { box-shadow: 0 0 0 var(--ck-shadow-col); }
+.ck-btn-lg { font-size: 1.1rem; padding: 15px 26px; }
+.ck-btn-block { width: 100%; }
+.ck-btn-icon { padding: 10px; font-size: 1rem; }
+.ck-btn-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+/* ── Field, input, textarea ─────────────────────────────────────── */
+.ck-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.ck-label { font-family: var(--ck-font-head); font-weight: 800; font-size: 0.9rem; }
+.ck-hint { font-size: 0.8rem; color: var(--ck-muted); }
+.ck-err { font-size: 0.8rem; font-weight: 700; color: var(--ck-berry); }
+:root[data-theme="dark"] .ck-err { color: #FF7A9C; }
+.ck-input, .ck-textarea {
+  font-family: var(--ck-font-body); font-size: 0.95rem; color: var(--ck-ink);
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  box-shadow: 3px 3px 0 var(--ck-shadow-col);
+  padding: 11px 13px; width: 100%; min-width: 0;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.ck-textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+.ck-input::placeholder, .ck-textarea::placeholder { color: var(--ck-muted); opacity: .75; }
+.ck-input:hover, .ck-textarea:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ck-shadow-col); }
+.ck-input:focus, .ck-textarea:focus { outline: none; transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ck-shadow-col); background: var(--ck-card); }
+.ck-input[aria-invalid="true"], .ck-textarea[aria-invalid="true"] { border-color: var(--ck-berry); background: color-mix(in srgb, var(--ck-berry) 7%, var(--ck-card)); }
+.ck-input:disabled, .ck-textarea:disabled { opacity: .5; cursor: not-allowed; }
+/* A text input with a button pinned to its right edge (comment box, search). */
+.ck-inputrow { display: flex; gap: 10px; align-items: flex-start; }
+.ck-inputrow > .ck-input, .ck-inputrow > .ck-textarea { flex: 1; }
+
+/* ── Select — styles csel.js's markup, no second implementation ── */
+.ck .csel { position: relative; display: inline-block; min-width: 150px; }
+.ck .csel > select { display: none; }
+.ck .csel-btn {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.9rem; color: var(--ck-ink);
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  box-shadow: 3px 3px 0 var(--ck-shadow-col);
+  padding: 10px 12px; cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.ck .csel-btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ck-shadow-col); }
+.ck .csel-btn .chev { display: flex; transition: transform .15s ease; }
+.ck .csel.open .csel-btn { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ck-shadow-col); }
+.ck .csel.open .chev { transform: rotate(180deg); }
+.ck .csel-menu {
+  position: absolute; z-index: 40; top: calc(100% + 8px); left: 0; right: 0;
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius-sm);
+  box-shadow: var(--ck-shadow);
+  padding: 6px; display: flex; flex-direction: column; gap: 4px;
+  max-height: 260px; overflow: auto;
+}
+.ck .csel-menu button {
+  font-family: var(--ck-font-body); font-weight: 600; font-size: 0.9rem; color: var(--ck-ink);
+  background: transparent; border: 2px solid transparent; border-radius: 6px;
+  text-align: left; padding: 9px 10px; cursor: pointer;
+}
+.ck .csel-menu button:hover { background: var(--ck-gold); border-color: var(--ck-line); }
+.ck .csel-menu button.sel { background: var(--ck-ink); color: var(--ck-card); font-weight: 700; }
+:root[data-theme="dark"] .ck .csel-menu button.sel { background: var(--ck-card); color: var(--ck-ink); }
+
+/* ── Checkbox / radio / switch — native inputs, styled boxes ─────
+   Real inputs keep keyboard + screen-reader behaviour for free. */
+.ck-check, .ck-radio { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.92rem; user-select: none; }
+.ck-check input, .ck-radio input {
+  appearance: none; -webkit-appearance: none;
+  width: 22px; height: 22px; flex-shrink: 0; cursor: pointer;
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: 6px; box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  display: grid; place-items: center;
+  transition: transform .1s ease, box-shadow .1s ease, background .1s ease;
+}
+.ck-radio input { border-radius: 50%; }
+.ck-check input:hover, .ck-radio input:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ck-shadow-col); }
+.ck-check input:active, .ck-radio input:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ck-shadow-col); }
+.ck-check input:checked { background: var(--ck-primary); }
+.ck-check input:checked::after {
+  content: ""; width: 10px; height: 6px;
+  border-left: 3px solid var(--ck-on-accent); border-bottom: 3px solid var(--ck-on-accent);
+  transform: rotate(-45deg) translate(1px, -2px);
+}
+.ck-radio input:checked { background: var(--ck-primary); }
+.ck-radio input:checked::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ck-on-accent); }
+.ck-check input:focus-visible, .ck-radio input:focus-visible { outline: 3px solid var(--ck-sky); outline-offset: 2px; }
+.ck-check input:disabled, .ck-radio input:disabled { opacity: .45; cursor: not-allowed; }
+
+.ck-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.92rem; user-select: none; }
+.ck-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ck-switch .track {
+  width: 52px; height: 28px; flex-shrink: 0; position: relative;
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  transition: background .15s ease;
+}
+.ck-switch .track::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px;
+  background: var(--ck-line); border-radius: 50%;
+  transition: transform .18s cubic-bezier(.5, 1.8, .4, 1);
+}
+.ck-switch input:checked + .track { background: var(--ck-mint); }
+.ck-switch input:checked + .track::after { transform: translateX(23px); }
+.ck-switch input:focus-visible + .track { outline: 3px solid var(--ck-sky); outline-offset: 2px; }
+.ck-switch input:disabled + .track { opacity: .45; cursor: not-allowed; }
+
+/* ── Range ──────────────────────────────────────────────────────── */
+.ck-range { appearance: none; -webkit-appearance: none; width: 100%; height: 30px; background: transparent; cursor: pointer; }
+.ck-range::-webkit-slider-runnable-track {
+  height: 12px; background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: 999px;
+}
+.ck-range::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none;
+  width: 24px; height: 24px; margin-top: -9px;
+  background: var(--ck-primary);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: 6px;
+  box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  transition: transform .1s ease;
+}
+.ck-range::-webkit-slider-thumb:active { transform: scale(1.15) rotate(-6deg); }
+.ck-range::-moz-range-track { height: 12px; background: var(--ck-card); border: var(--ck-bw) solid var(--ck-line); border-radius: 999px; }
+.ck-range::-moz-range-thumb { width: 20px; height: 20px; background: var(--ck-primary); border: var(--ck-bw) solid var(--ck-line); border-radius: 6px; box-shadow: 2px 2px 0 var(--ck-shadow-col); }
+.ck-range:focus-visible { outline: 3px solid var(--ck-sky); outline-offset: 4px; }
+
+/* ── Chips ──────────────────────────────────────────────────────── */
+.ck-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-chip {
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.82rem;
+  background: var(--ck-card); color: var(--ck-ink);
+  border: 2px solid var(--ck-line); border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  padding: 7px 14px; cursor: pointer;
+  transition: transform .1s ease, box-shadow .1s ease, background .1s ease;
+}
+.ck-chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--ck-shadow-col); }
+.ck-chip:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--ck-shadow-col); }
+.ck-chip[aria-pressed="true"], .ck-chip.on { background: var(--ck-primary); }
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+.ck-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-tab {
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.9rem;
+  background: var(--ck-card); color: var(--ck-ink);
+  border: var(--ck-bw) solid var(--ck-line);
+  border-radius: var(--ck-radius-sm) var(--ck-radius-sm) 0 0;
+  border-bottom-width: 0; padding: 10px 16px 13px; cursor: pointer;
+  box-shadow: 3px -3px 0 var(--ck-shadow-col);
+  transition: transform .1s ease;
+}
+.ck-tab:hover { transform: translateY(-2px); }
+.ck-tab[aria-selected="true"] { background: var(--ck-gold); }
+.ck-tabpanel { border: var(--ck-bw) solid var(--ck-line); border-radius: 0 var(--ck-radius) var(--ck-radius) var(--ck-radius); background: var(--ck-card); box-shadow: var(--ck-shadow); padding: 20px; }
+.ck-tabpanel[hidden] { display: none; }
+
+/* ── Badge & stamp ───────────────────────────────────────────────
+   Stamps are for status an owner assigns (a thread's "answered", a
+   review verdict). Slight rotation so it reads as pressed on. */
+.ck-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.72rem;
+  background: var(--ck-gold); color: var(--ck-on-accent);
+  border: 2px solid var(--ck-line); border-radius: 999px;
+  padding: 3px 10px; white-space: nowrap;
+}
+.ck-badge-mint { background: var(--ck-mint); }
+.ck-badge-berry { background: var(--ck-berry); }
+.ck-badge-sky { background: var(--ck-sky); }
+.ck-badge-ghost { background: transparent; border-style: dashed; color: var(--ck-muted); border-color: var(--ck-muted); }
+.ck-stamp {
+  display: inline-block; transform: rotate(-4deg);
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.7rem; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ck-on-accent);
+  background: var(--ck-mint);
+  border: 2px solid var(--ck-line); border-radius: 6px;
+  box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  padding: 3px 8px;
+}
+.ck-stamp-gold { background: var(--ck-gold); }
+.ck-stamp-berry { background: var(--ck-berry); }
+.ck-stamp-sky { background: var(--ck-sky); }
+
+/* ── Stat plate ─────────────────────────────────────────────────── */
+.ck-stat {
+  display: inline-flex; flex-direction: column; gap: 2px; min-width: 86px;
+  background: var(--ck-card);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius-sm);
+  box-shadow: var(--ck-shadow); padding: 12px 16px;
+}
+.ck-stat b { font-family: var(--ck-font-head); font-weight: 800; font-size: 1.6rem; line-height: 1; }
+.ck-stat span { font-size: 0.75rem; color: var(--ck-muted); }
+.ck-stat-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* ── Progress ───────────────────────────────────────────────────── */
+.ck-progress { height: 16px; background: var(--ck-card); border: var(--ck-bw) solid var(--ck-line); border-radius: 999px; overflow: hidden; }
+.ck-progress > i { display: block; height: 100%; background: var(--ck-primary); transition: width .25s ease; }
+.ck-progress-mint > i { background: var(--ck-mint); }
+
+/* ── Dialog ─────────────────────────────────────────────────────── */
+.ck-dialog {
+  background: var(--ck-card); color: var(--ck-ink);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius);
+  box-shadow: var(--ck-shadow-lg);
+  padding: 24px; width: min(440px, calc(100vw - 32px));
+}
+.ck-dialog::backdrop { background: rgba(20, 16, 10, .55); }
+.ck-dialog[open] { animation: ckPop .18s cubic-bezier(.3, 1.4, .5, 1); }
+@keyframes ckPop { from { transform: scale(.92) rotate(-1.5deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.ck-dialog h2 { margin-bottom: 10px; }
+.ck-dialog .ck-btn-row { margin-top: 20px; justify-content: flex-end; }
+
+/* ── Toasts ─────────────────────────────────────────────────────── */
+.ck-toasts { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; }
+.ck-toast {
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.9rem;
+  background: var(--ck-card); color: var(--ck-ink);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius-sm);
+  box-shadow: var(--ck-shadow); padding: 12px 20px;
+  animation: ckToast .22s cubic-bezier(.3, 1.5, .5, 1);
+}
+.ck-toast-ok { background: var(--ck-mint); color: var(--ck-on-accent); }
+.ck-toast-bad { background: var(--ck-berry); color: var(--ck-on-accent); }
+.ck-toast.out { animation: ckToastOut .18s ease forwards; }
+@keyframes ckToast { from { transform: translateY(16px) rotate(-2deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ckToastOut { to { transform: translateY(10px); opacity: 0; } }
+
+/* ── Tooltip (data-tip) ─────────────────────────────────────────── */
+.ck-tip { position: relative; }
+.ck-tip::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 8px); left: 50%; translate: -50% 0;
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.72rem;
+  background: var(--ck-ink); color: var(--ck-card);
+  border-radius: 6px; padding: 5px 9px; white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity .12s ease, translate .12s ease;
+}
+:root[data-theme="dark"] .ck-tip::after { background: var(--ck-card); color: var(--ck-ink); border: 2px solid var(--ck-line); }
+.ck-tip:hover::after, .ck-tip:focus-visible::after { opacity: 1; translate: -50% -3px; }
+
+/* ── Empty state ────────────────────────────────────────────────
+   Same 4-step pattern as the rest of Cudic: plate, heading, one line,
+   one action. */
+.ck-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 44px 20px; }
+.ck-empty .plate {
+  width: 64px; height: 64px; display: grid; place-items: center;
+  font-size: 1.6rem; background: var(--ck-gold);
+  border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius-sm);
+  box-shadow: var(--ck-shadow); transform: rotate(-3deg); margin-bottom: 6px;
+}
+.ck-empty p { color: var(--ck-muted); max-width: 40ch; }
+.ck-empty .ck-btn { margin-top: 8px; }
+
+/* ── Avatar ─────────────────────────────────────────────────────
+   Works as a div carrying initials or as an <img> (object-fit). */
+.ck-ava {
+  width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center;
+  font-family: var(--ck-font-head); font-weight: 800; font-size: 0.9rem;
+  background: var(--ck-gold); color: var(--ck-on-accent);
+  border: 2px solid var(--ck-line); border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--ck-shadow-col);
+  overflow: hidden; object-fit: cover;
+}
+img.ck-ava { display: block; }
+
+/* ── Loading: three stomping blocks ─────────────────────────────── */.ck-loading { display: inline-flex; gap: 6px; align-items: flex-end; height: 22px; }
+.ck-loading i { width: 12px; height: 12px; background: var(--ck-primary); border: 2px solid var(--ck-line); border-radius: 4px; animation: ckStomp .9s ease-in-out infinite; }
+.ck-loading i:nth-child(2) { animation-delay: .15s; background: var(--ck-gold); }
+.ck-loading i:nth-child(3) { animation-delay: .3s; background: var(--ck-mint); }
+@keyframes ckStomp { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9px); } }
+.ck-sk { background: color-mix(in srgb, var(--ck-ink) 10%, var(--ck-card)); border-radius: 6px; animation: ckSk 1.2s ease-in-out infinite; }
+@keyframes ckSk { 50% { opacity: .45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ck *, .ck *::before, .ck *::after { animation: none !important; transition: none !important; }
+  .ck-btn:hover, .ck-btn:active { transform: none; }
+}

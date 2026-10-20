@@ -6,6 +6,9 @@
     { "source": "/profile", "destination": "/profile.html" },
     { "source": "/chat", "destination": "/chat.html" },
     { "source": "/games", "destination": "/games.html" },
+    { "source": "/forums", "destination": "/forums.html" },
+    { "source": "/forums/:id", "destination": "/forums.html" },
+    { "source": "/kit", "destination": "/kit.html" },
     { "source": "/themes", "destination": "/themes.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
@@ -15,7 +18,9 @@
     { "source": "/music", "destination": "/music.html" },
     { "source": "/servers", "destination": "/servers.html" },
     { "source": "/moderate", "destination": "/moderate.html" },
-    { "source": "/studio", "destination": "/studio/index.html" }
+    { "source": "/studio", "destination": "/studio/index.html" },
+    { "source": "/g/:id/thumb", "destination": "https://glox-o7rr.onrender.com/g/:id/thumb" },
+    { "source": "/g/:id", "destination": "https://glox-o7rr.onrender.com/g/:id" }
   ],
   "redirects": [
     { "source": "/lobbies", "destination": "/chat", "permanent": false }

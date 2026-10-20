@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stroop</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --paper:#FFF6E7; --card:#FFFDF7; --ink:#1B1712; --muted:#6E6555;
+    --primary:#FF4E1A; --gold:#FFC93C; --mint:#5BD695; --berry:#FF3B6B; --sky:#6FB7FF; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--paper); color:var(--ink); font-family:system-ui, sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:14px 12px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+  .wrap { width:100%; max-width:620px; display:flex; flex-direction:column; gap:12px; }
+  h1, h2, .word, .ck-stat b, .pad .nm, button { font-family:'Baloo 2', system-ui, sans-serif; font-weight:800; }
+
+  .stats { display:flex; gap:8px; }
+  .ck-stat { flex:1; min-width:0; background:var(--card); border:3px solid var(--ink);
+    border-radius:12px; box-shadow:4px 4px 0 var(--ink); padding:5px 9px; overflow:hidden;
+    display:flex; align-items:baseline; justify-content:center; gap:6px; white-space:nowrap; }
+  .ck-stat .k { font-size:.68rem; color:var(--muted); }
+  .ck-stat b { font-size:1.05rem; line-height:1.6; font-variant-numeric:tabular-nums; }
+  .ck-stat .mult { font-size:.74rem; color:var(--primary); }
+
+  .word { background:var(--card); border:3px solid var(--ink); border-radius:16px;
+    box-shadow:4px 4px 0 var(--ink); height:clamp(104px,24vh,164px); color:var(--muted);
+    display:flex; align-items:center; justify-content:center;
+    font-size:clamp(2.4rem,13vw,4rem); line-height:1; letter-spacing:.02em; }
+
+  .timer { display:flex; align-items:center; gap:10px; }
+  .barwrap { flex:1; height:22px; background:var(--card); border:3px solid var(--ink);
+    border-radius:12px; box-shadow:4px 4px 0 var(--ink); overflow:hidden; }
+  .bar { height:100%; width:100%; background:var(--mint); transition:background .2s; }
+  .secs { font-size:1.25rem; min-width:2.6ch; text-align:right; font-variant-numeric:tabular-nums; }
+
+  button { font-family:'Baloo 2', system-ui, sans-serif; font-weight:800; color:var(--ink);
+    cursor:pointer; transition:transform .12s, box-shadow .12s; }
+  button:focus-visible { outline:3px solid var(--sky); outline-offset:2px; }
+
+  .pads { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .pad { background:var(--card); border:3px solid var(--ink); border-radius:14px;
+    box-shadow:4px 4px 0 var(--ink); padding:0; overflow:hidden;
+    display:flex; flex-direction:column; touch-action:manipulation; }
+  .pad .sw { height:52px; border-bottom:3px solid var(--ink); background:var(--gold); }
+  .pad[data-c="berry"] .sw { background:var(--berry); }
+  .pad[data-c="gold"] .sw { background:var(--gold); }
+  .pad[data-c="mint"] .sw { background:var(--mint); }
+  .pad[data-c="sky"] .sw { background:var(--sky); }
+  .pads.miss .pad .sw { background:var(--berry); }
+  .pad .nm { padding:5px 0 7px; font-size:.95rem; }
+
+  @media (min-width:640px) { .pads { grid-template-columns:repeat(4,1fr); } .pad .sw { height:64px; } }
+  @media (hover:hover) {
+    .pad:hover, .btn:hover, #snd:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink); }
+  }
+  .pad:active, .btn:active, #snd:active { transform:translate(3px,3px); box-shadow:none; }
+
+  .btn { background:var(--primary); border:3px solid var(--ink); border-radius:14px;
+    box-shadow:4px 4px 0 var(--ink); padding:11px 26px; font-size:1.05rem; }
+  #snd { background:var(--card); border:3px solid var(--ink); border-radius:12px;
+    box-shadow:4px 4px 0 var(--ink); padding:6px 10px; font-size:.78rem; }
+
+  .overlay { position:fixed; inset:0; z-index:5; background:var(--paper); display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    padding:20px; text-align:center; }
+  .overlay.show { display:flex; }
+  .overlay h1 { font-size:clamp(2.2rem,11vw,3.2rem); }
+  .overlay h2 { font-size:clamp(1.7rem,8vw,2.4rem); }
+  .overlay p { color:var(--muted); max-width:32ch; line-height:1.55; }
+  .overlay .big { color:var(--ink); font-family:'Baloo 2', system-ui, sans-serif;
+    font-weight:800; font-size:1.15rem; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stats">
+      <div class="ck-stat"><span class="k">Score</span><b id="score">0</b><span class="mult" id="mult">&times;1</span></div>
+      <div class="ck-stat"><span class="k">Streak</span><b id="streak">0</b></div>
+      <div class="ck-stat"><span class="k">Best</span><b id="best">0</b></div>
+    </div>
+    <div class="word" id="word">STROOP</div>
+    <div class="timer">
+      <div class="barwrap"><div class="bar" id="bar"></div></div>
+      <b class="secs" id="secs">45</b>
+      <button id="snd" type="button" aria-pressed="true">Sound on</button>
+    </div>
+    <div class="pads" id="pads"></div>
+  </div>
+
+  <div class="overlay show" id="start">
+    <h1>Stroop</h1>
+    <p>Tap the ink colour, not the word.</p>
+    <button class="btn" id="startBtn" type="button">Start</button>
+  </div>
+
+  <div class="overlay" id="end">
+    <h2>Time up</h2>
+    <p class="big" id="endLine">0 correct &middot; best streak 0</p>
+    <p id="endBest">Best 0</p>
+    <button class="btn" id="againBtn" type="button">Play again</button>
+  </div>
+
+<script src="/cudic-save.js?v=1"></script>
+<script>
+(function () {
+  var NAMES = ['BERRY', 'GOLD', 'MINT', 'SKY'];
+  var KEYS = ['berry', 'gold', 'mint', 'sky'];
+  var HEX = { berry: '#FF3B6B', gold: '#FFC93C', mint: '#5BD695', sky: '#6FB7FF' };
+  var ROUND = 45;
+  var PENALTY = 2000;
+  var $ = function (id) { return document.getElementById(id); };
+  var wordEl = $('word'), bar = $('bar'), secs = $('secs'), pads = $('pads'),
+      scoreEl = $('score'), streakEl = $('streak'), bestEl = $('best'), multEl = $('mult'),
+      sndBtn = $('snd'), startOv = $('start'), endOv = $('end'),
+      endLine = $('endLine'), endBest = $('endBest');
+
+  var best = 0, bestStreak = 0, soundOn = true;
+  var score = 0, streak = 0, mult = 1, hits = 0, roundStreak = 0;
+  var running = false, endAt = 0, lastKey = '', kind = false, missT = 0, want = 0;
+
+  var CS = window.CudicSave || null;
+  CS && CS.load({ legacyKey: 'cudic-stroop-best', legacyMap: function (raw) { return { best: parseInt(raw, 10) || 0 }; } })
+    .then(function (d) {
+      if (d && typeof d.best === 'number' && d.best > best) { best = d.best; paint(); }
+      if (d && typeof d.streak === 'number' && d.streak > bestStreak) { bestStreak = d.streak; paint(); }
+      if (d && Number(d.sound) === 0) { soundOn = false; paintSound(); }
+    })
+    .catch(function () {});
+  function saveBest() {
+    if (CS) { CS.save({ best: best, streak: bestStreak, sound: soundOn ? 1 : 0 }); return; }
+    try { localStorage.setItem('cudic-stroop-best', String(best)); } catch (e) {}
+  }
+
+  function paint() {
+    scoreEl.textContent = score;
+    streakEl.textContent = streak;
+    bestEl.textContent = best;
+    multEl.textContent = '\u00D7' + mult;
+  }
+  function paintSound() {
+    sndBtn.textContent = soundOn ? 'Sound on' : 'Sound off';
+    sndBtn.setAttribute('aria-pressed', soundOn ? 'true' : 'false');
+  }
+
+  // WebAudio is built on the first real gesture, never on load
+  var AC = null;
+  function actx() {
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function beep(f, dur, type) {
+    if (!soundOn) return;
+    var a = actx(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur);
+  }
+
+  function barColor(p) { return p > 0.5 ? HEX.mint : p > 0.2 ? HEX.gold : HEX.berry; }
+
+  // kind = one word===colour pair (after a miss); otherwise the ink must conflict
+  function nextPair() {
+    var w = 0, c = 0, key = '';
+    for (var i = 0; i < 40; i++) {
+      w = (Math.random() * 4) | 0;
+      c = kind ? w : (Math.random() * 4) | 0;
+      key = w + ':' + c;
+      if (key !== lastKey && (kind ? w === c : w !== c)) break;
+    }
+    kind = false;
+    lastKey = key;
+    want = c;
+    wordEl.textContent = NAMES[w];
+    wordEl.style.color = HEX[KEYS[c]];
+  }
+
+  function tick() {
+    if (!running) return;
+    var left = endAt - Date.now();
+    if (left <= 0) { endRound(); return; }
+    var p = left / (ROUND * 1000);
+    bar.style.width = (p * 100) + '%';
+    bar.style.background = barColor(p);
+    secs.textContent = Math.ceil(left / 1000);
+    requestAnimationFrame(tick);
+  }
+
+  function start() {
+    if (running) return;
+    score = 0; streak = 0; mult = 1; hits = 0; roundStreak = 0;
+    lastKey = ''; kind = false; paint();
+    startOv.classList.remove('show');
+    endOv.classList.remove('show');
+    running = true;
+    endAt = Date.now() + ROUND * 1000;
+    bar.style.width = '100%';
+    bar.style.background = HEX.mint;
+    secs.textContent = ROUND;
+    nextPair();
+    requestAnimationFrame(tick);
+  }
+
+  function endRound() {
+    running = false;
+    if (score > best) best = score;
+    paint();
+    saveBest();
+    wordEl.textContent = 'TIME';
+    wordEl.style.color = '#6E6555';
+    endLine.textContent = hits + ' correct \u00B7 best streak ' + roundStreak;
+    endBest.textContent = 'Best ' + best;
+    endOv.classList.add('show');
+  }
+
+  function flashMiss() {
+    pads.classList.add('miss');
+    clearTimeout(missT);
+    missT = setTimeout(function () { pads.classList.remove('miss'); }, 240);
+  }
+
+  function answer(j) {
+    if (!running) return;
+    var ok = j === want;
+    if (ok) beep(760, 0.06, 'triangle');
+    else beep(140, 0.15, 'sawtooth');
+    if (ok) {
+      streak++; hits++;
+      if (streak > roundStreak) roundStreak = streak;
+      if (streak > bestStreak) bestStreak = streak;
+      mult = Math.min(4, 1 + Math.floor(streak / 5));
+      score += mult;
+      paint();
+      nextPair();
+    } else {
+      streak = 0; mult = 1; paint();
+      endAt -= PENALTY;
+      flashMiss();
+      kind = true;
+      nextPair();
+    }
+  }
+
+  for (var i = 0; i < 4; i++) {
+    (function (j) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pad';
+      b.setAttribute('data-c', KEYS[j]);
+      b.setAttribute('aria-label', NAMES[j].charAt(0) + NAMES[j].slice(1).toLowerCase() + ' pad');
+      b.innerHTML = '<span class="sw"></span><span class="nm">' +
+        NAMES[j].charAt(0) + NAMES[j].slice(1).toLowerCase() + '</span>';
+      b.addEventListener('pointerdown', function (e) { e.preventDefault(); answer(j); });
+      pads.appendChild(b);
+    })(i);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !running) { start(); return; }
+    var n = '1234'.indexOf(e.key);
+    if (n > -1) { e.preventDefault(); answer(n); }
+  });
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  sndBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    paintSound();
+    saveBest();
+    if (soundOn) beep(880, 0.06, 'triangle');
+  });
+
+  paint();
+  paintSound();
+})();
+</script>
+</body>
+</html>
