@@ -35,7 +35,7 @@
     opts = opts || {};
     return new Promise(function (resolve) {
       var d = document.createElement('dialog');
-      d.className = 'ck-dialog';
+      d.className = 'ck ck-dialog';
       d.innerHTML = '<h2></h2><p class="ck-muted"></p>';
       d.querySelector('h2').textContent = opts.title || 'Are you sure?';
       d.querySelector('p').textContent = text || '';

@@ -2344,20 +2344,34 @@ const server = http.createServer(async (req, res) => {
     const { data } = await supabase.from('users').select('display_name').eq('id', uid).single();
     return (data && data.display_name) || 'Unknown';
   };
+  const FORUM_CATEGORIES = ['help', 'showcase', 'bug'];
+  const forumCategory = (v) => {
+    const c = String(v || '').toLowerCase();
+    return FORUM_CATEGORIES.includes(c) ? c : 'help';
+  };
+  const forumGame = (row) => {
+    const g = Array.isArray(row.games) ? row.games[0] : row.games;
+    return g && g.id ? { id: g.id, title: g.title || 'Untitled game', has_thumb: !!g.thumbnail } : null;
+  };
   if (url.pathname === '/api/forums/threads' && req.method === 'GET') {
     cors(res);
     const sort = String(url.searchParams.get('sort') || 'active');
     const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
+    const category = String(url.searchParams.get('category') || '').toLowerCase();
     let query = supabase.from('forum_threads')
-      .select('id, title, body, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url)')
+      .select('id, title, body, category, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url), games!forum_threads_game_id_fkey(id, title, thumbnail)')
       .order('pinned', { ascending: false })
       .limit(60);
     if (q) query = query.or(`title.ilike.%${q.replace(/[%_\\]/g, '')}%,body.ilike.%${q.replace(/[%_\\]/g, '')}%`);
+    if (FORUM_CATEGORIES.includes(category)) query = query.eq('category', category);
     query = sort === 'new' ? query.order('created_at', { ascending: false }) : query.order('last_at', { ascending: false });
     const { data, error } = await query;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      threads: (data || []).map((t) => ({ ...t, body: String(t.body || '').slice(0, 160) })),
+      threads: (data || []).map((t) => {
+        const { games, ...rest } = t;
+        return { ...rest, body: String(t.body || '').slice(0, 160), game: forumGame(t) };
+      }),
       error: error?.message
     }));
     return;
@@ -2372,9 +2386,20 @@ const server = http.createServer(async (req, res) => {
     const title = String(body.title || '').trim().replace(/[\u0000-\u001f<>]/g, '').substring(0, 90);
     const text = String(body.body || '').trim().substring(0, 5000);
     if (title.length < 4) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Give the thread a title (at least 4 characters).' })); return; }
-    const { data, error } = await supabase.from('forum_threads').insert({ user_id: user.id, title, body: text }).select().single();
+    const category = forumCategory(body.category);
+    let gameId = null;
+    const gameRef = String(body.game || '').trim().slice(0, 500);
+    if (gameRef) {
+      const m = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(gameRef);
+      if (!m) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Paste a published Cudic game link.' })); return; }
+      gameId = m[0].toLowerCase();
+      const { data: game } = await supabase.from('games').select('id, published').eq('id', gameId).single();
+      if (!game || !game.published) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'That game is not published.' })); return; }
+    }
+    const { data, error } = await supabase.from('forum_threads').insert({ user_id: user.id, title, body: text, category, game_id: gameId }).select('id, title, category, game_id').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ thread: data, error: error?.message }));
+    res.end(JSON.stringify({ thread: data }));
     return;
   }
   const labelMatch = /^\/api\/forums\/threads\/([^/]+)\/comments\/([^/]+)\/label$/.exec(url.pathname);
@@ -2404,12 +2429,13 @@ const server = http.createServer(async (req, res) => {
     const tid = threadMatch[1];
     if (!isUuid(tid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad id.' })); return; }
     const [{ data: thread }, { data: comments }] = await Promise.all([
-      supabase.from('forum_threads').select('id, title, body, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url)').eq('id', tid).single(),
+      supabase.from('forum_threads').select('id, title, body, category, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url), games!forum_threads_game_id_fkey(id, title, thumbnail)').eq('id', tid).single(),
       supabase.from('forum_comments').select('id, user_id, display_name, text, label, created_at').eq('thread_id', tid).order('created_at', { ascending: true }).limit(500)
     ]);
     if (!thread) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thread not found.' })); return; }
+    const { games, ...rest } = thread;
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ thread, comments: comments || [] }));
+    res.end(JSON.stringify({ thread: { ...rest, game: forumGame(thread) }, comments: comments || [] }));
     return;
   }
   if (threadMatch && req.method === 'DELETE') {

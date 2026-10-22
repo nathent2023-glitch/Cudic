@@ -5,7 +5,7 @@
   <meta name="description" content="Talk about what you are building, ask for help, and get answers from the people making games on Cudic.">
   <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
   <link rel="stylesheet" href="/sidebar.css?v=24">
-  <link rel="stylesheet" href="/cudic-kit.css?v=1">
+  <link rel="stylesheet" href="/cudic-kit.css?v=2">
   <style>
     body { display: flex; overflow: hidden; height: 100%; }
     .forums-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
@@ -14,8 +14,24 @@
     .f-top .f-sub { color: var(--ck-muted); font-size: .88rem; margin: 2px 0 0; }
     .f-main { flex: 1; overflow-y: auto; padding: 22px 32px 80px; }
     .f-inner { max-width: 820px; margin: 0 auto; }
-    .f-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .f-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
     .f-bar .ck-input { flex: 1; min-width: 200px; }
+    .f-catbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+    .f-cat { vertical-align: 1px; margin-right: 4px; }
+    .f-gamechip { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    .f-gamecard { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 10px; border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius-sm); background: var(--ck-card); box-shadow: var(--ck-shadow); color: inherit; text-decoration: none; }
+    .f-gamecard:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ck-shadow-col); }
+    .f-gamecard:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ck-shadow-col); }
+    .f-gamethumb { width: 54px; height: 54px; flex: none; border: 2px solid var(--ck-line); border-radius: 6px; object-fit: cover; background: var(--ck-paper); }
+    .f-gamethumb-empty { display: grid; place-items: center; }
+    .f-gamethumb-empty svg { width: 26px; height: 26px; fill: none; stroke: var(--ck-ink); stroke-width: 1.7; }
+    .f-gamecard-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .f-gamecard-main b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .f-gamecard-main small { color: var(--ck-muted); font-size: .8rem; }
+    .f-gamecard .ck-btn { pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .f-gamecard:hover, .f-gamecard:active { transform: none; }
+    }
     .f-list { display: flex; flex-direction: column; gap: 14px; }
     .f-thread { display: flex; gap: 16px; align-items: flex-start; text-decoration: none; color: inherit; }
     .f-thread:hover h3 { background: var(--ck-gold); }
@@ -68,6 +84,14 @@
               <button class="ck-chip" type="button" data-sort="new" aria-pressed="false">Newest</button>
             </div>
           </div>
+          <div class="f-catbar">
+            <div class="ck-chips" id="catChips" role="group" aria-label="Filter by category">
+              <button class="ck-chip" type="button" data-cat="" aria-pressed="true">All</button>
+              <button class="ck-chip" type="button" data-cat="help" aria-pressed="false">Help</button>
+              <button class="ck-chip" type="button" data-cat="showcase" aria-pressed="false">Showcase</button>
+              <button class="ck-chip" type="button" data-cat="bug" aria-pressed="false">Bug</button>
+            </div>
+          </div>
           <div class="f-list" id="list">
             <div class="ck-loading" aria-label="Loading threads"><i></i><i></i><i></i></div>
           </div>
@@ -85,12 +109,25 @@
     </main>
   </div>
 
-  <dialog class="ck-dialog" id="newDlg" aria-labelledby="newDlgTitle">
+  <dialog class="ck ck-dialog" id="newDlg" aria-labelledby="newDlgTitle">
     <h2 id="newDlgTitle">Start a thread</h2>
     <div class="ck-field">
       <label class="ck-label" for="ntTitle">Title</label>
       <input class="ck-input" id="ntTitle" maxlength="90" placeholder="What is this about?">
       <span class="ck-hint">A question, a bug, something you made.</span>
+    </div>
+    <div class="ck-field" style="margin-top:16px">
+      <label class="ck-label" for="ntCategory">Category</label>
+      <select class="ck-input" id="ntCategory">
+        <option value="help">Help</option>
+        <option value="showcase">Showcase</option>
+        <option value="bug">Bug</option>
+      </select>
+    </div>
+    <div class="ck-field" style="margin-top:16px">
+      <label class="ck-label" for="ntGame">Game link <span class="ck-muted">(optional)</span></label>
+      <input class="ck-input" id="ntGame" maxlength="500" placeholder="https://cudic.vercel.app/view.html?id=…">
+      <span class="ck-hint">Attach a published game so people can play it from the thread.</span>
     </div>
     <div class="ck-field" style="margin-top:16px">
       <label class="ck-label" for="ntBody">First post</label>
@@ -106,7 +143,7 @@
   <script src="/auth.js"></script>
   <script src="/sidebar.js?v=15"></script>
   <script src="/csel.js?v=1"></script>
-  <script src="/cudic-kit.js?v=1"></script>
+  <script src="/cudic-kit.js?v=2"></script>
   <script>
     var apiBase = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : '';
     var LABELS = ['answered', 'solved', 'good point', 'funny', 'off-topic'];
@@ -117,6 +154,7 @@
     var repliesEl = document.getElementById('replies');
     var composerEl = document.getElementById('composer');
     var sort = 'active';
+    var cat = '';
     var q = '';
     var me = null;          // auth user id once known, else null
     var current = null;     // { thread, comments }
@@ -134,6 +172,15 @@
       return new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
     function initial(name) { return String(name || '?').trim().charAt(0).toUpperCase() || '?'; }
+    var CATS = {
+      help: { label: 'Help', cls: 'ck-badge-sky' },
+      showcase: { label: 'Showcase', cls: 'ck-badge-mint' },
+      bug: { label: 'Bug', cls: 'ck-badge-berry' }
+    };
+    function catBadge(c) {
+      var x = CATS[c] || CATS.help;
+      return '<span class="ck-badge f-cat ' + x.cls + '">' + x.label + '</span>';
+    }
     function ava(u) {
       var name = (u && u.display_name) || 'Unknown';
       if (u && u.avatar_url && String(u.avatar_url).indexOf('"') === -1) {
@@ -154,11 +201,13 @@
       opts = opts || {};
       var headers = {};
       if (opts.body) headers['Content-Type'] = 'application/json';
-      if (opts.auth) {
+      if (opts.auth || opts.optionalAuth) {
         var t = await getToken();
-        if (!t) { location.href = '/login'; throw new Error('Sign in first.'); }
-        headers['Authorization'] = 'Bearer ' + t;
-        try { var s = localStorage.getItem('cudic_seat'); if (s) headers['X-Seat'] = s; } catch (e) {}
+        if (!t && opts.auth) { location.href = '/login'; throw new Error('Sign in first.'); }
+        if (t) {
+          headers['Authorization'] = 'Bearer ' + t;
+          try { var s = localStorage.getItem('cudic_seat'); if (s) headers['X-Seat'] = s; } catch (e) {}
+        }
       }
       var r = await fetch(apiBase + path, {
         method: opts.method || 'GET',
@@ -183,11 +232,14 @@
       var replies = t.comment_count || 0;
       return '<a class="ck-card ck-card-hover f-thread" href="/forums/' + t.id + '" data-id="' + t.id + '">'
         + '<span class="f-thread-main">'
+        + catBadge(t.category)
         + '<h3>' + esc(t.title) + '</h3>'
         + (t.body ? '<p class="f-snip">' + esc(t.body) + '</p>' : '<p class="f-snip"></p>')
         + '<span class="f-meta">' + ava(u) + '<b>' + esc(name) + '</b>'
         + (u.user_id ? '<span class="ck-muted">#' + esc(u.user_id) + '</span>' : '')
-        + '<span class="ck-muted">' + rel(t.last_at || t.created_at) + '</span></span>'
+        + '<span class="ck-muted">' + rel(t.last_at || t.created_at) + '</span>'
+        + (t.game ? '<span class="ck-badge ck-badge-ghost f-gamechip">Game: ' + esc(t.game.title) + '</span>' : '')
+        + '</span>'
         + '</span>'
         + '<span class="f-side"><span class="ck-badge' + (replies ? ' ck-badge-mint' : ' ck-badge-ghost') + '">' + replies + (replies === 1 ? ' reply' : ' replies') + '</span>'
         + (t.pinned ? '<span class="ck-stamp ck-stamp-gold">pinned</span>' : '')
@@ -195,11 +247,13 @@
         + '</a>';
     }
     function emptyList() {
+      var catName = CATS[cat] ? CATS[cat].label : '';
+      var filtered = q || cat;
       return '<div class="ck-empty"><div class="plate f-empty-plate">'
         + '<svg viewBox="0 0 24 24"><path d="M3 5h11v8H7l-4 3V5Z"/><path d="M10 10h11v7l-3-3h-5"/></svg></div>'
-        + '<h3>' + (q ? 'Nothing matches that.' : 'No threads yet.') + '</h3>'
-        + '<p>' + (q ? 'Try a shorter search.' : 'Ask a question or post what you are building — the first thread sets the tone.') + '</p>'
-        + (q ? '' : '<button class="ck-btn ck-btn-primary" type="button" id="emptyNew">Start the first thread</button>')
+        + '<h3>' + (q ? 'Nothing matches that.' : cat ? 'No ' + catName + ' threads yet.' : 'No threads yet.') + '</h3>'
+        + '<p>' + (q ? 'Try a shorter search.' : cat ? 'Try another category, or start the first one.' : 'Ask a question or post what you are building — the first thread sets the tone.') + '</p>'
+        + (filtered ? '' : '<button class="ck-btn ck-btn-primary" type="button" id="emptyNew">Start the first thread</button>')
         + '</div>';
     }
     async function loadList() {
@@ -207,7 +261,7 @@
       threadView.hidden = true;
       listEl.innerHTML = '<div class="ck-loading" aria-label="Loading threads"><i></i><i></i><i></i></div>';
       try {
-        var d = await api('/api/forums/threads?sort=' + encodeURIComponent(sort) + (q ? '&q=' + encodeURIComponent(q) : ''));
+        var d = await api('/api/forums/threads?sort=' + encodeURIComponent(sort) + (cat ? '&category=' + encodeURIComponent(cat) : '') + (q ? '&q=' + encodeURIComponent(q) : ''));
         var threads = d.threads || [];
         listEl.innerHTML = threads.length ? threads.map(threadRow).join('') : emptyList();
         var en = document.getElementById('emptyNew');
@@ -259,13 +313,24 @@
         + '<textarea class="ck-textarea" id="replyText" maxlength="2000" placeholder="Write a reply"></textarea></div>'
         + '<div class="ck-btn-row"><button class="ck-btn ck-btn-primary" type="button" id="replyBtn">Post reply</button></div></div>';
     }
+    function gameCard(g) {
+      if (!g) return '';
+      var thumb = g.has_thumb
+        ? '<img class="f-gamethumb" src="' + apiBase + '/api/games/' + encodeURIComponent(g.id) + '/thumbnail" alt="" loading="lazy">'
+        : '<span class="f-gamethumb f-gamethumb-empty" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 7v10l8 4 8-4V7L12 3Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg></span>';
+      return '<a class="f-gamecard" href="/view.html?id=' + encodeURIComponent(g.id) + '">' + thumb
+        + '<span class="f-gamecard-main"><b>' + esc(g.title) + '</b><small>Play the attached game</small></span>'
+        + '<span class="ck-btn ck-btn-sm">Play</span></a>';
+    }
     function paintThread() {
       var t = current.thread;
       var u = t.users || {};
       var opThread = me && me === t.user_id;
       threadCard.innerHTML = '<h1 style="margin:0 0 10px">' + esc(t.title) + '</h1>'
         + '<div class="f-meta" style="margin-bottom:14px">' + ava(u) + '<b>' + esc(u.display_name || 'Unknown') + '</b>'
+        + catBadge(t.category)
         + '<span class="ck-muted">started ' + rel(t.created_at) + '</span></div>'
+        + gameCard(t.game)
         + (t.body ? '<p class="f-threadbody">' + esc(t.body) + '</p>' : '')
         + (opThread ? '<div class="ck-btn-row" style="margin-top:16px"><button class="ck-btn ck-btn-sm ck-btn-berry" type="button" id="delThread">Delete thread</button></div>' : '');
       var comments = current.comments || [];
@@ -370,6 +435,7 @@
     function openNewDialog() {
       if (!me) { location.href = '/login'; return; }
       document.getElementById('ntTitle').value = '';
+      document.getElementById('ntGame').value = '';
       document.getElementById('ntBody').value = '';
       newDlg.showModal();
       document.getElementById('ntTitle').focus();
@@ -379,11 +445,13 @@
     document.getElementById('ntCreate').addEventListener('click', async function () {
       var title = document.getElementById('ntTitle').value.trim();
       var body = document.getElementById('ntBody').value.trim();
+      var category = document.getElementById('ntCategory').value;
+      var game = document.getElementById('ntGame').value.trim();
       if (title.length < 4) { CudicKit.toast('Give the thread a title (at least 4 characters).', 'bad'); return; }
       this.disabled = true;
       this.textContent = 'Posting…';
       try {
-        var d = await api('/api/forums/threads', { method: 'POST', auth: true, body: { title: title, body: body } });
+        var d = await api('/api/forums/threads', { method: 'POST', auth: true, body: { title: title, body: body, category: category, game: game } });
         newDlg.close();
         CudicKit.toast('Thread posted', 'ok');
         if (d.thread && d.thread.id) openThread(d.thread.id); else loadList();
@@ -408,6 +476,13 @@
       this.querySelectorAll('[data-sort]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
       loadList();
     });
+    document.getElementById('catChips').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cat]');
+      if (!b) return;
+      cat = b.getAttribute('data-cat');
+      this.querySelectorAll('[data-cat]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      loadList();
+    });
     document.getElementById('backBtn').addEventListener('click', function () { closeThread(); });
     document.addEventListener('click', function (e) {
       var a = e.target.closest('.f-thread[data-id]');
@@ -430,7 +505,7 @@
 
     (async function boot() {
       try {
-        var d = await api('/api/session');
+        var d = await api('/api/session', { optionalAuth: true });
         me = d.user && d.user.id ? d.user.id : null;
       } catch (e) { me = null; }
       var id = threadIdFromUrl();

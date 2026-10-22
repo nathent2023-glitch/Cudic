@@ -320,6 +320,7 @@
   border: var(--ck-bw) solid var(--ck-line); border-radius: var(--ck-radius);
   box-shadow: var(--ck-shadow-lg);
   padding: 24px; width: min(440px, calc(100vw - 32px));
+  margin: auto;
 }
 .ck-dialog::backdrop { background: rgba(20, 16, 10, .55); }
 .ck-dialog[open] { animation: ckPop .18s cubic-bezier(.3, 1.4, .5, 1); }
