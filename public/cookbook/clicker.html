@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clicker game mechanics — Cudic Cookbook</title>
+    <meta name="description" content="Why clicker games hook people, and how to build one: click value, upgrade purchases, the exponential cost curve, and balance. Paste-ready code for Cudic Studio.">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Clicker game mechanics — Cudic Cookbook">
+    <meta property="og:description" content="Click value, upgrade costs and the exponential curve that makes idle games work.">
+    <meta property="og:url" content="https://cudic.vercel.app/cookbook/clicker.html">
+    <link rel="canonical" content="https://cudic.vercel.app/cookbook/clicker.html">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/cookbook/cookbook.css">
+</head>
+
+<body data-page="cookbook" data-no-rail>
+
+    <div class="cook-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
+                <h1>Clicker</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+
+        <div class="cook-scroll">
+            <main class="cook-wrap">
+                <article class="cook">
+                    <p class="eyebrow">Guide</p>
+                    <h1>Clicker game mechanics</h1>
+                    <p class="standfirst">Clickers (once you know them: Cookie Clicker, and every idle
+                        game since) are small puzzles about <em>numbers that feel good to watch go up</em>.
+                        The mechanics are a handful of rules, and getting them right is what separates a
+                        game people play from a button people click twice.</p>
+                    <p class="meta">Cudic Cookbook · after this, read
+                        <a href="/cookbook/cloud-saves.html">Cloud saves</a> so progress survives</p>
+
+                    <h2>The three rules</h2>
+                    <ol class="steps">
+                        <li><strong>Every click gives visible progress.</strong> The number the player
+                            watches must move on every interaction — integer increments, not accumulated
+                            floats.</li>
+                        <li><strong>Upgrades come one decision at a time.</strong> Two or three buttons,
+                            visible and affordable-or-almost-affordable. Ten choices at once is a UI
+                            problem, not a game.</li>
+                        <li><strong>Costs curve up exponentially; income curves up linearly per
+                            purchase.</strong> Each upgrade costs ~×2.2 the last but improves output by a
+                            flat amount. The player is always saving for the next one, and the next one
+                            is always worth it.</li>
+                    </ol>
+
+                    <h2>A working clicker</h2>
+                    <p>Three upgrades, a cost curve, and integers everywhere. Paste into
+                        <code>index.html</code> in <a href="/studio">Studio</a> and Run:</p>
+                    <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;Sparks&lt;/title&gt;
+&lt;style&gt;body{margin:0;font-family:system-ui;background:#1a2129;color:#e9edf5;
+display:grid;place-items:center;min-height:100vh;text-align:center}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px}
+#core{width:190px;height:190px;border-radius:50%;font-size:1.1rem;font-weight:700;
+background:radial-gradient(circle at 32% 30%, #ff9a4d, #ff5c35 60%, #c53f1d);
+box-shadow:0 10px 34px rgba(255,92,53,.35);color:#fff}
+.shop{margin-top:20px;display:grid;gap:10px}
+.buy{background:#252b34;color:#e9edf5;padding:11px 16px;font-weight:600;width:300px}
+.buy small{display:block;font-weight:400;color:#a2a8b6;margin-top:2px}
+.buy:disabled{opacity:.45;cursor:default}&lt;/style&gt;&lt;/head&gt;
+&lt;body&gt;&lt;div&gt;
+&lt;p id="n" style="font-size:3rem;margin:0"&gt;0&lt;/p&gt;
+&lt;p id="rate" style="color:#a2a8b6;margin-top:0"&gt;&lt;/p&gt;
+&lt;button id="core"&gt;tap&lt;/button&gt;
+&lt;div class="shop"&gt;
+  &lt;button class="buy" id="u1"&gt;&lt;/button&gt;
+  &lt;button class="buy" id="u2"&gt;&lt;/button&gt;
+  &lt;button class="buy" id="u3"&gt;&lt;/button&gt;
+&lt;/div&gt;&lt;/div&gt;
+&lt;script&gt;
+var s = { n: 0, perClick: 1, perSec: 0, clickLvl: 0, autoLvl: 0, x2Lvl: 0 };
+// cost = base × 2.1^level, income from a purchase is flat (+ per level)
+var ups = {
+  u1: { name: 'Steady hand',  base: 15,  lvl: 'clickLvl', give: function () { s.perClick += 1; } },
+  u2: { name: 'Automator',    base: 60,  lvl: 'autoLvl',  give: function () { s.perSec   += 1; } },
+  u3: { name: 'Big sparks',   base: 250, lvl: 'x2Lvl',    give: function () { s.perClick *= 2; } }
+};
+var fmt = function (v) { return Math.floor(v).toLocaleString(); };
+
+function cost(u) { return Math.floor(u.base * Math.pow(2.1, s[u.lvl])); }
+function render() {
+  n.textContent = fmt(s.n);
+  rate.textContent = '+' + fmt(s.perClick) + '/click · +' + fmt(s.perSec) + '/sec';
+  for (var k in ups) {
+    var u = ups[k], c = cost(u);
+    document.getElementById(k).innerHTML = u.name + ' lv' + s[u.lvl] +
+      '&lt;small&gt;cost ' + fmt(c) + '&lt;/small&gt;';
+    document.getElementById(k).disabled = s.n &lt; c;
+  }
+}
+core.onclick = function () { s.n += s.perClick; render(); };
+for (var k2 in ups) (function (k) {
+  document.getElementById(k).onclick = function () {
+    var u = ups[k], c = cost(u);
+    if (s.n &lt; c) return;
+    s.n -= c; s[u.lvl]++; u.give(); render();
+  };
+})(k2);
+setInterval(function () {          // income tick — 0.1 × 10 keeps n integer
+  if (s.perSec) { s.n += s.perSec / 10; n.textContent = fmt(s.n); }
+  for (var k in ups) document.getElementById(k).disabled = s.n &lt; cost(ups[k]);
+}, 100);
+render();
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</code></pre>
+
+                    <h2>Why the curve is ×2.1 and not ×2</h2>
+                    <p>With ×2 growth, every upgrade feels mandatory — the player can predict everything
+                        and the spreadsheet stops being exciting. With ×2.2–×2.4, upgrades start feeling
+                        <em>expensive</em>, and the right answer sometimes is "keep clicking instead" — a
+                        real decision. Tune <code>2.1</code> by feel: too harsh and progress stalls, too
+                        soft and prestige disappears.</p>
+
+                    <h2>Integers everywhere</h2>
+                    <p>Floating point is fine internally, but the <em>displayed</em> number must be an
+                        integer who grows in visible jumps — that's why the auto-tick adds
+                        <code>perSec / 10</code> ten times a second while the display shows
+                        <code>Math.floor</code>. If the number ticks <code>1 → 1 → 1 → 2</code> forever it
+                        feels dead; if it pumps in visible steps it feels alive.</p>
+
+                    <h2>What hook actually is</h2>
+                    <p>Real clickers drop the "wait several minutes for the next upgrade" window down to
+                        seconds when starting, then stretch it. Player psychology and mod hacks aside,
+                        the balance come mostly from budgeting:</p>
+                    <ul>
+                        <li><strong>Fresh player</strong>: next upgrade within 20–40 clicks.</li>
+                        <li><strong>Mid-game</strong>: 1–2 minutes per purchase, arriving steadily.</li>
+                        <li><strong>Wall</strong>: when the pace stretches, add a <em>new</em> income
+                            multiplier type (combo clicks, offline income, prestige loops) rather than
+                            inflating costs.</li>
+                    </ul>
+                    <p>When the loop holds, wire it to <a href="/cookbook/cloud-saves.html">CudicSave</a>
+                        so a player's sparks survive a page reload, then <strong>Publish</strong> — and
+                        drop the link in a <a href="/forums">Help</a> post if balancing fights back.</p>
+                </article>
+            </main>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=16"></script>
+</body>
+
+</html>

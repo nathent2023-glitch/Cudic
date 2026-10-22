@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer with CudicMulti — Cudic Cookbook</title>
+    <meta name="description" content="Put players into the same room: CudicMulti gives your published game a live connection with join, peers, messaging and error events. Guests play with no account. Copy-paste walkthrough.">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Multiplayer with CudicMulti — Cudic Cookbook">
+    <meta property="og:description" content="Join, peers, messaging and a two-player chase — multiplayer for any published Cudic game.">
+    <meta property="og:url" content="https://cudic.vercel.app/cookbook/multiplayer.html">
+    <link rel="canonical" content="https://cudic.vercel.app/cookbook/multiplayer.html">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/cookbook/cookbook.css">
+</head>
+
+<body data-page="cookbook" data-no-rail>
+
+    <div class="cook-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
+                <h1>Multiplayer</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+
+        <div class="cook-scroll">
+            <main class="cook-wrap">
+                <article class="cook">
+                    <p class="eyebrow">Platform API</p>
+                    <h1>Multiplayer with CudicMulti</h1>
+                    <p class="standfirst">A live opponent changes a game completely. CudicMulti gives any
+                        published game rooms over Cudic's websocket: players join anonymously (no account
+                        needed to play along), exchange small messages, and see each other in real time.
+                        Your game never touches a token — the host page mediates and the rooms are
+                        enforced server-side.</p>
+                    <p class="meta">Cudic Cookbook · the API: <code>CudicMulti.join / send / on / leave</code></p>
+
+                    <h2>The API, all of it</h2>
+                    <pre><code>&lt;script src="/cudic-multi.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  var net = CudicMulti.join('arena');   // any room code — default 'main'
+
+  net.on('open',  function () { … });   // joined the room
+  net.on('peers', function (list) { … });   // [{ id, name }, …] including you
+  net.on('msg',   function (m) { … });      // { from: peerId, data: your JSON }
+  net.on('error', function (text) { … });   // e.g. playing locally, no relay
+  net.on('close', function () { … });       // after leave() or lost relay
+
+  net.send({ x: 10, y: 4 });            // any JSON value ≤ 8 KB; sent before
+                                        // 'open' is queued, not dropped
+  net.id;      // your peer id this session
+  net.peers;   // the current peer list snapshot
+  net.leave(); // leave the room
+&lt;/script&gt;</code></pre>
+                    <div class="note"><p><code>send</code> queues your messages until <code>open</code>
+                        fires, so "join then immediately broadcast the state" is always safe. Limits are
+                        real but generous: 32 peers per room, 8 KB per message, with per-connection
+                        joins and message-rate caps to stop floods.</p></div>
+
+                    <h2>Names come from the server</h2>
+                    <p>A <code>peers</code> entry's <code>name</code> is the player's profile display
+                        name if signed in, or <strong>Guest</strong> otherwise. A client can't claim
+                        someone else's name or id — the server replaces attempts. Build your scoreboard
+                        on <code>name</code>, not on anything the client typed.</p>
+
+                    <h2>A two-player chase, minimal</h2>
+                    <p>Each frame, every player reports their position; everyone draws everyone. Paste
+                        into <code>index.html</code>, Run in Studio (Studio's preview joins a
+                        <code>&lt;project&gt;:preview</code> room, so it never collides with the
+                        published game's rooms):</p>
+                    <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;style&gt;html,body{margin:0;height:100%;
+background:#101d26;overflow:hidden}canvas{display:block;width:100vw;height:100vh}
+&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;canvas id="c" width="800" height="450"&gt;&lt;/canvas&gt;
+&lt;script src="/cudic-multi.js"&gt;&lt;/script&gt;&lt;script&gt;
+var x = c.getContext('2d');
+var players = {};          // peerId → { x, y, name }
+var me = { x: 400, y: 225 };
+
+var net = CudicMulti.join('tag');
+net.on('peers', function (list) {
+  list.forEach(function (p) {
+    if (!players[p.id]) players[p.id] = { x: 400, y: 225, name: p.name };
+  });
+  x.fillStyle = '#101d26'; x.fillRect(0, 0, c.width, c.height);  // full redraw
+});
+net.on('msg', function (m) {
+  var p = players[m.from];
+  if (p &amp;&amp; m.data &amp;&amp; typeof m.data.x === 'number') { p.x = m.data.x; p.y = m.data.y; }
+});
+net.on('error', function (t) { x.fillStyle = '#e06c5a'; x.fillText(t, 12, 24); });
+
+addEventListener('mousemove', function (e) {
+  var r = c.getBoundingClientRect();
+  me.x = Math.round((e.clientX - r.left) / r.width * c.width);
+  me.y = Math.round((e.clientY - r.top) / r.height * c.height);
+});
+
+setInterval(function () { net.send({ x: me.x, y: me.y }); }, 50);
+
+(function draw() {
+  x.fillStyle = '#101d26'; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = '#ff8c1a'; x.fillRect(me.x - 10, me.y - 10, 20, 20);
+  for (var id in players) if (id !== net.id) {
+    x.fillStyle = '#7ee0c0'; x.fillRect(players[id].x - 10, players[id].y - 10, 20, 20);
+    x.fillStyle = '#cfe8dd'; x.fillText(players[id].name, players[id].x - 14, players[id].y - 16);
+  }
+  requestAnimationFrame(draw);
+})();
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</code></pre>
+                    <p>Open the preview, then open the published (or second preview) page in another tab —
+                        move your mouse in one window and the other chases along. That's the whole
+                        transport story: position messages one way, <code>net.id</code> to skip drawing
+                        yourself.</p>
+
+                    <h2>Design rules for rooms</h2>
+                    <ul>
+                        <li><strong>Send state, not trust.</strong> Messages are data, not commands from
+                            gods — validate on arrival (clamp speeds, bounds-check positions) the same
+                            way you'd never trust a save file.</li>
+                        <li><strong>Rooms are anonymous by design</strong> so guests can play along;
+                            signed-in names show through. Let guests join the fun — it grows your game's
+                            audience.</li>
+                        <li><strong>One room per game per context.</strong> <code>view</code> pages
+                            mediate real rooms for the published game; Studio previews use their own
+                            preview-keyed rooms so your playtesting can't disturb players.</li>
+                        <li><strong>Reconnect cheap.</strong> If the relay drops mid-session,
+                            <code>close</code> fires — re-join with the same <code>join(room)</code> and
+                            resync state from whoever responds.</li>
+                    </ul>
+                    <p>Publish the result and watch the <a href="/games">gallery</a> — games with live
+                    "playing now" counts pull a crowd, and a lobby of two is a party. Post your room
+                    story in the <a href="/forums">Showcase</a> when it works.</p>
+                </article>
+            </main>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=16"></script>
+</body>
+
+</html>

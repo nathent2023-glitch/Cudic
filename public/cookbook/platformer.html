@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build a platformer — Cudic Cookbook</title>
+    <meta name="description" content="Build a complete browser platformer in one sitting: the game loop, gravity, jumping, collision and coin pickups. A full walkthrough with paste-ready code for Cudic Studio.">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Build a platformer — Cudic Cookbook">
+    <meta property="og:description" content="The game loop, gravity, jumping, collision and coin pickups, in one pasteable page.">
+    <meta property="og:url" content="https://cudic.vercel.app/cookbook/platformer.html">
+    <link rel="canonical" content="https://cudic.vercel.app/cookbook/platformer.html">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/cookbook/cookbook.css">
+</head>
+
+<body data-page="cookbook" data-no-rail>
+
+    <div class="cook-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
+                <h1>Platformer</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+
+        <div class="cook-scroll">
+            <main class="cook-wrap">
+                <article class="cook">
+                    <p class="eyebrow">Guide</p>
+                    <h1>Build a platformer</h1>
+                    <p class="standfirst">A platformer is the best first "real" game: movement you can feel
+                        within a minute, and a structure — loop, physics, collision, pickups — that every
+                        later game reuses. This guide ends with a complete working game in one page you
+                        can paste into <a href="/studio">Studio</a> right now.</p>
+                    <p class="meta">Cudic Cookbook · works in Studio and as a published game</p>
+
+                    <h2>The whole game, then the parts</h2>
+                    <p>Open <a href="/studio">Studio</a>, delete the sample code in
+                        <code>index.html</code>, and paste this. Press <strong>Run</strong> — you have a
+                        platformer.</p>
+                    <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;My platformer&lt;/title&gt;
+&lt;style&gt;html,body{margin:0;height:100%;background:#12232e;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}&lt;/style&gt;&lt;/head&gt;
+&lt;body&gt;&lt;canvas id="c"&gt;&lt;/canvas&gt;&lt;script&gt;
+var c = document.getElementById('c'), x = c.getContext('2d');
+c.width = 960; c.height = 540;
+
+var plats = [
+  {x:0,   y:500, w:960, h:40},   // floor
+  {x:170, y:395, w:150, h:18},
+  {x:430, y:320, w:170, h:18},
+  {x:670, y:250, w:170, h:18}
+];
+var coins = [{x:245,y:355},{x:510,y:280},{x:750,y:210},{x:120,y:460},{x:880,y:460}];
+var p = {x:60, y:440, w:34, h:44, vx:0, vy:0, ground:false};
+var keys = {}, got = 0, t0 = performance.now();
+
+addEventListener('keydown', function (e) { keys[e.key] = true;
+  if (['ArrowLeft','ArrowRight','ArrowUp',' '].indexOf(e.key) &gt;= 0) e.preventDefault(); });
+addEventListener('keyup', function (e) { keys[e.key] = false; });
+
+function hit(a, b) {
+  return a.x &lt; b.x + b.w &amp;&amp; a.x + a.w &gt; b.x &amp;&amp; a.y &lt; b.y + b.h &amp;&amp; a.y + a.h &gt; b.y;
+}
+
+function frame(now) {
+  var dt = Math.min((now - t0) / 1000, 0.033); t0 = now;
+  var dir = (keys.ArrowRight || keys.d ? 1 : 0) - (keys.ArrowLeft || keys.a ? 1 : 0);
+  p.vx = dir * 260;
+  p.vy += 1500 * dt;                       // gravity
+
+  p.x += p.vx * dt;                        // walls: stop and slide
+  for (var i = 0; i &lt; plats.length; i++) if (hit(p, plats[i])) {
+    p.x = p.vx &gt; 0 ? plats[i].x - p.w : plats[i].x + plats[i].w;
+  }
+  p.ground = false;
+  p.y += p.vy * dt;                        // tops and bottoms
+  for (var j = 0; j &lt; plats.length; j++) if (hit(p, plats[j])) {
+    if (p.vy &gt; 0) { p.y = plats[j].y - p.h; p.ground = true; }
+    p.vy = 0;
+  }
+  if (p.ground &amp;&amp; (keys[' '] || keys.ArrowUp)) p.vy = -620;
+  p.x = Math.max(0, Math.min(960 - p.w, p.x));
+
+  for (var k = 0; k &lt; coins.length; k++) if (coins[k]) {       // pickups
+    var dx = (p.x + p.w / 2) - coins[k].x, dy = (p.y + p.h / 2) - coins[k].y;
+    if (dx * dx + dy * dy &lt; 26 * 26) { got++; coins[k] = null; }
+  }
+
+  x.fillStyle = '#12232e'; x.fillRect(0, 0, 960, 540);
+  x.fillStyle = '#1f4b5f';
+  for (var w = 0; w &lt; plats.length; w++) x.fillRect(plats[w].x, plats[w].y, plats[w].w, plats[w].h);
+  x.fillStyle = '#ffd166';
+  for (var ci = 0; ci &lt; coins.length; ci++) if (coins[ci]) x.fillRect(coins[ci].x - 7, coins[ci].y - 7, 14, 14);
+  x.fillStyle = '#ff8c1a'; x.fillRect(p.x, p.y, p.w, p.h);
+  x.fillStyle = '#fff'; x.fillText(got + ' / ' + coins.length + ' coins', 14, 22);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</code></pre>
+                    <div class="note"><p>Paste it into <code>index.html</code> in Studio, press Run in the
+                        preview bar, and you're playing. Delete <code>style.css</code> from this project —
+                        everything needed is inline.</p></div>
+
+                    <h2>Why each piece matters</h2>
+                    <h3>The loop runs on the display's clock</h3>
+                    <p><code>requestAnimationFrame</code> fires up to 60 times a second and pauses when the
+                        tab is hidden — setInterval games keep simulating in hidden tabs, which feels
+                        broken when you come back. We compute <code>dt</code> (seconds since the last
+                        frame) and cap it at 0.033: if the player tabs away for five seconds, physics
+                        doesn't teleport them through the floor in one giant step.</p>
+
+                    <h3>Gravity is one line</h3>
+                    <p><code>p.vy += 1500 * dt</code> is "speed increases every second". The
+                        <code>-620</code> jump speed and 1500 gravity are the two numbers to tune if your
+                        game feels floaty or sticky — jump height is roughly <code>jump² / (2 ×
+                        gravity)</code>, here about 128px. That's why platforms sit 70–75px apart.</p>
+
+                    <h3>Collision: separate the axes</h3>
+                    <p>The trick is moving on X first, checking, then Y, checking again. If you move both
+                        axes at once you can't tell landing from wall-touching, and the player sticks to
+                        walls. Resolve listing:</p>
+                    <ol>
+                        <li>Move X → if overlapping a platform, push out sideways.</li>
+                        <li>Move Y → if overlapping and falling, snap to the platform top, set
+                            <code>ground = true</code>.</li>
+                        <li>Jump only when <code>ground</code> is true — the anti-fly rule.</li>
+                    </ol>
+
+                    <h3>Coins with zero art</h3>
+                    <p>A pickup is a distance check: if the player's centre is within 26px of a coin, it's
+                        collected. Squared distance (<code>dx*dx + dy*dy &lt; 26*26</code>) avoids the
+                        <code>sqrt</code> — cheap, and at 60fps it adds up.</p>
+
+                    <h2>Where to take it next</h2>
+                    <ul>
+                        <li><strong>Camera.</strong> Make the level wider than the screen and subtract a
+                            <code>cam</code> offset when drawing everything.</li>
+                        <li><strong>Coyote time.</strong> Let jumping work for 100ms after leaving a
+                            ledge — it makes controls feel fair.</li>
+                        <li><strong>Spikes and resets.</strong> Rectangles that reset <code>p</code> to the
+                            start, plus a small timer for best-time.</li>
+                        <li><strong>Sounds.</strong> One <code>Audio</code> object with a short
+                            <code>.play()</code> on coin pickup changes the feel completely.</li>
+                    </ul>
+                    <p>When it plays well: <strong>Save</strong>, then <strong>Publish</strong> in Studio —
+                        the game goes live in the <a href="/games">gallery</a>. Share your build in the
+                        forum's <a href="/forums">Showcase</a> and see if anyone beats your level.</p>
+                </article>
+            </main>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=16"></script>
+</body>
+
+</html>

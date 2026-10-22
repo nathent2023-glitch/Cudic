@@ -19,3 +19,5 @@ supabase/.temp/
 public/3d_models/
 # CudicKit demo page stays local — not part of the deployed site
 public/kit.html
+# Crawlable game pages + sitemap are generated at Vercel build time, never committed
+public/game/

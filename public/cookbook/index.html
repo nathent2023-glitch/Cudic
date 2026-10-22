@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cudic Cookbook — build better browser games</title>
+    <meta name="description" content="Step-by-step guides for building browser games in Cudic Studio: platformers, clicker games, canvas art, cloud saves, and multiplayer. Free, in your browser, no setup.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Cudic Cookbook — build better browser games">
+    <meta property="og:description" content="Step-by-step guides for building browser games in Cudic Studio: platformers, clicker games, canvas art, cloud saves, and multiplayer.">
+    <meta property="og:url" content="https://cudic.vercel.app/cookbook/">
+    <meta property="og:image" content="https://cudic.vercel.app/og.png?v=2">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cudic Cookbook">
+    <meta name="twitter:description" content="Step-by-step guides for building browser games in Cudic Studio.">
+    <link rel="canonical" content="https://cudic.vercel.app/cookbook/">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/cookbook/cookbook.css">
+</head>
+
+<body data-page="cookbook" data-no-rail>
+
+    <div class="cook-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a class="btn btn-secondary" href="/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Back</a>
+                <h1>Cookbook</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+
+        <div class="cook-scroll">
+            <main class="cook-wrap">
+                <article class="cook">
+                    <p class="eyebrow">Cudic Cookbook</p>
+                    <h1>Real guides for building real games</h1>
+                    <p class="standfirst">The Cookbook is a set of hands-on tutorials for making browser games
+                        in <a href="/studio">Cudic Studio</a>. Every guide runs in the browser with no
+                        installs, and every code sample is a complete working page you can paste straight
+                        into Studio and run.</p>
+                    <p class="meta">Guides · updated as the platform grows · questions live in
+                        <a href="/forums">the forums</a></p>
+
+                    <div class="cooklist">
+                        <a class="cookcard" href="/cookbook/platformer.html">
+                            <h2>Build a platformer</h2>
+                            <p>A complete jump-and-collect game in one pasteable page — game loop, gravity,
+                                collision, coins, and where to take it next.</p>
+                        </a>
+                        <a class="cookcard" href="/cookbook/clicker.html">
+                            <h2>Clicker game mechanics</h2>
+                            <p>Why idle games hook people, and how to build one: click value, upgrade costs,
+                                and the cost curve that keeps players coming back.</p>
+                        </a>
+                        <a class="cookcard" href="/cookbook/cloud-saves.html">
+                            <h2>Cloud saves with CudicSave</h2>
+                            <p>Make progress follow the player across sessions — one script tag, a load and
+                                a save call. Covers guests, sign-ins and the 100 KB budget.</p>
+                        </a>
+                        <a class="cookcard" href="/cookbook/multiplayer.html">
+                            <h2>Multiplayer with CudicMulti</h2>
+                            <p>Put other people in the same room as your game: join, broadcast, and wire a
+                                simple two-player chase. Guest players need no account.</p>
+                        </a>
+                        <a class="cookcard" href="/cookbook/canvas-art.html">
+                            <h2>Canvas art tricks</h2>
+                            <p>Gradients, glow, particles and the device-pixel-ratio fix — the small
+                                techniques that make a game look like someone cared.</p>
+                        </a>
+                    </div>
+
+                    <h2>New here?</h2>
+                    <ol>
+                        <li><a href="/login">Sign in</a> (or continue as a guest) and open
+                            <a href="/studio">Studio</a> — a full editor with a live preview.</li>
+                        <li>Pick a guide, paste the code, press <strong>Run</strong> in the preview bar.</li>
+                        <li><strong>Publish</strong> when it feels good — the game appears in the
+                            <a href="/games">gallery</a> at <code>/games</code>.</li>
+                    </ol>
+
+                    <div class="note">
+                        <p>Cookbook guides use the same APIs published games use, so everything you build
+                            here ships as-is. When you get something working, post it in the
+                            <a href="/forums">Showcase</a> — it's the fastest way to get feedback.</p>
+                    </div>
+                </article>
+            </main>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=16"></script>
+</body>
+
+</html>

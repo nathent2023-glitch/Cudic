@@ -57,7 +57,7 @@
       ]
     }
   ],
-  "buildCommand": "cd studio && npm ci && npm run build",
+  "buildCommand": "cd studio && npm ci && npm run build && node tools/prerender-games.mjs",
   "outputDirectory": "public",
   "framework": null,
   "installCommand": null

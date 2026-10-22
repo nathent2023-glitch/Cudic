@@ -177,6 +177,11 @@ One deliberate motion moment per screen, nothing more:
 - Empty/error states explain what happened and what to do next, in the
   product's voice, not an apology. "No lobby yet — join or create one
   from Home." not "Oops! Nothing here."
+- State what the thing is, don't stack instructions. "Open Studio, drop
+  in your files, publish, and play" chains steps; "with saves,
+  multiplayer, and a community built in" carries one claim. Marketing
+  unfurls and repeated boilerplate especially: one sentence, one idea,
+  no recipe ("make a game, press Run, publish it") chains.
 
 ---
 

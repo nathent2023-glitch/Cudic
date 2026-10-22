@@ -11,13 +11,13 @@
   <meta property="og:title" content="Theme Packs — Cudic">
   <meta property="og:description" content="Restyle Cudic with theme packs: colours, fonts, icons, motion, and live scenes applied across the whole app.">
   <meta property="og:url" content="https://cudic.vercel.app/themes">
-  <meta property="og:image" content="https://cudic.vercel.app/og.png">
+  <meta property="og:image" content="https://cudic.vercel.app/og.png?v=2">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Theme Packs — Cudic">
   <meta name="twitter:description" content="Restyle Cudic with theme packs: colours, fonts, icons, motion, and live scenes applied across the whole app.">
-  <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png">
+  <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png?v=2">
   <link rel="canonical" content="https://cudic.vercel.app/themes">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="stylesheet" href="/sidebar.css?v=24">
@@ -305,7 +305,7 @@
                     <div class="status-msg" id="builderMsg"></div>
                     </div>
                     <div class="sec-head" style="margin-top:20px"><h2>My packs</h2></div>
-                    <div class="pack-card"><div class="pack-info" id="myPacksBody"><div class="pack-desc">Nothing here yet.</div></div></div>
+                    <div class="pack-card"><div class="pack-info" id="myPacksBody"><div class="pack-desc">No packs yet.</div></div></div>
                 </div>
                 </div>
             </section>
@@ -348,7 +348,7 @@
     <script src="/auth.js"></script>
     <script src="/ctheme.js?v=1"></script>
     <script src="/csel.js?v=1"></script>
-    <script src="/sidebar.js?v=15"></script>
+    <script src="/sidebar.js?v=16"></script>
     <script>
     (function () {
       var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
@@ -885,7 +885,7 @@
         try {
           var d = await (await fetch(apiHost() + '/api/packs?mine=1', { headers: { 'Authorization': 'Bearer ' + t } })).json();
           var list = (d && d.packs) || [];
-          if (!list.length) { box.innerHTML = '<div class="pack-desc">Nothing here yet.</div>'; return; }
+          if (!list.length) { box.innerHTML = '<div class="pack-desc">No packs yet.</div>'; return; }
           box.innerHTML = '';
           list.forEach(function (p) {
             var row = document.createElement('div');
@@ -1062,7 +1062,7 @@
         if (!names.length) {
           var none = document.createElement('span');
           none.className = 'meta';
-          none.textContent = 'No images yet — upload one to reference it.';
+          none.textContent = 'No images yet — upload one to use it in your pack.';
           well.appendChild(none);
           return;
         }

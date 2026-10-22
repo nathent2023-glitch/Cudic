@@ -3363,9 +3363,9 @@ const server = http.createServer(async (req, res) => {
     const title = String(g.title || 'Untitled');
     const by = g.users && g.users.display_name ? ' by ' + g.users.display_name : '';
     const desc = String(g.description || '').trim().slice(0, 180) ||
-      'Play ' + title + ' in your browser — built with Cudic Studio, free to fork and remix.';
+      'Play ' + title + ' online — it opens immediately, no download. Made with Cudic Studio.';
     const titleShort = title.slice(0, 70);
-    const img = g.thumbnail ? base + '/g/' + gid + '/thumb' : base + '/og.png';
+    const img = g.thumbnail ? base + '/g/' + gid + '/thumb' : base + '/og.png?v=2';
     const page = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1">'
       + '<title>' + escHtml(titleShort) + ' — play on Cudic</title>'
@@ -3398,6 +3398,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
+  // Directory URLs (/cookbook/, /game/<id>/) resolve to their index.html on
+  // Vercel; mirror that here so local testing sees the same pages.
+  if (url.pathname !== '/' && url.pathname.endsWith('/')) filePath = path.join(filePath, 'index.html');
   const ext = path.extname(filePath);
 
   fs.readFile(filePath, (err, data) => {

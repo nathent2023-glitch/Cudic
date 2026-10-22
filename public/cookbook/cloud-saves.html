@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud saves with CudicSave — Cudic Cookbook</title>
+    <meta name="description" content="Make game progress follow the player: CudicSave in one script tag. Loads and saves per account, works for guests too, with a 100 KB budget. Copy-paste code for Cudic Studio.">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Cudic">
+    <meta property="og:title" content="Cloud saves with CudicSave — Cudic Cookbook">
+    <meta property="og:description" content="One script tag and progress follows the player across sessions, devices and sign-outs.">
+    <meta property="og:url" content="https://cudic.vercel.app/cookbook/cloud-saves.html">
+    <link rel="canonical" content="https://cudic.vercel.app/cookbook/cloud-saves.html">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <link rel="stylesheet" href="/cookbook/cookbook.css">
+</head>
+
+<body data-page="cookbook" data-no-rail>
+
+    <div class="cook-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
+                <h1>Cloud saves</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+
+        <div class="cook-scroll">
+            <main class="cook-wrap">
+                <article class="cook">
+                    <p class="eyebrow">Platform API</p>
+                    <h1>Cloud saves with CudicSave</h1>
+                    <p class="standfirst">Progress that survives a refresh is the difference between a toy
+                        and a game. Cudic games get it with one script tag: saves bind to the player's
+                        account, so their progress follows them across sessions and devices — and every
+                        Cudic player already has it, no keys, no backend work for you.</p>
+                    <p class="meta">Cudic Cookbook · pairs with <a href="/cookbook/clicker.html">Clicker
+                        mechanics</a></p>
+
+                    <h2>How it works (10 seconds)</h2>
+                    <p>Your game runs in a sandboxed frame and never holds a login token — a bad actor
+                        can't steal sessions that way. Instead, the game asks Cudic's host page (the
+                        game's <code>view</code> page, or Studio's preview while you're building) to do
+                        the storing, with your player's account attached server-side. You talk to a tiny
+                        object called <code>CudicSave</code>:</p>
+                    <pre><code>&lt;script src="/cudic-save.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  CudicSave.load().then(function (data) { … });  // data or null — your previous JSON
+  CudicSave.save({ best: 12, coins: 34 });        // debounced cloud write, 1.5 s
+  CudicSave.clear();                              // wipes local + cloud copy
+&lt;/script&gt;</code></pre>
+
+                    <h2>The pattern in a real game</h2>
+                    <p>Load before first paint, merge, render; save whenever something meaningful
+                        changes.</p>
+                    <pre><code>&lt;script src="/cudic-save.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  var best = 0, coins = 0;
+
+  CudicSave.load().then(function (data) {
+    if (data &amp;&amp; typeof data === 'object') {
+      best  = typeof data.best  === 'number' ? data.best  : 0;
+      coins = typeof data.coins === 'number' ? data.coins : 0;
+    }
+    render();   // only trust shapes you defined — always coalesce, never assign raw
+  });
+
+  function gameOver(finalScore) {
+    if (finalScore &gt; best) { best = finalScore; CudicSave.save({ best: best, coins: coins }); }
+  }
+&lt;/script&gt;</code></pre>
+                    <div class="note"><p>Validate on load. Old saves from old builds live in the same slot
+                        forever — if version 2 changed what <code>best</code> means, version 1 tables
+                        still return it. <code>typeof</code> checks cost nothing and prevent "NaN
+                        highscore" bugs.</p></div>
+
+                    <h2>What each method promises</h2>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.9rem">
+                        <tr><th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--line)">Call</th><th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--line)">Behaviour</th></tr>
+                        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--line)"><code>load()</code></td><td style="padding:6px 10px;border-bottom:1px solid var(--line)">Resolves with your saved object, or <code>null</code> for a player the platform hasn't seen before. It resolves even offline (from the local mirror).</td></tr>
+                        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--line)"><code>save(obj)</code></td><td style="padding:6px 10px;border-bottom:1px solid var(--line)">Writes locally right away, then to the player's account 1.5 seconds later if no newer changes arrive — rapid-fire saves don't spam the network.</td></tr>
+                        <tr><td style="padding:6px 10px;border-bottom:1px solid var(--line)"><code>clear()</code></td><td style="padding:6px 10px;border-bottom:1px solid var(--line)"><code>showWarning</code>-style reset for the current game: clears the local mirror and the cloud copy for this game only.</td></tr>
+                    </table>
+
+                    <h2>Guests, sign-ins and the 100 KB budget</h2>
+                    <ul>
+                        <li><strong>Guests persist nothing.</strong> A signed-out player's saves are
+                            memory-only for the session; the game nudge to sign in comes from Cudic
+                            itself (view shows it once), so you write zero code for it.</li>
+                        <li><strong>100 KB per game per account.</strong> JSON numbers and short strings
+                            go a very long way — compress coordinates into compact objects early rather
+                            than "saving everything just in case".</li>
+                        <li><strong>While building</strong>, Studio's preview uses its own local test
+                            slot keyed to your project — building and playtesting never overwrites a
+                            real player's progress, and signing out doesn't block testing.</li>
+                    </ul>
+                    <p>One habit worth adopting: save on <code>gameOver</code>, on unlock milestones, and
+                        <code>beforeunload</code>-ish "session totals" — not on every frame. The debounce
+                        protects you from thrash, but only-worthy saves in the first place make a cleanly
+                        resumable game.</p>
+                    <p>Once your clicker or platformer keeps score across reloads, publish it — then
+                        watch a friend's play session in <a href="/games">the gallery</a> feel like
+                        theirs, not a demo.</p>
+                </article>
+            </main>
+        </div>
+    </div>
+
+    <script src="/config.js"></script>
+    <script src="/auth.js"></script>
+    <script src="/sidebar.js?v=16"></script>
+</body>
+
+</html>
