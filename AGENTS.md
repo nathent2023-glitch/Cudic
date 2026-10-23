@@ -670,8 +670,8 @@ Read it before building any classic-page screen. Headlines:
 8. **`public/studio/` is gitignored** — a fresh clone has no `/studio` until
    `cd studio && npm run build` (or Vercel's `buildCommand` runs).
 9. **No `&&`** — PowerShell 5.1. Use `;` and `if ($?) { }`.
-10. **CSS/JS cache** — bump `sidebar.css?v=N` (v19) on every page after editing it;
-  same for versioned `sidebar.js` / `client.js` (v3).
+10. **CSS/JS cache** — bump `sidebar.css?v=N` (v24) on every page after editing it;
+  same for versioned `sidebar.js` (v14) / `client.js` (v10).
 11. **Restart the server** after any `server.js` edit; **rebuild Studio** after any
     `studio/src` edit. Neither auto-reloads.
 12. **Command IDs keep the `glox.` prefix** — storage keys and IDs were not renamed.
@@ -726,27 +726,33 @@ Pushing to `master` deploys both. Verify locally first.
 
 ## 16. Work state at time of writing
 
-**Clean tree.** `master` = `origin` = `4c0128d`, pushed 2026-10-03.
+**Clean tree.** `master` = `origin` = `1fa91dd`, pushed 2026-10-23.
 Verify with `git status` before assuming this still holds.
 
-**Shipped in `d3cb2dc`**: marketing landing at `/` (animated: coordinate-graph
-hero, marquee, feature trio, Studio/gallery/themes sections, real product
-screenshots in `public/shots/`), auth screen relocated to `/login`
-(`login.html` + rewrites in `server.js` and `vercel.json`), SEO foundations
-(description/OG/Twitter/canonical on 9 pages + `studio/index.html`,
-`robots.txt`, `sitemap.xml`, `og.png`).
+**Shipped in `1fa91dd`** (audit-fix + additions batch):
+- Security: XSS fixes (chat avatar, servers icon, profile Liked), unpublished-draft
+  leak gated to owner (+ thumbnail), WS message source guards, token scrub from
+  URL, OAuth redirect no longer carries JWT, rightmost-XFF rate-limit keying,
+  readBody caps, safeDecode (no process crash on bad `%`), generic error strings.
+- Reliability: handleRequest crash wrapper, chat flood guard + typing cap,
+  sendConversationsDirty throttle, sidebar N+1 parallelized, private servers
+  beyond page-1 fetched for members, lobby list hides DM/channel names, reset
+  scan loop 3→50, game field caps, thumbnail size cap, saves PUT errors surfaced.
+- Additions: AI multi-turn memory, WS reconnect w/ backoff + re-join, save
+  backup/restore on game page, related-games links on prerendered pages.
+- Studio: model override dup removed, package pins to 37.1.0, bootProject sends
+  owner token. client.js bumped to v10.
 
-**Shipped earlier**: `7de42e7` project thumbnails + full model catalogs + rail
-brand animation; `17b6043` Cudic AI panel, theme packs store, sidebar
-push-aside, editor context menus, gallery GSAP motion.
+**Shipped earlier**: `d3cb2dc` marketing landing + `/login` split + SEO;
+`7de42e7` thumbnails + model catalogs + rail animation; `17b6043` Cudic AI
+panel, theme packs, sidebar push-aside, editor context menus, gallery motion.
 
-**Live and verified after push**: `/`, `/login`, `/games` serve the new build;
-`/robots.txt` and `/sitemap.xml` return 200; Render `/api/games` healthy.
+**Live and verified after push**: server probes pass (malformed `%` → 404 not
+crash, oversized body bounded, server stays alive); Studio build ✓ 56.64s.
 
-**Blocked / needs the user**: a real end-to-end AI inference call — they must
-sign in, add a key, hit Test. Automated clicks can't do it without risking
-their key/quota.
+**Deferred**: starter templates (A3), pack atomicity (needs migration), preview
+zombie timers, `public/3d_models/` deletion (confirm first), `public/_next/`
+must stay (live landing).
 
-**Next**: the user drives landing-page design taste and wants more motion —
-iterate on `public/index.html` when they give direction, then commit and push
-when told.
+**Blocked / needs the user**: real end-to-end AI inference call (sign in, add key,
+hit Test). AdSense resubmission needs custom domain + 2–3 weeks.

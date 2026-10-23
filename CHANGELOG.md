@@ -8,6 +8,44 @@ fixed. Commits are referenced by short hash.
 
 ## Unreleased (on `master` past `v1.2`)
 
+**Audit-fix + additions batch** (`1fa91dd`) — security, reliability, AI memory,
+reconnect, save backup, related games.
+
+### Added
+- AI multi-turn memory (last 8 exchanges ride along in `ai:chat`).
+- WebSocket reconnect with exponential backoff (5 tries) + auto re-join.
+- Save backup/restore on the game page (JSON download + file restore).
+- "You might also like" internal links on prerendered game pages.
+- Studio `package.json` pins all `@codingame/*` deps to 37.1.0.
+
+### Fixed
+- XSS: chat avatar, servers icon, profile Liked list (escapeHtml now quotes;
+  server-side avatar/icon URL validation).
+- Unpublished drafts no longer leak via `/api/games/:id` or `/:id/thumbnail`
+  (404 for non-owners; Studio `bootProject` sends the owner token).
+- WS message listeners in view.html/editor.html check `e.source`.
+- `?token=` scrubbed from URL after read on 4 pages; OAuth redirect no longer
+  carries a live JWT.
+- Malformed `%` in pack routes no longer crashes the process (`safeDecode`).
+- `readBody` bounded (default 1MB; larger for projects/scratch/AI); oversized
+  bodies answer 413.
+- Outer try/catch on `handleRequest` so one route bug can't kill the process.
+- Chat flood guard (60 msgs/10s per account) + typing cap; conversation-dirty
+  fan-out throttled to 1/5s.
+- Conversation sidebar parallelized; private servers beyond page-1 fetched for
+  members; lobby list hides DM/channel names.
+- Reset-code scan loop expanded 3 -> 50 pages.
+- Game field caps (title/desc/credits/scene/thumbnail) + thumbnail size cap.
+- Saves PUT errors now surface as 500 instead of silent success.
+- Generic error strings (no internal Supabase details leaked).
+- Model service override duplicate removed; baseOverride preserved on model
+  switch; chat render throttled via rAF.
+
+### Changed
+- `client.js` bumped to v10 (quote-aware escapeHtml).
+
+---
+
 **AdSense verification · gallery + type refresh · magic email codes ·
 embeddable games**
 
