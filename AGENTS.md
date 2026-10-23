@@ -93,7 +93,7 @@ npm run build        # vite build (lib IIFE) → ../public/islands/  (~5s, 657KB
 ## 4. Layout
 
 ```
-server.js                 # ~1340 lines: HTTP + API + WS + AI proxy + email
+server.js                 # ~4000 lines: HTTP + API + WS + AI proxy + email
 public/                   # the classic app (served at Vercel output root)
   index.html              # marketing landing (dark, animated, GSAP)
   login.html              # auth split screen (sign in / create / guest)

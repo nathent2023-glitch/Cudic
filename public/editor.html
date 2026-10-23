@@ -300,6 +300,7 @@ body{font-family:'Satoshi',sans-serif;background:var(--ed-bg);color:var(--ed-tex
 <script>
 /* ═══ Cudic Studio — code-first websites & games ═══ */
 window.currentToken = new URLSearchParams(window.location.search).get('token') || null;
+if (window.currentToken) scrubTokenUrl();
 // Prime the token from the real login session (URL token wins when present)
 (async function bootEditorAuth() {
   try {
@@ -526,6 +527,7 @@ document.getElementById('btnToggleBottom').addEventListener('click', function() 
   if (window._monacoEditor) setTimeout(function() { window._monacoEditor.layout(); }, 50);
 });
 window.addEventListener('message', function(e) {
+  if (e.source !== frame.contentWindow) return; // only the preview frame talks
   if (!e.data) return;
   if (e.data.type === 'ready') logToConsole('Preview ready', 'info');
   if (e.data.type === 'console') logToConsole(e.data.text, e.data.level);

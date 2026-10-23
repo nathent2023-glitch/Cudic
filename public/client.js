@@ -197,20 +197,32 @@ async function boot() {
 }
 
 // ── WebSocket ────────────────────────────────────────────────────
+var wsReconnectTries = 0, wsReconnectTimer = null;
 function connectWs() {
   const wsHost = (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, '') : location.host;
   const proto = (typeof WS_URL !== 'undefined' && WS_URL && WS_URL.startsWith('wss')) ? 'wss' : location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(proto + '://' + wsHost);
   ws.onopen = () => {
     wsReady = true;
+    wsReconnectTries = 0;
     msgInput.disabled = false;
     if (pendingJoin) { ws.send(pendingJoin); pendingJoin = null; }
+    else if (current && current.name) sendJoin(current.name);
   };
   ws.onmessage = onWs;
   ws.onclose = () => {
     wsReady = false;
-    if (current) addSystemMessage('Disconnected from server. Refresh to reconnect.');
     msgInput.disabled = true;
+    if (current) addSystemMessage('Disconnected from server. Reconnecting…');
+    // Back off, capped at 5 tries; after that the manual-refresh banner returns.
+    if (wsReconnectTries < 5) {
+      var wait = Math.min(30000, 1000 * Math.pow(2, wsReconnectTries));
+      wsReconnectTries++;
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(connectWs, wait);
+    } else {
+      if (current) addSystemMessage('Still offline. Refresh the page to reconnect.');
+    }
   };
 }
 function sendJoin(name) {
@@ -793,10 +805,15 @@ function scrollToBottom() {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────
+// Escapes quotes too: chat interpolates fields into attributes
+// (img src="…"), where a textContent round-trip would leave them live.
 function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str == null ? '' : String(str);
-  return d.innerHTML;
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function nameColor(name) {

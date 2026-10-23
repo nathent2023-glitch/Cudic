@@ -108,6 +108,16 @@
         <p id="gameCredits" class="dim">No credits yet.</p>
         <p id="remixLine" style="display:none;font-size:0.8rem;color:var(--text-secondary)"></p>
         <div class="meta" id="gameMeta"></div>
+        <div class="save-backup" id="saveBackup" style="display:none;margin-top:14px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-raised)">
+          <h3 style="margin:0;font-size:0.85rem">Save backup</h3>
+          <div style="font-size:0.75rem;color:var(--text-secondary);margin:6px 0 10px">Cloud saves follow your account — keep a local copy safe.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary" id="saveDl" style="padding:6px 12px;font-size:0.75rem">Download save</button>
+            <label class="btn btn-secondary" style="padding:6px 12px;font-size:0.75rem;cursor:pointer">Restore save
+              <input type="file" id="saveFile" accept="application/json,.json" style="display:none">
+            </label>
+          </div>
+        </div>
         <div class="ad-frame ad-rectangle"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
       </div>
     </div>
@@ -511,6 +521,7 @@ setInterval(function () {
           el.style.display = 'block';
         }
         window.addEventListener('message', function wait(e) {
+          if (e.source !== f.contentWindow) return; // only the player frame talks
           if (e.data && e.data.type === 'ready') {
             // Compat rule: keep in step with run.html's ready version.
             if (e.data.v !== 2) {
@@ -587,8 +598,49 @@ setInterval(function () {
         }
         getSession().then(function (s) {
           saveSession = s;
-          if (s) loadCloudSave();
-          else { nagGuest(); cloudSettled(); }
+          if (s) {
+            loadCloudSave();
+            var sb = document.getElementById('saveBackup');
+            if (sb) sb.style.display = 'block';
+            var dl = document.getElementById('saveDl');
+            if (dl) dl.onclick = function () {
+              fetch(apiBase() + '/api/saves/' + encodeURIComponent(id), { headers: saveHeaders() })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) {
+                  if (!d || !d.data) { dl.textContent = 'No save yet'; return; }
+                  var blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+                  var a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = 'cudic-save-' + id + '.json';
+                  document.body.appendChild(a);
+                  a.click();
+                  setTimeout(function () { a.remove(); URL.revokeObjectURL(a.href); }, 2000);
+                })
+                .catch(function () { dl.textContent = 'Download failed'; });
+            };
+            var sf = document.getElementById('saveFile');
+            if (sf) sf.addEventListener('change', function (ev) {
+              var f0 = ev.target.files && ev.target.files[0];
+              if (!f0) return;
+              var reader = new FileReader();
+              reader.onload = function () {
+                try {
+                  var j = JSON.parse(String(reader.result || ''));
+                  var data = (j && j.data) ? j.data : j;
+                  if (!data || typeof data !== 'object' || Array.isArray(data) || JSON.stringify(data).length > 100 * 1024) { alert('Invalid save file (100KB max).'); return; }
+                  fetch(apiBase() + '/api/saves/' + encodeURIComponent(id), { method: 'PUT', headers: saveHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ data: data }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                      if (res && res.error) alert('Restore failed: ' + res.error);
+                      else { cloudSave = { data: data, updated_at: res.updated_at }; location.reload(); }
+                    })
+                    .catch(function () { alert('Restore failed — network error.'); });
+                } catch (err) { alert('Not a valid save file.'); }
+              };
+              reader.readAsText(f0);
+              ev.target.value = '';
+            });
+          } else { nagGuest(); cloudSettled(); }
         });
         window.addEventListener('message', function (e) {
           var d = e.data || {};

@@ -290,3 +290,17 @@ function startSeatSystem() {
     window.addEventListener('focus', function () { tabTick(); });
   } catch (e) {}
 }
+
+// ── Strip ?token= from the address bar once a page has read it ──
+// Live JWTs in URLs leak into history, logs and anything the user shares.
+// Each page reads ?token= first, then calls this to clean the URL.
+function scrubTokenUrl() {
+  try {
+    if (location.search.indexOf('token=') === -1) return;
+    var s = location.search
+      .replace(/([?&])token=[^&#]+&?/g, '$1')
+      .replace(/[?&]&/g, '$1')
+      .replace(/[?&]$/, '');
+    history.replaceState({}, '', location.pathname + s);
+  } catch (e) {}
+}

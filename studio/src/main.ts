@@ -150,7 +150,6 @@ const commonServices: IEditorOverrideServices = {
   ...getLanguagesServiceOverride(),
   ...getExtensionServiceOverride({ enableWorkerExtensionHost: true }),
   ...getExtensionGalleryServiceOverride({ webOnly: false }),
-  ...getModelServiceOverride(),
   ...getStorageServiceOverride(),
   ...getExplorerServiceOverride(),
   ...getSearchServiceOverride(),

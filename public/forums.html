@@ -188,9 +188,9 @@
       }
       return '<span class="ck-ava f-ava">' + esc(initial(name)) + '</span>';
     }
+    var URL_TOKEN = (function () { var t = new URLSearchParams(window.location.search).get('token'); if (t && t.split('.').length === 3) scrubTokenUrl(); return t; })();
     async function getToken() {
-      var p = new URLSearchParams(window.location.search).get('token');
-      if (p && p.split('.').length === 3) return p;
+      if (URL_TOKEN) return URL_TOKEN;
       try { if (window.getAuthToken) { var a = await window.getAuthToken(); if (a) return a; } } catch (e) {}
       try {
         var r = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');

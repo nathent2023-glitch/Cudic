@@ -346,6 +346,7 @@
       }
     }
 
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
     function loadLiked() {
       var box = document.getElementById('likedList');
       if (!box) return;
@@ -355,10 +356,12 @@
           var rows = d.games || [];
           if (!rows.length) { box.innerHTML = '<p class="sub">Nothing liked yet. Tap the heart on a game in the gallery.</p>'; return; }
           box.innerHTML = rows.map(function (g) {
+            // Title/tags are user-authored: element content only, never raw
+            // interpolated (XSS). Thumbnail comes from our API by id.
             return '<a class="liked-card" href="/view.html?id=' + encodeURIComponent(g.id) + '">' +
-              '<div class="liked-thumb">' + (g.thumbnail || g.has_thumb ? '<img src="' + (g.has_thumb ? apiHost() + '/api/games/' + encodeURIComponent(g.id) + '/thumbnail' : g.thumbnail) + '" alt="" loading="lazy">' : '') + '</div>' +
-              '<div><div class="liked-title">' + String(g.title || 'Untitled') + '</div>' +
-              '<div class="sub">' + (g.tags || []).join(' · ') + '</div></div></a>';
+              '<div class="liked-thumb">' + (g.has_thumb ? '<img src="' + apiHost() + '/api/games/' + encodeURIComponent(g.id) + '/thumbnail" alt="" loading="lazy">' : '') + '</div>' +
+              '<div><div class="liked-title">' + esc(String(g.title || 'Untitled')) + '</div>' +
+              '<div class="sub">' + esc((g.tags || []).join(' · ')) + '</div></div></a>';
           }).join('');
         })
         .catch(function () {});

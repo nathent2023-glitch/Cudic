@@ -467,8 +467,10 @@ button:disabled { opacity: 0.35; cursor: default; }
         var pid = b.getAttribute('data-pid'), m = b.getAttribute('data-model');
         expandedId = null;
         SETTINGS.provider = pid; modelEl.value = m;
-        baseOverrideVal = '';
-        api.postMessage({ type: 'ai:saveSettings', provider: pid, model: m, baseOverride: '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
+        // Switching models keeps a user-set custom endpoint; only the
+        // options screen changes it — wiping it here made every model
+        // switch silently drop a custom router URL.
+        api.postMessage({ type: 'ai:saveSettings', provider: pid, model: m, baseOverride: baseOverrideVal || '', completeOn: completeOn.checked, completeModel: completeModel.value.trim() });
         show('keyScreen');
       };
     });
@@ -658,7 +660,8 @@ button:disabled { opacity: 0.35; cursor: default; }
     var id = 'm' + Date.now().toString(36);
     streaming = { id: id, aiRow: slot.row, raw: '' };
     setStatus('stream', 0);
-    api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive, skills: (SETTINGS.skills || []).slice() });
+    // Last 8 exchanges ride along so the model keeps context across turns.
+    api.postMessage({ type: 'ai:chat', id: id, text: text, attachActive: attachActive, skills: (SETTINGS.skills || []).slice(), history: history.slice(-8) });
   }
   function stop() {
     if (streaming) api.postMessage({ type: 'ai:stop', id: streaming.id });
@@ -741,8 +744,17 @@ button:disabled { opacity: 0.35; cursor: default; }
     } else if (m.type === 'ai:chunk') {
       if (streaming && streaming.id === m.id) {
         streaming.raw += m.token;
-        renderAi(streaming.aiRow, streaming.raw);
-        setStatus('stream', Math.round(streaming.raw.length / 4));
+        // rAF throttle: tokens arrive far faster than frames, so paint once
+        // per frame instead of re-parsing the bubble for every token.
+        if (!streaming.scheduled) {
+          streaming.scheduled = true;
+          requestAnimationFrame(function () {
+            if (!streaming) return;
+            streaming.scheduled = false;
+            renderAi(streaming.aiRow, streaming.raw);
+            setStatus('stream', Math.round(streaming.raw.length / 4));
+          });
+        }
       }
     } else if (m.type === 'ai:done') {
       if (streaming && streaming.id === m.id) {

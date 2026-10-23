@@ -24,14 +24,41 @@ const rateBuckets = new Map();
 function rateLimit(key, max, windowMs) {
   const now = Date.now();
   let b = rateBuckets.get(key);
-  if (!b || b.reset < now) { b = { n: 0, reset: now + windowMs }; rateBuckets.set(key, b); }
+  if (!b || b.reset < now) {
+    // Bound the map: HTTP-path keys (play:<ip>, report:…) never see the
+    // WS cleanup, so a crawler could grow this map forever.
+    if (rateBuckets.size > 10000) {
+      for (const [k, v] of rateBuckets) if (v.reset < now) rateBuckets.delete(k);
+      if (rateBuckets.size > 15000) rateBuckets.clear();
+    }
+    b = { n: 0, reset: now + windowMs };
+    rateBuckets.set(key, b);
+  }
   b.n++;
   return b.n <= max;
 }
 function clientIp(req) {
   const xff = req.headers['x-forwarded-for'];
-  if (xff) return xff.split(',')[0].trim();
+  if (xff) {
+    // Rightmost hop: the nearest trusted proxy's record of the real peer.
+    // Leftmost hops are attacker-controlled (fake XFF defeats leftmost keying).
+    const hops = String(xff).split(',');
+    return hops[hops.length - 1].trim();
+  }
   return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+// URL path segments are decoded in several pack/saves routes; a raw '%'
+// would throw a URIError and kill the process (no global handler catches it).
+function safeDecode(s) {
+  try { return decodeURIComponent(s); } catch (e) { return String(s || ''); }
+}
+// Server icons render inside src="…" on every visitor's list; https only,
+// no quote/markup chars that could break the attribute open.
+function safeIconUrl(u) {
+  const s = String(u || '').trim().substring(0, 500);
+  if (!s) return '';
+  if (!/^https:\/\//.test(s) || /[<>"'\\]/.test(s)) return '';
+  return s;
 }
 
 
@@ -140,8 +167,19 @@ function cors(res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Seat');
 }
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+const server = http.createServer((req, res) => {
+  handleRequest(req, res).catch((e) => {
+    // One bug in any route must not kill the whole process (Node turns
+    // unhandled async rejections into a process exit since v15).
+    console.error('Request error:', (e && e.message) || e);
+    try {
+      if (!res.headersSent) res.writeHead((e && e.code === 'too_large') ? 413 : 500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: (e && e.code === 'too_large') ? 'Payload too large.' : 'Something went wrong.' }));
+    } catch (e2) { /* socket already gone */ }
+  });
+});
+async function handleRequest(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   // Baseline security headers (no dep). SAMEORIGIN keeps the sandboxed preview working.
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -448,7 +486,7 @@ const server = http.createServer(async (req, res) => {
     }
     let targetId = '';
     try {
-      for (let page = 1; page <= 3 && !targetId; page++) {
+      for (let page = 1; page <= 50 && !targetId; page++) {
         const { data: lu } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
         const hit = (lu && lu.users || []).find(u => ((u.email || '').toLowerCase() === email));
         if (hit) targetId = hit.id;
@@ -533,7 +571,10 @@ const server = http.createServer(async (req, res) => {
       }
       if (data && data.session) {
         const frontend = 'https://cudic.vercel.app';
-        res.writeHead(302, { Location: frontend + '/?token=' + data.session.access_token });
+        // No token in the redirect: nothing consumed `?token=` (the real
+        // OAuth flow exchanges PKCE client-side via auth.js), and live JWTs
+        // must not ride in history/logs.
+        res.writeHead(302, { Location: frontend + '/chat' });
         res.end();
         return;
       }
@@ -601,12 +642,9 @@ const server = http.createServer(async (req, res) => {
     if (authErr || !user) { res.writeHead(401); res.end(); return; }
     if (!(await needVerified(user, res))) return;
 
-    let body = '';
-    req.on('data', c => body += c);
-    req.on('end', async () => {
-      try {
-        const parsed = JSON.parse(body);
-        const { display_name, avatar_url, bio, interests } = parsed;
+    try {
+      const parsed = await readBody(req, 64 * 1024);
+      const { display_name, avatar_url, bio, interests } = parsed;
         var updates = {};
         if (bio !== undefined) {
           // Plain text, trimmed and length-capped. Rendered as textContent
@@ -637,6 +675,14 @@ const server = http.createServer(async (req, res) => {
               res.end(JSON.stringify({ error: 'Invalid avatar URL.' }));
               return;
             }
+            // No quote/markup chars past the bucket prefix: avatar_url gets
+            // interpolated into <img src="…"> attributes on other users'
+            // pages, so a stray quote would be stored XSS.
+            if (/[<>"'\\]/.test(a.slice(prefix.length))) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Invalid avatar URL.' }));
+              return;
+            }
             updates.avatar_url = a;
           } else {
             updates.avatar_url = null;
@@ -657,11 +703,11 @@ const server = http.createServer(async (req, res) => {
         if (updErr) throw updErr;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(Object.assign({ ok: true }, updates)));
-      } catch (e) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: e.message }));
-      }
-    });
+    } catch (e) {
+      console.error('profile update error:', (e && e.message) || e);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Could not update the profile.' }));
+    }
     return;
   }
 
@@ -798,14 +844,20 @@ const server = http.createServer(async (req, res) => {
     let query = supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, owner_id, rules, created_at, users!owner_id(display_name)').order('created_at', { ascending: false });
     const { data, error } = await query.limit(50);
     // Filter: show public or owned/member
-    let filtered = data || [];
+    let filtered = (data || []).filter(s => s.visibility === 'public');
     if (userId) {
-      // For logged in, also include private servers where user is member (fetch separately)
       const { data: memberServers } = await supabase.from('server_members').select('server_id').eq('user_id', userId);
       const memberIds = new Set((memberServers || []).map(m => m.server_id));
-      filtered = filtered.filter(s => s.visibility === 'public' || s.owner_id === userId || memberIds.has(s.id));
-    } else {
-      filtered = filtered.filter(s => s.visibility === 'public');
+      const mine = (data || []).filter(s => s.owner_id === userId || memberIds.has(s.id));
+      // A private server older than the newest-50 window is missing from
+      // page one — fetch just those and merge them in.
+      const known = new Set((data || []).map(s => s.id));
+      const absent = [...memberIds].filter(id => !known.has(id));
+      if (absent.length) {
+        const { data: extraRows } = await supabase.from('servers').select('id, name, description, icon_url, visibility, invite_code, owner_id, rules, created_at, users!owner_id(display_name)').in('id', absent);
+        mine.push(...(extraRows || []));
+      }
+      filtered = [...mine, ...filtered];
     }
     // Liveness per server: member counts (one query) + online now
     // (sum of live sockets across the server's channels, same process).
@@ -918,13 +970,13 @@ const server = http.createServer(async (req, res) => {
     const { data, error } = await supabase.from('servers').insert({
       name,
       description: (body.description || '').substring(0, 200),
-      icon_url: (body.icon_url || '').substring(0, 500),
+      icon_url: safeIconUrl(body.icon_url),
       visibility: body.visibility === 'private' ? 'private' : 'public',
       invite_code: invite,
       owner_id: user.id,
       rules: String(body.rules || '').substring(0, 2000),
     }).select().single();
-    if (error) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: error.message })); return; }
+    if (error) { console.error('servers insert error:', error.message); res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not create the server.' })); return; }
     // Add owner as member with the owner role
     await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id, role: 'owner' });
     // Channels from the picked template (blank = general + random)
@@ -956,7 +1008,7 @@ const server = http.createServer(async (req, res) => {
       if (n.length >= 2) updates.name = n;
     }
     if (body.description !== undefined) updates.description = body.description.substring(0, 200);
-    if (body.icon_url !== undefined) updates.icon_url = body.icon_url.substring(0, 500);
+    if (body.icon_url !== undefined) updates.icon_url = safeIconUrl(body.icon_url);
     if (body.visibility !== undefined && ['public','private'].includes(body.visibility)) updates.visibility = body.visibility;
     if (body.rules !== undefined) updates.rules = String(body.rules || '').substring(0, 2000);
     if (Object.keys(updates).length === 0) { res.writeHead(400); res.end(); return; }
@@ -1183,8 +1235,7 @@ const server = http.createServer(async (req, res) => {
     const { data: stateRows } = await supabase.from('conversation_state').select('lobby_id, last_read_at').eq('user_id', me).in('lobby_id', lobbyIds);
     var readByLobby = {};
     (stateRows || []).forEach(s => { readByLobby[s.lobby_id] = s.last_read_at; });
-    var out = [];
-    for (const row of lobbyRows) {
+    var out = await Promise.all(lobbyRows.map(async (row) => {
       const { data: lastRows } = await supabase.from('messages').select('text, display_name, created_at, user_id').eq('lobby_id', row.id).order('created_at', { ascending: false }).limit(1);
       const last = (lastRows && lastRows[0]) || null;
       var unread = 0;
@@ -1207,8 +1258,10 @@ const server = http.createServer(async (req, res) => {
         item.display = chanDisplay(row.name);
       }
       item.sortKey = (last && last.created_at) || row.created_at;
-      out.push(item);
-    }
+      return item;
+    }));
+    // Rows resolve in parallel: two queries per conversation were serial, so a
+    // long sidebar waited on 2N round-trips back to back.
     out.sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1));
     out.forEach(o => delete o.sortKey);
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1770,7 +1823,7 @@ const server = http.createServer(async (req, res) => {
   // ── API: fetch a pack manifest (gated: free, owned, or owner) ──
   if (url.pathname.startsWith('/api/packs/') && url.pathname.endsWith('/manifest') && req.method === 'GET') {
     cors(res);
-    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const key = safeDecode(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
     const t = (req.headers.authorization || '').replace('Bearer ', '');
@@ -1819,7 +1872,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/api/packs/') && !url.pathname.endsWith('/manifest') && !url.pathname.endsWith('/buy') && req.method === 'PATCH') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
-    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const key = safeDecode(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
     if (!(await needVerified(user, res))) return;
@@ -1847,7 +1900,7 @@ const server = http.createServer(async (req, res) => {
   if (url.pathname.startsWith('/api/packs/') && !url.pathname.endsWith('/manifest') && !url.pathname.endsWith('/buy') && req.method === 'DELETE') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
-    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const key = safeDecode(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || pack.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
     if (!(await needVerified(user, res))) return;
@@ -1862,7 +1915,7 @@ const server = http.createServer(async (req, res) => {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     const me = user.id;
-    const key = decodeURIComponent(url.pathname.split('/')[3] || '');
+    const key = safeDecode(url.pathname.split('/')[3] || '');
     const pack = await packByKey(key);
     if (!pack || !pack.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pack not found.' })); return; }
     if (!(await needVerified(user, res))) return;
@@ -2143,11 +2196,27 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ── Helper: parse JSON body ───────────────────────────────────
-  function readBody(req) {
+  // Bounded: a socket that dribbles forever can't balloon memory. Routes
+  // that legitimately carry MB-scale payloads (projects, scratch imports,
+  // AI chat context) pass a larger limit; the .catch wrapper answers 413.
+  function readBody(req, cap) {
+    const limit = cap || 1024 * 1024;
     return new Promise((resolve, reject) => {
-      let body = '';
-      req.on('data', c => body += c);
-      req.on('end', () => { try { resolve(JSON.parse(body)); } catch { reject(new Error('Invalid JSON')); } });
+      let body = '', size = 0, over = false;
+      req.on('data', c => {
+        if (over) return;
+        size += c.length;
+        if (size > limit) {
+          over = true;
+          const err = new Error('Payload too large.');
+          err.code = 'too_large';
+          reject(err);
+          return;
+        }
+        body += c;
+      });
+      req.on('end', () => { if (!over) { try { resolve(JSON.parse(body)); } catch { reject(new Error('Invalid JSON')); } } });
+      req.on('error', () => { if (!over) reject(new Error('Request stream failed.')); });
     });
   }
 
@@ -2163,7 +2232,7 @@ const server = http.createServer(async (req, res) => {
       .eq('published', true);
     const q = String(url.searchParams.get('q') || '').trim().slice(0, 60);
     if (q) {
-      const like = '%' + q.replace(/[%_\\]/g, '') + '%';
+      const like = '%' + q.replace(/[%_\\,()]/g, '') + '%';
       query = query.or(`title.ilike.${like},description.ilike.${like}`);
     }
     const tag = String(url.searchParams.get('tag') || '').trim().toLowerCase().slice(0, 24);
@@ -2208,6 +2277,7 @@ const server = http.createServer(async (req, res) => {
       for (const l of mine || []) liked.add(l.game_id);
     }
     const tags = [...new Set((tagsRes.data || []).flatMap((g) => g.tags || []))].sort();
+    if (error) console.error('games list error:', error.message);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     // Thumbnails are ~40KB data URLs each; a 50-game page would be megabytes.
     // Ship a flag instead and let the browser fetch image bytes from
@@ -2215,7 +2285,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({
       games: rows.map(({ thumbnail, ...g }) => ({ ...g, has_thumb: !!thumbnail, likes: counts[g.id] || 0, liked: liked.has(g.id), playing: liveCount(g.id) })),
       tags,
-      error: error?.message
+      error: error ? 'Could not load games.' : undefined
     }));
     return;
   }
@@ -2261,7 +2331,8 @@ const server = http.createServer(async (req, res) => {
     'api.nscale.com', 'api.parasail.io', 'api.lambda.ai', 'api.endpoints.anyscale.com',
     'api.baseten.co', 'api.cloudflare.com', 'api.venice.ai', 'api.z.ai',
     'api.hunyuan.cloud.tencent.com', 'qianfan.baidubce.com', 'openrouter.ai',
-    'opencode.ai', 'api.aimlapi.com', 'api.zeroone.ai'
+    'opencode.ai', 'api.aimlapi.com', 'api.zeroone.ai',
+    'ark.cn-beijing.volces.com', 'api.studio.nebius.com'  // Doubao + Nebius presets (providers.ts)
   ]);
   if (url.pathname === '/api/ai/fetch' && req.method === 'POST') {
     cors(res);
@@ -2272,7 +2343,7 @@ const server = http.createServer(async (req, res) => {
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Sign in to use cloud models.' })); return; }
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
     if (!(await needVerified(user, res))) return;
-    const body = await readBody(req);
+    const body = await readBody(req, 10 * 1024 * 1024); // chat context (files + skills) can reach MBs
     let target;
     try { target = new URL(String(body.url || '')); } catch { target = null; }
     const hostOk = target && target.protocol === 'https:' &&
@@ -2330,8 +2401,9 @@ const server = http.createServer(async (req, res) => {
       display_name: (prof && prof.display_name) || 'Unknown',
       text
     }).select().single();
+    if (error) console.error('comment insert error:', error.message);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ comment: data, error: error?.message }));
+    res.end(JSON.stringify({ comment: data, error: error ? 'Could not post the comment.' : undefined }));
     return;
   }
 
@@ -2362,17 +2434,18 @@ const server = http.createServer(async (req, res) => {
       .select('id, title, body, category, pinned, comment_count, created_at, last_at, user_id, users!forum_threads_user_id_fkey(display_name, user_id, avatar_url), games!forum_threads_game_id_fkey(id, title, thumbnail)')
       .order('pinned', { ascending: false })
       .limit(60);
-    if (q) query = query.or(`title.ilike.%${q.replace(/[%_\\]/g, '')}%,body.ilike.%${q.replace(/[%_\\]/g, '')}%`);
+    if (q) query = query.or(`title.ilike.%${q.replace(/[%_\\,()]/g, '')}%,body.ilike.%${q.replace(/[%_\\,()]/g, '')}%`);
     if (FORUM_CATEGORIES.includes(category)) query = query.eq('category', category);
     query = sort === 'new' ? query.order('created_at', { ascending: false }) : query.order('last_at', { ascending: false });
     const { data, error } = await query;
+    if (error) console.error('forums list error:', error.message);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       threads: (data || []).map((t) => {
         const { games, ...rest } = t;
         return { ...rest, body: String(t.body || '').slice(0, 160), game: forumGame(t) };
       }),
-      error: error?.message
+      error: error ? 'Could not load threads.' : undefined
     }));
     return;
   }
@@ -2503,7 +2576,15 @@ const server = http.createServer(async (req, res) => {
   if (/^\/api\/games\/[^/]+\/thumbnail$/.test(url.pathname) && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
-    const { data } = await supabase.from('games').select('thumbnail').eq('id', id).single();
+    const { data } = await supabase.from('games').select('thumbnail, published, owner_id').eq('id', id).single();
+    // Same rule as the game body: draft thumbnails ship to their owner only.
+    if (data && !data.published) {
+      const tok = (req.headers.authorization || '').replace('Bearer ', '');
+      const { data: { user: viewer } } = tok ? await supabase.auth.getUser(tok) : { data: { user: null } };
+      if (!viewer || data.owner_id !== viewer.id) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found'); return;
+      }
+    }
     const m = data && typeof data.thumbnail === 'string'
       ? /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i.exec(data.thumbnail) : null;
     if (!m) { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('Not found'); return; }
@@ -2558,6 +2639,13 @@ const server = http.createServer(async (req, res) => {
     const authH = req.headers.authorization || '';
     const tok = authH.replace('Bearer ', '');
     const { data: { user: viewer } } = tok ? await supabase.auth.getUser(tok) : { data: { user: null } };
+    // Drafts ship only to their owner. Anyone else gets the same Not found
+    // whether or not the id exists — never confirm a draft's existence.
+    if (!data.published && (!viewer || data.owner_id !== viewer.id)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
     const { count: likeCount } = await supabase.from('game_likes').select('user_id', { count: 'exact', head: true }).eq('game_id', id);
     let liked = false;
     if (viewer) {
@@ -2628,20 +2716,21 @@ const server = http.createServer(async (req, res) => {
     const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     if (!(await needVerified(user, res))) return;
-    const body = await readBody(req);
+    const body = await readBody(req, 25 * 1024 * 1024); // projects can carry MB-scale file JSON, but bound it
     const { data, error } = await supabase.from('games').insert({
       owner_id: user.id,
-      title: body.title || 'Untitled Game',
-      description: body.description || '',
-      credits: body.credits || '',
-      scene: body.scene || '[]',
+      title: String(body.title || 'Untitled Game').slice(0, 100),
+      description: String(body.description || '').slice(0, 500),
+      credits: String(body.credits || '').slice(0, 200),
+      scene: body.scene == null || body.scene === '' ? '[]' : String(body.scene).slice(0, 512 * 1024),
       files: body.files || null,
       assets: body.assets || null,
-      thumbnail: body.thumbnail || null,
+      thumbnail: (typeof body.thumbnail === 'string' && body.thumbnail.length <= 700 * 1024) ? body.thumbnail : null,
       published: body.published || false,
     }).select().single();
+    if (error) console.error('games insert error:', error.message);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ game: data, error: error?.message }));
+    res.end(JSON.stringify({ game: data, error: error ? 'Could not create the game.' : undefined }));
     return;
   }
 
@@ -2795,7 +2884,7 @@ const server = http.createServer(async (req, res) => {
     if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
     if (!(await needVerified(user, res))) return;
     if (!rateLimit('scratch:' + user.id, 5, 3600000)) { scratchFail(res, 429, 'Too many imports, slow down.'); return; }
-    const body = await readBody(req).catch(() => ({}));
+    const body = await readBody(req, 45 * 1024 * 1024); // .sb3 base64 rides inside the JSON (34MB check below)
     let title = String(body.title || '').trim().slice(0, 80);
     let buf = null;
     try {
@@ -2995,10 +3084,18 @@ const server = http.createServer(async (req, res) => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save must be an object.' })); return; }
     if (JSON.stringify(data).length > 100 * 1024) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Save too large (100KB max).' })); return; }
     const now = new Date().toISOString();
-    await supabase.from('game_saves').upsert(
+    const { error } = await supabase.from('game_saves').upsert(
       { user_id: user.id, game_id: gid, data, updated_at: now },
       { onConflict: 'user_id,game_id' }
     );
+    // Ignoring this error told the client "saved" while the row was gone —
+    // silent progress loss on any transient Supabase outage.
+    if (error) {
+      console.error('game_saves upsert error:', error.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Could not save — it stays on this device.' }));
+      return;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, updated_at: now }));
     return;
@@ -3143,16 +3240,22 @@ const server = http.createServer(async (req, res) => {
     if (authErr || !user) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
     if (!(await needVerified(user, res))) return;
     const id = url.pathname.split('/')[3];
-    const body = await readBody(req);
+    const body = await readBody(req, 25 * 1024 * 1024);
     const updates = {};
-    if (body.title !== undefined) updates.title = body.title;
-    if (body.description !== undefined) updates.description = body.description;
-    if (body.credits !== undefined) updates.credits = body.credits;
-    if (body.scene !== undefined) updates.scene = body.scene;
+    if (body.title !== undefined) updates.title = String(body.title || 'Untitled Game').slice(0, 100);
+    if (body.description !== undefined) updates.description = String(body.description || '').slice(0, 500);
+    if (body.credits !== undefined) updates.credits = String(body.credits || '').slice(0, 200);
+    if (body.scene !== undefined && body.scene != null) updates.scene = String(body.scene).slice(0, 512 * 1024);
     if (body.files !== undefined) updates.files = body.files;
     if (body.assets !== undefined) updates.assets = body.assets;
     if (body.published !== undefined) updates.published = body.published;
-    if (body.thumbnail !== undefined) updates.thumbnail = body.thumbnail;
+    // Thumbnails arrive as ≤1000px JPEG data URLs; reject anything else
+    // instead of storing a multi-MB blob the view page would re-fetch.
+    if (body.thumbnail !== undefined) {
+      if (body.thumbnail === null) updates.thumbnail = null;
+      else if (typeof body.thumbnail === 'string' && body.thumbnail.length <= 700 * 1024) updates.thumbnail = body.thumbnail;
+      else { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Thumbnail too large (700KB max).' })); return; }
+    }
     // Tags: lowercased, deduped, vocabulary trimmed. One column, so the
     // gallery can filter without a join.
     if (body.tags !== undefined) {
@@ -3163,8 +3266,9 @@ const server = http.createServer(async (req, res) => {
     }
     updates.updated_at = new Date().toISOString();
     const { data, error } = await supabase.from('games').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
+    if (error) console.error('games update error:', error.message);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ game: data, error: error?.message }));
+    res.end(JSON.stringify({ game: data, error: error ? 'Could not save the game.' : undefined }));
     return;
   }
 
@@ -3431,8 +3535,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, headers);
     res.end(data);
   });
-});
-
+}
 // ── WebSocket server ─────────────────────────────────────────────
 const wss = new WebSocketServer({ server });
 
@@ -3507,8 +3610,9 @@ function broadcast(lobbyName, msg, excludeWs = null) {
 function getLobbyList() {
   const list = [];
   for (const [name, users] of lobbies) {
-    // Hide server lobbies from public Active lobbies (they're private group chats)
-    if (name.startsWith('server:')) continue;
+    // Hide server lobbies, DMs and private channels from public Active
+    // lobbies: dm:/chan: names carry user UUIDs — never broadcast them.
+    if (name.startsWith('server:') || name.startsWith('dm:') || name.startsWith('chan:')) continue;
     // Hide empty and ghost lobbies
     if (!users || users.size === 0) { lobbies.delete(name); continue; }
     list.push({ name, count: users.size });
@@ -3646,7 +3750,16 @@ async function needsRulesAccept(me, lobby) {
 }
 
 // Tell every open client its conversation list may be stale.
+// Trailing throttle: bursts of joins/leaves fan out at most one message
+// per 5s instead of one per event.
+let convDirtyLast = 0, convDirtyTimer = null;
 function sendConversationsDirty() {
+  const now = Date.now();
+  if (now - convDirtyLast < 5000) {
+    if (!convDirtyTimer) convDirtyTimer = setTimeout(() => { convDirtyTimer = null; sendConversationsDirty(); }, 5000 - (now - convDirtyLast));
+    return;
+  }
+  convDirtyLast = now;
   const data = JSON.stringify({ type: 'conversation_dirty' });
   for (const ws of allConnections) {
     if (ws.readyState === 1) { try { ws.send(data); } catch (e) {} }
@@ -3776,6 +3889,11 @@ wss.on('connection', (ws, req) => {
       }
       const text = (msg.text || '').trim();
       if (!text) return;
+      // Flood guard per account: 60 msgs/10s is room-window, not machine-gun.
+      if (!rateLimit('chat:' + info.userId, 60, 10 * 1000)) {
+        ws.send(JSON.stringify({ type: 'error', code: 'chat_slow', text: 'Slow down — too many messages at once.' }));
+        return;
+      }
 
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -3808,7 +3926,8 @@ wss.on('connection', (ws, req) => {
     if (msg.type === 'typing') {
       const info = clients.get(ws);
       if (!info) return;
-      broadcast(info.lobby, { type: 'typing', lobby: info.lobby, username: info.username }, ws);
+      // Light cap on typing churn: it is a pure fan-out broadcast.
+      if (rateLimit('typ:' + info.userId, 30, 10000)) broadcast(info.lobby, { type: 'typing', lobby: info.lobby, username: info.username }, ws);
       return;
     }
 

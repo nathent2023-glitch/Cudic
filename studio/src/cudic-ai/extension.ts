@@ -346,10 +346,20 @@ async function handlePanelMessage(m: Record<string, unknown>): Promise<void> {
         : st.skills;
       // Tools ride only the openai-chat wire format (llm.ts gates them too).
       const withTools = preset.format === 'openai-chat';
+      // Multi-turn memory: the panel sends its last exchanges; cap so huge
+      // sessions can't blow the context window.
+      const prior = Array.isArray(m.history) ? (m.history as unknown[]).slice(-8) : [];
       const messages: ChatMessage[] = [
-        { role: 'system', content: systemPrompt(ctx, skillIds, withTools) },
-        { role: 'user', content: String(m.text || '') }
+        { role: 'system', content: systemPrompt(ctx, skillIds, withTools) }
       ];
+      for (const h of prior) {
+        const p = h as { q?: unknown; a?: unknown };
+        const q = typeof p.q === 'string' ? p.q.trim() : '';
+        const a = typeof p.a === 'string' ? p.a.trim() : '';
+        if (q) messages.push({ role: 'user', content: q });
+        if (a) messages.push({ role: 'assistant', content: a });
+      }
+      messages.push({ role: 'user', content: String(m.text || '') });
       // Tool rounds: the model may act on the project, then continue
       // chatting with the results. Bounded so a confused model can't loop.
       for (let round = 0; round < 4; round++) {

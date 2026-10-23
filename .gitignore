@@ -21,3 +21,5 @@ public/3d_models/
 public/kit.html
 # Crawlable game pages + sitemap are generated at Vercel build time, never committed
 public/game/
+
+/experiment/

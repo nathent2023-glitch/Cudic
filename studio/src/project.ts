@@ -259,7 +259,8 @@ export async function bootProject(): Promise<BootProject> {
       const base = await apiBase();
       // Cache-bust: a failed load (e.g. a 404 served before a fix
       // deploys) must never come back from cache as "no files".
-      const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId) + '?t=' + Date.now());
+      // Owner token included: drafts 404 for anyone else now.
+      const res = await fetch(base + '/api/games/' + encodeURIComponent(projectId) + '?t=' + Date.now(), { headers: headers(false) });
       const d = await res.json();
       const g = d?.game;
       if (g != null) {

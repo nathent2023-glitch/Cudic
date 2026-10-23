@@ -68,7 +68,24 @@ async function fetchAuthors() {
   return names;
 }
 
-function gamePage(g, names) {
+function relatedFor(g, games) {
+  // Same tag first, newest others to fill — an internal link trail that
+  // crawlers can follow between game pages.
+  const pool = games.filter((x) => x && x.id && x.id !== g.id && /^[0-9a-f-]{36}$/i.test(x.id || ''));
+  const tags = new Set((g.tags || []).filter((t) => typeof t === 'string'));
+  const tagged = pool.filter((x) => (x.tags || []).some((t) => tags.has(t)));
+  const rel = [];
+  const seen = new Set();
+  for (const x of [...tagged, ...pool]) {
+    if (rel.length >= 4) break;
+    if (seen.has(x.id)) continue;
+    seen.add(x.id);
+    rel.push(x);
+  }
+  return rel;
+}
+
+function gamePage(g, names, games) {
   const title = (g.title || '').trim() || 'Untitled game';
   const author = (names[g.id]) || 'A Cudic creator';
   const desc = (g.description || '').trim();
@@ -91,6 +108,12 @@ function gamePage(g, names) {
     applicationCategory: 'Game',
     operatingSystem: 'Web'
   });
+  const relHtml = relatedFor(g, games).map((x) => {
+    const t = (x.title || '').trim() || 'Untitled game';
+    const a2 = names[x.id] || 'A Cudic creator';
+    return '<li><a href="' + SITE + '/game/' + x.id + '/">' + esc(t) + ' <small>by ' + esc(a2) + '</small></a></li>';
+  }).join('');
+  const relBlock = relHtml ? '<section class="related"><h2>You might also like</h2><ul>' + relHtml + '</ul></section>' : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -135,6 +158,13 @@ function gamePage(g, names) {
     padding: 14px 26px; border-radius: 12px; font-size: 16px; }
   .cta:hover { background: #7d1aff; }
   .cta small { font-weight: 400; opacity: .8; }
+  .related { margin-top: 30px; }
+  .related h2 { font-size: 17px; margin: 0 0 12px; letter-spacing: -0.01em; }
+  .related ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .related a { display: block; color: #c3cad8; text-decoration: none; font-size: 15px;
+    padding: 10px 14px; border: 1px solid #23242a; border-radius: 10px; background: #131418; }
+  .related a:hover { border-color: #3a3d47; }
+  .related a small { color: #7b8394; }
   footer { margin-top: 34px; padding-top: 18px; border-top: 1px solid #23242a;
     color: #8a92a3; font-size: 13.5px; line-height: 1.6; }
   footer a { color: #a98bff; text-decoration: none; }
@@ -151,6 +181,7 @@ function gamePage(g, names) {
   ${tags.length ? '<div class="tags">' + tags.map((t) => '<span>' + esc(t) + '</span>').join('') + '</div>' : ''}
   ${desc ? '<p class="desc">' + esc(desc) + '</p>' : ''}
   <a class="cta" href="${play}" rel="nofollow">▶ Play ${esc(title)} <small>opens in the player</small></a>
+  ${relBlock}
   <footer>${esc(title)} is a browser game — it opens right in the page, nothing to install.
     Made in <a href="/studio">Cudic Studio</a>: fork it there and make it yours.
     Looking for more? Browse the <a href="/games">community gallery</a>.</footer>
@@ -211,7 +242,7 @@ try {
   for (const g of games) {
     if (!g || !/^[0-9a-f-]{36}$/i.test(g.id)) continue;
     mkdirSync(join(GAME_DIR, g.id), { recursive: true });
-    writeFileSync(join(GAME_DIR, g.id, 'index.html'), gamePage(g, names));
+    writeFileSync(join(GAME_DIR, g.id, 'index.html'), gamePage(g, names, games));
   }
   writeFileSync(join(PUB, 'sitemap.xml'), sitemap(games));
   log('wrote ' + games.length + ' game pages + sitemap (' + (CORE.length + games.length) + ' URLs)');
