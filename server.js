@@ -3040,18 +3040,33 @@ async function handleRequest(req, res) {
         '  });\n' +
         '} catch (e) {}\n' +
         'try { scaffolding.addCloudProvider(new window.Scaffolding.Cloud.LocalStorageProvider(\'cudic-' + slug.replace(/'/g, '') + '\')); } catch (e) {}\n' +
-        'scaffolding.loadProject(JSON.stringify(window.__SCRATCH_PROJECT__))\n' +
-        '  .then(function () {\n' +
-        '    var l = document.getElementById(\'loading\'); if (l) l.remove();\n' +
-        '    scaffolding.start();\n' +
-        '  })\n' +
-        '  .catch(function (err) { fail(\'Could not start this project: \' + ((err && err.message) || err)); });\n' +
+        'function __start(proj) {\n' +
+        '  scaffolding.loadProject(JSON.stringify(proj))\n' +
+        '    .then(function () {\n' +
+        '      var l = document.getElementById(\'loading\'); if (l) l.remove();\n' +
+        '      scaffolding.start();\n' +
+        '    })\n' +
+        '    .catch(function (err) { fail(\'Could not start this project: \' + ((err && err.message) || err)); });\n' +
+        '}\n' +
+        'if (window.__SCRATCH_PROJECT__) { __start(window.__SCRATCH_PROJECT__); }\n' +
+        'else {\n' +
+        '  var __projUrl = (window.__CUDIC_BIN__ || {})[\'project.json\'];\n' +
+        '  if (!__projUrl) {\n' +
+        '    var __projPath2 = (window.__SCRATCH_ASSETS__ || {})[\'project.json\'];\n' +
+        '    __projUrl = __projPath2 ? ((window.__CUDIC_BIN__ || {})[__projPath2] || __projPath2) : null;\n' +
+        '  }\n' +
+        '  if (__projUrl && /^https?:\\/\\//.test(__projUrl)) {\n' +
+        '    fetch(__projUrl).then(function (r) { if (!r.ok) throw new Error(\'project fetch \' + r.status); return r.text(); })\n' +
+        '      .then(function (t) { __start(JSON.parse(t)); })\n' +
+        '      .catch(function (err) { fail(\'Could not load project data: \' + ((err && err.message) || err)); });\n' +
+        '  } else { fail(\'Project data missing.\'); }\n' +
+        '}\n' +
         '})();\n';
       const files = {
         'index.html': shell,
         'scratch.js': boot,
         'project.json': JSON.stringify(proj, null, 2),
-        'assets.js': 'window.__SCRATCH_ASSETS__ = ' + safeAssets + ';\nwindow.__SCRATCH_PROJECT__ = ' + projJson.replace(/<\//g, '<\\/') + ';\n'
+        'assets.js': 'window.__SCRATCH_ASSETS__ = ' + safeAssets + ';\n'
       };
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({

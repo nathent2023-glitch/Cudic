@@ -94,7 +94,7 @@ function toDataUrl(mime: string, bytes: Uint8Array): Promise<string> {
 async function injectAssetUrls(html: string): Promise<string> {
   const bins = await collectBinaryFiles();
   const keys = Object.keys(bins);
-  if (keys.length === 0) return html;
+  if (keys.length === 0 && !/__SCRATCH_ASSETS__/.test(html)) return html;
   const data = new Map<string, string>();
   for (const k of keys) {
     data.set(k, await toDataUrl(mimeOf(k), bins[k]));
@@ -106,6 +106,16 @@ async function injectAssetUrls(html: string): Promise<string> {
     for (const [k, v] of data) map[k] = v;
     const tag = '<script>window.__CUDIC_BIN__ = ' + JSON.stringify(map).replace(/<\//g, '<\\/') + ';<\/script>';
     html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : tag + html;
+  }
+  // Scratch projects: project.json is no longer inlined in assets.js, so
+  // inject it as __SCRATCH_PROJECT__ for the preview frame.
+  if (/__SCRATCH_ASSETS__/.test(html)) {
+    const textFiles = await collectTextFiles();
+    const pj = textFiles['project.json'];
+    if (typeof pj === 'string') {
+      const tag = '<script>window.__SCRATCH_PROJECT__ = ' + pj.replace(/<\//g, '<\\/') + ';<\/script>';
+      html = /<\/head\s*>/i.test(html) ? html.replace(/<\/head\s*>/i, tag + '</head>') : tag + html;
+    }
   }
   const byNorm = new Map(keys.map((k) => [k.toLowerCase(), k]));
   const swap = (raw: string): string => {

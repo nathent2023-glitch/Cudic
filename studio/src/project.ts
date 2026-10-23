@@ -288,7 +288,12 @@ export async function bootProject(): Promise<BootProject> {
                   encPath(sp.replace(/^game-assets\//, ''));
                 const r = await fetch(url);
                 if (!r.ok) continue;
-                out[path] = new Uint8Array(await r.arrayBuffer());
+                // project.json is stored as a binary but edited as text
+                if (path === 'project.json') {
+                  out[path] = await r.text();
+                } else {
+                  out[path] = new Uint8Array(await r.arrayBuffer());
+                }
               } catch {
                 // keep the project loadable without this asset
               }
@@ -701,9 +706,19 @@ async function saveProject(): Promise<void> {
   const files = await collectFiles();
   const text: Record<string, string> = {};
   const bins: Array<[string, Uint8Array]> = [];
+  const isScratch = !!files['assets.js'] && /__SCRATCH_ASSETS__/.test(String(files['assets.js']));
   for (const [k, v] of Object.entries(files)) {
-    if (typeof v === 'string') text[k] = v;
-    else bins.push([k, v]);
+    if (typeof v === 'string') {
+      // Scratch projects: project.json goes to storage (not the game row) when
+      // large, so huge Scratch games can be saved without hitting the body cap.
+      if (k === 'project.json' && isScratch && v.length > 500_000) {
+        bins.push([k, new TextEncoder().encode(v)]);
+      } else {
+        text[k] = v;
+      }
+    } else {
+      bins.push([k, v]);
+    }
   }
   const base = await apiBase();
   const cfg = await getCfg();
