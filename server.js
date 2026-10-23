@@ -2981,6 +2981,19 @@ async function handleRequest(req, res) {
         for (const n of names) addAsset(n, await zip.files[n].async('nodebuffer'));
       }
       if (assetBytes > 5 * 1024 * 1024) warnings.push('Heavy project: ' + Math.round(assetBytes / 1048576) + 'MB of costumes/sounds, so saving can be slow.');
+      // Dynamic mode: for projects imported from Scratch (not .sb3 uploads) whose
+      // assets exceed the threshold, skip storing binaries and point at Scratch's
+      // CDN instead. Keeps the game row small and lets huge projects save.
+      const isRemote = (buf[0] === 0x7b);
+      const SCRATCH_DYNAMIC_THRESHOLD = 2 * 1024 * 1024;
+      const dynamicAssets = isRemote && assetBytes > SCRATCH_DYNAMIC_THRESHOLD;
+      if (dynamicAssets) {
+        for (const key of Object.keys(assets)) {
+          assets[key] = 'https://assets.scratch.mit.edu/internalapi/asset/' + encodeURIComponent(key) + '/get/';
+        }
+        for (const k of Object.keys(binaries)) delete binaries[k];
+        warnings.push('Large project: assets load from Scratch on demand (needs a connection).');
+      }
       const projJson = JSON.stringify(proj);
       const safeAssets = JSON.stringify(assets).replace(/<\//g, '<\\/');
       const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 40) || 'scratch-game';
@@ -3017,6 +3030,10 @@ async function handleRequest(req, res) {
         '    var key = asset.assetId + \'.\' + asset.dataFormat;\n' +
         '    var p = (window.__SCRATCH_ASSETS__ || {})[key];\n' +
         '    if (!p) throw new Error(\'missing asset \' + key);\n' +
+        '    // Dynamic (large project): p is a Scratch CDN URL, fetch it.\n' +
+        '    if (typeof p === \'string\' && /^https?:\\/\\//.test(p)) {\n' +
+        '      return fetch(p).then(function (r) { if (!r.ok) throw new Error(\'asset fetch \' + r.status); return r.arrayBuffer(); }).then(function (b) { return new Uint8Array(b); });\n' +
+        '    }\n' +
         '    // __CUDIC_BIN__ is injected by the Studio preview and the Cudic player\n' +
         '    // so this sandboxed frame resolves the file without fetching it.\n' +
         '    return (window.__CUDIC_BIN__ || {})[p] || p;\n' +
@@ -3039,7 +3056,7 @@ async function handleRequest(req, res) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         files, binaries, warnings,
-        meta: { sprites: proj.targets.length, assets: assetCount, assetBytes, fullPlayer, title }
+        meta: { sprites: proj.targets.length, assets: assetCount, assetBytes, fullPlayer, title, dynamicAssets }
       }));
       return;
     } catch (e) {
