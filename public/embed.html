@@ -36,10 +36,14 @@
     #playBtn svg { width: 26px; height: 26px; fill: #141414; margin-left: 3px; }
     #brand {
       position: absolute; right: 12px; bottom: 10px; z-index: 3;
-      font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.65);
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.78);
       text-decoration: none; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: rgba(0, 0, 0, 0.5); padding: 6px 10px; border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(4px);
     }
-    #brand:hover { color: #fff; }
+    #brand:hover { color: #fff; border-color: rgba(255, 255, 255, 0.32); }
+    #brand img { width: 14px; height: 14px; display: block; }
     #err {
       position: absolute; inset: 0; z-index: 2; display: flex; align-items: center;
       justify-content: center; padding: 24px; text-align: center; color: #b9b9c9;
@@ -55,7 +59,7 @@
       <p id="coverAuthor"></p>
     </div>
     <div id="err" hidden></div>
-    <a id="brand" href="#" target="_blank" rel="noopener">Play on Cudic</a>
+    <a id="brand" href="#" target="_blank" rel="noopener"><img src="/cudic_sfsvg.svg" alt="">Play on Cudic</a>
   </div>
   <script>
   (function () {

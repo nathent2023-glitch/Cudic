@@ -474,11 +474,13 @@ setInterval(function () {
         if (game.created_at) document.getElementById('gameMeta').textContent = 'Published ' + new Date(game.created_at).toLocaleDateString();
         checkOwner(game.owner_id);
         initComments(game);
-        getSession().then(function(s){
-          if (!s) return;
-          var fb = document.getElementById('forkBtn');
-          fb.style.display = '';
-          fb.addEventListener('click', function(){
+        // Fork is visible to everyone (guests included) — signing in is asked
+        // at click time, so every visitor sees the remix loop, not just users.
+        var fb = document.getElementById('forkBtn');
+        fb.style.display = '';
+        fb.addEventListener('click', function(){
+          getSession().then(function(s){
+            if (!s) { window.location.href = '/login'; return; }
             fb.disabled = true;
             fb.textContent = 'Forking…';
             fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/fork', {

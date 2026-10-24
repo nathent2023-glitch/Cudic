@@ -3445,6 +3445,11 @@ async function handleRequest(req, res) {
     url.pathname = '/privacy.html';
   }
 
+  // ── Redirect /faq to /faq.html ─────────────────────────────────
+  if (url.pathname === '/faq') {
+    url.pathname = '/faq.html';
+  }
+
   // ── Redirect /terms to /terms.html ─────────────────────────────
   if (url.pathname === '/terms') {
     url.pathname = '/terms.html';

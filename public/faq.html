@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cudic — Frequently asked questions</title>
+  <meta name="description" content="What Cudic is, how Scratch import works, multiplayer, embedding, remixing, and publishing — the short answers.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cudic">
+  <meta property="og:title" content="Cudic — Frequently asked questions">
+  <meta property="og:description" content="What Cudic is, how Scratch import works, multiplayer, embedding, remixing, and publishing — the short answers.">
+  <meta property="og:url" content="https://cudic.vercel.app/faq">
+  <meta property="og:image" content="https://cudic.vercel.app/og.png?v=2">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Cudic — Frequently asked questions">
+  <meta name="twitter:description" content="What Cudic is, how Scratch import works, multiplayer, embedding, remixing, and publishing — the short answers.">
+  <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png?v=2">
+  <link rel="canonical" content="https://cudic.vercel.app/faq">
+    <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9483499851682563" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/sidebar.css?v=24">
+    <style>
+        .faq-layout { display: flex; flex-direction: column; }
+        .faq-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+        .faq-scroll .wrap { max-width: 760px; margin: 0 auto; padding: 32px 32px 80px; }
+        .faq-scroll h2 { font-family: var(--font-head); font-weight: 600; font-size: 1.05rem; margin: 28px 0 8px; }
+        .faq-scroll p, .faq-scroll li { font-size: 0.9rem; line-height: 1.7; color: var(--text-primary); }
+        .faq-scroll ul { padding-left: 22px; margin: 8px 0; }
+        .def {
+            background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg);
+            padding: 18px 20px; margin: 20px 0 26px;
+        }
+        .def p { margin: 0; }
+        .cta-row { display: flex; gap: 10px; flex-wrap: wrap; margin: 26px 0 4px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 0.82rem; }
+        th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--text-primary); }
+        th { font-family: var(--font-head); font-weight: 600; font-size: 0.78rem; }
+        td:not(:first-child), th:not(:first-child) { width: 22%; }
+    </style>
+    <script type="application/ld+json">
+    {"@type":"SoftwareApplication","@context":"https://schema.org","applicationCategory":"GameApplication","operatingSystem":"Web","name":"Cudic","url":"https://cudic.vercel.app/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+    </script>
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+      {"@type":"Question","name":"What is Cudic?","acceptedAnswer":{"@type":"Answer","text":"Cudic is a free browser studio for making small games. You write HTML, CSS and JavaScript (or import a Scratch project), preview it live in the same tab, and publish with one click. Published games get a page, a link, a playable embed, cloud saves, and multiplayer rooms — no installs, no setup, no build step."}},
+      {"@type":"Question","name":"How much does Cudic cost?","acceptedAnswer":{"@type":"Answer","text":"Cudic is free to use. Advertising keeps it free; there are no paid tiers or limits on publishing."}},
+      {"@type":"Question","name":"Do I need to install anything?","acceptedAnswer":{"@type":"Answer","text":"No. The studio, the live preview and the player all run in your browser. Nothing to download, nothing to configure, no build step to learn."}},
+      {"@type":"Question","name":"Can I import my Scratch project?","acceptedAnswer":{"@type":"Answer","text":"Yes. Upload an .sb3 file or paste a Scratch project link. Cudic converts it into a real, editable HTML5 project — sprites, sounds, scripts and the running player — so you can then edit files and publish it. Scratch blocks are preserved and run as-is; they are not translated into hand-written JavaScript."}},
+      {"@type":"Question","name":"What can I build with?","acceptedAnswer":{"@type":"Answer","text":"Plain HTML, CSS and JavaScript files, including multi-file ES modules and npm packages that run in the browser. Python files also run through a browser-based Python runtime. There is no server-side execution, so Node built-ins and native binaries are not available."}},
+      {"@type":"Question","name":"Do players need an account to play my game?","acceptedAnswer":{"@type":"Answer","text":"No. Anyone with the link or the embed can play right away, with saves kept locally. An account carries progress across devices and adds cloud saves and chat."}},
+      {"@type":"Question","name":"Can I put my game on my own site?","acceptedAnswer":{"@type":"Answer","text":"Yes. Every published game comes with copy-paste iframe snippets — a fixed size and a responsive one. Embedded games keep local saves and work without a sign-in wall."}},
+      {"@type":"Question","name":"Does Cudic support multiplayer?","acceptedAnswer":{"@type":"Answer","text":"Yes. Published games can join shared realtime rooms of up to 32 players using a small built-in client API — join a room, send and receive messages. Rooms are anonymous and open to guests."}},
+      {"@type":"Question","name":"Can other people remix my game?","acceptedAnswer":{"@type":"Answer","text":"Yes. Anyone can fork a published game into their own Studio project. The fork keeps an automatic system credit on its page naming your game and the original maker, and the chain stays intact across further remixes."}},
+      {"@type":"Question","name":"How do I publish a game?","acceptedAnswer":{"@type":"Answer","text":"One click — Publish in Studio. Your project gets a gallery page with a thumbnail and comments, a shareable link, and embed snippets you can paste anywhere."}}
+    ]}
+    </script>
+</head>
+
+<body data-page="faq" data-no-rail>
+    <div class="faq-layout page-panel">
+        <div class="topbar">
+            <div style="display:flex;align-items:center;gap:12px">
+                <button class="btn btn-secondary" id="backBtn" style="padding:8px 14px;font-size:0.82rem">← Back</button>
+                <h1>FAQ</h1>
+            </div>
+            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
+        </div>
+        <div class="faq-scroll">
+            <div class="wrap">
+                <div class="def">
+                    <p><strong>Cudic</strong> is a free browser studio for making small games. You write HTML, CSS and JavaScript (or import a Scratch project), preview it live in the same tab, and publish with one click. Published games get a page, a link, a playable embed, cloud saves, and multiplayer rooms — no installs, no setup, no build step.</p>
+                </div>
+                <div class="cta-row">
+                    <a href="/studio" class="btn btn-primary" style="padding:10px 18px">Open Studio</a>
+                    <a href="/games" class="btn btn-secondary" style="padding:10px 18px">Play something</a>
+                </div>
+
+                <h2>What is Cudic?</h2>
+                <p>A browser studio for small games: an editor with a file tree and live preview, a one-click publish pipeline, a gallery community, and built-in multiplayer, saves and chat. The whole loop — write, run, publish, share, talk — happens in one tab.</p>
+
+                <h2>How much does Cudic cost?</h2>
+                <p>Cudic is free to use. Advertising keeps it free; there are no paid tiers or limits on publishing.</p>
+
+                <h2>Do I need to install anything?</h2>
+                <p>No. The studio, the live preview and the player all run in your browser. Nothing to download, nothing to configure, no build step to learn.</p>
+
+                <h2>Can I import my Scratch project?</h2>
+                <p>Yes. Upload an <code>.sb3</code> file or paste a Scratch project link. Cudic converts it into a real, editable HTML5 project — sprites, sounds, scripts and the running player — so you can then edit files and publish it. Scratch blocks are preserved and run as-is; they are not translated into hand-written JavaScript.</p>
+
+                <h2>What can I build with?</h2>
+                <p>Plain HTML, CSS and JavaScript files, including multi-file ES modules and npm packages that run in the browser. Python files also run through a browser-based Python runtime. There is no server-side execution, so Node built-ins and native binaries are not available.</p>
+
+                <h2>Do players need an account to play my game?</h2>
+                <p>No. Anyone with the link or the embed can play right away, with saves kept locally. An account carries progress across devices and adds cloud saves and chat.</p>
+
+                <h2>Can I put my game on my own site?</h2>
+                <p>Yes. Every published game comes with copy-paste iframe snippets — a fixed size and a responsive one. Embedded games keep local saves and work without a sign-in wall.</p>
+
+                <h2>Does Cudic support multiplayer?</h2>
+                <p>Yes. Published games can join shared realtime rooms of up to 32 players using a small built-in client API — join a room, send and receive messages. Rooms are anonymous and open to guests.</p>
+
+                <h2>Can other people remix my game?</h2>
+                <p>Yes. Anyone can fork a published game into their own Studio project. The fork keeps an automatic system credit on its page naming your game and the original maker, and the chain stays intact across further remixes.</p>
+
+                <h2>How do I publish a game?</h2>
+                <p>One click — Publish in Studio. Your project gets a gallery page with a thumbnail and comments, a shareable link, and embed snippets you can paste anywhere.</p>
+
+                <h2>How Cudic compares</h2>
+                <table>
+                    <tr><th></th><th>Cudic</th><th>Scratch</th><th>CodePen</th></tr>
+                    <tr><td>What you make</td><td>published playable games</td><td>block-coded games</td><td>front-end demos</td></tr>
+                    <tr><td>Language</td><td>real HTML/CSS/JS, npm, Python</td><td>visual blocks</td><td>HTML/CSS/JS</td></tr>
+                    <tr><td>Import .sb3</td><td>yes</td><td>—</td><td>—</td></tr>
+                    <tr><td>Multiplayer</td><td>built-in rooms, up to 32 players</td><td>cloud variables (limited)</td><td>no</td></tr>
+                    <tr><td>Player saves</td><td>synced to the account</td><td>on-Scratch account only</td><td>no cloud saves</td></tr>
+                    <tr><td>Publish</td><td>one click; page, embed, comments</td><td>page per project</td><td>pen page</td></tr>
+                    <tr><td>Price</td><td>free</td><td>free</td><td>free tier</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            document.getElementById('backBtn').addEventListener('click', function () {
+                if (history.length > 1) history.back(); else location.href = '/';
+            });
+        })();
+    </script>
+</body>
+
+</html>
