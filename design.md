@@ -33,10 +33,16 @@ them so we don't drift back into them:
 ## 2. Color
 
 Base is a light ice-blue "playground" tone — friendly and Scratch-like,
-not a stark clinical white — with **one purple signal color** reserved
-for primary actions and active state, and **one orange accent** reserved
-for "live" / play-related moments only. There is no dark theme and no
-theme toggle; the app is light-only.
+not a stark clinical white — with **one orange signal color** for primary
+actions and active state, and the same orange kept as the fixed "live /
+play" accent. A dark theme also ships (tokens in `sidebar.css`); light is
+still the reference palette.
+
+**The signal is the user's accent.** `--signal`, `--signal-hover`,
+`--signal-tint`, and `--on-signal` are overwritten at runtime from
+`localStorage['glox_accent']` (profile picker, applied by `sidebar.js` on
+every page). Orange is only the default. Primary chrome must always use
+these variables — never a hardcoded hex — or a chosen accent stops working.
 
 | Token | Hex | Use |
 |---|---|---|
@@ -47,17 +53,27 @@ theme toggle; the app is light-only.
 | `--text-primary` | `#2E2A4B` | Headings, primary text |
 | `--text-secondary` | `#5C5878` | Supporting text, labels |
 | `--text-tertiary` | `#9C97B8` | Disabled, placeholder |
-| `--signal` | `#7300FF` | Primary buttons, links, active nav, focus ring |
-| `--signal-hover` | `#5D00E9` | Signal hover/pressed |
+| `--signal` | `#FF8C1A` | Primary buttons, links, active nav, focus ring (accent-overridden) |
+| `--signal-hover` | `#E67A00` | Signal hover/pressed |
+| `--signal-tint` | `rgba(255,140,26,0.12)` | Tinted backgrounds for active/soft states |
+| `--on-signal` | `#1B1712` | Text/glyph on a signal fill (orange needs dark text) |
 | `--ember` | `#FF8C1A` | "Play", "Publish", live/online indicators only (solid fills, dark text) |
 | `--ember-deep` | `#B25E00` | Small ember-colored text on light backgrounds (badges) |
 | `--success` | `#14965F` | Success states |
 | `--danger` | `#E0442E` | Destructive actions, errors |
 
 **Rule:** `--signal` is the only saturated color allowed on interactive
-chrome (buttons, active states, focus, links). `--ember` never appears on
+chrome (buttons, active states, focus, links) and it follows the user's
+accent. `--ember` stays orange regardless of accent and never appears on
 navigation or structural UI — only on things that mean "this is live /
 playable right now" (a Play button, an online dot, a "published" badge).
+
+**Contrast:** orange with white text fails WCAG (~2.4:1). Any signal fill
+takes `--on-signal`; with the default orange that is near-black `#1B1712`.
+
+**Neubrutalism is experiment-only.** Thick black borders, hard offset
+shadows, and flat saturated fills fight the soft ice-blue system. Contained
+experiments (`experiments/`) may use it; shipped app surfaces stay soft.
 
 ## 3. Type
 
@@ -199,4 +215,10 @@ The only layout note: Music Lab is a fixed-height workstation. The page never
 scrolls as a whole (`overflow: hidden` on the layout), the stage columns scroll
 internally when needed, and the sequencer gets its own horizontal scroll. Play
 is the one ember control; active steps, voices and meters use `--signal`.
+
+**`/quests` is a scoped dark surface.** A full-bleed poster hero (floating
+orbs, uppercase Epilogue 800 headline) over a reward-card grid on `#08080d`.
+Cards use colourful cover art per quest; every action still uses `--signal`
+so the accent picker works. It is the one classic-page exception that ignores
+the light ice-blue canvas — do not copy the hero art into other pages.
 

@@ -13,9 +13,9 @@
   --text-primary: #2E2A4B;
   --text-secondary: #5C5878;
   --text-tertiary: #9C97B8;
-  --signal: #7300FF;
-  --signal-hover: #5D00E9;
-  --signal-tint: rgba(115, 0, 255, 0.12);
+  --signal: #FF8C1A;
+  --signal-hover: #E67A00;
+  --signal-tint: rgba(255, 140, 26, 0.12);
   --ember: #FF8C1A;
   --ember-deep: #B25E00;
   --success: #14965F;
@@ -31,7 +31,7 @@
   --text-lg: 1.25rem;
   --text-xl: 1.625rem;
   --text-2xl: 2rem;
-  --on-signal: #fff;
+  --on-signal: #1B1712;
 }
 
 /* ── Squircles ───────────────────────────────────────────────
@@ -62,11 +62,11 @@
   --text-primary: #FFFFFF;
   --text-secondary: #A6A6A6;
   --text-tertiary: #808080;
-  --signal: #66A8A0;
-  --signal-hover: #50928A;
-  --signal-tint: rgba(102, 168, 160, 0.14);
+  --signal: #FF8C1A;
+  --signal-hover: #E67A00;
+  --signal-tint: rgba(255, 140, 26, 0.14);
   --success: #3ECF8E;
-  --on-signal: #141414;
+  --on-signal: #1B1712;
 }
 /* Dark mode: badge/icon glyphs go white (tinted backgrounds stay, so the
    accent still reads). Light mode keeps the signal-colored glyphs. */

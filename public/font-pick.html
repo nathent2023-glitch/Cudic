@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Font picker — TURN PLAY INTO COINS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&family=Orbitron:wght@400;700;900&family=Audiowide&family=Bungee&family=Bungee+Spice&family=Rubik+80s+Fade&family=Monoton&family=Alfa+Slab+One&family=Fredoka+One&family=Space+Mono:wght@400;700&family=Share+Tech+Mono&family=Rajdhani:wght@500;700&family=Pixelify+Sans:wght@400;700&family=Exo+2:wght@700;900&family=M+PLUS+1:wght@400;700&family=Rye&family=Black+Ops+One&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Satoshi',system-ui,sans-serif;background:#08080d;color:#fff;padding:40px 24px;height:100vh;overflow-y:auto}
+  .wrap{max-width:1200px;margin:0 auto}
+  h1{font-family:'Epilogue',sans-serif;font-weight:700;font-size:2.6rem;letter-spacing:-0.03em;margin-bottom:6px}
+  .sub{color:#9b9bb0;font-size:0.95rem;margin-bottom:32px}
+  .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  @media(max-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:860px){.grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.grid{grid-template-columns:1fr}}
+  .card{background:#14141d;border:1px solid #20202a;border-radius:14px;padding:20px;position:relative;transition:transform .15s,border-color .15s}
+  .card:hover{transform:translateY(-3px);border-color:#30303a}
+  .card .label{font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#6c6c80;margin-bottom:10px}
+  .headline{font-family:inherit;font-weight:700;font-size:2.4rem;line-height:0.92;letter-spacing:-0.04em;text-transform:uppercase;margin-bottom:8px;min-height:2.2em}
+  .swatch{display:inline-block;width:16px;height:16px;border-radius:3px;border:1px solid #30303a;margin-right:6px;vertical-align:middle}
+  .font-name{font-size:0.75rem;color:#8c8c9f;margin-bottom:4px;font-family:system-ui,sans-serif}
+  .pick{margin-top:12px;background:#FF8C1A;color:#1B1712;font-family:'Epilogue',sans-serif;font-weight:700;padding:8px 14px;border-radius:8px;border:0;cursor:pointer;font-size:0.82rem;transition:background .15s}
+  .pick:hover{background:#e67a00}
+  .picked{opacity:.55;pointer-events:none}
+  footer{margin-top:48px;color:#4a4a58;font-size:0.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TURN PLAY<br>INTO COINS — Font picker</h1>
+  <p class="sub">Pick one. After you choose, the headline on <b>/quests</b> updates. All 20 are web-safe (Google Fonts).</p>
+  <div class="grid" id="grid"></div>
+  <footer>Restart the server (<b>npm start</b> in PowerShell) after you apply.</footer>
+</div>
+
+<script>
+const fonts = [
+  { name:'1 · Press Start 2P', family:"'Press Start 2P', cursive", size:'2.3rem', tag:'Pixel / Arcade', hsl:'330 50% 45%' },
+  { name:'2 · Silkscreen', family:"'Silkscreen', cursive", size:'2.45rem', tag:'Pixel / Retro', hsl:'265 60% 42%' },
+  { name:'3 · VT323', family:"'VT323', monospace", size:'2.35rem', tag:'Terminal / Pixel', hsl:'42 80% 42%' },
+  { name:'4 · Pixelify Sans', family:"'Pixelify Sans', sans-serif", size:'2.25rem', tag:'Pixel / Rounded', hsl:'200 70% 40%' },
+  { name:'5 · M PLUS 1', family:"'M PLUS 1', sans-serif", size:'2.35rem', tag:'Rounded Pixel', hsl:'150 60% 35%' },
+  { name:'6 · Orbitron', family:"'Orbitron', sans-serif", size:'2.4rem', tag:'Sci-Fi / Tech', hsl:'220 60% 48%' },
+  { name:'7 · Audiowide', family:"'Audiowide', sans-serif", size:'2.15rem', tag:'Bold Tech', hsl:'280 55% 45%' },
+  { name:'8 · Bungee', family:"'Bungee', sans-serif", size:'2.6rem', tag:'Vertical / Heavy', hsl:'170 60% 42%' },
+  { name:'9 · Bungee Spice', family:"'Bungee Spice', sans-serif", size:'2.7rem', tag:'Vertical / Spicy', hsl:'25 90% 50%' },
+  { name:'10 · Rubik 80s Fade', family:"'Rubik 80s Fade', sans-serif", size:'2.35rem', tag:'Retro / Bold', hsl:'330 50% 42%' },
+  { name:'11 · Monoton', family:"'Monoton', sans-serif", size:'2.2rem', tag:'Decorative', hsl:'350 80% 55%' },
+  { name:'12 · Alfa Slab One', family:"'Alfa Slab One', serif", size:'2.3rem', tag:'Western / Chunky', hsl:'35 55% 42%' },
+  { name:'13 · Fredoka One', family:"'Fredoka One', sans-serif", size:'2.4rem', tag:'Friendly Bold', hsl:'195 55% 42%' },
+  { name:'14 · Space Mono', family:"'Space Mono', monospace", size:'2.2rem', tag:'Mono / Tech', hsl:'0 0% 10%' },
+  { name:'15 · Share Tech Mono', family:"'Share Tech Mono', monospace", size:'2.15rem', tag:'Mono / Thin', hsl:'210 60% 48%' },
+  { name:'16 · Rajdhani', family:"'Rajdhani', sans-serif", size:'2.35rem', tag:'Squared / Tech', hsl:'45 50% 42%' },
+  { name:'17 · Exo 2', family:"'Exo 2', sans-serif", size:'2.35rem', tag:'Modern Tech', hsl:'275 60% 42%' },
+  { name:'18 · Rye', family:"'Rye', serif", size:'2.5rem', tag:'Western / Serif', hsl:'20 55% 42%' },
+  { name:'19 · Black Ops One', family:"'Black Ops One', cursive", size:'2.3rem', tag:'Military / Heavy', hsl:'0 60% 45%' },
+  { name:'20 · Space Grotesk', family:"'Space Grotesk', sans-serif", size:'2.4rem', tag:'Geometric / Clean', hsl:'210 60% 40%' },
+];
+
+const grid = document.getElementById('grid');
+fonts.forEach((f, i) => {
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.style.setProperty('--h', f.hsl);
+  card.innerHTML = '<div class="label">'+f.name+'</div>' +
+    '<div class="font-name" style="font-family:'+f.family+'">'+f.tag+'</div>' +
+    '<h2 class="headline" style="font-family:'+f.family+';font-size:'+f.size+'">TURN PLAY<br>INTO COINS.</h2>' +
+    '<span class="swatch" style="background:hsl('+f.hsl+')"></span>' +
+    '<button class="pick" onclick="pickFont('+i+',this)">Use this</button>';
+  grid.appendChild(card);
+  window.fontChoices = fonts;
+});
+
+function pickFont(i, btn){
+  const f = fonts[i];
+  // Apply to the hero title in quests.html immediately if it exists (for preview)
+  const heroTitle = document.querySelector('.hero h1');
+  if (heroTitle) heroTitle.style.fontFamily = f.family;
+  // Write the selection to sessionStorage so the builder can read it when applying to quests.html
+  sessionStorage.setItem('quests_hero_font', JSON.stringify({ family: f.family, name: f.name }));
+  btn.textContent = 'Copied!';
+  btn.style.background = '#14A468'; btn.style.color = '#fff';
+  setTimeout(() => { btn.textContent = 'Use this'; btn.style.background = ''; btn.style.color = ''; }, 1200);
+}
+</script>
+</body>
+</html>

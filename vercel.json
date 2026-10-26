@@ -10,6 +10,7 @@
     { "source": "/forums/:id", "destination": "/forums.html" },
     { "source": "/kit", "destination": "/kit.html" },
     { "source": "/themes", "destination": "/themes.html" },
+    { "source": "/quests", "destination": "/quests.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/faq", "destination": "/faq.html" },

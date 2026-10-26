@@ -19,6 +19,11 @@ function validName(s) {
   return typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9 _\-:]{0,95}$/.test(s);
 }
 
+// ── Rewarded-ad nonces (in-memory; single instance) ─────────────
+// One nonce per watch attempt, single-use, 15 min TTL. A restart only
+// drops pending sessions — nothing has been paid out at that point.
+const adNonces = new Map();
+
 // ── Rate limiting (in-memory; single instance, resets on restart) ──
 const rateBuckets = new Map();
 function rateLimit(key, max, windowMs) {
@@ -1595,13 +1600,55 @@ async function handleRequest(req, res) {
     return sum;
   }
 
+  // ── Engagement score for dynamic coin cap ─────────────────────
+  // Community actions feed a score that lifts the weekly coin ceiling.
+  // Chat must have a reply — "test" one-way messages don't count.
+  async function getEngagementScore(uid) {
+    let score = 0;
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    // Chat messages with reply verification (last 24h): count message only if another user replied in same lobby within 2 h
+    const { data: myMsgs } = await supabase.from('messages').select('id, lobby_id, created_at, user_id').eq('user_id', uid).gte('created_at', since);
+    let replyMsgCount = 0;
+    if (myMsgs && myMsgs.length) {
+      const lobbyIds = [...new Set(myMsgs.map(m => m.lobby_id))];
+      const { data: others } = await supabase.from('messages').select('lobby_id, created_at, user_id').in('lobby_id', lobbyIds).neq('user_id', uid).gte('created_at', since);
+      for (const m of myMsgs) {
+        const replied = (others || []).some(o => o.lobby_id === m.lobby_id && new Date(o.created_at) > new Date(m.created_at) && (new Date(o.created_at) - new Date(m.created_at)) < 2 * 3600 * 1000);
+        if (replied) replyMsgCount++;
+      }
+    }
+    score += replyMsgCount * 3;
+    // Other interactions from the ledger arechequests completed, ad claims, messages, etc
+    const { data: ledger } = await supabase.from('coin_ledger').select('reason, created_at').eq('user_id', uid).order('created_at', { ascending: false }).limit(500);
+    const reQuest = /quest:/;
+    const reAd = /ad:/;
+    for (const r of ledger || []) { if (reQuest.test(r.reason)) score += 5; else if (reAd.test(r.reason)) score += 1; }
+    // Servers joined / members invited (seed + current)
+    const { data: servers } = await supabase.from('servers').select('id').eq('owner_id', uid);
+    const { data: members } = await supabase.from('server_members').select('server_id').in('user_id', [uid]);
+    score += servers.length * 4 + members.length * 2;
+    // Games played/published
+    const { data: games } = await supabase.from('games').select('id').eq('owner_id', uid);
+    score += games.length * 3;
+    // Friends / DMs (conversation access seeded by friends acceptance)
+    const { data: conversations } = await supabase.from('conversation_members').select('lobby_id').eq('user_id', uid).distinct();
+    score += Math.min(10, conversations.length * 2);
+    return score;
+  }
+
+  async function getCoinsMax(uid) {
+    const s = await getEngagementScore(uid);
+    return 50 + Math.min(200, Math.floor(s / 5) * 10);
+  }
+
   // ── API: coin balance + recent receipts ────────────────────────
   if (url.pathname === '/api/coins' && req.method === 'GET') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
+    const coinsMax = await getCoinsMax(user.id);
     const { data: rows } = await supabase.from('coin_ledger').select('delta, reason, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ balance: await coinBalance(user.id), receipts: rows || [] }));
+    res.end(JSON.stringify({ balance: await coinBalance(user.id), coinsMax, receipts: rows || [] }));
     return;
   }
 
@@ -1696,6 +1743,109 @@ async function handleRequest(req, res) {
       }
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Claim failed.' }));
+    }
+    return;
+  }
+
+  // ── Rewarded ads: 10 slots / 50 coins per UTC week ─────────────
+  // The ad network's completion callback is client-side, so the grant is
+  // best-effort gated: a server nonce per watch, a minimum elapsed time,
+  // one claim per nonce, and the week's ledger rows. Swap the elapsed
+  // check for AppLixir's server-to-server webhook when the live key ships.
+  var AD_CAP = { slotsPerWeek: 10, coinsPerWeek: 50 };
+  var AD_TIERS = [[45, 75], [30, 40], [15, 20]]; // [min seconds watched, coins] — min 75/coin
+  function adWeekStart() {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); // Monday
+    return d.toISOString().slice(0, 10) + 'T00:00:00.000Z';
+  }
+  function adTier(seconds) { for (const [s, c] of AD_TIERS) if (seconds >= s) return c; return 0; }
+  async function adWeek(me) {
+    const { data } = await supabase.from('coin_ledger').select('delta').eq('user_id', me).like('reason', 'ad:%').gte('created_at', adWeekStart());
+    let coins = 0, slots = 0;
+    for (const r of data || []) { slots++; coins += Math.max(0, r.delta || 0); }
+    return { slots, coins };
+  }
+  function adState(w, extra) {
+    return Object.assign({
+      slots: w.slots, slotsMax: AD_CAP.slotsPerWeek,
+      coins: w.coins, coinsMax: AD_CAP.coinsPerWeek,
+      tiers: AD_TIERS.map(t => ({ seconds: t[0], coins: t[1] })),
+    }, extra || {});
+  }
+
+  // ── API: ad status + dynamic cap ───────────────────────────────
+  if (url.pathname === '/api/ads/status' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const coinsMax = await getCoinsMax(user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(adState(await adWeek(user.id), { coinsMax })));
+    return;
+  }
+
+  if (url.pathname === '/api/ads/start' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!rateLimit('ads:' + user.id, 30, 3600000)) {
+      res.writeHead(429, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Too many ad sessions. Try again later.' }));
+      return;
+    }
+    const w = await adWeek(user.id);
+    const coinsMax = await getCoinsMax(user.id);
+    if (w.slots >= AD_CAP.slotsPerWeek || w.coins >= coinsMax) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(adState(w, { capped: true, coinsMax })));
+      return;
+    }
+    const now = Date.now();
+    for (const [k, v] of adNonces) if (now - v.at > 900000) adNonces.delete(k);
+    const nonce = crypto.randomUUID();
+    adNonces.set(nonce, { user: user.id, at: now });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(adState(w, { nonce, coinsMax })));
+    return;
+  }
+
+  if (url.pathname === '/api/ads/claim' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const nonce = body && typeof body.nonce === 'string' ? body.nonce : '';
+    const session = nonce ? adNonces.get(nonce) : null;
+    if (!session || session.user !== user.id) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Ad session expired.' }));
+      return;
+    }
+    adNonces.delete(nonce); // consume before any await: one claim per nonce
+    const seconds = Math.floor((Date.now() - session.at) / 1000);
+    const tier = adTier(seconds);
+    const w = await adWeek(user.id);
+    if (!tier) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Ad ended too soon — no coins.', seconds, minSeconds: 15 }));
+      return;
+    }
+    const coinsMax = await getCoinsMax(user.id);
+    if (w.coins >= coinsMax) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(adState(w, { capped: true, awarded: 0, balance: await coinBalance(user.id), coinsMax })));
+      return;
+    }
+    const coinsMax = await getCoinsMax(user.id);
+    const awarded = Math.min(tier, Math.max(0, coinsMax - w.coins));
+    try {
+      const { data: bal, error } = await supabase.rpc('grant_coins', { p_user: user.id, p_delta: awarded, p_reason: 'ad:' + nonce, p_ref: null });
+      if (error) throw error;
+      const after = { slots: w.slots + 1, coins: w.coins + awarded };
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(adState(after, { awarded, balance: bal, seconds, coinsMax })));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Reward failed.' }));
     }
     return;
   }
@@ -3433,6 +3583,11 @@ async function handleRequest(req, res) {
   // ── Redirect /themes to /themes.html ──────────────────────────
   if (url.pathname === '/themes') {
     url.pathname = '/themes.html';
+  }
+
+  // ── Redirect /quests to /quests.html ──────────────────────────
+  if (url.pathname === '/quests') {
+    url.pathname = '/quests.html';
   }
 
   // ── Redirect /docs to /docs.html ──────────────────────────────

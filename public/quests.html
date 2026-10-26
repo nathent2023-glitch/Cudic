@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head><script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cudic — Quests</title>
+  <meta name="description" content="Earn Cudic coins: finish quests, check in daily, and watch a short rewarded ad for theme-pack money.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Cudic">
+  <meta property="og:title" content="Quests — Cudic">
+  <meta property="og:description" content="Earn Cudic coins: finish quests, check in daily, and watch a short rewarded ad for theme-pack money.">
+  <meta property="og:url" content="https://cudic.vercel.app/quests">
+  <meta property="og:image" content="https://cudic.vercel.app/og.png?v=2">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Quests — Cudic">
+  <meta name="twitter:description" content="Earn Cudic coins: finish quests, check in daily, and watch a short rewarded ad for theme-pack money.">
+  <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png?v=2">
+  <link rel="canonical" content="https://cudic.vercel.app/quests">
+  <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+  <link rel="stylesheet" href="/sidebar.css?v=25">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Monoton&display=swap" rel="stylesheet">
+  <style>
+    /* This page is deliberately dark and full-bleed: poster hero over a
+       reward grid. Chrome stays the app's, art does the talking. */
+    body { display: flex; overflow: hidden; height: 100%; background: var(--ink); }
+
+    .quests-layout {
+      flex: 1;
+      width: 0;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      margin: 16px;
+      box-sizing: border-box;
+    }
+    .scroller { flex: 1; overflow-y: auto; overflow-x: hidden; background: var(--panel); box-sizing: border-box; }
+
+    /* ── Hero ─────────────────────────────────────────────── */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 76px 0 58px;
+      background:
+        radial-gradient(820px 380px at 78% 8%, rgba(124, 82, 255, 0.32), transparent 62%),
+        radial-gradient(620px 300px at 12% 88%, rgba(255, 140, 26, 0.14), transparent 62%),
+        linear-gradient(180deg, #0b0b14 0%, #08080d 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .hero::before { content:''; position:absolute; inset:0; background:linear-gradient(120deg, rgba(139,92,255,0), rgba(139,92,255,0.08) 40%, rgba(255,140,26,0.06) 60%, rgba(139,92,255,0)); animation:bgShift 12s ease-in-out infinite; pointer-events:none; z-index:1; }
+    @keyframes bgShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    @keyframes breathe { 0%, 100% { opacity: 1; transform: translateY(0); } 50% { opacity: 0.98; transform: translateY(-2px); } }
+    .hero-inner { position: relative; z-index: 2; max-width: min(100%, 1200px); margin: 0 auto; padding: 0 clamp(10px, 4vw, 32px); box-sizing: border-box; animation: breathe 10s ease-in-out infinite; }
+    .hero h1 {
+      font-family: 'Monoton', cursive, sans-serif;
+      font-weight: 400;
+      font-size: clamp(1.6rem, 4vw, 3rem);
+      animation: textGlow 8s ease-in-out infinite;
+      line-height: 0.94;
+      letter-spacing: -0.035em;
+      text-transform: uppercase;
+      margin: 0;
+      max-width: 620px;
+    }
+    .hero p {
+      color: #b6b6c8;
+      font-size: 0.98rem;
+      line-height: 1.55;
+      margin: 20px 0 28px;
+      max-width: 470px;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .btn-hero {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.95rem;
+      background: #fff;
+      color: #0b0b12;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      position: relative; overflow: hidden;
+    }
+    .btn-hero:hover { background: #e9e9f2; }
+    .btn-hero::after { content:''; position:absolute; inset:0; background:conic-gradient(from 270deg,#ff8c1a 0%,#c084fc 50%,#ff8c1a 100%); opacity:0.2; animation:pulse-ring 2.5s linear infinite; pointer-events:none; }
+    @keyframes pulse-ring { 0%{opacity:0.15} 50%{opacity:0.4} 100%{opacity:0.15} }
+    .hero-link {
+      color: #e8e8f2;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.92rem;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+      padding-bottom: 2px;
+    }
+    .hero-link:hover { border-color: #fff; }
+
+    .balance-pill {
+      position: absolute;
+      top: 22px;
+      right: 32px;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #fff;
+      background: rgba(20, 20, 30, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      padding: 7px 14px;
+      backdrop-filter: blur(8px);
+    }
+    .balance-pill .dot {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 2px solid var(--signal);
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .balance-pill .dot::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--signal); }
+    @keyframes dotPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: 0.9; } }
+    .balance-pill:hover .dot { animation: dotPulse 1.2s ease-in-out infinite; }
+    .balance-pill b { color: #fff; }
+
+    /* ── Orbs ─────────────────────────────────────────────── */
+    .orb {
+      position: absolute;
+      border-radius: 28%;
+      transform: rotate(18deg);
+      background: conic-gradient(from 210deg, #8b5cff, #ff7a3c, #2ee6d6, #4a7bff, #8b5cff);
+      box-shadow: 0 0 70px rgba(139, 92, 255, 0.35), inset 0 0 46px rgba(0, 0, 0, 0.7);
+      opacity: 0.9;
+      animation: float 11s ease-in-out infinite;
+    }
+    .orb::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.5), transparent 42%);
+    }
+    .orb .star {
+      position: absolute;
+      inset: 32%;
+      background: #f2f4ff;
+      clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+      filter: drop-shadow(0 0 10px rgba(200, 214, 255, 0.95));
+    }
+    .o1 { width: 176px; height: 176px; right: 14%; top: 54px; }
+    .o2 { width: 74px; height: 74px; right: 5%; top: 196px; animation-delay: -3s; }
+    .o3 { width: 46px; height: 46px; right: 34%; top: 222px; animation-delay: -6s; }
+    .o4 { width: 132px; height: 132px; right: 27%; top: -46px; opacity: 0.4; filter: blur(2px); animation-delay: -2s; }
+    .o5 { width: 210px; height: 210px; right: -70px; top: -70px; opacity: 0.22; filter: blur(6px); }
+    @keyframes float { 0%, 100% { transform: rotate(18deg) translateY(0); } 50% { transform: rotate(18deg) translateY(-22px); } }
+
+    /* ── Grid ─────────────────────────────────────────────── */
+    .grid-wrap { max-width: min(100%, 1200px); width: 100%; margin: 0 auto; padding: 28px clamp(10px, 3vw, 32px) 88px; box-sizing: border-box; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+      gap: 18px;
+    }
+    .qcard { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; }
+
+    .qcard {
+      display: flex;
+      flex-direction: column;
+      background: #15151d;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: transform 0.16s ease, border-color 0.16s ease;
+    }
+    .qcard:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.2); }
+
+    .cover {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      padding: 16px;
+      display: flex;
+      align-items: flex-end;
+      background:
+        radial-gradient(120% 120% at 82% 18%, hsl(var(--h) 70% 40% / 0.55), transparent 55%),
+        linear-gradient(136deg, hsl(var(--h) 52% 26%), #0d0d14 92%);
+    }
+    .cover::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(8, 8, 13, 0) 40%, rgba(8, 8, 13, 0.72) 100%);
+    }
+    .cover .big {
+      position: relative;
+      z-index: 2;
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 3rem;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      text-transform: uppercase;
+    }
+    .cover .big small {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.72);
+      margin-top: 6px;
+    }
+    .cover .tag {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 2;
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.86);
+      background: rgba(8, 8, 13, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 4px 9px;
+      backdrop-filter: blur(4px);
+    }
+    .cover .glint {
+      position: absolute;
+      right: 16%;
+      top: 16%;
+      width: 62px;
+      height: 62px;
+      background: radial-gradient(circle at 50% 50%, #fff 0%, #cfd8ff 35%, transparent 72%);
+      clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+      opacity: 0.9;
+      filter: drop-shadow(0 0 16px rgba(160, 180, 255, 0.55));
+    }
+    .cover .glint.sm { width: 26px; height: 26px; right: 34%; top: 34%; opacity: 0.55; }
+
+    .qbody { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 16px; flex: 1; }
+    .qhead { display: flex; gap: 12px; align-items: flex-start; }
+    .thumb {
+      width: 50px; height: 50px; flex-shrink: 0;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(140deg, hsl(var(--h) 62% 45%), hsl(var(--h) 58% 24%));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .thumb svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .eyebrow {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9b9bb0;
+    }
+    .qtitle {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.98rem;
+      line-height: 1.25;
+      margin: 3px 0 0;
+      color: #fff;
+    }
+    .qreward {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #dcdcea;
+      margin-top: 5px;
+    }
+    .qreward b { font-weight: 600; color: #fff; }
+    .qnote { font-size: 0.76rem; line-height: 1.45; color: #8c8c9f; }
+
+    .cta {
+      margin-top: auto;
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 0.86rem;
+      cursor: pointer;
+      background: var(--signal);
+      color: var(--on-signal);
+      transition: background 0.15s ease;
+      position: relative; overflow: hidden;
+    }
+    @keyframes shimmer-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    @keyframes shimmer-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .cta:hover { background: var(--signal-hover); }
+    .cta:hover::before {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none;
+      background: conic-gradient(from 270deg, transparent 0, rgba(255,255,255,0.2) 45deg, transparent 90deg);
+      animation: shimmer-slide 1.2s linear infinite;
+      opacity: 0.7; mix-blend-mode: overlay;
+    }
+    .cta:disabled, .cta.done { background: #23232f; color: #9a9aae; cursor: default; }
+    .cta.done { color: #cfcfdd; }
+
+    /* Ad card meter */
+    .meter { display: flex; flex-direction: column; gap: 7px; }
+    .meter-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .meter-row .num { font-family: var(--font-head); font-weight: 700; font-size: 1.05rem; color: #fff; }
+    .meter-row .num span { font-weight: 500; font-size: 0.72rem; color: #9b9bb0; }
+    .meter-row .slots-label { font-size: 0.7rem; color: #9b9bb0; white-space: nowrap; }
+    .meter-bar { height: 7px; border-radius: 999px; background: #23232f; overflow: hidden; }
+    .meter-bar i { display: block; height: 100%; width: 0%; background: var(--signal); transition: width 0.35s ease; }
+    .slots { display: flex; gap: 4px; }
+    .slots span { flex: 1; height: 6px; border-radius: 3px; background: #23232f; }
+    .slots span.on { background: var(--signal); }
+
+    .msg { font-size: 0.74rem; line-height: 1.4; margin: 0; min-height: 1em; color: #9b9bb0; }
+    .msg.ok { color: #5fe0a8; }
+    .msg.err { color: #ff8a75; }
+
+    /* Guest */
+    .guest {
+      max-width: 520px;
+      margin: 8px auto 0;
+      background: #15151d;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      padding: 28px;
+      text-align: center;
+    }
+    .guest h2 { font-family: var(--font-head); font-weight: 700; font-size: 1.2rem; margin: 0 0 6px; }
+    .guest p { color: #9b9bb0; font-size: 0.86rem; margin: 0 0 18px; }
+
+    .fine { color: #6c6c80; font-size: 0.73rem; line-height: 1.6; margin: 24px 0 0; }
+    .fine a { color: #b9b9cc; }
+
+    /* Shimmer */
+    .sk { position: relative; overflow: hidden; background: #1a1a24; }
+    .sk::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+      animation: sweep 1.3s linear infinite;
+    }
+    @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+    @media (max-width: 1080px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 760px) {
+      .hero { padding: 64px 0 42px; }
+      .hero-inner { padding: 0 18px; }
+      .balance-pill { right: 18px; top: 16px; }
+      .o3, .o4, .o5 { display: none; }
+      .o1 { width: 110px; height: 110px; right: 8%; top: 86px; opacity: 0.55; }
+      .o2 { width: 48px; height: 48px; right: 6%; top: 210px; }
+      .grid-wrap { padding: 18px 16px 80px; }
+      .grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .orb { animation: none; }
+      .sk::after { animation: none; }
+      .qcard { transition: none; }
+      .meter-bar i { transition: none; }
+    }
+  </style>
+</head>
+
+<body data-page="quests">
+  <div class="quests-layout">
+    <div class="scroller">
+      <section class="hero">
+        <span class="balance-pill"><span class="dot" aria-hidden="true"></span><b id="balanceNum">—</b>&nbsp;coins</span>
+        <div class="orb o4"><span class="star"></span></div>
+        <div class="orb o5"><span class="star"></span></div>
+        <div class="orb o1"><span class="star"></span></div>
+        <div class="orb o2"><span class="star"></span></div>
+        <div class="orb o3"><span class="star"></span></div>
+        <div class="hero-inner">
+          <h1>Turn play<br>into coins.</h1>
+          <p>Finish quests, watch a short video, and spend what you earn on theme packs. Every account gets the same ten ad slots a week.</p>
+          <div class="hero-actions">
+            <button class="btn-hero" id="heroWatch">Watch a video</button>
+            <a class="hero-link" href="/themes">Browse theme packs</a>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid-wrap">
+        <div class="grid" id="grid">
+          <article class="qcard" id="adCard" style="--h:265">
+            <div class="cover">
+              <span class="tag">Rewarded video</span>
+              <span class="glint" aria-hidden="true"></span>
+              <span class="glint sm" aria-hidden="true"></span>
+              <div class="big">50<small>coins a week</small></div>
+            </div>
+            <div class="qbody">
+              <div class="qhead">
+                <div class="thumb"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M10 9.5v5l4.5-2.5Z"/></svg></div>
+                <div>
+                  <div class="eyebrow">Watch &amp; earn</div>
+                  <div class="qtitle">Watch a short video</div>
+                  <div class="qreward"><b id="tierLine">+3, +5 or +10 coins</b> per ad</div>
+                </div>
+              </div>
+              <div class="qnote">Longer videos pay more. Ten slots a week, 50 coin cap.</div>
+              <div class="meter">
+                <div class="meter-row"><span class="num"><b id="weekCoins">0</b><span> / 50 coins</span></span><span class="slots-label" id="slotLabel">0 of 10 slots</span></div>
+                <div class="meter-bar"><i id="weekBar"></i></div>
+                <div class="slots" id="slotDots"></div>
+              </div>
+              <button class="cta" id="watchBtn">Start video quest</button>
+              <p class="msg" id="watchMsg" role="status"></p>
+            </div>
+          </article>
+
+          <article class="qcard" id="dailyCard" style="--h:42">
+            <div class="cover">
+              <span class="tag">Daily</span>
+              <span class="glint" aria-hidden="true"></span>
+              <div class="big">10<small>coins a day</small></div>
+            </div>
+            <div class="qbody">
+              <div class="qhead">
+                <div class="thumb"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></div>
+                <div>
+                  <div class="eyebrow">Daily check-in</div>
+                  <div class="qtitle">Show up, get paid</div>
+                  <div class="qreward"><b>+10 coins</b> once a day</div>
+                </div>
+              </div>
+              <div class="qnote">Resets at midnight UTC. No ad needed.</div>
+              <button class="cta" id="dailyBtn">Claim +10</button>
+              <p class="msg" id="dailyMsg" role="status"></p>
+            </div>
+          </article>
+
+          <article class="qcard" style="--h:170">
+            <div class="cover">
+              <span class="tag">Chat</span>
+              <span class="glint" aria-hidden="true"></span>
+              <div class="big">+1<small>coin per message</small></div>
+            </div>
+            <div class="qbody">
+              <div class="qhead">
+                <div class="thumb"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-4 4V5Z"/></svg></div>
+                <div>
+                  <div class="eyebrow">Passive</div>
+                  <div class="qtitle">Talk in chat</div>
+                  <div class="qreward"><b>+1 coin</b> per message</div>
+                </div>
+              </div>
+              <div class="qnote">The first ten messages each day pay. Paid automatically.</div>
+              <a class="cta" href="/chat" style="display:block;text-align:center;text-decoration:none">Open chat</a>
+            </div>
+          </article>
+
+          <article class="qcard" style="--h:225">
+            <div class="cover">
+              <span class="tag">Shop</span>
+              <span class="glint" aria-hidden="true"></span>
+              <div class="big">Spend<small>on theme packs</small></div>
+            </div>
+            <div class="qbody">
+              <div class="qhead">
+                <div class="thumb"><svg viewBox="0 0 24 24"><path d="M4 7h16l-1.5 13h-13L4 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div>
+                <div>
+                  <div class="eyebrow">Spend</div>
+                  <div class="qtitle">Dress up your Cudic</div>
+                  <div class="qreward"><b>Theme packs</b> from 0 coins</div>
+                </div>
+              </div>
+              <div class="qnote">Colours, fonts, icons and motion — applied across the whole app.</div>
+              <a class="cta" href="/themes" style="display:block;text-align:center;text-decoration:none">Browse theme packs</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="guest" id="guestCard" style="display:none">
+          <h2>Sign in to earn coins</h2>
+          <p>Quests, the daily check-in, and rewarded videos all pay into your account.</p>
+          <a class="btn-hero" href="/login" style="text-decoration:none;display:inline-flex">Sign in</a>
+        </div>
+
+        <p class="fine">Coins are play money for <a href="/themes">theme packs</a> — no cash value. Chatting also trickles 1 coin per message, up to 10 a day. Ad rewards are capped at 10 ads / 50 coins per week.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="adSlot" aria-hidden="true"></div>
+
+  <script src="/config.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/sidebar.js?v=17"></script>
+  <script>
+  (async function(){
+    var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+    var APPLIXIR_KEY = '5a4db0c5-0000-4000-8000-5a4db0c50001'; // sandbox: test ads only
+    var APPLIXIR_SRC = 'https://cdn.applixir.com/applixir.app.v6.1.0.js';
+
+    var ICONS = {
+      publish_first: '<path d="M14 4 20 10 8 22H4v-4L16 6Z"/>',
+      first_dm: '<path d="M4 5h16v11H9l-4 4V5Z"/>',
+      profile_complete: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+      join_first_server: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h4M7 12h10"/>',
+      first_friend: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6.5a3 3 0 0 1 0 5.8M18 20a5 5 0 0 0-2-4"/>'
+    };
+    var META = {
+      publish_first:     { hue: 285, tag: 'Creator',   blurb: 'Build something in Studio and publish it to the gallery.' },
+      first_dm:          { hue: 200, tag: 'Social',    blurb: 'Send a direct message to anyone on Cudic.' },
+      profile_complete:  { hue: 150, tag: 'Profile',   blurb: 'Add a display name and a profile picture.' },
+      join_first_server: { hue: 22,  tag: 'Community', blurb: 'Join a server, or start one of your own.' },
+      first_friend:      { hue: 330, tag: 'Social',    blurb: 'Add a friend and have them accept.' }
+    };
+
+    async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
+    function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+    function setMsg(el, text, ok){ el.textContent = text || ''; el.className = 'msg' + (text ? (ok ? ' ok' : ' err') : ''); }
+    function el(tag, cls, text){ var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+
+    function api(path, method, body){
+      return fetch(apiHost() + path, {
+        method: method || 'GET',
+        headers: Object.assign({ 'Authorization': 'Bearer ' + t }, body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function(r){ return r.json().catch(function(){ return {}; }).then(function(d){ return { ok: r.ok, status: r.status, d: d }; }); });
+    }
+
+    var t = await token();
+    if (!t) {
+      document.getElementById('grid').style.display = 'none';
+      document.getElementById('guestCard').style.display = 'block';
+      var hw = document.getElementById('heroWatch');
+      hw.textContent = 'Sign in to earn';
+      hw.addEventListener('click', function(){ window.location.href = '/login'; });
+      return;
+    }
+
+    function paintBalance(b){ if (typeof b === 'number') document.getElementById('balanceNum').textContent = b; }
+
+    /* ── Ad card ───────────────────────────────────────────── */
+    var watchBtn = document.getElementById('watchBtn');
+    var heroWatch = document.getElementById('heroWatch');
+    var watchMsg = document.getElementById('watchMsg');
+    var adState = { slots: 0, slotsMax: 10, coins: 0, coinsMax: 50, capped: false };
+    var busy = false;
+
+    function paintAd(s){
+      if (s) {
+        ['slots','slotsMax','coins','coinsMax'].forEach(function(k){ if (typeof s[k] === 'number') adState[k] = s[k]; });
+        if (typeof s.capped === 'boolean') adState.capped = s.capped;
+        if (s.balance != null) paintBalance(s.balance);
+      }
+      adState.capped = adState.capped || adState.slots >= adState.slotsMax || adState.coins >= adState.coinsMax;
+      document.getElementById('weekCoins').textContent = adState.coins;
+      document.getElementById('weekBar').style.width = Math.min(100, Math.round(adState.coins / adState.coinsMax * 100)) + '%';
+      document.getElementById('slotLabel').textContent = adState.slots + ' of ' + adState.slotsMax + ' slots';
+      var dots = document.getElementById('slotDots');
+      dots.innerHTML = '';
+      for (var i = 0; i < adState.slotsMax; i++) {
+        var d = document.createElement('span');
+        if (i < adState.slots) d.className = 'on';
+        dots.appendChild(d);
+      }
+      watchBtn.disabled = busy || adState.capped;
+      watchBtn.textContent = adState.capped ? 'Weekly cap reached' : (busy ? 'Loading…' : 'Start video quest');
+      heroWatch.disabled = watchBtn.disabled;
+      heroWatch.textContent = adState.capped ? 'Weekly cap reached' : 'Watch a video';
+    }
+
+    function endWatch(text, ok){
+      busy = false;
+      paintAd();
+      if (text) setMsg(watchMsg, text, ok);
+    }
+
+    function loadSdk(){
+      if (window.initializeAndOpenPlayer) return Promise.resolve();
+      return new Promise(function(resolve, reject){
+        var s = document.createElement('script');
+        s.src = APPLIXIR_SRC;
+        s.async = true;
+        s.onload = function(){ resolve(); };
+        s.onerror = function(){ reject(new Error('The video player was blocked. Turn off the ad blocker and retry.')); };
+        document.head.appendChild(s);
+      });
+    }
+
+    async function startWatch(){
+      if (busy || adState.capped) return;
+      busy = true;
+      paintAd();
+      setMsg(watchMsg, 'Loading the player…', true);
+      var started = await api('/api/ads/start', 'POST');
+      if (!started.ok || !started.d || !started.d.nonce) {
+        endWatch((started.d && started.d.error) || 'Could not start the video. Try again.', false);
+        return;
+      }
+      paintAd(started.d);
+      if (started.d.capped) { endWatch('You have hit this week’s cap. Resets Monday.', false); return; }
+      try { await loadSdk(); }
+      catch (e) { endWatch((e && e.message) || 'The video player was blocked.', false); return; }
+
+      setMsg(watchMsg, 'Video playing — keep this tab open.', true);
+      var settled = false;
+      function settle(msg, ok){ if (settled) return; settled = true; endWatch(msg, ok); }
+
+      try {
+        window.initializeAndOpenPlayer({
+          apiKey: APPLIXIR_KEY,
+          injectionElementId: 'adSlot',
+          adStatusCallbackFn: function(ev){
+            var type = String((ev && (ev.type || ev.status)) || ev || '').toLowerCase();
+            if (type.indexOf('complete') !== -1) {
+              if (settled) return;
+              settled = true;
+              setMsg(watchMsg, 'Checking the video…', true);
+              api('/api/ads/claim', 'POST', { nonce: started.d.nonce }).then(function(r){
+                if (!r.ok) { endWatch((r.d && r.d.error) || 'No coins this time.', false); return; }
+                paintAd(r.d);
+                setMsg(watchMsg, r.d.capped ? 'You have hit this week’s 50 coin cap. Resets Monday.' : '+' + r.d.awarded + ' coins. Nice.', true);
+                busy = false;
+                paintAd();
+              }).catch(function(){ endWatch('Reward check failed. Reload and try again.', false); });
+            } else if (type.indexOf('skip') !== -1 || type.indexOf('manual') !== -1 || type.indexOf('ended') !== -1) {
+              settle('Video ended before it finished — no coins this time.', false);
+            }
+          },
+          adErrorCallbackFn: function(){ settle('No video available right now. Try again in a bit.', false); }
+        }).catch(function(e){ settle((e && e.message) || 'The player could not open.', false); });
+      } catch (e) {
+        settle((e && e.message) || 'The player could not open.', false);
+        return;
+      }
+      setTimeout(function(){ settle('The video took too long — try again.', false); }, 300000);
+    }
+
+    watchBtn.addEventListener('click', startWatch);
+    heroWatch.addEventListener('click', startWatch);
+
+    function loadStatus(){
+      return api('/api/ads/status').then(function(r){ if (r.ok) paintAd(r.d); }).catch(function(){});
+    }
+
+    /* ── Quest cards ───────────────────────────────────────── */
+    function questCard(q){
+      var m = META[q.id] || { hue: 265, tag: 'Quest', blurb: '' };
+      var card = el('article', 'qcard');
+      card.style.setProperty('--h', m.hue);
+
+      var cover = el('div', 'cover');
+      cover.appendChild(el('span', 'tag', m.tag));
+      cover.appendChild(el('span', 'glint'));
+      var big = el('div', 'big', '+' + q.coins);
+      big.appendChild(el('small', null, 'coins'));
+      cover.appendChild(big);
+      card.appendChild(cover);
+
+      var body = el('div', 'qbody');
+      var head = el('div', 'qhead');
+      var thumb = el('div', 'thumb');
+      thumb.innerHTML = '<svg viewBox="0 0 24 24">' + (ICONS[q.id] || ICONS.first_friend) + '</svg>';
+      head.appendChild(thumb);
+      var info = el('div');
+      info.appendChild(el('div', 'eyebrow', 'One-time quest'));
+      info.appendChild(el('div', 'qtitle', q.label));
+      var reward = el('div', 'qreward');
+      reward.appendChild(el('b', null, '+' + q.coins + ' coins'));
+      info.appendChild(reward);
+      head.appendChild(info);
+      body.appendChild(head);
+
+      body.appendChild(el('div', 'qnote', m.blurb));
+      var msg = el('p', 'msg');
+      msg.setAttribute('role', 'status');
+
+      var btn = el('button', 'cta', q.done ? 'Claimed ✓' : 'Claim reward');
+      if (q.done) btn.disabled = true;
+      btn.addEventListener('click', function(){
+        btn.disabled = true;
+        btn.textContent = 'Claiming…';
+        api('/api/quests/claim', 'POST', { quest: q.id }).then(function(r){
+          if (!r.ok) {
+            btn.disabled = false;
+            btn.textContent = 'Not completed yet';
+            setMsg(msg, (r.d && r.d.error) || 'Claim failed.', false);
+            return;
+          }
+          paintBalance(r.d.balance);
+          btn.textContent = 'Claimed ✓';
+          btn.classList.add('done');
+          setMsg(msg, '+' + q.coins + ' coins.', true);
+        }).catch(function(){
+          btn.disabled = false;
+          btn.textContent = 'Claim reward';
+          setMsg(msg, 'Claim failed.', false);
+        });
+      });
+      body.appendChild(btn);
+      body.appendChild(msg);
+      card.appendChild(body);
+      return card;
+    }
+
+    function loadQuests(){
+      return api('/api/quests').then(function(r){
+        var grid = document.getElementById('grid');
+        (r.d && r.d.quests || []).forEach(function(q){ grid.appendChild(questCard(q)); });
+      }).catch(function(){});
+    }
+
+    /* ── Daily ─────────────────────────────────────────────── */
+    var dailyBtn = document.getElementById('dailyBtn');
+    var dailyMsg = document.getElementById('dailyMsg');
+    function loadCoins(){
+      return api('/api/coins').then(function(r){
+        if (!r.ok) return;
+        paintBalance(r.d.balance);
+        var today = new Date().toISOString().slice(0, 10);
+        var claimed = (r.d.receipts || []).some(function(x){ return x.reason === 'daily:' + today; });
+        if (claimed) { dailyBtn.disabled = true; dailyBtn.classList.add('done'); dailyBtn.textContent = 'Claimed today'; }
+      }).catch(function(){});
+    }
+    dailyBtn.addEventListener('click', function(){
+      dailyBtn.disabled = true;
+      api('/api/daily/claim', 'POST').then(function(r){
+        if (!r.ok) { dailyBtn.disabled = false; setMsg(dailyMsg, (r.d && r.d.error) || 'Claim failed.', false); return; }
+        paintBalance(r.d.balance);
+        dailyBtn.classList.add('done');
+        dailyBtn.textContent = 'Claimed today';
+        setMsg(dailyMsg, r.d.already ? 'Already claimed — come back tomorrow.' : '+10 coins.', true);
+      }).catch(function(){ dailyBtn.disabled = false; setMsg(dailyMsg, 'Claim failed.', false); });
+    });
+
+    loadCoins();
+    loadStatus();
+    loadQuests();
+  })();
+  </script>
+</body>
+
+</html>
