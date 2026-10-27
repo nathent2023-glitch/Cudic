@@ -13,38 +13,34 @@
     <meta property="og:url" content="https://cudic.vercel.app/cookbook/canvas-art.html">
     <link rel="canonical" content="https://cudic.vercel.app/cookbook/canvas-art.html">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=24">
-    <link rel="stylesheet" href="/cookbook/cookbook.css">
+    <link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/docpage.css?v=1">
 </head>
 
 <body data-page="cookbook" data-no-rail>
+    <div class="wrap">
+        <div class="docgrid">
+            <aside class="docside">
+                <a class="brandrow" href="/"><img class="mark" src="/cudic-assets/brand/logo/cudic-mark-cream.svg" width="20" height="24" alt="Cudic home">Cudic</a>
+                <nav id="docNav" aria-label="Canvas art sections"></nav>
+                <button id="backBtn" aria-label="Go back">← Back</button>
+            </aside>
 
-    <div class="cook-layout page-panel">
-        <div class="topbar">
-            <div style="display:flex;align-items:center;gap:12px">
-                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
-                <h1>Canvas art</h1>
-            </div>
-            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
-        </div>
-
-        <div class="cook-scroll">
-            <main class="cook-wrap">
-                <article class="cook">
-                    <p class="eyebrow">Visualization</p>
+            <div class="docmain">
+                <header class="docHead">
+                    <p class="kick"><svg width="14" height="14" viewBox="0 0 8 8" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><use href="/cudic-assets/icons/svg/studio/chart.svg"/></svg><span>›</span><span class="cur2" id="crumbSec">Canvas art</span></p>
                     <h1>Canvas art tricks</h1>
-                    <p class="standfirst">Game feel is mostly art direction, and canvas gives you a lot of it
-                        for free — if you dodge the five rookie mistakes. This guide is a kit of small
-                        techniques: each block stands alone, and each one raises a game from "demo" to
-                        "designed". All snippets run in <a href="/studio">Studio</a>'s preview.</p>
-                    <p class="meta">Cudic Cookbook · pairs with <a href="/cookbook/platformer.html">Build a
-                        platformer</a></p>
+                    <p class="lead">Game feel is mostly art direction, and canvas gives you a lot of it for free — if you dodge the five rookie mistakes. This guide is a kit of small techniques: each block stands alone, and each one raises a game from "demo" to "designed". All snippets run in <a href="/studio">Studio</a>'s preview.</p>
+                </header>
+                <div class="docbody">
+                    <article>
+                        <p class="meta">Cudic Cookbook · pairs with <a href="/cookbook/platformer.html">Build a platformer</a></p>
 
-                    <h2>1. Crisp on retina: the device-pixel-ratio fix</h2>
-                    <p>A canvas sized in CSS pixels but drawn in raw pixels renders blurry on hi-DPI
-                        screens — text smears, edges fuzz. Size the backing store up, draw in CSS
-                        coordinates:</p>
-                    <pre><code>function fitCanvas(c) {
+                        <section id="crisp">
+                            <h2>1. Crisp on retina: the device-pixel-ratio fix</h2>
+                            <p>A canvas sized in CSS pixels but drawn in raw pixels renders blurry on hi-DPI screens — text smears, edges fuzz. Size the backing store up, draw in CSS coordinates:</p>
+                            <pre><code>function fitCanvas(c) {
   var dpr = Math.min(devicePixelRatio || 1, 2);   // cap at 2 — beyond it, cost beats quality
   var w = c.clientWidth, h = c.clientHeight;
   c.width = w * dpr; c.height = h * dpr;
@@ -53,43 +49,40 @@
 }
 var size = fitCanvas(canvas);
 addEventListener('resize', function () { size = fitCanvas(canvas); });</code></pre>
-                    <div class="note"><p>The cap at <code>2</code> matters: 3x/4x phones burn fill-rate for
-                        pixels nobody can see. Two is the sharpness sweet spot for 2D games.</p></div>
+                            <div class="note"><p>The cap at <code>2</code> matters: 3x/4x phones burn fill-rate for pixels nobody can see. Two is the sharpness sweet spot for 2D games.</p></div>
+                        </section>
 
-                    <h2>2. Gradients that earn their keep</h2>
-                    <p>Backgrounds are where gradients go wrong — rainbow washes everywhere. Use them to
-                        model <em>light instead</em>: one radial gradient behind the play area, dark at the
-                        edges, and the whole scene reads as lit.</p>
-                    <pre><code>function vignette(x, ctx) {            // once per frame, or cache it offscreen
+                        <section id="gradients">
+                            <h2>2. Gradients that earn their keep</h2>
+                            <p>Backgrounds are where gradients go wrong — rainbow washes everywhere. Use them to model <em>light instead</em>: one radial gradient behind the play area, dark at the edges, and the whole scene reads as lit.</p>
+                            <pre><code>function vignette(x, ctx) {            // once per frame, or cache it offscreen
   var g = ctx.createRadialGradient(x.width / 2, x.height / 2, x.height * 0.3,
                                    x.width / 2, x.height / 2, x.height * 0.85);
   g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(6,10,18,0.55)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, x.width, x.height);
 }</code></pre>
-                    <p>Creating gradients per-frame is real work. If a gradient never changes, draw it
-                        once into an offscreen canvas and then blur the draw:</p>
-                    <pre><code>var bg = document.createElement('canvas');
+                            <p>Creating gradients per-frame is real work. If a gradient never changes, draw it once into an offscreen canvas and then blur the draw:</p>
+                            <pre><code>var bg = document.createElement('canvas');
 bg.width = x.width; bg.height = x.height;
 vignette(bg, bg.getContext('2d'));
 // per frame: ctx.drawImage(bg, 0, 0);  — one blit, no gradient math</code></pre>
+                        </section>
 
-                    <h2>3. Glow without WebGL</h2>
-                    <p><code>shadowBlur</code> is the cheap neon sign. It's also slow when abused, so keep
-                        it on a <em>few</em> things — the ball, pickups, danger — and shadow-color matches
-                        fill-color for the sign look:</p>
-                    <pre><code>ctx.shadowColor = '#ff8c1a';
+                        <section id="glow">
+                            <h2>3. Glow without WebGL</h2>
+                            <p><code>shadowBlur</code> is the cheap neon sign. It's also slow when abused, so keep it on a <em>few</em> things — the ball, pickups, danger — and shadow-color matches fill-color for the sign look:</p>
+                            <pre><code>ctx.shadowColor = '#ff8c1a';
 ctx.shadowBlur = 18;
 ctx.fillStyle = '#ffb566';
 ctx.fillRect(ball.x - 8, ball.y - 8, 16, 16);
 ctx.shadowBlur = 0;                 // off again — or everything glows</code></pre>
-                    <p>Rule of thumb: at most 2–3 glowing things on screen. If four things glow, none do —
-                        the eye needs hierarchy, not a light show.</p>
+                            <p>Rule of thumb: at most 2–3 glowing things on screen. If four things glow, none do — the eye needs hierarchy, not a light show.</p>
+                        </section>
 
-                    <h2>4. Particles from nothing</h2>
-                    <p>Explosions, sparks, dust, trails, rain — all the same 30-line system: a pool of
-                        points with position, velocity, life. Reuse a fixed array (no allocation in the
-                        loop) and respawn dead ones at the emitter:</p>
-                    <pre><code>var P = [], PN = 120;
+                        <section id="particles">
+                            <h2>4. Particles from nothing</h2>
+                            <p>Explosions, sparks, dust, trails, rain — all the same 30-line system: a pool of points with position, velocity, life. Reuse a fixed array (no allocation in the loop) and respawn dead ones at the emitter:</p>
+                            <pre><code>var P = [], PN = 120;
 for (var i = 0; i &lt; PN; i++) P.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0 });
 
 function burst(px, py) {              // respawn all at once — an explosion
@@ -112,34 +105,29 @@ function particles(ctx, dt) {
   }
   ctx.globalAlpha = 1;
 }</code></pre>
-                    <p><code>globalAlpha</code> per particle is the free anti-artifact: it ties particle
-                        vividness directly to remaining life. Rounds it out by keeping the same pool for
-                        <em>trails</em>: burst only 3–5 particles per frame at an emitter instead of 120
-                        at once.</p>
+                            <p><code>globalAlpha</code> per particle is the free anti-artifact: it ties particle vividness directly to remaining life. Rounds it out by keeping the same pool for <em>trails</em>: burst only 3–5 particles per frame at an emitter instead of 120 at once.</p>
+                        </section>
 
-                    <h2>5. Motion that stays readable</h2>
-                    <ul>
-                        <li><strong>Ease, never snap.</strong> A UI number that eases (<code>shown +=
-                            (target - shown) * 0.15</code> per frame) feels machine-polished; a number
-                            that jumps feels like a spreadsheet.</li>
-                        <li><strong>One shake, capped.</strong> Screen shake sells impact, but clamp to
-                            ~6px and 200ms — longer shakes read as a crash, not a hit.</li>
-                        <li><strong>Squash the landing.</strong> Scale the player sprite to 1.25×/0.8× for
-                            80ms on jump/land. Two transforms and the character feels alive.</li>
-                        <li><strong>60fps is a floor, not a ceiling.</strong> Budget ~7ms per frame for
-                            drawing; profile long loops first, since draw rate doesn't pay rent.</li>
-                    </ul>
-                    <p>Built a look you like? <strong>Save</strong>, then <strong>Publish</strong> and watch
-                        it live in the <a href="/games">gallery</a> — the card art comes straight from the
-                        running preview, so scene design <em>is</em> your thumbnail.</p>
-                </article>
-            </main>
+                        <section id="motion">
+                            <h2>5. Motion that stays readable</h2>
+                            <ul>
+                                <li><strong>Ease, never snap.</strong> A UI number that eases (<code>shown += (target - shown) * 0.15</code> per frame) feels machine-polished; a number that jumps feels like a spreadsheet.</li>
+                                <li><strong>One shake, capped.</strong> Screen shake sells impact, but clamp to ~6px and 200ms — longer shakes read as a crash, not a hit.</li>
+                                <li><strong>Squash the landing.</strong> Scale the player sprite to 1.25×/0.8× for 80ms on jump/land. Two transforms and the character feels alive.</li>
+                                <li><strong>60fps is a floor, not a ceiling.</strong> Budget ~7ms per frame for drawing; profile long loops first, since draw rate doesn't pay rent.</li>
+                            </ul>
+                            <p>Built a look you like? <strong>Save</strong>, then <strong>Publish</strong> and watch it live in the <a href="/games">gallery</a> — the card art comes straight from the running preview, so scene design <em>is</em> your thumbnail.</p>
+                        </section>
+                    </article>
+                </div>
+                <footer class="mono">Cudic cookbook · <a href="/">cudic.vercel.app</a> · <a href="/cookbook/">cookbook</a></footer>
+            </div>
+
+            <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
         </div>
     </div>
-
-    <script src="/config.js"></script>
-    <script src="/auth.js"></script>
-    <script src="/sidebar.js?v=16"></script>
+    <script src="/docpage.js?v=1"></script>
+    <script src="/theme-toggle.js?v=1"></script>
+    <script src="/sidebar.js?v=18"></script>
 </body>
-
 </html>

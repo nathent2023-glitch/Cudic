@@ -13,37 +13,34 @@
     <meta property="og:url" content="https://cudic.vercel.app/cookbook/platformer.html">
     <link rel="canonical" content="https://cudic.vercel.app/cookbook/platformer.html">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=24">
-    <link rel="stylesheet" href="/cookbook/cookbook.css">
+    <link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/docpage.css?v=1">
 </head>
 
 <body data-page="cookbook" data-no-rail>
+    <div class="wrap">
+        <div class="docgrid">
+            <aside class="docside">
+                <a class="brandrow" href="/"><img class="mark" src="/cudic-assets/brand/logo/cudic-mark-cream.svg" width="20" height="24" alt="Cudic home">Cudic</a>
+                <nav id="docNav" aria-label="Platformer sections"></nav>
+                <button id="backBtn" aria-label="Go back">← Back</button>
+            </aside>
 
-    <div class="cook-layout page-panel">
-        <div class="topbar">
-            <div style="display:flex;align-items:center;gap:12px">
-                <a class="btn btn-secondary" href="/cookbook/" style="padding:8px 14px;font-size:0.82rem;text-decoration:none">← Cookbook</a>
-                <h1>Platformer</h1>
-            </div>
-            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
-        </div>
-
-        <div class="cook-scroll">
-            <main class="cook-wrap">
-                <article class="cook">
-                    <p class="eyebrow">Guide</p>
+            <div class="docmain">
+                <header class="docHead">
+                    <p class="kick"><svg width="14" height="14" viewBox="0 0 8 8" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><use href="/cudic-assets/icons/svg/game/gamepad.svg"/></svg><span>›</span><span class="cur2" id="crumbSec">Platformer</span></p>
                     <h1>Build a platformer</h1>
-                    <p class="standfirst">A platformer is the best first "real" game: movement you can feel
-                        within a minute, and a structure — loop, physics, collision, pickups — that every
-                        later game reuses. This guide ends with a complete working game in one page you
-                        can paste into <a href="/studio">Studio</a> right now.</p>
-                    <p class="meta">Cudic Cookbook · works in Studio and as a published game</p>
+                    <p class="lead">A platformer is the best first "real" game: movement you can feel within a minute, and a structure — loop, physics, collision, pickups — that every later game reuses. This guide ends with a complete working game in one page you can paste into <a href="/studio">Studio</a> right now.</p>
+                </header>
+                <div class="docbody">
+                    <article>
+                        <p class="meta">Cudic Cookbook · works in Studio and as a published game</p>
 
-                    <h2>The whole game, then the parts</h2>
-                    <p>Open <a href="/studio">Studio</a>, delete the sample code in
-                        <code>index.html</code>, and paste this. Press <strong>Run</strong> — you have a
-                        platformer.</p>
-                    <pre><code>&lt;!DOCTYPE html&gt;
+                        <section id="whole">
+                            <h2>The whole game, then the parts</h2>
+                            <p>Open <a href="/studio">Studio</a>, delete the sample code in <code>index.html</code>, and paste this. Press <strong>Run</strong> — you have a platformer.</p>
+                            <pre><code>&lt;!DOCTYPE html&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;My platformer&lt;/title&gt;
 &lt;style&gt;html,body{margin:0;height:100%;background:#12232e;overflow:hidden}
 canvas{display:block;width:100vw;height:100vh}&lt;/style&gt;&lt;/head&gt;
@@ -105,62 +102,49 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 &lt;/script&gt;&lt;/body&gt;&lt;/html&gt;</code></pre>
-                    <div class="note"><p>Paste it into <code>index.html</code> in Studio, press Run in the
-                        preview bar, and you're playing. Delete <code>style.css</code> from this project —
-                        everything needed is inline.</p></div>
+                            <div class="note"><p>Paste it into <code>index.html</code> in Studio, press Run in the preview bar, and you're playing. Delete <code>style.css</code> from this project — everything needed is inline.</p></div>
+                        </section>
 
-                    <h2>Why each piece matters</h2>
-                    <h3>The loop runs on the display's clock</h3>
-                    <p><code>requestAnimationFrame</code> fires up to 60 times a second and pauses when the
-                        tab is hidden — setInterval games keep simulating in hidden tabs, which feels
-                        broken when you come back. We compute <code>dt</code> (seconds since the last
-                        frame) and cap it at 0.033: if the player tabs away for five seconds, physics
-                        doesn't teleport them through the floor in one giant step.</p>
+                        <section id="why">
+                            <h2>Why each piece matters</h2>
+                            <h3>The loop runs on the display's clock</h3>
+                            <p><code>requestAnimationFrame</code> fires up to 60 times a second and pauses when the tab is hidden — setInterval games keep simulating in hidden tabs, which feels broken when you come back. We compute <code>dt</code> (seconds since the last frame) and cap it at 0.033: if the player tabs away for five seconds, physics doesn't teleport them through the floor in one giant step.</p>
 
-                    <h3>Gravity is one line</h3>
-                    <p><code>p.vy += 1500 * dt</code> is "speed increases every second". The
-                        <code>-620</code> jump speed and 1500 gravity are the two numbers to tune if your
-                        game feels floaty or sticky — jump height is roughly <code>jump² / (2 ×
-                        gravity)</code>, here about 128px. That's why platforms sit 70–75px apart.</p>
+                            <h3>Gravity is one line</h3>
+                            <p><code>p.vy += 1500 * dt</code> is "speed increases every second". The <code>-620</code> jump speed and 1500 gravity are the two numbers to tune if your game feels floaty or sticky — jump height is roughly <code>jump² / (2 × gravity)</code>, here about 128px. That's why platforms sit 70–75px apart.</p>
 
-                    <h3>Collision: separate the axes</h3>
-                    <p>The trick is moving on X first, checking, then Y, checking again. If you move both
-                        axes at once you can't tell landing from wall-touching, and the player sticks to
-                        walls. Resolve listing:</p>
-                    <ol>
-                        <li>Move X → if overlapping a platform, push out sideways.</li>
-                        <li>Move Y → if overlapping and falling, snap to the platform top, set
-                            <code>ground = true</code>.</li>
-                        <li>Jump only when <code>ground</code> is true — the anti-fly rule.</li>
-                    </ol>
+                            <h3>Collision: separate the axes</h3>
+                            <p>The trick is moving on X first, checking, then Y, checking again. If you move both axes at once you can't tell landing from wall-touching, and the player sticks to walls. Resolve listing:</p>
+                            <ol>
+                                <li>Move X → if overlapping a platform, push out sideways.</li>
+                                <li>Move Y → if overlapping and falling, snap to the platform top, set <code>ground = true</code>.</li>
+                                <li>Jump only when <code>ground</code> is true — the anti-fly rule.</li>
+                            </ol>
 
-                    <h3>Coins with zero art</h3>
-                    <p>A pickup is a distance check: if the player's centre is within 26px of a coin, it's
-                        collected. Squared distance (<code>dx*dx + dy*dy &lt; 26*26</code>) avoids the
-                        <code>sqrt</code> — cheap, and at 60fps it adds up.</p>
+                            <h3>Coins with zero art</h3>
+                            <p>A pickup is a distance check: if the player's centre is within 26px of a coin, it's collected. Squared distance (<code>dx*dx + dy*dy &lt; 26*26</code>) avoids the <code>sqrt</code> — cheap, and at 60fps it adds up.</p>
+                        </section>
 
-                    <h2>Where to take it next</h2>
-                    <ul>
-                        <li><strong>Camera.</strong> Make the level wider than the screen and subtract a
-                            <code>cam</code> offset when drawing everything.</li>
-                        <li><strong>Coyote time.</strong> Let jumping work for 100ms after leaving a
-                            ledge — it makes controls feel fair.</li>
-                        <li><strong>Spikes and resets.</strong> Rectangles that reset <code>p</code> to the
-                            start, plus a small timer for best-time.</li>
-                        <li><strong>Sounds.</strong> One <code>Audio</code> object with a short
-                            <code>.play()</code> on coin pickup changes the feel completely.</li>
-                    </ul>
-                    <p>When it plays well: <strong>Save</strong>, then <strong>Publish</strong> in Studio —
-                        the game goes live in the <a href="/games">gallery</a>. Share your build in the
-                        forum's <a href="/forums">Showcase</a> and see if anyone beats your level.</p>
-                </article>
-            </main>
+                        <section id="next">
+                            <h2>Where to take it next</h2>
+                            <ul>
+                                <li><strong>Camera.</strong> Make the level wider than the screen and subtract a <code>cam</code> offset when drawing everything.</li>
+                                <li><strong>Coyote time.</strong> Let jumping work for 100ms after leaving a ledge — it makes controls feel fair.</li>
+                                <li><strong>Spikes and resets.</strong> Rectangles that reset <code>p</code> to the start, plus a small timer for best-time.</li>
+                                <li><strong>Sounds.</strong> One <code>Audio</code> object with a short <code>.play()</code> on coin pickup changes the feel completely.</li>
+                            </ul>
+                            <p>When it plays well: <strong>Save</strong>, then <strong>Publish</strong> in Studio — the game goes live in the <a href="/games">gallery</a>. Share your build in the forum's <a href="/forums">Showcase</a> and see if anyone beats your level.</p>
+                        </section>
+                    </article>
+                </div>
+                <footer class="mono">Cudic cookbook · <a href="/">cudic.vercel.app</a> · <a href="/cookbook/">cookbook</a></footer>
+            </div>
+
+            <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
         </div>
     </div>
-
-    <script src="/config.js"></script>
-    <script src="/auth.js"></script>
-    <script src="/sidebar.js?v=16"></script>
+    <script src="/docpage.js?v=1"></script>
+    <script src="/theme-toggle.js?v=1"></script>
+    <script src="/sidebar.js?v=18"></script>
 </body>
-
 </html>
