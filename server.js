@@ -696,8 +696,10 @@ async function handleRequest(req, res) {
         if (theme !== undefined && (theme === 'light' || theme === 'dark')) {
           updates.theme = theme;
         }
-        if (pack_slug !== undefined && typeof pack_slug === 'string') {
-          updates.pack_slug = pack_slug.trim().substring(0, 64) || 'anime-city-night';
+        if (pack_slug !== undefined && (typeof pack_slug === 'string')) {
+          updates.pack_slug = pack_slug.trim().substring(0, 64);
+        } else if (pack_slug === undefined || pack_slug === '') {
+          updates.pack_slug = null;
         }
         // Onboarding completion is one-way: the welcome wizard flips it
         // true, and nothing flips it back.
