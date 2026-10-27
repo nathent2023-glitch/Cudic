@@ -411,7 +411,7 @@
       var api = await fetch('/api/packs/' + encodeURIComponent(slug) + '/manifest', { cache: 'no-store' });
       if (api.ok) { var jm = await api.json(); applyPack(jm.manifest, jm.slug || slug); return; }
     } catch (e2) {}
-    persist(null);
+    // Don't clear DB on boot failure — keep user's saved pack
   }
 
   window.addEventListener('cudic:sidebar-ready', mountSidebar);
