@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cudic Brand Kit</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d0e10;--panel:#14161b;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--lime:#b8f23a;--blue:#3f7cff;--sky:#9fd0ff;--red:#d9381e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
+:root[data-theme="light"]{--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Geist",system-ui,sans-serif}
+.mono{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em}
+nav{display:flex;border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5;overflow-x:auto}
+nav a{padding:16px 22px;border-right:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:500;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:10px}
+nav a:hover{background:var(--panel)}
+nav .sp{flex:1;border-right:0}
+.wrap{max-width:1280px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.hero{position:relative;text-align:center;padding:110px 20px 90px;border-bottom:1px solid var(--line);overflow:hidden}
+.hero h1{font-weight:500;font-size:clamp(44px,8vw,104px);line-height:.98;letter-spacing:-.035em;margin:0 0 36px}
+.hero h1 svg{height:.8em;width:auto;vertical-align:-.04em}
+.pill{display:inline-flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px 22px;font-weight:600;font-size:14px;color:var(--ink);text-decoration:none}
+.blk{position:absolute;bottom:0}
+.sec{border-bottom:1px solid var(--line)}
+.sh{display:flex;justify-content:space-between;align-items:baseline;padding:22px 28px;border-bottom:1px solid var(--line)}
+.sh h2{margin:0;font-weight:500;font-size:28px;letter-spacing:-.02em}
+.grid{display:grid}
+.cell{padding:28px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.sw{padding:0;cursor:pointer;background:none;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);text-align:left;color:var(--ink);font:inherit}
+.sw i{display:block;height:150px;border-bottom:1px solid var(--line)}
+.sw div{padding:16px 20px}.sw b{font-weight:600;display:block}
+.sw:hover{background:var(--panel)}
+.logo-box{display:flex;align-items:center;justify-content:center;min-height:240px;gap:22px}
+.logo-box.a{background:var(--lime);color:#0d0e10}.logo-box.o{background:var(--blue);color:#0d0e10}.logo-box.c{background:#f7f5ec;color:#0d0e10}
+.wm{font-weight:500;font-size:44px;letter-spacing:-.03em}
+.spr{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.spr svg{width:64px;height:64px;image-rendering:pixelated}
+.ttl{font-size:clamp(40px,6vw,76px);font-weight:500;letter-spacing:-.035em;line-height:1}
+.btn{display:inline-block;padding:12px 20px;border-radius:8px;font-weight:600;font-size:14px;text-decoration:none;border:1px solid transparent;margin:0 8px 8px 0}
+.b1{background:var(--lime);color:#0d0e10}.b2{background:var(--blue);color:#0d0e10}.b3{border-color:var(--line);color:var(--ink);background:var(--panel)}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:4px 12px;font-size:12px;margin:0 6px 6px 0;font-family:"Geist Mono",ui-monospace,monospace}
+.do{color:var(--lime)}.dont{color:var(--blue)}
+ul{margin:10px 0 0;padding-left:18px;color:var(--mute)}li{margin:6px 0}
+p{margin:6px 0;color:var(--mute)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+.toast.on{opacity:1}
+footer{padding:28px;text-align:center}
+@media(max-width:820px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}.hero{padding:80px 16px 70px}.blk{display:none}}
+@media(max-width:520px){.g2,.g3,.g4{grid-template-columns:1fr}}
+
+.ic{image-rendering:pixelated;shape-rendering:crispEdges}
+html.js .rv{opacity:0;transform:translateY(24px);transition:opacity .48s steps(6),transform .48s steps(6)}
+html.js .rv.in{opacity:1;transform:none}
+@keyframes hop{50%{transform:translateY(-8px)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes rise{from{transform:translateY(100%)}}
+@keyframes dia{0%,100%{transform:rotate(45deg)}50%{transform:rotate(45deg) translateY(-12px)}}
+@keyframes mq{to{transform:translateX(-50%)}}
+@keyframes slide{to{transform:translateX(230%)}}
+.hero .blk{animation:rise .8s steps(8) both}
+.hero .blk:nth-of-type(2){animation-delay:.2s}.hero .blk:nth-of-type(3){animation-delay:.1s}
+.hero .blk:nth-of-type(4){animation:dia 2s steps(4) infinite}
+.hs{position:absolute;width:56px;height:56px;animation:hop 1s steps(2) infinite}
+.hero h1 svg{animation:hop 1.2s steps(2) infinite}
+.cur{display:inline-block;width:8px;height:14px;background:var(--lime);margin-left:6px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+.tick{overflow:hidden;white-space:nowrap;border-bottom:1px solid var(--line)}
+.tick div{display:inline-block;padding:14px 0;animation:mq 30s linear infinite}
+.tick span{margin:0 30px;font-weight:500}.tick svg{width:16px;height:16px;vertical-align:-2px;margin-right:10px}
+.btn,.pill{transition:transform .12s steps(2),box-shadow .12s steps(2)}
+.btn:hover,.pill:hover{transform:translate(-3px,-3px);box-shadow:3px 3px 0 var(--ink)}
+.btn:active,.pill:active{transform:none;box-shadow:none}
+.logo-box svg{transition:transform .24s steps(3)}.logo-box:hover svg{transform:translateY(-8px)}
+.g5{grid-template-columns:repeat(5,1fr)}
+.ik{display:flex;flex-direction:column;align-items:center;gap:14px;padding:28px 8px}
+.ik:hover svg,.hop{animation:hop .6s steps(2) infinite}
+.big{width:160px;height:160px;position:relative}
+.big:after{content:"";position:absolute;inset:0;background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/20px 20px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/20px 20px}
+.demo{height:90px;display:flex;align-items:center;overflow:hidden;margin-bottom:12px}
+.bar{height:14px;width:30%;background:var(--blue);animation:slide 2s steps(8) infinite alternate}
+.mis{height:150px;display:flex;align-items:center;justify-content:center;position:relative;border-right:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink)}
+.mis:after{content:"✕";position:absolute;top:10px;right:14px;color:var(--blue);font-weight:600}
+.mis span{position:absolute;bottom:10px;left:14px}
+@media(max-width:820px){.g5{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.g5{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}html.js .rv{opacity:1;transform:none}}
+
+.btn,.pill{border-radius:0;box-shadow:none!important;transform:none!important;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:14px 18px;display:inline-flex;align-items:center;gap:14px;margin:0 8px 8px 0;border:1px solid var(--ink);transition:background .12s steps(2),color .12s steps(2)}
+.btn:after,.pill:after{content:"→";transition:transform .12s steps(2)}
+.btn:hover:after,.pill:hover:after{transform:translateX(4px)}
+.b1{background:var(--lime);color:#0d0e10;border-color:var(--lime)}.b1:hover{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.b2{background:var(--blue);color:#0d0e10;border-color:var(--blue)}.b2:hover{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.b3,.pill{background:transparent;color:var(--ink);border-color:var(--ink)}.b3:hover,.pill:hover{background:var(--ink);color:var(--bg)}
+.pill:after{content:none}.pill{text-transform:none;letter-spacing:0;font-family:inherit;font-size:14px}
+.tile{display:block;color:var(--ink);text-decoration:none;border:1px solid var(--line)}
+.tile .top{height:90px;background:var(--blue);display:flex;align-items:flex-end;padding:0 14px;border-bottom:1px solid var(--line);transition:background .12s steps(2)}
+.tile:hover .top{background:var(--lime)}
+.tile .bd{padding:14px}.tile .bd b{display:block}
+.tile .ft{display:flex;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--line)}
+.tile:hover .ft{background:var(--ink);color:var(--bg)}.tile:hover .ft .mono{color:var(--bg)}
+
+body{counter-reset:s}
+.wrap{border-left:0;border-right:0}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;text-align:left;padding:0}
+.hl{padding:90px 40px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:8px;border-right:1px solid var(--line)}
+.hero h1{font-size:clamp(40px,6vw,84px);margin:14px 0 8px}
+.lede{font-size:18px;max-width:420px;margin:0 0 20px}
+.stage{position:relative;min-height:400px;background:var(--blue) radial-gradient(rgba(13,14,16,.3) 2px,transparent 2.5px) 0 0/24px 24px;display:flex;align-items:center;justify-content:center}
+.lg2{width:42%;height:auto}
+nav a{border-right:0;padding:16px 18px}
+nav a:hover{background:none;box-shadow:inset 0 -3px var(--blue)}
+.sh h2:before{counter-increment:s;content:"0" counter(s);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--lime);border:1px solid var(--lime);padding:3px 7px;margin-right:14px;vertical-align:middle}
+@media(max-width:820px){.hero{grid-template-columns:1fr}.hl{padding:60px 24px;border-right:0;border-bottom:1px solid var(--line)}.stage{min-height:300px}}
+
+.cover .cv{justify-content:space-between;align-items:flex-start;min-height:460px;padding:32px 40px}
+.cover h1{font-size:clamp(72px,12vw,160px);line-height:.9;margin:0}
+.meta{display:flex;gap:24px;flex-wrap:wrap}
+.toc{border-bottom:1px solid var(--line)}.toc-h{margin:0;padding:14px 28px;border-bottom:1px solid var(--line)}
+.ti{display:flex;flex-direction:column;gap:20px;color:var(--ink);text-decoration:none;padding:20px 28px}
+.ti:hover{background:var(--blue);color:#0d0e10}.ti:hover .mono{color:#0d0e10}
+.intro{margin:0;padding:20px 28px;border-bottom:1px solid var(--line);font-size:17px}
+.clear{position:relative;display:inline-block;padding:32px;border:1px dashed var(--blue);margin:14px 0}
+.clear svg{display:block;outline:1px solid var(--line)}.xl{position:absolute;top:8px;left:50%;color:var(--blue)}
+.sizes{display:flex;gap:28px;align-items:flex-end;margin:20px 0 16px}.sizes div{display:flex;flex-direction:column;align-items:center;gap:10px}
+.sw p{margin:8px 0 0;font-size:13px}.sw .mono{line-height:1.6}
+
+.ch{margin:0;padding:12px 28px;border-bottom:1px solid var(--line);color:var(--lime)}
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr))}
+.ik2{background:none;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink);display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 6px;cursor:pointer;font:inherit}
+.ik2:hover{background:var(--panel)}.ik2:hover svg{animation:hop .6s steps(2) infinite}
+.tiles{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0}.tiles div{width:72px;height:72px;display:flex;align-items:center;justify-content:center}
+
+.seg{display:flex;border:1px solid var(--line)}.seg button{background:none;border:0;border-right:1px solid var(--line);color:var(--ink);font:500 12px "Geist Mono",ui-monospace,monospace;text-transform:uppercase;letter-spacing:.06em;padding:12px 16px;cursor:pointer}.seg button:last-child{border-right:0}.seg button.on,.seg button:hover{background:var(--ink);color:var(--bg)}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.ck{background:none;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--ink);padding:16px;display:flex;flex-direction:column;gap:12px;text-align:left;font:inherit}
+.ck:hover{background:var(--panel)}
+.cpv{height:120px;display:flex;align-items:center;justify-content:center;background:linear-gradient(90deg,#0d0e10 50%,#f7f5ec 50%);border:1px solid var(--line)}
+.cpv img{image-rendering:pixelated}.cpv img.fl{image-rendering:auto}
+.code{margin:10px 0;padding:14px;border:1px solid var(--line);background:var(--panel);font:12px/1.7 "Geist Mono",ui-monospace,monospace;overflow-x:auto;color:var(--ink)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="cm" viewBox="515 425 890 1070"><path d="M0 0 C1.51 -0 3.03 -0.01 4.54 -0.01 C8.68 -0.02 12.83 -0.02 16.97 -0.02 C21.44 -0.02 25.92 -0.03 30.39 -0.04 C40.17 -0.05 49.95 -0.06 59.72 -0.06 C65.83 -0.06 71.95 -0.07 78.06 -0.07 C94.99 -0.08 111.93 -0.09 128.86 -0.1 C129.95 -0.1 131.03 -0.1 132.15 -0.1 C133.23 -0.1 134.32 -0.1 135.43 -0.1 C137.63 -0.1 139.83 -0.1 142.03 -0.1 C143.12 -0.1 144.22 -0.1 145.34 -0.1 C163.01 -0.1 180.67 -0.12 198.34 -0.15 C216.5 -0.17 234.66 -0.18 252.82 -0.18 C263.01 -0.18 273.2 -0.19 283.39 -0.21 C292.06 -0.22 300.74 -0.23 309.42 -0.22 C313.84 -0.22 318.26 -0.22 322.68 -0.23 C326.74 -0.24 330.8 -0.24 334.86 -0.23 C336.32 -0.23 337.77 -0.23 339.23 -0.24 C354.06 -0.32 368.1 1.97 382.12 6.83 C383.14 7.18 384.17 7.53 385.22 7.89 C393.91 10.94 402.07 14.56 410.06 19.14 C410.72 19.51 411.38 19.89 412.06 20.27 C422.35 26.18 431.39 33.05 440.06 41.14 C440.65 41.68 441.23 42.22 441.83 42.78 C464.4 63.87 479.82 90.44 488.44 120.02 C488.68 120.83 488.91 121.65 489.16 122.5 C492.31 133.94 493.37 145.25 493.36 157.09 C493.37 159.02 493.37 159.02 493.38 161 C493.38 163.71 493.38 166.43 493.38 169.14 C493.37 171.88 493.38 174.62 493.4 177.36 C493.65 215.42 493.65 215.42 487 233.14 C486.55 234.36 486.55 234.36 486.1 235.61 C469.44 279.56 433.09 310.43 391.12 329.36 C377.17 335.52 363.05 338.56 348.06 341.14 C347.08 341.31 346.11 341.49 345.1 341.66 C339.93 342.39 334.75 342.28 329.54 342.27 C328.39 342.27 327.23 342.27 326.04 342.27 C322.85 342.27 319.66 342.27 316.47 342.27 C313.02 342.27 309.57 342.27 306.12 342.27 C300.91 342.28 295.71 342.28 290.5 342.28 C280.25 342.28 270 342.29 259.75 342.31 C258.13 342.31 256.52 342.31 254.9 342.32 C252.45 342.32 250 342.32 247.54 342.33 C238.3 342.34 229.06 342.36 219.82 342.37 C218.98 342.37 218.14 342.37 217.27 342.37 C203.63 342.39 190 342.39 176.37 342.39 C162.33 342.39 148.3 342.41 134.26 342.44 C125.63 342.46 117 342.47 108.36 342.45 C102.42 342.44 96.48 342.45 90.54 342.48 C87.13 342.49 83.73 342.49 80.32 342.48 C47.74 342.36 17.36 348.82 -11.94 363.14 C-12.59 363.46 -13.24 363.77 -13.91 364.1 C-58.76 386.15 -91.69 425.12 -107.78 472.12 C-109.3 476.76 -110.65 481.43 -111.94 486.14 C-112.28 487.34 -112.28 487.34 -112.63 488.57 C-119.97 515.71 -118.6 549.26 -110.94 576.14 C-110.74 576.88 -110.54 577.62 -110.34 578.38 C-109.09 583.05 -107.6 587.61 -105.94 592.14 C-105.66 592.91 -105.37 593.68 -105.08 594.48 C-87.11 642.87 -52.7 680.22 -5.94 702.14 C24.79 715.72 55.92 718.61 89.22 718.51 C92.05 718.51 94.88 718.52 97.71 718.52 C103.75 718.53 109.79 718.53 115.83 718.52 C124.6 718.51 133.36 718.52 142.12 718.53 C156.38 718.56 170.64 718.57 184.9 718.57 C186.18 718.57 186.18 718.57 187.48 718.58 C196.95 718.58 206.43 718.58 215.91 718.58 C219.34 718.58 222.78 718.58 226.22 718.58 C227.49 718.58 227.49 718.58 228.79 718.58 C243.01 718.58 257.22 718.59 271.44 718.62 C280.16 718.63 288.89 718.64 297.62 718.62 C303.61 718.61 309.6 718.62 315.59 718.63 C319.03 718.64 322.46 718.64 325.9 718.63 C374.64 718.45 420.6 731.1 456.06 765.77 C477.08 786.86 488.43 812.96 493.06 842.14 C493.24 843.18 493.41 844.22 493.6 845.3 C494.15 849.89 494.22 854.38 494.23 859 C494.23 859.94 494.24 860.89 494.24 861.86 C494.24 863.86 494.25 865.85 494.25 867.85 C494.25 870.84 494.27 873.83 494.29 876.82 C494.39 913.67 487.72 949.69 464.06 979.14 C463.39 980.01 462.72 980.89 462.02 981.79 C435.73 1015.15 395.35 1037.83 353.29 1043.66 C346.61 1044.39 339.9 1044.29 333.19 1044.28 C331.68 1044.28 330.17 1044.29 328.67 1044.29 C324.54 1044.3 320.42 1044.3 316.3 1044.3 C311.84 1044.3 307.39 1044.31 302.93 1044.32 C293.2 1044.33 283.47 1044.34 273.73 1044.34 C267.65 1044.34 261.56 1044.35 255.47 1044.35 C238.6 1044.36 221.73 1044.37 204.86 1044.38 C203.78 1044.38 202.7 1044.38 201.59 1044.38 C200.51 1044.38 199.42 1044.38 198.31 1044.38 C196.12 1044.38 193.93 1044.38 191.74 1044.38 C190.65 1044.38 189.56 1044.38 188.44 1044.38 C170.85 1044.39 153.26 1044.4 135.67 1044.43 C117.58 1044.45 99.49 1044.46 81.41 1044.46 C71.26 1044.46 61.12 1044.47 50.97 1044.49 C42.33 1044.5 33.69 1044.51 25.04 1044.5 C20.64 1044.5 16.24 1044.5 11.84 1044.51 C-11.42 1044.58 -33.42 1043.56 -55.94 1037.14 C-56.59 1036.96 -57.24 1036.77 -57.92 1036.59 C-68.33 1033.64 -78.18 1029.8 -87.94 1025.14 C-88.57 1024.84 -89.19 1024.55 -89.84 1024.24 C-126.22 1006.72 -149.17 975.49 -165.85 939.81 C-175.79 918.62 -187.81 900.13 -203.94 883.14 C-204.65 882.39 -204.65 882.39 -205.37 881.63 C-225.48 860.49 -249.34 845.43 -276.38 834.7 C-297.89 826.15 -315.19 815.08 -331.94 799.14 C-332.65 798.5 -333.35 797.85 -334.08 797.19 C-356.95 775.72 -369.77 743 -371.94 712.14 C-372.08 707.54 -372.08 702.94 -372.08 698.34 C-372.08 696.96 -372.08 695.59 -372.09 694.21 C-372.1 690.45 -372.1 686.68 -372.1 682.92 C-372.1 678.85 -372.11 674.79 -372.11 670.72 C-372.13 661.84 -372.13 652.96 -372.14 644.07 C-372.14 638.52 -372.15 632.97 -372.15 627.41 C-372.16 612.01 -372.17 596.61 -372.18 581.22 C-372.18 580.23 -372.18 579.25 -372.18 578.23 C-372.18 577.25 -372.18 576.26 -372.18 575.24 C-372.18 573.25 -372.18 571.25 -372.18 569.25 C-372.18 568.26 -372.18 567.26 -372.18 566.24 C-372.18 550.19 -372.2 534.14 -372.22 518.08 C-372.25 501.57 -372.26 485.06 -372.26 468.55 C-372.26 459.3 -372.27 450.04 -372.29 440.78 C-372.3 432.89 -372.31 425.01 -372.3 417.12 C-372.29 413.11 -372.3 409.09 -372.31 405.07 C-372.46 359.1 -361.25 322.17 -328.63 288.71 C-313.77 273.95 -295.15 264.99 -276.28 256.54 C-231.32 236.39 -196.21 201.52 -178.39 155.2 C-176.04 148.85 -174.01 142.41 -172.07 135.92 C-159.78 94.7 -138.63 60.21 -103.94 34.14 C-103.09 33.5 -102.25 32.86 -101.38 32.2 C-71.79 10.65 -36.41 -0.03 0 0 Z" fill="currentColor" transform="translate(898.9385986328125,437.85955810546875)"/></symbol></svg>
+<nav>
+ <a href="#top"><svg width="20" height="24" style="color:var(--ink)"><use href="#cm" width="100%" height="100%"/></svg>Cudic</a>
+ <a href="#logo">Logo</a><a href="#color">Color</a><a href="#type">Type</a><a href="#pixel">Icons</a><a href="#cursors">Cursors</a><a href="#motion">Motion</a><a href="#guide">Guide</a><a href="#ui">UI</a><a href="#voice">Voice</a>
+ <span class="sp"></span><span class="mono" style="padding:16px 18px;border-left:1px solid var(--line)">v1.0</span>
+</nav>
+<div class="wrap" id="top">
+ <header class="hero cover">
+  <div class="hl cv">
+   <p class="mono">CUDIC · BRAND GUIDELINES</p>
+   <h1>Brand<br>kit<span class="cur" style="height:.6em;width:.3em;margin-left:.12em"></span></h1>
+   <div class="meta"><span class="mono">VERSION 1.0</span><span class="mono">OCTOBER 2026</span><span class="mono">CUDIC.VERCEL.APP</span></div>
+  </div>
+  <div class="stage">
+   <svg class="lg2" viewBox="0 0 890 1070" style="color:#0d0e10"><use href="#cm" width="890" height="1070"/></svg>
+   <svg class="hs" data-i="star" style="right:32px;top:32px"></svg>
+   <svg class="hs" data-i="cursor" style="left:32px;bottom:32px;color:#0d0e10;animation-delay:.5s"></svg>
+  </div>
+ </header>
+ <div class="toc"><p class="mono toc-h">CONTENTS</p><div class="grid g3"><a class="cell ti" href="#logo"><span class="mono">01</span><b>Logo</b></a><a class="cell ti" href="#color"><span class="mono">02</span><b>Color</b></a><a class="cell ti" href="#type"><span class="mono">03</span><b>Type</b></a><a class="cell ti" href="#pixel"><span class="mono">04</span><b>Icons</b></a><a class="cell ti" href="#cursors"><span class="mono">05</span><b>Cursors</b></a><a class="cell ti" href="#ui"><span class="mono">06</span><b>Interface</b></a><a class="cell ti" href="#motion"><span class="mono">07</span><b>Motion</b></a><a class="cell ti" href="#guide"><span class="mono">08</span><b>Guidelines</b></a><a class="cell ti" href="#voice"><span class="mono">09</span><b>Voice</b></a></div></div>
+
+ <section class="sec" id="logo">
+  <div class="sh"><h2>Logo</h2><span class="mono">official mark</span></div>
+  <p class="intro">The Cudic mark is one solid shape. Use the mark alone when space is tight and with the wordmark everywhere else.</p>
+  <div class="grid g3">
+   <div class="cell logo-box a"><svg width="84" height="101"><use href="#cm" width="100%" height="100%"/></svg><span class="wm">Cudic</span></div>
+   <div class="cell logo-box o"><svg width="84" height="101"><use href="#cm" width="100%" height="100%"/></svg><span class="wm">Cudic</span></div>
+   <div class="cell logo-box c"><svg width="84" height="101"><use href="#cm" width="100%" height="100%"/></svg><span class="wm">Cudic</span></div>
+  </div>
+  <div class="grid g2">
+   <div class="cell"><b>Construction</b><p>The Cudic “C” is a single solid shape: two rounded arms joined by a notched spine. Use it only as supplied, in one flat color. Never outline, stretch, rotate or add effects.</p></div>
+   <div class="cell"><b>Clear space &amp; size</b><p>Keep clear space equal to the width of one arm on every side. Minimum size 16px for the mark, 80px for the wordmark. Wordmark is Geist Medium, tracking −3%.</p></div>
+  </div>
+ <div class="grid g2">
+   <div class="cell"><p class="mono">FIG 1.1 · CLEAR SPACE</p><div class="clear"><span class="mono xl">x</span><svg width="64" height="77"><use href="#cm" width="100%" height="100%"/></svg></div><p>Keep <span class="mono">x</span> (the width of one arm) free on every side.</p></div>
+   <div class="cell"><p class="mono">FIG 1.2 · MINIMUM SIZES</p><div class="sizes"><div><svg width="16" height="19"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">16</span></div><div><svg width="24" height="29"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">24</span></div><div><svg width="32" height="38"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">32</span></div><div><svg width="48" height="58"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">48</span></div></div><a class="btn b3" href="#logo" onclick="copySvg();return false">Copy SVG</a></div>
+  </div>
+ </section>
+
+ <section class="sec" id="color">
+  <div class="sh"><h2>Color</h2><span class="mono">click to copy</span></div>
+  <p class="intro">A dark canvas, one brand blue and one lime accent. Color arrives in flat blocks, never gradients.</p>
+  <div class="grid g4" id="swatches"></div>
+  <div class="grid g3">
+   <div class="cell"><b>Ratio</b><p>70% Ink, 20% Cream text, 10% Lime / Blue. Color arrives in solid blocks, never gradients.</p></div>
+   <div class="cell"><b>Theme color</b><p>Ink <span class="mono">#0d0e10</span> comes straight from Cudic’s own browser theme color.</p></div>
+   <div class="cell"><b>Light mode</b><p>Swap Ink and Cream. Lime and Blue keep their values and sit on dark text.</p></div>
+  </div>
+ </section>
+
+ <section class="sec" id="type">
+  <div class="sh"><h2>Typography</h2><span class="mono">Geist · Geist Mono</span></div>
+  <p class="intro">Geist carries everything. Geist Mono handles labels, tags and code.</p>
+  <div class="grid g2">
+   <div class="cell"><p class="mono">DISPLAY / 500 / −3.5%</p><div class="ttl">Build. Publish. Play.</div></div>
+   <div class="cell"><p class="mono">BODY / 400 / 16–18px</p><p style="color:var(--ink);font-size:18px">Every game you publish becomes a link anyone can play. Nothing to install. Nothing to build.</p><p class="mono" style="margin-top:20px">MONO / LABELS, CODE, TAGS</p><span class="tag">arcade</span><span class="tag">3d</span><span class="tag">multiplayer</span><span class="tag">remix</span></div>
+  </div>
+ <div class="grid g4">
+   <div class="cell"><p class="mono">DISPLAY · 76/76 · 500</p><div style="font-size:56px;letter-spacing:-.035em;font-weight:500;line-height:1">Aa</div></div>
+   <div class="cell"><p class="mono">HEADING · 28/32 · 500</p><div style="font-size:28px;letter-spacing:-.02em;font-weight:500">Publish in seconds</div></div>
+   <div class="cell"><p class="mono">BODY · 16/24 · 400</p><div style="color:var(--ink)">Every game you publish becomes a link anyone can play.</div></div>
+   <div class="cell"><p class="mono">LABEL · MONO 12 · CAPS</p><div class="mono" style="color:var(--ink);text-transform:uppercase">Remix · Credit stays</div></div>
+  </div>
+ </section>
+
+ <section class="sec" id="pixel">
+  <div class="sh"><h2>Icon theme</h2><span class="mono">47 icons · 8×8 · click to copy SVG</span></div>
+  <p class="intro">A complete pixel icon set drawn on an 8×8 grid. Chunky, notched and playful, with one bright spark in every icon.</p>
+  <div class="grid g4">
+   <div class="cell"><p class="mono">01 · GRID</p><b>8×8, one cell = one pixel</b><p>No half pixels, no anti-aliasing.</p></div>
+   <div class="cell"><p class="mono">02 · CHUNKY</p><b>2-cell strokes</b><p>Shapes stay filled and readable at 16px.</p></div>
+   <div class="cell"><p class="mono">03 · NOTCHED</p><b>Cut corners</b><p>Corners lose one cell. Never rounded or smoothed.</p></div>
+   <div class="cell"><p class="mono">04 · SPARK</p><b>One accent per icon</b><p>Lime or blue marks the idea: the key, the flame, the point.</p></div>
+  </div>
+  <div class="grid g2">
+   <div class="cell"><p class="mono">FIG 4.1 · ANATOMY</p><div class="big"><svg data-i="dice" width="160" height="160"></svg></div></div>
+   <div class="cell"><p class="mono">FIG 4.2 · SCALES</p><div class="sizes" id="isz"></div><p class="mono" style="margin-top:22px">FIG 4.3 · ON COLOR</p><div class="tiles" id="itl"></div><ul><li>Scale in whole steps: 16, 24, 32, 48, 64px.</li><li>Ink or cream base plus lime and blue accents only.</li></ul></div>
+  </div>
+  <div id="icons"></div>
+ </section>
+
+ <section class="sec" id="cursors">
+  <div class="sh"><h2>Cursor pack</h2><span class="mono">10 cursors · 32px · hover to try</span></div>
+  <p class="intro">A symmetrical pixel cursor set drawn on a 16-cell grid and shipped at 2× (32×32). Cream with an ink edge reads on any background, and a lime spark marks the hotspot. Choose Pixel for blocky or Fluid for smooth: the same ten cursors in two styles.</p>
+  <div class="cell" style="border-right:0;display:flex;gap:28px;flex-wrap:wrap;align-items:center"><div class="seg" id="sts"><button data-s="pixel">Pixel</button><button class="on" data-s="fluid">Fluid</button></div><div class="seg" id="cvs"><button class="on" data-v="cream">Cream</button><button data-v="ink">Ink</button></div><div class="seg" id="pk"><button id="pkb">Use pack on this page: off</button></div><span class="mono">hover a tile to try · click to copy CSS</span></div>
+  <div class="cg" id="cg"></div>
+  <div class="grid g2">
+   <div class="cell"><b>Construction</b><ul><li>Shapes sit on a 14-cell grid with a 1-cell edge, then ship at 2×.</li><li>Every mirrored cursor is built from one quarter, so both sides are exactly equal.</li><li>Cream fill, ink edge, one lime spark. Link uses blue.</li><li>Fluid style: smooth vector strokes on a 32-unit canvas with round caps and joins, a cream core inside an ink edge.</li></ul></div>
+   <div class="cell"><b>Usage</b><pre class="code">html { cursor: url("default.svg") 1 1, auto; }
+a, button { cursor: url("link.svg") 1 1, pointer; }
+input { cursor: url("text.svg") 8 14, text; }</pre><p>Always add the keyword fallback after the image.</p></div>
+  </div>
+ </section>
+ <section class="sec" id="ui">
+  <div class="sh"><h2>Interface</h2><span class="mono">square · hairline · flat fills</span></div>
+  <p class="intro">Interface elements are square, flat and drawn with hairlines.</p>
+  <div class="grid g3">
+   <div class="cell"><p class="mono">BUTTONS</p><a class="btn b1" href="#ui">Open Studio</a><a class="btn b2" href="#ui">Publish</a><a class="btn b3" href="#ui">Gallery</a></div>
+   <div class="cell"><p class="mono">LINK</p><a class="pill" href="#ui"><svg data-i="theme" width="20" height="20"></svg>Theme packs</a></div>
+   <div class="cell"><p class="mono">GAME TILE</p><a class="tile" href="#ui"><div class="top"><svg data-i="cube" width="40" height="40" style="margin-bottom:-1px"></svg></div><div class="bd"><b>Pixel Runner</b><span class="mono">by you · 128 plays</span></div><div class="ft"><span class="mono">PLAY</span><span class="mono">→</span></div></a></div>
+  </div>
+  <div class="cell" style="border-right:0"><b>Rules</b><ul><li>Square corners, 1px hairlines. No rounded pills, no shadows, no lift.</li><li>Buttons are mono caps with an arrow. Hover flips the fill to Cream and the arrow steps 4px.</li><li>Tiles are flat: a color block, text, and a footer bar. Hover swaps block color and inverts the footer.</li><li>Navigation: Gallery, Themes, Docs, Chat, Studio, with Sign in at the far right.</li></ul></div>
+ </section>
+
+ <section class="sec" id="motion">
+  <div class="sh"><h2>Motion</h2><span class="mono">move in pixel steps</span></div>
+  <p class="intro">Motion moves in pixel steps. It is short, purposeful and always optional.</p>
+  <div class="grid g3">
+   <div class="cell"><div class="demo"><svg class="hop" data-i="coin" width="48" height="48"></svg></div><b>Hop</b><p class="mono">600ms · steps(2) · loop</p></div>
+   <div class="cell"><div class="demo"><span class="cur" style="width:18px;height:30px"></span></div><b>Blink</b><p class="mono">1s · steps(2) · loop</p></div>
+   <div class="cell"><div class="demo"><div class="bar"></div></div><b>Slide</b><p class="mono">2s · steps(8) · alternate</p></div>
+  </div>
+  <div class="grid g2">
+   <div class="cell"><b>Timing</b><ul><li>Fast 120ms: hovers and presses.</li><li>Base 240ms: icons and logos.</li><li>Slow 480–800ms: reveals and hero entrances.</li></ul></div>
+   <div class="cell"><b>Rules</b><ul><li>Use <span class="mono">steps()</span> easing so motion lands on pixel boundaries. Smooth easing only for the ticker.</li><li>Buttons never lift or glow: the fill flips and the arrow steps 4px.</li><li>Honor reduced-motion: everything stops, content stays.</li></ul></div>
+  </div>
+ </section>
+ <section class="sec" id="guide">
+  <div class="sh"><h2>Guidelines</h2><span class="mono">logo misuse</span></div>
+  <p class="intro">Quick rules for keeping the mark and layouts consistent.</p>
+  <div class="grid g4"><div class="mis"><svg width="56" height="68" style="transform:scaleX(1.7)"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">don’t stretch</span></div><div class="mis"><svg width="56" height="68" style="transform:rotate(-25deg)"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">don’t rotate</span></div><div class="mis"><svg width="56" height="68" style="color:transparent;stroke:#f7f5ec;stroke-width:40"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">don’t outline</span></div><div class="mis"><svg width="56" height="68" style="filter:drop-shadow(0 0 10px #3f7cff);color:#b8f23a"><use href="#cm" width="100%" height="100%"/></svg><span class="mono">don’t add effects</span></div></div>
+  <div class="grid g3">
+   <div class="cell"><b>Do</b><ul><li>Use the mark in one flat color: Cream, Ink, Lime or Blue.</li><li>Pair it with Geist Medium for the wordmark.</li><li>Place it on solid blocks or the Ink canvas.</li></ul></div>
+   <div class="cell"><b>Layout</b><ul><li>Build on a hairline grid. Cells, not cards with shadows.</li><li>One hero color block per screen.</li><li>Max two pixel icons per cell.</li></ul></div>
+   <div class="cell"><b>Accessibility</b><ul><li>Ink on Lime and Blue passes AA for text.</li><li>Never put Mute text on a colored block.</li><li>Icons never carry meaning alone. Add a label.</li></ul></div>
+  </div>
+ </section>
+ <section class="sec" id="voice">
+  <div class="sh"><h2>Voice</h2><span class="mono">short, warm, direct</span></div>
+  <p class="intro">Cudic sounds like a friendly maker: short, warm and direct.</p>
+  <div class="grid g3">
+   <div class="cell"><b>Tagline</b><p style="color:var(--ink);font-size:20px">Make and play small games in your browser.</p></div>
+   <div class="cell"><b class="do">Do</b><ul><li>Short sentences. Verbs first.</li><li>“Write three lines, preview live, publish.”</li><li>Credit authors, always.</li></ul></div>
+   <div class="cell"><b class="dont">Don’t</b><ul><li>Hype words: revolutionary, next-gen.</li><li>Real-money language. Coins are for fun.</li><li>Exclamation marks.</li></ul></div>
+  </div>
+ </section>
+ <footer class="mono">Cudic brand kit · cudic.vercel.app</footer>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+function px(rows,pal){var s='';rows.forEach(function(r,y){for(var x=0;x<r.length;x++){var c=pal[r[x]];if(c)s+='<rect x="'+x+'" y="'+y+'" width="1.02" height="1.02" fill="'+c+'"/>'}});return s}
+var C=['.#####.','##...##','##...A.','##.....','##.....','##...##','.#####.'];
+var IC={"home":["...##...","..####..",".######.","########",".######.",".##aa##.",".##aa##.",".######."],"search":[".####...","##..##..","#....#..","#....#..","##..##..",".####a..",".....aa.","......aa"],"user":["..####..",".######.",".######.","..####..","........",".######.","########","########"],"settings":["...##...","#.####.#",".######.","###aa###","###aa###",".######.","#.####.#","...##..."],"menu":["########","########","........","########","########","........","####aaaa","####aaaa"],"close":["#......#","##....##",".##..##.","..####..","..####..",".##..##.","##....##","#......#"],"check":["......aa",".....aaa","a...aaa.","aa.aaa..","aaaaa...",".aaa....","..a.....","........"],"plus":["...##...","...##...","...##...","########","####aaaa","...##...","...##...","...##..."],"arrow":["...#....","....#...",".....#..","######aa","######aa",".....#..","....#...","...#...."],"bell":["...##...","..####..",".######.",".######.",".######.","########","........","...aa..."],"lock":["..####..",".#....#.",".#....#.","########","###aa###","###aa###","########","########"],"eye":["........","..####..",".#....#.","#..aa..#","#..aa..#",".#....#.","..####..","........"],"clock":["..####..",".#....#.","#..#...#","#..#...#","#..###a#",".#....#.","..####..","........"],"terminal":["########","#aaaaaa#","########","#.#....#","#..#...#","#.#..oo#","#......#","########"],"folder":["aaa.....","aaaa....","########","########","########","########","########","........"],"file":[".#####..",".######.",".#aaaa#.",".######.",".#aaaa#.",".######.",".#aaaa#.",".######."],"save":["#######.","#aaaa###","#aaaa###","########","#......#","#.####.#","#.####.#","########"],"upload":["..####..",".######.","########","###aa###","##aaaa##","###aa###","###aa###","........"],"trash":["..####..","########",".######.",".#.##.#.",".#.##.#.",".#.##.#.",".######.","........"],"pencil":["......##",".....###","....###.","...###..","..###...",".###....","aa##....","aa......"],"play":["#.......","###.....","#####...","#######.","#######.","#####...","###.....","#......."],"stop":["########","########","##aaaa##","##aaaa##","##aaaa##","##aaaa##","########","########"],"sparkle":["...aa...","...aa...","..aaaa..","aaayyaaa","aaayyaaa","..aaaa..","...aa...","...aa..."],"theme":["..####..",".###ooo.","####oooo","####oooo","####oooo","####oooo",".###ooo.","..####.."],"remix":["#####...","#...#...","#...#...","#..ooooo","#####..o","...o...o","...o...o","...ooooo"],"rocket":["...##...","..####..","..####..","..#oo#..","..####..",".######.","##.aa.##","...aa..."],"flag":["sooooo..","soooooo.","sooooo..","saaaa...","s.......","s.......","s.......","ssss...."],"chat":["........",".######.","########","#.#.#.##","########",".######.","..##....","...#...."],"mail":["########","###..###","#.####.#","#..aa..#","#......#","#......#","########","........"],"globe":["..####..",".#.##.#.","#..##..#","########","########","#..##..#",".#.##.#.","..####.."],"heart":["........",".oo..oo.","oooooooo","oooooooo","oooooooo",".oooooo.","..oooo..","...oo..."],"star":["...aa...","...aa...","aaaaaaaa",".aaaaaa.","..aaaa..",".aaaaaa.",".aa..aa.","aa....aa"],"crown":["a..aa..a","aa.aa.aa","aaaaaaaa","aaaaaaaa","########","########","........","........"],"trophy":["a.aaaa.a","aaaaaaaa",".aaaaaa.","..aaaa..","...aa...","...aa...","..aaaa..",".aaaaaa."],"gamepad":["........",".######.","##.#####","#...#o##","##.###a#","########",".##..##.","........"],"dice":["########","#a....a#","#......#","#..aa..#","#..aa..#","#......#","#a....a#","########"],"coin":["..aaaa..",".aayyaa.","aaayyaaa","aaayyaaa","aaayyaaa","aaayyaaa",".aayyaa.","..aaaa.."],"gem":["..oooo..",".osssoo.","oosoooor",".oooorr.","..orrr..","...rr...","........","........"],"sword":["......##",".....###","....###.","a..###..",".a###...","..aa....",".a..a...","a......."],"shield":["########","########","########","###aa###","###aa###",".######.","..####..","...##..."],"potion":["..aaaa..","...##...","...##...","..####..",".#oooo#.","#oooooo#","#oooooo#",".######."],"key":[".####...","##..##..","##..##..",".####...","..##....","..##a...","..##....","..##aa.."],"skull":[".######.","########","##.##.##","##.##.##","########",".######.",".#.##.#.","........"],"ghost":["..####..",".######.","##.##.##","########","########","########","########","##.##.##"],"bolt":["....aa..","...aaa..","..aaa...",".aaaaaa.","...aaa..","..aa....",".aa.....",".a......"],"cube":["...aa...",".aaaaaa.","aaaaaaaa","oooorrrr","oooorrrr","oooorrrr",".ooorrr.","..oorr.."],"cursor":["#.......","##......","###.....","####....","#####...","######..","####....","..##...."]};
+var CATS=[["UI", "home search user settings menu close check plus arrow bell lock eye clock"], ["STUDIO", "terminal folder file save upload trash pencil play stop sparkle theme remix rocket flag"], ["SOCIAL", "chat mail globe heart star crown trophy"], ["GAME", "gamepad dice coin gem sword shield potion key skull ghost bolt cube cursor"]];
+var P={'#':'currentColor',a:'#b8f23a',y:'#e3ff9a',o:'#3f7cff',r:'#1b3fb8',s:'#9fd0ff',b:'#b8f23a'};
+function paint(){document.querySelectorAll('svg[data-i]').forEach(function(e){e.setAttribute('viewBox','0 0 8 8');e.classList.add('ic');e.innerHTML=px(IC[e.dataset.i],P);if(!e.getAttribute('width')&&!e.classList.contains('hs')){e.setAttribute('width',64);e.setAttribute('height',64)}})}
+var ib=document.getElementById('icons');
+CATS.forEach(function(c){var s='<p class="mono ch">'+c[0]+'</p><div class="ig">';c[1].split(' ').forEach(function(k){s+='<button class="ik2" data-k="'+k+'" title="Copy SVG"><svg data-i="'+k+'" width="48" height="48"></svg><span class="mono">'+k+'</span></button>'});ib.insertAdjacentHTML('beforeend',s+'</div>')});
+document.getElementById('isz').innerHTML=[16,24,32,48,64].map(function(n){return '<div><svg data-i="ghost" width="'+n+'" height="'+n+'"></svg><span class="mono">'+n+'</span></div>'}).join('');
+document.getElementById('itl').innerHTML=[['#b8f23a','#0d0e10','rocket'],['#3f7cff','#0d0e10','skull'],['#0d0e10','#f7f5ec','star'],['#f7f5ec','#0d0e10','key']].map(function(t){return '<div style="background:'+t[0]+';color:'+t[1]+';border:1px solid var(--line)"><svg data-i="'+t[2]+'" width="40" height="40"></svg></div>'}).join('');
+ib.addEventListener('click',function(ev){var b=ev.target.closest('.ik2');if(!b)return;var k=b.dataset.k,s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">'+px(IC[k],P).replace(/currentColor/g,'#0d0e10')+'</svg>';try{navigator.clipboard.writeText(s);toast(k+'.svg copied')}catch(e){toast('Copy not available here')}});
+paint();
+document.documentElement.classList.add('js');
+var rv=document.querySelectorAll('.sec');rv.forEach(function(e){e.classList.add('rv')});
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{threshold:.05});rv.forEach(function(e){io.observe(e)})}else rv.forEach(function(e){e.classList.add('in')});
+function toast(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('on');setTimeout(function(){e.classList.remove('on')},1400)}
+function copySvg(){var p=document.querySelector('#cm path').outerHTML.replace('currentColor','#0d0e10');var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="515 425 890 1070">'+p+'</svg>';try{navigator.clipboard.writeText(s);toast('SVG copied')}catch(e){toast('Copy not available here')}}
+var cols=[['Ink','#0d0e10','#f7f5ec'],['Cream','#f7f5ec','#0d0e10'],['Lime','#b8f23a','#0d0e10'],['Blue','#3f7cff','#0d0e10'],['Sky','#9fd0ff','#0d0e10'],['Panel','#14161b','#f7f5ec'],['Line','#262a33','#f7f5ec'],['Mute','#9a9a94','#0d0e10']];
+var sw=document.getElementById('swatches');
+cols.forEach(function(c){var b=document.createElement('button');b.className='sw';var u={Ink:'Canvas · text on color',Cream:'Text · light surface',Lime:'Accent · highlights',Blue:'Brand color · blocks',Sky:'Icon detail',Panel:'Surfaces',Line:'Hairlines',Mute:'Secondary text'};var n=parseInt(c[1].slice(1),16);b.innerHTML='<i style="background:'+c[1]+'"></i><div><b>'+c[0]+'</b><span class="mono">HEX '+c[1].toUpperCase()+'<br>RGB '+(n>>16)+' '+(n>>8&255)+' '+(n&255)+'</span><p>'+(u[c[0]]||'')+'</p></div>';
+b.onclick=function(){var t=document.getElementById('toast');t.textContent='Copied '+c[1].toUpperCase();try{navigator.clipboard.writeText(c[1])}catch(e){t.textContent=c[1].toUpperCase()}t.classList.add('on');setTimeout(function(){t.classList.remove('on')},1400)};sw.appendChild(b)});
+var CD={"default":{"r":["#.......","##......","###.....","####....","#####...","######..","#######.","########","#####...","##.##...","#..aa...","...aa..."],"h":"tl","c":"auto"},"link":{"r":["o.......","oo......","ooo.....","oooo....","ooooo...","oooooo..","ooooooo.","oooooooo","ooooo...","oo.oo...","o..aa...","...aa..."],"h":"tl","c":"pointer"},"text":{"r":["######","..##..","..##..","..##..","..##..","..aa..","..aa..","..##..","..##..","..##..","..##..","######"],"h":"c","c":"text"},"crosshair":{"r":["......##......","......##......","......##......","..............","..............","..............","###...aa...###","###...aa...###","..............","..............","..............","......##......","......##......","......##......"],"h":"c","c":"crosshair"},"plus":{"r":["......##......","......##......","......##......","......##......","......##......","......##......","######aa######","######aa######","......##......","......##......","......##......","......##......","......##......","......##......"],"h":"c","c":"crosshair"},"move":{"r":["......##......",".....####.....","....######....","......##......","..#...##...#..",".##...##...##.","######aa######","######aa######",".##...##...##.","..#...##...#..","......##......","....######....",".....####.....","......##......"],"h":"c","c":"move"},"resize-h":{"r":["..#........#..",".##........##.","######aa######","######aa######",".##........##.","..#........#.."],"h":"c","c":"ew-resize"},"resize-v":{"r":["..##..",".####.","######","..##..","..##..","..##..","..aa..","..aa..","..##..","..##..","..##..","######",".####.","..##.."],"h":"c","c":"ns-resize"},"not-allowed":{"r":["....######....","...########...","..aa#....###..",".#aaa.....###.","###aaa.....###","##..aaa.....##","##...aaa....##","##....aaa...##","##.....aaa..##","###.....aaa###",".###.....aaa#.","..###....#aa..","...########...","....######...."],"h":"c","c":"not-allowed"},"wait":{"r":["##############","##############",".#####aa#####.","..##########..","...########...","....#aaaa#....",".....aaaa.....",".....aaaa.....","....#aaaa#....","...########...","..##########..",".#####aa#####.","##############","##############"],"h":"c","c":"wait"}};
+var CV='cream',PK=false,COL={cream:{'#':'#f7f5ec',c:'#0d0e10'},ink:{'#':'#0d0e10',c:'#f7f5ec'}};
+function cur(k,sc){var d=CD[k],r=d.r,h=r.length,w=r[0].length,W=w+2,H=h+2,o='',C=COL[CV],cc={a:'#b8f23a',o:'#3f7cff'};
+function at(y,x){return y>=1&&x>=1&&y<=h&&x<=w?r[y-1][x-1]:'.'}
+for(var y=0;y<H;y++){var x=0;while(x<W){var ch=at(y,x),col;if(ch=='.'){var n=false;for(var dy=-1;dy<2;dy++)for(var dx=-1;dx<2;dx++)if(at(y+dy,x+dx)!='.')n=true;col=n?C.c:null}else col=ch=='#'?C['#']:cc[ch];var s=x;while(x<W){var c2=at(y,x),k2;if(c2=='.'){var m=false;for(var a=-1;a<2;a++)for(var b=-1;b<2;b++)if(at(y+a,x+b)!='.')m=true;k2=m?C.c:null}else k2=c2=='#'?C['#']:cc[c2];if(k2!=col)break;x++}
+if(col)o+='<rect x="'+s+'" y="'+y+'" width="'+(x-s)+'" height="1" fill="'+col+'"/>'; if(x==s)x++}}
+var hx=d.h=='tl'?1:W/2,hy=d.h=='tl'?1:H/2;
+return{svg:'<svg xmlns="http://www.w3.org/2000/svg" width="'+W*sc+'" height="'+H*sc+'" viewBox="0 0 '+W+' '+H+'" shape-rendering="crispEdges">'+o+'</svg>',hx:hx*2,hy:hy*2,W:W*2,H:H*2}}
+function uri(s){return 'data:image/svg+xml,'+encodeURIComponent(s)}
+function cs(k){var c=cur(k,2);return 'url("'+uri(c.svg)+'") '+c.hx+' '+c.hy+', '+CD[k].c}
+function drawCur(){var g=document.getElementById('cg');g.innerHTML='';Object.keys(CD).forEach(function(k){var c=cur(k,4),m=cur(k,2);var b=document.createElement('button');b.className='ck';b.dataset.k=k;b.style.cursor=cs(k);b.innerHTML='<div class="cpv"><img class="'+(ST=='fluid'?'fl':'')+'" alt="'+k+'" src="'+uri(c.svg)+'"></div><span class="mono" style="color:var(--ink)">'+k+'</span><span class="mono">'+m.W+'×'+m.H+' · hotspot '+m.hx+','+m.hy+'</span>';g.appendChild(b)});applyPack()}
+function applyPack(){var s=document.getElementById('cp');if(!s){s=document.createElement('style');s.id='cp';document.head.appendChild(s)}s.textContent=PK?'html,body{cursor:'+cs('default')+'} a,button,.ti,.sw{cursor:'+cs('link')+'}':'';document.getElementById('pkb').textContent='Use pack on this page: '+(PK?'on':'off')}
+document.getElementById('cg').addEventListener('click',function(e){var b=e.target.closest('.ck');if(!b)return;try{navigator.clipboard.writeText('cursor: '+cs(b.dataset.k)+';');toast(b.dataset.k+' CSS copied')}catch(x){toast('Copy not available here')}});
+document.getElementById('cvs').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;CV=b.dataset.v;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x==b)});drawCur()});
+document.getElementById('pkb').addEventListener('click',function(){PK=!PK;applyPack()});
+var FL={
+default:{h:[6,4],c:'auto',f:function(C){return arw(C.c,C)}},
+link:{h:[6,4],c:'pointer',f:function(C){return arw('#3f7cff',C)}},
+text:{h:[16,16],c:'text',f:function(C){return dbl('M11 5C14.5 5 16 6.2 16 8.5V23.5C16 25.8 14.5 27 11 27M21 5C17.5 5 16 6.2 16 8.5V23.5C16 25.8 17.5 27 21 27',5.6,2.4,C)+dot(16,16,2.2,C)}},
+crosshair:{h:[16,16],c:'crosshair',f:function(C){return dbl('M16 3V8M16 24V29M3 16H8M24 16H29',5.6,2.4,C)+'<circle cx="16" cy="16" r="6.5" fill="none" stroke="'+C.c+'" stroke-width="5.6"/><circle cx="16" cy="16" r="6.5" fill="none" stroke="'+C['#']+'" stroke-width="2.4"/>'+dot(16,16,2.2,C)}},
+plus:{h:[16,16],c:'crosshair',f:function(C){return dbl('M16 5V27M5 16H27',7.4,4,C)+dot(16,16,2.4,C)}},
+move:{h:[16,16],c:'move',f:function(C){return dbl('M16 6V26M6 16H26M12 10L16 6L20 10M12 22L16 26L20 22M10 12L6 16L10 20M22 12L26 16L22 20',6.2,2.8,C)+dot(16,16,2.4,C)}},
+'resize-h':{h:[16,16],c:'ew-resize',f:function(C){return dbl('M5 16H27M10 11L5 16L10 21M22 11L27 16L22 21',6.2,2.8,C)+dot(16,16,2.4,C)}},
+'resize-v':{h:[16,16],c:'ns-resize',f:function(C){return dbl('M16 5V27M11 10L16 5L21 10M11 22L16 27L21 22',6.2,2.8,C)+dot(16,16,2.4,C)}},
+'not-allowed':{h:[16,16],c:'not-allowed',f:function(C){return '<circle cx="16" cy="16" r="10.5" fill="none" stroke="'+C.c+'" stroke-width="6.4"/><circle cx="16" cy="16" r="10.5" fill="none" stroke="'+C['#']+'" stroke-width="3"/><path d="M9 9L23 23" stroke="'+C.c+'" stroke-width="6.4" stroke-linecap="round"/><path d="M9 9L23 23" stroke="#b8f23a" stroke-width="3" stroke-linecap="round"/>'}},
+wait:{h:[16,16],c:'wait',f:function(C){return '<circle cx="16" cy="16" r="9.5" fill="none" stroke="'+C.c+'" stroke-width="6.4"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="'+C['#']+'" stroke-width="3"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="'+C.c+'" stroke-width="6.4" stroke-linecap="round" stroke-dasharray="15 45" transform="rotate(-90 16 16)"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="#b8f23a" stroke-width="3" stroke-linecap="round" stroke-dasharray="15 45" transform="rotate(-90 16 16)"/>'}}
+};
+
+function arw(fill,C){var P='M88 80L88 286L120 268L148 308Q156 320 170 316Q182 312 180 298L174 252L230 234Z',T='scale(.085) translate(-1.2 -20.6)';
+return '<defs><filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.2"/></filter></defs><g filter="url(#sh)" opacity=".45"><g transform="translate(1 1.5) '+T+'"><path d="'+P+'" fill="#000" stroke="#000" stroke-width="72" stroke-linejoin="round"/></g></g><g transform="'+T+'"><path d="'+P+'" fill="none" stroke="'+C['#']+'" stroke-width="72" stroke-linejoin="round"/><path d="'+P+'" fill="'+fill+'" stroke="'+fill+'" stroke-width="28" stroke-linejoin="round"/></g>'}
+function dbl(d,o,i,C){return '<path d="'+d+'" fill="none" stroke="'+C.c+'" stroke-width="'+o+'" stroke-linecap="round" stroke-linejoin="round"/><path d="'+d+'" fill="none" stroke="'+C['#']+'" stroke-width="'+i+'" stroke-linecap="round" stroke-linejoin="round"/>'}
+function dot(x,y,r,C){return '<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="#b8f23a" stroke="'+C.c+'" stroke-width="1.2"/>'}
+
+var ST='fluid',curPx=cur;
+cur=function(k,sc){if(ST!='fluid')return curPx(k,sc);var d=FL[k],s=sc*16;return{svg:'<svg xmlns="http://www.w3.org/2000/svg" width="'+s+'" height="'+s+'" viewBox="0 0 32 32">'+d.f(COL[CV])+'</svg>',hx:d.h[0],hy:d.h[1],W:32,H:32}};
+document.getElementById('sts').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;ST=b.dataset.s;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x==b)});drawCur()});
+drawCur();
+</script>
+</body>
+</html>

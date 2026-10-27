@@ -1,0 +1,11 @@
+/* Cudic fluid cursors, ink (for light UIs) */
+html,body{cursor:url("../fluid/ink/svg/default.svg") 6 4,auto}
+a,button,[role="button"],summary,label[for]{cursor:url("../fluid/ink/svg/link.svg") 6 4,pointer}
+input:not([type]),input[type="text"],input[type="email"],input[type="search"],textarea,[contenteditable]{cursor:url("../fluid/ink/svg/text.svg") 16 16,text}
+.cursor-crosshair{cursor:url("../fluid/ink/svg/crosshair.svg") 16 16,crosshair}
+.cursor-plus{cursor:url("../fluid/ink/svg/plus.svg") 16 16,crosshair}
+.cursor-move{cursor:url("../fluid/ink/svg/move.svg") 16 16,move}
+.cursor-resize-h{cursor:url("../fluid/ink/svg/resize-h.svg") 16 16,ew-resize}
+.cursor-resize-v{cursor:url("../fluid/ink/svg/resize-v.svg") 16 16,ns-resize}
+[disabled],.cursor-not-allowed{cursor:url("../fluid/ink/svg/not-allowed.svg") 16 16,not-allowed}
+.cursor-wait{cursor:url("../fluid/ink/svg/wait.svg") 16 16,wait}

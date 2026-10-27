@@ -37,7 +37,7 @@
 - Beginner at web dev — prefers simple explanations
 - PowerShell on this machine — use `;` not `&&`
 - Does NOT want Google OAuth — only GitHub and email/password
-- Wants impressive UI — dark theme, split layout, glassmorphism
+- Wants impressive UI — dark grid-led editorial system (design.md v2), Geist + Geist Mono, lime/blue accents, hard edges — glassmorphism/gradients/purple are explicit anti-patterns now
 - Do NOT delete `agora.db` files (Live Share)
 
 ## Completed Work

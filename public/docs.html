@@ -20,320 +20,139 @@
   <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png?v=2">
   <link rel="canonical" content="https://cudic.vercel.app/docs">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
-    <link rel="stylesheet" href="/sidebar.css?v=25">
+    <link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
     <style>
-        .docs-layout {
-            display: flex;
-            flex-direction: column;
+        /* Docs — matched to public/brand.html (asset pack: ink/cream/lime/blue, Geist,
+           hard edges, steps()). No sidebar stack: the nav band routes the sections. */
+        :root{--bg:#0d0e10;--panel:#14161b;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--lime:#b8f23a;--blue:#3f7cff;--sky:#9fd0ff;--red:#d9381e}
+        @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63;--blue:#1b3fb8}
+            :root:not([data-theme="dark"]) .nav .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}}
+        :root[data-theme="light"]{--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63;--blue:#1b3fb8}
+        :root[data-theme="light"] .nav .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}
+        *{box-sizing:border-box}
+        html{scroll-padding-top:76px;scroll-behavior:smooth}
+
+        /* Page scrollbar (JS adds .cuscroll): native root bar hidden, replaced by a
+           synced thumb on the right — hairline track, widens on hover, lime while
+           dragging. Wheel and keys stay native (momentum untouched). Inner
+           scrollers (.nav band, pre code blocks) keep a tinted native overlay bar. */
+        html.cuscroll{scrollbar-width:none}
+        html.cuscroll .nav,html.cuscroll pre{scrollbar-width:none}
+        #cudicScroll{position:fixed;top:0;right:0;bottom:0;width:14px;z-index:9}
+        #cudicScroll::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--line)}
+        #cudicThumb{position:absolute;right:4px;width:5px;background:var(--mute);transition:width 120ms,right 120ms,background-color 120ms}
+        #cudicScroll:hover #cudicThumb{right:3px;width:7px}
+        #cudicScroll.drag #cudicThumb{right:3px;width:7px;background:var(--lime)}
+
+        /* Nav band's horizontal twin: same custom treatment, hairline on top,
+           thumb widens downward on hover, lime while dragging. */
+        #cudicNavScroll{position:fixed;left:0;right:0;height:10px;z-index:9}
+        #cudicNavScroll::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:var(--line)}
+        #cudicNavThumb{position:absolute;top:4px;height:5px;background:var(--mute);transition:height 120ms,top 120ms,background-color 120ms}
+        #cudicNavScroll:hover #cudicNavThumb{top:3px;height:7px}
+        #cudicNavScroll.drag #cudicNavThumb{top:3px;height:7px;background:var(--lime)}
+        body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Geist",system-ui,sans-serif}
+        ::selection{background:var(--lime);color:#0d0e10}
+        .mono{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em}
+
+        .docs-layout{display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
+
+        /* Top nav band (brand-style): dividers, sticky, routes the doc sections */
+        .nav{display:flex;align-items:stretch;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;overflow-x:auto}
+        .nav a{padding:16px 18px;color:var(--ink);text-decoration:none;font-weight:500;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:10px}
+        .nav a img{display:block}
+        .nav a:hover{box-shadow:inset 0 -3px var(--blue)}
+        .nav .links{display:flex;flex:0 0 auto}
+        .nav .links a.on{box-shadow:inset 0 -3px var(--lime);font-weight:600}
+        .nav .sp{flex:1}
+        #backBtn{font:inherit;color:var(--mute);background:none;border:0;padding:16px 18px;cursor:pointer;white-space:nowrap}
+        #backBtn:hover{color:var(--ink);box-shadow:inset 0 -3px var(--blue)}
+
+        .docs-scroll{flex:1 0 auto}
+        .wrap{max-width:1280px;margin:0 auto;padding:0 28px}
+
+        .lead{color:var(--mute);max-width:70ch;margin:28px 0 22px;font-size:17px;line-height:1.6}
+        .lead strong{color:var(--ink);font-weight:500}
+        .lead a{color:var(--blue);text-decoration:none}
+        .lead a:hover{text-decoration:underline}
+
+        .docgrid{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:44px;align-items:start;padding-bottom:40px}
+        article{min-width:0}
+
+        article section{display:none}
+        article section.on{display:block;opacity:0;transform:translateY(24px);animation:docsIn .48s steps(6) .02s forwards}
+        @keyframes docsIn{to{opacity:1;transform:none}}
+
+        article h2{margin:26px 0 14px;font-weight:500;font-size:28px;letter-spacing:-.02em;line-height:1.25;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:14px}
+        /* Numbered like brand.html's section headers — "01", lime mono chip */
+        article h2:before{content:attr(data-n);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--lime);border:1px solid var(--lime);padding:3px 7px;margin-right:14px;vertical-align:middle}
+        article h3{font-weight:600;font-size:1.02rem;margin:22px 0 6px;color:var(--ink)}
+        article p,article li{color:var(--mute);line-height:1.65;font-size:0.95rem;margin:6px 0}
+        article ul{padding-left:18px;margin:10px 0}
+        article ol{padding-left:20px;margin:10px 0}
+        article li{margin-bottom:6px}
+        article strong{color:var(--ink);font-weight:600}
+        article a{color:var(--blue);text-decoration:none}
+        article a:hover{text-decoration:underline}
+
+        code{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.82em;background:var(--panel);border:1px solid var(--line);padding:1px 5px;color:var(--ink)}
+        pre{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.83rem;background:var(--panel);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;color:var(--ink);line-height:1.6;margin:10px 0}
+
+        .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--lime);padding:12px 16px;margin:14px 0}
+        .note p{margin:0}
+
+        .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
+        .card{background:var(--panel);border:1px solid var(--line);padding:14px 16px}   /* static content, no hover */
+        .card h3{margin:0 0 4px;font-size:0.95rem}
+        .card p{margin:0;font-size:0.86rem}
+
+        table{width:100%;border-collapse:collapse;margin:12px 0;font-size:0.88rem}
+        th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
+        th{font-weight:600;color:var(--ink)}
+
+        .ad-frame{border:1px solid var(--line);background:var(--panel)}
+        .ad-frame.ad-leaderboard{min-height:90px}
+        .ad-cap{display:block;font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;color:var(--mute);letter-spacing:.08em;padding:6px 10px}
+
+        .crumbs{display:flex;align-items:center;gap:8px;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);margin:24px 0 0}
+        .crumbs svg{flex-shrink:0}
+        .crumbs .cur{color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:2px 12px;border-radius:3px}
+
+        .toc-label{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em;margin-bottom:8px}
+        .subtoc{position:sticky;top:76px}
+        .subtoc a{display:block;color:var(--mute);text-decoration:none;padding:4px 0;line-height:1.35;font-size:0.85rem}
+        .subtoc a:hover{color:var(--ink)}
+        .subtoc a.lvl3{padding-left:12px;border-left:1px solid var(--line)}
+
+        footer{border-top:1px solid var(--line);padding:22px 0 30px;text-align:center;color:var(--mute);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.02em}
+        footer a{color:var(--mute);text-decoration:none}
+        footer a:hover{color:var(--ink)}
+
+        a:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+        @media (max-width:960px){
+            .docgrid{grid-template-columns:1fr}
+            .subtoc{display:none}
+            .lead{font-size:0.95rem}
         }
-
-        .docs-scroll {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-            padding: 28px 32px 100px;
-        }
-
-        .wrap {
-            max-width: 1180px;
-            margin: 0 auto;
-        }
-
-        .lead {
-            color: var(--text-secondary);
-            max-width: 70ch;
-            margin: 6px 0 18px;
-            font-size: 0.95rem;
-        }
-
-        .docgrid {
-            display: grid;
-            grid-template-columns: 210px minmax(0, 1fr) 190px;
-            gap: 44px;
-            align-items: start;
-        }
-
-        .docnav {
-            position: sticky;
-            top: 24px;
-            max-height: calc(100vh - 140px);
-            overflow-y: auto;
-            font-size: var(--text-sm);
-        }
-
-        .docnav .toc-label {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: 0.82rem;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .docnav a {
-            display: block;
-            color: var(--text-secondary);
-            text-decoration: none;
-            padding: 5px 10px;
-            border-radius: 8px;
-            line-height: 1.35;
-        }
-
-        .docnav a:hover {
-            color: var(--signal);
-        }
-
-        .docnav a.on {
-            color: var(--signal);
-            font-weight: 600;
-            background: var(--signal-tint);
-        }
-
-        .subtoc {
-            position: sticky;
-            top: 24px;
-            font-size: var(--text-sm);
-        }
-
-        .subtoc .toc-label {
-            font-family: var(--font-head);
-            font-weight: 600;
-            font-size: 0.82rem;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .subtoc a {
-            display: block;
-            color: var(--text-secondary);
-            text-decoration: none;
-            padding: 4px 0;
-            line-height: 1.35;
-        }
-
-        .subtoc a:hover {
-            color: var(--signal);
-        }
-
-        .subtoc a.lvl3 {
-            padding-left: 12px;
-            border-left: 1px solid var(--line);
-        }
-
-        .crumbs {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.82rem;
-            color: var(--text-tertiary);
-            margin: 2px 0 10px;
-        }
-
-        .crumbs svg {
-            flex-shrink: 0;
-        }
-
-        .crumbs .cur {
-            color: var(--text-primary);
-            background: var(--panel-raised);
-            padding: 2px 10px;
-            border-radius: 99px;
-        }
-
-        @media (max-width: 960px) {
-            .docgrid {
-                grid-template-columns: 1fr;
-            }
-
-            .docnav {
-                position: static;
-                display: flex;
-                gap: 4px;
-                overflow-x: auto;
-                max-height: none;
-                padding-bottom: 6px;
-            }
-
-            .docnav .toc-label {
-                display: none;
-            }
-
-            .docnav a {
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-
-            .subtoc {
-                display: none;
-            }
-        }
-
-        article {
-            min-width: 0;
-        }
-
-        article section {
-            display: none;
-            margin-bottom: 44px;
-            scroll-margin-top: 24px;
-        }
-
-        article section.on {
-            display: block;
-        }
-
-        article h2 {
-            font-family: var(--font-head);
-            font-size: 1.35rem;
-            font-weight: 600;
-            margin: 0 0 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid var(--line);
-        }
-
-        article h3 {
-            font-family: var(--font-head);
-            font-size: 1.02rem;
-            font-weight: 600;
-            margin: 22px 0 6px;
-        }
-
-        article p,
-        article li {
-            color: var(--text-secondary);
-            line-height: 1.65;
-            font-size: 0.95rem;
-        }
-
-        article ul {
-            padding-left: 20px;
-            margin: 10px 0;
-        }
-
-        article ol {
-            padding-left: 22px;
-            margin: 10px 0;
-        }
-
-        article li {
-            margin-bottom: 6px;
-        }
-
-        article strong {
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-
-        article a {
-            color: var(--signal);
-        }
-
-        code {
-            font-family: var(--font-mono);
-            font-size: 0.85em;
-            background: var(--panel-raised);
-            padding: 1px 5px;
-            border-radius: var(--radius-sm);
-        }
-
-        pre {
-            font-family: var(--font-mono);
-            font-size: 0.83rem;
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            padding: 14px 16px;
-            overflow-x: auto;
-            color: var(--text-primary);
-        }
-
-        .note {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-left: 3px solid var(--signal);
-            border-radius: var(--radius-lg);
-            padding: 12px 16px;
-            margin: 14px 0;
-        }
-
-        .note p {
-            margin: 0;
-        }
-
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            gap: 12px;
-            margin: 14px 0;
-        }
-
-        .card {
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: var(--radius-lg);
-            padding: 14px 16px;
-        }
-
-        .card h3 {
-            margin: 0 0 4px;
-            font-size: 0.95rem;
-        }
-
-        .card p {
-            margin: 0;
-            font-size: 0.86rem;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-            font-size: 0.88rem;
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 8px 10px;
-            border-bottom: 1px solid var(--line);
-            color: var(--text-secondary);
-            vertical-align: top;
-        }
-
-        th {
-            font-family: var(--font-head);
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        @media (max-width: 860px) {
-            .wrap {
-                grid-template-columns: 1fr;
-                gap: 22px;
-            }
-
-            .docs-scroll {
-                padding: 20px 18px 80px;
-            }
-
-            .toc {
-                position: static;
-                padding-bottom: 12px;
-                border-bottom: 1px solid var(--line);
-            }
+        @media (prefers-reduced-motion:reduce){
+            *,*:before,*:after{animation:none!important;transition:none!important}
+            article section.on{opacity:1;transform:none}
+            html{scroll-behavior:auto}
         }
     </style>
 </head>
 
-<body data-page="docs" data-no-rail>
+<body data-page="docs">
 
-    <div class="docs-layout page-panel">
-        <div class="topbar">
-            <div style="display:flex;align-items:center;gap:12px">
-                <button class="btn btn-secondary" id="backBtn" style="padding:8px 14px;font-size:0.82rem">← Back</button>
-                <h1>Docs</h1>
-            </div>
-            <a href="/" style="color:var(--signal);font-size:0.85rem;text-decoration:none;flex-shrink:0">Cudic home</a>
-        </div>
+    <div class="docs-layout">
+        <nav class="nav" aria-label="Docs sections">
+            <button id="backBtn" aria-label="Go back">← Back</button>
+            <a href="/"><img class="mark" src="/cudic-assets/brand/logo/cudic-mark-cream.svg" width="20" height="24" alt="Cudic home">Cudic</a>
+            <div class="links" id="docNav"></div>
+            <span class="sp"></span>
+            <span class="mono" style="padding:16px 18px;border-left:1px solid var(--line)">docs</span>
+        </nav>
 
         <div class="docs-scroll">
             <div class="wrap">
@@ -342,10 +161,8 @@
                 <div class="ad-frame ad-leaderboard" style="grid-column:1/-1"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
 
             <div class="docgrid">
-            <nav class="docnav" id="docNav" aria-label="Guide"><div class="toc-label">Guide</div></nav>
-
             <article>
-                <nav class="crumbs" aria-label="Breadcrumb"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg><span>›</span><span class="cur" id="crumbSec">Getting started</span></nav>
+                <nav class="crumbs" aria-label="Breadcrumb"><svg width="14" height="14" viewBox="0 0 8 8" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><use href="/cudic-assets/icons/svg/navigation/home.svg"/></svg><span>›</span><span class="cur" id="crumbSec">Getting started</span></nav>
                 <section id="start">
                     <h2>Getting started</h2>
                     <p>Cudic is a place to hang out and a place to build. Servers and channels for chat, a gallery of games made in Cudic Studio, theme packs that restyle the whole site, and coins you spend on packs.</p>
@@ -579,13 +396,12 @@ confetti({ particleCount: 120 })</pre>
             </article>
             <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
             </div>
+
+            <footer class="mono">Cudic docs · <a href="/">cudic.vercel.app</a> · <a href="/cookbook/">cookbook</a></footer>
             </div>
         </div>
     </div>
 
-    <script src="/config.js"></script>
-    <script src="/auth.js"></script>
-    <script src="/sidebar.js?v=17"></script>
     <script>
     /* Docs section router: one section visible at a time, hash-addressed
        (/docs#studio). Left nav + crumb + right rail build themselves from
@@ -597,9 +413,10 @@ confetti({ particleCount: 120 })</pre>
         var sub = document.getElementById('subTocLinks');
         var crumb = document.getElementById('crumbSec');
         var titles = {};
-        secs.forEach(function (s) {
+        secs.forEach(function (s, i) {
             var h = s.querySelector('h2');
             titles[s.id] = h ? h.textContent : s.id;
+            if (h) h.dataset.n = String(i + 1).padStart(2, '0');   /* brand-style "01" counter chip */
             var a = document.createElement('a');
             a.href = '#' + s.id;
             a.textContent = titles[s.id];
@@ -625,8 +442,7 @@ confetti({ particleCount: 120 })</pre>
                 l.className = 'lvl3';
                 sub.appendChild(l);
             });
-            var sc = document.querySelector('.docs-scroll');
-            if (sc) sc.scrollTop = 0;
+            window.scrollTo(0, 0);   /* body is the scroll container now (no .docs-scroll panel) */
             return true;
         }
         function route() {
@@ -652,6 +468,109 @@ confetti({ particleCount: 120 })</pre>
       if (window.history.length > 1) window.history.back();
       else window.location.href = '/';
     });
+    </script>
+    <script>
+    /* Custom scrollbar: the native root bar is hidden (.cuscroll) and a synced
+       thumb is rendered instead — drag to scroll, hover to widen, lime pressed.
+       Wheel and keyboard scrolling stay native, so momentum/acceleration is the
+       browser's own. Touch and reduced-motion keep the native bar. */
+    (function () {
+        if (!window.matchMedia('(pointer:fine)').matches) return;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        document.documentElement.classList.add('cuscroll');
+        var track = document.createElement('div');
+        track.id = 'cudicScroll';
+        var thumb = document.createElement('div');
+        thumb.id = 'cudicThumb';
+        track.appendChild(thumb);
+        document.body.appendChild(track);
+
+        function dims() {
+            var doc = document.documentElement;
+            var max = doc.scrollHeight - window.innerHeight;
+            var th = max > 0 ? Math.max(48, window.innerHeight * window.innerHeight / doc.scrollHeight) : 0;
+            th = Math.min(th, window.innerHeight - 8);
+            return { max: max, th: th, avail: window.innerHeight - th };
+        }
+        function sync() {
+            var d = dims();
+            if (d.max <= 0) { track.style.display = 'none'; return; }
+            track.style.display = '';
+            thumb.style.height = d.th + 'px';
+            thumb.style.top = (window.scrollY / d.max) * d.avail + 'px';
+        }
+        var drag = null;
+        thumb.addEventListener('pointerdown', function (e) {
+            if (dims().max <= 0) return;
+            drag = { y0: e.clientY, t0: thumb.getBoundingClientRect().top };
+            thumb.setPointerCapture(e.pointerId);
+            track.classList.add('drag');
+            e.preventDefault();
+        });
+        thumb.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            var d = dims(), top = Math.max(0, Math.min(d.avail, drag.t0 + e.clientY - drag.y0));
+            window.scrollTo({ top: (top / d.avail) * d.max, behavior: 'instant' });  /* instant while dragging — CSS smooth would feel rubbery */
+        });
+        ['pointerup', 'pointercancel'].forEach(function (t) {
+            thumb.addEventListener(t, function () { drag = null; track.classList.remove('drag'); });
+        });
+        track.addEventListener('pointerdown', function (e) {
+            if (e.target !== track) return;
+            var d = dims();
+            window.scrollTo({ top: Math.max(0, Math.min(e.clientY, d.avail)) / d.avail * d.max });  /* CSS smooth glide = the jump feels accelerated */
+        });
+        addEventListener('scroll', sync, { passive: true });
+        addEventListener('resize', sync);
+
+        /* Nav band: custom horizontal twin (the native bar had arrows — replaced). */
+        var navBand = document.querySelector('nav.nav');
+        var navTrack = document.createElement('div');
+        navTrack.id = 'cudicNavScroll';
+        var navThumb = document.createElement('div');
+        navThumb.id = 'cudicNavThumb';
+        navTrack.appendChild(navThumb);
+        document.body.appendChild(navTrack);
+        function navDims() {
+            var w = navBand.clientWidth, overX = navBand.scrollWidth - w;
+            var th = Math.max(48, w * w / navBand.scrollWidth);
+            th = Math.min(th, w - 8);
+            return { w: w, overX: overX, th: th, avail: w - th };
+        }
+        function navSync() {
+            var d = navDims();
+            navTrack.style.display = d.overX > 0 ? '' : 'none';
+            if (!(d.overX > 0)) return;
+            navTrack.style.top = navBand.getBoundingClientRect().bottom + 'px';
+            navThumb.style.width = d.th + 'px';
+            navThumb.style.left = (navBand.scrollLeft / d.overX) * d.avail + 'px';
+        }
+        var xdrag = null;
+        navThumb.addEventListener('pointerdown', function (e) {
+            if (navDims().overX <= 0) return;
+            xdrag = { x0: e.clientX, l0: navThumb.getBoundingClientRect().left };
+            navThumb.setPointerCapture(e.pointerId);
+            navTrack.classList.add('drag');
+            e.preventDefault();
+        });
+        navThumb.addEventListener('pointermove', function (e) {
+            if (!xdrag) return;
+            var d = navDims(), left = Math.max(0, Math.min(d.avail, xdrag.l0 + e.clientX - xdrag.x0));
+            navBand.scrollLeft = (left / d.avail) * d.overX;
+        });
+        ['pointerup', 'pointercancel'].forEach(function (t) {
+            navThumb.addEventListener(t, function () { xdrag = null; navTrack.classList.remove('drag'); });
+        });
+        navTrack.addEventListener('pointerdown', function (e) {
+            if (e.target !== navTrack) return;
+            var d = navDims();
+            navBand.scrollLeft = Math.max(0, Math.min(e.clientX, d.avail)) / d.avail * d.overX;
+        });
+        navBand.addEventListener('scroll', navSync, { passive: true });
+        addEventListener('resize', navSync);
+        navSync();
+        sync();
+    })();
     </script>
 
 </body>

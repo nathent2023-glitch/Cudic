@@ -23,8 +23,8 @@ theme packs, and a VS Code workbench shell at `/studio`.
 | `/editor` | The **classic** editor (legacy, still shipped). Design doc says it's exempt from the light theme. | dark |
 | `/studio` | **Cudic Studio** — VS Code workbench via `@codingame/monaco-vscode-api`. This is where active work happens. | dark, IDE |
 
-`design.md` now says "`/editor` is now Cudic Studio" — that's aspirational copy.
-Both routes exist and are served.
+`design.md` v2 (asset-pack based, `public/cudic-assets/`) governs the classic pages;
+editor/studio stay dark IDE chrome (see §11). Both routes exist and are served.
 
 ---
 
@@ -38,7 +38,9 @@ Both routes exist and are served.
   classic pages — vanilla script tags. Studio is the exception (Vite).
 - **Studio**: Vite 6 → `public/studio/` (gitignored, built locally/on Vercel),
   monaco-vscode-api 37.x, `esbuild` for ad-hoc bundling.
-- **Design system**: `design.md` is the single source of truth for color/type/spacing.
+- **Design system**: `design.md` is the single source of truth for color/type/spacing;
+  the asset canon (`public/cudic-assets/` README + manifest.json) is the source for
+  icons/emoji/cursors/logo recolors.
 
 ### Dependencies actually in use
 `ws`, `@supabase/supabase-js`, `dotenv`, `nodemailer`, `resend` (root).
@@ -624,24 +626,45 @@ list endpoints already supported it; **only Studio lacked a control**.
 
 ## 11. Design system (`design.md`)
 
-Read it before building any classic-page screen. Headlines:
+**v2 (2026-10-27), asset-pack based** — `public/cudic-assets/` is the asset canon
+(`README.md` = pack manual, `manifest.json` = machine-readable icon/cursor source,
+`brand/colors.json` + `brand/tokens.css` = palette/tokens to import). Ink-dark,
+grid-led, Geist everywhere. Read it before building any public surface. Headlines:
 
-- **Light-only** for classic pages: ice-blue `--ink #E8EEFA`, white panels,
-  hairline `--line #C9D5F0`, ink text `#2E2A4B`.
-- **`--signal #7300FF` (electric violet)** is the *classic app's* primary — this is a
-  different context from the AI panel. **`--ember #FF8C1A`** is reserved strictly
-  for live/play moments (never nav, never structure).
-- Type: **Epilogue** headings/buttons (500/600 only), **Satoshi** body (400/500),
-  **JetBrains Mono** only for literal code/identifiers — never decorative labels.
-- Anti-patterns named explicitly: acid-green-on-black, emoji as icons,
-  ALL-CAPS micro-labels as hierarchy, generic "No X selected" empty states.
-- Empty states follow the 4-step pattern (icon in soft signal circle → specific
+- **Palette (8 tokens)**: ink `#0d0e10` canvas, cream `#f7f5ec` text, lime `#b8f23a`,
+  blue `#3f7cff`, sky `#9fd0ff`, panel `#14161b`, line `#262a33`, mute `#9a9a94`.
+  Never pure `#000` / `#fff`.
+- **Light mode (derived)**: cream `#f7f5ec` canvas, ink text, near-white panels
+  `#fffdf6`, deep-blue `#1b3fb8` links (≈ 7.8:1); lime works as fills-with-ink-text
+  only on light. Paired assets flip with the mode: `png/dark` icon PNGs,
+  `pixel-ink`/`fluid-ink` cursor sheets, `cudic-mark-ink` logo (design.md §2).
+- **Contrast on ink**: cream 17.7:1 (AAA), lime 14.5:1, blue 5.1:1 = the AA body-text
+  floor (don't dim further), mute 6.8:1 (captions only).
+- **Type**: **Geist** for everything — 600 headings, 500 buttons/UI, 400 body.
+  **Geist Mono** only for code/identifiers/hexes/numeric readouts
+  (Epilogue/Satoshi/JetBrains Mono are retired).
+- **Hard edges**: radius ≤ 3px, flat fills — no glass, no glow, no gradients, no
+  drop shadows (except the fluid cursor's baked-in one).
+- **Accents are small-dose only**: never large background fills. Lime = marker
+  dots / selected states / active nav / the one primary CTA; blue = links, 2px
+  focus rings, destructive (the pack has no red — icon + copy carry danger).
+- **Icons (83, 8×8)**: whole-step scaling only 16/24/32/48/64; inline SVG +
+  `currentColor` to recolor (lime/blue spark cells are baked); PNG needs
+  `image-rendering: pixelated`; `png/dark` = ink **for light backgrounds** /
+  `png/light` = cream **for dark backgrounds** (inverted naming).
+- **Cursors**: 10 shapes × pixel/fluid × cream/ink sheets in `cursors/css/` —
+  the sheets set `cursor:` on `html, body`: link one per page (or use the
+  per-element `.cursor-*` classes), never per section.
+- **Motion**: 120 / 240 / 600ms tokens, `steps(4)` ease is the signature; one
+  deliberate moment per screen, hover only on activatables, reduced-motion guarded.
+- Empty states keep the 4-step pattern (icon in soft signal circle → specific
   heading → one-line instruction → one primary button).
-- Motion: **one deliberate moment per screen**; 150ms fades on route switch;
-  hover only on activatable things.
 - Voice: sentence case, active, buttons state the outcome ("Publish game", not "Submit").
-- **Scope**: `/editor` + `/studio` stay **dark** (`#0d0e10` surfaces, `#855CD6`
-  accents, `#FF8C1A` publish) — exempt from the light palette.
+- Anti-patterns: purple anywhere (user hard-no — *"WHY DO U HAVE TO PUT PURPLE
+  EVERYTHING"*), emoji as UI icons, ALL-CAPS micro-labels as hierarchy, generic
+  "No X selected" empty states.
+- **Scope**: `/editor` + `/studio` keep dark IDE chrome with their own accent set —
+  v2 governs the **public pages and the `/brand` kit**.
 
 ---
 
@@ -717,7 +740,8 @@ Pushing to `master` deploys both. Verify locally first.
 - **Beginner at web dev** — prefer simple explanations over jargon.
 - **PowerShell** — `;` not `&&`.
 - **No Google OAuth** — GitHub + email/password only.
-- Wants **impressive UI**: dark IDE chrome, split layouts, glassmorphism.
+- Wants **impressive UI**: dark IDE chrome, split layouts, grid-led editorial
+  surfaces (glass/gradients now explicit anti-patterns per design.md v2).
 - **Taste is opinionated and will push back hard** — see §7 UI direction.
   Purple in the AI panel is a hard no. "No taste" feedback means redo, not tweak.
 - Product voice: sentence case, outcome-stating buttons.

@@ -134,7 +134,7 @@
   nav.className='sidebar';
   nav.innerHTML=''
     +'<div class="sidebar-nav-card">'
-      +'<a class="rail-brand" id="railBrand" href="/" aria-label="Cudic home"><img src="/cudic_sfsvg.svg" alt="Cudic" width="26" height="26"></a>'
+      +'<a class="rail-brand" id="railBrand" href="/" aria-label="Cudic home"><img src="/cudic_sfsvg.svg" alt="Cudic" width="36" height="36" style="max-width:100%;object-fit:contain;"></a>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/servers','servers','server','Servers')

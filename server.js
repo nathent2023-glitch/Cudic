@@ -1835,7 +1835,6 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify(adState(w, { capped: true, awarded: 0, balance: await coinBalance(user.id), coinsMax })));
       return;
     }
-    const coinsMax = await getCoinsMax(user.id);
     const awarded = Math.min(tier, Math.max(0, coinsMax - w.coins));
     try {
       const { data: bal, error } = await supabase.rpc('grant_coins', { p_user: user.id, p_delta: awarded, p_reason: 'ad:' + nonce, p_ref: null });

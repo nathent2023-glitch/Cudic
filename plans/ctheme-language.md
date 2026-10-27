@@ -71,3 +71,14 @@ asset is over 10MB / not an image. Direct `https://` URLs are allowed too
 The server never compiles: it validates the submitted manifest with the
 same allowlists (plus length caps on `custom`), so hand-written JSON that
 passes validation is equally legal.
+
+## Compat note — design.md v2 (2026-10-27)
+
+Everything above stays engine truth: `theme-engine.js` still maps
+`color ink/panel/raised/line/signal/tp/ts/tt` and `font head/body` onto the
+site's CSS vars, which `sidebar.css` still defines. What changed is the site's
+*default* palette — design.md v2 moved it to the asset-pack palette (ink
+`#0d0e10` canvas, cream `#f7f5ec` text, lime `#b8f23a` / blue `#3f7cff`
+accents, Geist fonts). Packs override those vars at runtime, so old packs
+keep working as-is; a pack worth shipping today should be re-keyed to the
+v2 palette.

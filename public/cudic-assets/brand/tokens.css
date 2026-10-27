@@ -1,0 +1,16 @@
+:root{
+  --cudic-ink: #0d0e10;
+  --cudic-cream: #f7f5ec;
+  --cudic-lime: #b8f23a;
+  --cudic-blue: #3f7cff;
+  --cudic-sky: #9fd0ff;
+  --cudic-panel: #14161b;
+  --cudic-line: #262a33;
+  --cudic-mute: #9a9a94;
+  --cudic-font: "Geist", system-ui, sans-serif;
+  --cudic-mono: "Geist Mono", ui-monospace, monospace;
+  --cudic-fast: 120ms;
+  --cudic-base: 240ms;
+  --cudic-slow: 600ms;
+  --cudic-ease: steps(4);
+}

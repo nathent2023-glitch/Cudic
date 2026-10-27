@@ -14,7 +14,7 @@ No install, no build step for the player: everything runs at
 
 | Route | What | Status |
 |---|---|---|
-| `/` | Marketing landing — animated, light editorial | shipped |
+| `/` | Marketing landing — dark, animated (GSAP) | shipped |
 | `/login` | Sign in / create / guest (GitHub + email, no Google) | shipped |
 | `/lobbies` | Lobby list + join | shipped |
 | `/chat` | Lobby chat (persistent + per-session), typing/presence | shipped |
@@ -44,8 +44,8 @@ Friendly to beginners; no jargon in UI copy.
 
 ## Product rules
 
-- Light palette for classic pages, dark for `/editor` and `/studio`
-  (`design.md` is the source of truth).
+- `design.md` v2 is the source of truth: dark ink canvas for the public pages,
+  `/editor` and `/studio` keep their dark IDE chrome.
 - One deliberate motion moment per screen; respect reduce-motion.
 - No Google OAuth. No account needed to browse/play.
 - Pushing `master` deploys (Vercel frontend + Render backend) — verify first.

@@ -2,6 +2,15 @@
 
 A light-theme palette, fonts and style rules for the Cudic landing page only. The goal is calm, editorial and confident, with no gradients, glow effects or glass cards.
 
+## v2 status (2026-10-27)
+
+`design.md` v2 (2026-10-27) now governs all new pages: the asset-pack palette —
+ink `#0d0e10` canvas, cream `#f7f5ec` text, lime `#b8f23a` / blue `#3f7cff`
+accents — with Geist and Geist Mono everywhere. The landing keeps its shipped
+dark + GSAP build as-is until deliberately refreshed. Any landing screen touched
+later must be re-tinted to the v2 palette; the light paper/vermilion style below
+is historical exploration.
+
 ## Palette
 
 | Token | Hex | Role |
