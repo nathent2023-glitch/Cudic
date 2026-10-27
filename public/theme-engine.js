@@ -365,7 +365,9 @@
     state.manifest = manifest; state.slug = slug || manifest.slug || null;
     applyVars(manifest);
     var isLanding = !!document.querySelector('.landing');
-    if (!isLanding) { buildBackground(manifest); applyCustom(manifest.custom); }
+    applyVars(manifest);
+    if (!isLanding) buildBackground(manifest);
+    applyCustom(manifest.custom);
     mountSidebar();
   }
   function persist(slug, manifest) {
