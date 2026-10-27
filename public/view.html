@@ -30,7 +30,7 @@
     .game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
     .game-grid > * { min-width: 0; }
     @media (max-width: 900px) { .game-grid { grid-template-columns: 1fr; } }
-    .player-card { background: #000; border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; position: relative; aspect-ratio: 16/9; }
+    .player-card { background: #000; border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; position: relative; height: clamp(400px, 68vh, 760px); }
     .player-card.scrollable { overflow: auto; }
     .player-card iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
     /* Live play: --ember is the design system's live/play accent, used here and
@@ -499,7 +499,7 @@ setInterval(function () {
         f.setAttribute('sandbox', 'allow-scripts');
         f.setAttribute('allowfullscreen', 'true');
         f.setAttribute('scrolling', 'no');
-        f.src = '/run.html?v=2';
+        f.src = '/run.html?v=3';
         card.appendChild(f);
         // Viewers can allow scrolling for website-style games; remembered per game
         var scrollKey = 'glox-scroll:' + id;
@@ -524,6 +524,14 @@ setInterval(function () {
         }
         window.addEventListener('message', function wait(e) {
           if (e.source !== f.contentWindow) return; // only the player frame talks
+          if (e.data && e.data.type === 'layout') {
+            // Player measured its own content: if it overflows the frame,
+            // auto-enable scrolling (only while the user hasn't toggled).
+            if (!scrollOn && e.data.overflow && (e.data.overflow.x || e.data.overflow.y)) {
+              applyScroll(true);
+            }
+            return;
+          }
           if (e.data && e.data.type === 'ready') {
             // Compat rule: keep in step with run.html's ready version.
             if (e.data.v !== 2) {

@@ -214,6 +214,12 @@ window.addEventListener('message', async (e) => {
   document.open();
   document.write(doc);
   document.close();
+  // Tell the host whether the game overflows its frame, so the page can
+  // auto-enable scrolling for games that don't fit.
+  setTimeout(function () {
+    var de = document.documentElement;
+    parent.postMessage({ type: 'layout', v: 2, overflow: { x: de.scrollWidth > de.clientWidth, y: de.scrollHeight > de.clientHeight } }, '*');
+  }, 60);
 });
 // Compat rule: bump v (and view.html's check) on any protocol change.
 // Old players announce themselves instead of silently misbehaving.
