@@ -27,7 +27,10 @@
         if (_transitioning) return;   // ignore rapid toggles mid-transition
         var next = isDark() ? 'light' : 'dark';
         function apply() {
-            try { localStorage.setItem('glox_theme', next); } catch (x) {}
+            var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+            if (tok && typeof fetch !== 'undefined') {
+                fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ theme: next }) }).catch(function () {});
+            }
             document.documentElement.dataset.theme = next;
             flipIcons(next === 'dark');
         }
@@ -79,4 +82,17 @@
         window.CudicThemeToggle(e, btn);
     });
     flipIcons(isDark());
+
+    /* Boot from account when signed in (supersedes localStorage/default) */
+    (function () {
+        var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+        if (!tok) return;
+        fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + tok } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                var t = d.profile && d.profile.theme ? d.profile.theme : 'dark';
+                if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+                if (typeof flipIcons === 'function') flipIcons(t === 'dark');
+            }).catch(function () {});
+    })();
 })();

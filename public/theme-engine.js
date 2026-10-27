@@ -4,7 +4,7 @@
 // a pack ever executes — scenes/animations ship here and packs reference by id.
 (function () {
   if (window.CudicTheme) return;
-  var PACK_KEY = 'cudic-pack', MANIFEST_KEY = 'cudic-pack-manifest';
+  var PACK_KEY = null, MANIFEST_KEY = null;
   var root = document.documentElement;
   var reduced = function () {
     return (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) ||
@@ -364,19 +364,15 @@
   function applyPack(manifest, slug) {
     state.manifest = manifest; state.slug = slug || manifest.slug || null;
     applyVars(manifest);
-    buildBackground(manifest);
-    applyCustom(manifest.custom);
+    var isLanding = !!document.querySelector('.landing');
+    if (!isLanding) { buildBackground(manifest); applyCustom(manifest.custom); }
     mountSidebar();
   }
   function persist(slug, manifest) {
-    try {
-      if (slug) {
-        localStorage.setItem(PACK_KEY, slug);
-        localStorage.setItem(MANIFEST_KEY, JSON.stringify(manifest));
-      } else {
-        localStorage.removeItem(PACK_KEY); localStorage.removeItem(MANIFEST_KEY);
-      }
-    } catch (e) {}
+    var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    if (tok && typeof fetch !== 'undefined') {
+      fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ pack_slug: slug || null }) }).catch(function () {});
+    }
   }
   function installPack(manifest, slug) {
     persist(slug || manifest.slug, manifest);
@@ -388,10 +384,18 @@
     clearVars(); teardownBg(); teardownCustom(); mountSidebar();
   }
   function storedSlug() {
-    try { return localStorage.getItem(PACK_KEY); } catch (e) { return null; }
+    return null; // no local storage; account-only via profile boot
   }
   async function boot() {
-    var slug = storedSlug();
+    var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    var profileSlug = null;
+    if (tok && typeof fetch !== 'undefined') {
+      try {
+        var pr = await fetch('/api/profile', { headers: { 'Authorization': 'Bearer ' + tok } });
+        if (pr.ok) { var pd = await pr.json(); profileSlug = (pd.profile && pd.profile.pack_slug) ? pd.profile.pack_slug : null; }
+      } catch (e) {}
+    }
+    var slug = profileSlug || storedSlug();
     if (!slug) return;
     try {
       var res = await fetch('/packs/' + encodeURIComponent(slug) + '/manifest.json', { cache: 'no-store' });
@@ -405,10 +409,6 @@
       var api = await fetch('/api/packs/' + encodeURIComponent(slug) + '/manifest', { cache: 'no-store' });
       if (api.ok) { var jm = await api.json(); applyPack(jm.manifest, jm.slug || slug); return; }
     } catch (e2) {}
-    try {
-      var cached = JSON.parse(localStorage.getItem(MANIFEST_KEY) || 'null');
-      if (cached) { applyPack(cached, slug); return; }
-    } catch (e3) {}
     persist(null);
   }
 

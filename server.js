@@ -621,7 +621,7 @@ async function handleRequest(req, res) {
 
     const { data: profile, error: profErr } = await supabase
       .from('users')
-      .select('user_id, display_name, avatar_url, bio, interests, setup_done, created_at')
+      .select('user_id, display_name, avatar_url, bio, interests, setup_done, theme, pack_slug, created_at')
       .eq('id', user.id)
       .single();
 
@@ -649,7 +649,7 @@ async function handleRequest(req, res) {
 
     try {
       const parsed = await readBody(req, 64 * 1024);
-      const { display_name, avatar_url, bio, interests } = parsed;
+      const { display_name, avatar_url, bio, interests, theme, pack_slug } = parsed;
         var updates = {};
         if (bio !== undefined) {
           // Plain text, trimmed and length-capped. Rendered as textContent
@@ -692,6 +692,12 @@ async function handleRequest(req, res) {
           } else {
             updates.avatar_url = null;
           }
+        }
+        if (theme !== undefined && (theme === 'light' || theme === 'dark')) {
+          updates.theme = theme;
+        }
+        if (pack_slug !== undefined && typeof pack_slug === 'string') {
+          updates.pack_slug = pack_slug.trim().substring(0, 64) || 'anime-city-night';
         }
         // Onboarding completion is one-way: the welcome wizard flips it
         // true, and nothing flips it back.
