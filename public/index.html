@@ -209,7 +209,7 @@
                     <a href="/cookbook/canvas-art.html"><img src="/cudic-assets/icons/svg/studio/chart.svg" alt="" width="16" height="16">Canvas art</a>
                 </div>
             </div>
-            <a href="/login"><img src="/cudic-assets/icons/svg/status/user.svg" alt="" width="16" height="16">Sign in</a>
+            <a id="navSignIn" href="/login"><img src="/cudic-assets/icons/svg/status/user.svg" alt="" width="16" height="16">Sign in</a>
         </div>
         <div class="navbackdrop" id="navbackdrop"></div>
     </nav>
@@ -461,5 +461,14 @@
     <script src="/cudic-cursor.js"></script>
     <script src="/sidebar.js?v=18"></script>
     <script src="/theme-toggle.js?v=1"></script>
+    <script>
+    (function(){
+        function tryUpdate(){
+            try{var raw=localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');if(!raw)return;var s=JSON.parse(raw);var tok=s&&s.access_token?s.access_token:raw;if(!tok)return;fetch('/api/profile',{headers:{'Authorization':'Bearer '+tok}}).then(function(r){return r.json();}).then(function(d){var a=document.getElementById('navSignIn');if(!a)return;if(d.profile&&d.profile.display_name){a.textContent=d.profile.display_name;a.href='/profile';}else if(d.profile&&d.profile.email){a.textContent=d.profile.email;a.href='/profile';}else{a.textContent='Profile';a.href='/profile';}a.querySelector('img')&&a.querySelector('img').setAttribute('alt',a.textContent);}).catch(function(){});}catch(e){}
+        }
+        tryUpdate();
+        if(typeof window.getAuthToken==='function'){window.getAuthToken().then(function(t){if(t)tryUpdate();});}
+    })();
+    </script>
 </body>
 </html>
