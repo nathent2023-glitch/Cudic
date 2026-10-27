@@ -371,7 +371,8 @@
     mountSidebar();
   }
   function persist(slug, manifest) {
-    var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    var tokRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    var tok = tokRaw ? (function () { try { var s = JSON.parse(tokRaw); return s && s.access_token ? s.access_token : tokRaw; } catch (e) { return tokRaw; } })() : '';
     if (tok && typeof fetch !== 'undefined') {
       fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok }, body: JSON.stringify({ pack_slug: slug || null }) }).catch(function () {});
     }
@@ -389,7 +390,8 @@
     return null; // no local storage; account-only via profile boot
   }
   async function boot() {
-    var tok = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    var tokRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
+    var tok = tokRaw ? (function () { try { var s = JSON.parse(tokRaw); return s && s.access_token ? s.access_token : tokRaw; } catch (e) { return tokRaw; } })() : '';
     var profileSlug = null;
     if (tok && typeof fetch !== 'undefined') {
       try {
