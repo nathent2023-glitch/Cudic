@@ -117,7 +117,6 @@
       <nav class="pnav" aria-label="Profile sections"><div class="toc-label">Settings</div>
         <a href="#sec-profile">Public profile</a>
         <a href="#sec-security">Security</a>
-        <a href="#sec-coins">Coins &amp; quests</a>
         <a href="#sec-stats">Analytics</a>
         <a href="#sec-liked">Liked games</a>
         <a href="#sec-appearance">Appearance</a>
@@ -172,18 +171,6 @@
           </div>
         </div>
       </div>
-      <div class="profile-card" id="sec-coins">
-        <h2>Coins &amp; quests</h2>
-        <p class="sub">Play money for theme packs. Earn it by using Cudic.</p>
-        <div class="meta" style="margin-bottom:12px">Balance <b id="coinBalance" style="font-size:1.1rem">—</b></div>
-        <div class="pref-row">
-          <div><div class="label">Daily visit</div><div class="desc">+10 coins, once a day.</div></div>
-          <button class="btn btn-secondary" id="dailyClaim" style="padding:6px 12px;font-size:0.78rem">Claim</button>
-        </div>
-        <div id="questList"></div>
-        <a class="btn btn-secondary" href="/quests" style="margin-top:12px;padding:6px 12px;font-size:0.78rem">Earn coins →</a>
-        <div class="status-msg" id="coinMsg"></div>
-      </div>
       <div class="profile-card" id="sec-stats">
         <h2>Analytics</h2>
         <p class="sub">How your games and packs are doing. Full breakdown on the Your Projects tab.</p>
@@ -208,6 +195,22 @@
           <label class="switch"><input type="checkbox" id="reduceMotion"><span class="track"></span></label>
         </div>
         <div style="margin-top:18px"><button class="btn btn-danger" id="signOutBtn">Sign out</button></div>
+      </div>
+      <div class="profile-card" id="sec-pack">
+        <h2>Theme pack</h2>
+        <p class="sub">Your installed theme pack — applies to Studio, themes, and profile preview.</p>
+        <div class="pref-row" id="packRow"><div><b id="packName">—</b><span class="sub" id="packSlug" style="font-family:'Geist Mono',monospace;font-size:0.78rem"></span></div><a href="/themes" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem">Edit →</a></div>
+      </div>
+      <div class="profile-card" id="sec-liked-count">
+        <h2>Liked games</h2>
+        <p class="sub">Your saved favorites.</p>
+        <div class="meta"><b id="likedCount">—</b> liked</div>
+        <a href="#sec-liked" class="btn btn-secondary" style="margin-top:10px;padding:6px 12px;font-size:0.78rem">View saved →</a>
+      </div>
+      <div class="profile-card" id="sec-theme-preview" style="display:none">
+        <h2>Theme preview</h2>
+        <p class="sub">How your theme looks on the landing.</p>
+        <a href="/" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem">Open landing →</a>
       </div>
       </div>
       <aside class="profside"><div class="preview-card" aria-label="Public profile preview">
@@ -272,6 +275,17 @@
         document.getElementById('interestField').value = (d.profile.interests || []).join(', ');
         paintBioCard(d.profile);
         loadLiked();
+        /* Pack + liked count */
+        (function(p){
+          var pn = document.getElementById('packName');
+          var ps = document.getElementById('packSlug');
+          if(pn&&ps){
+            if(p && p.pack_slug){ pn.textContent = p.pack_slug; ps.textContent = p.pack_slug; ps.style.display='inline'; }
+            else { pn.textContent = 'Default'; ps.textContent = 'No pack installed'; ps.style.display='inline'; }
+          }
+          var lc = document.getElementById('likedCount');
+          if(lc && d.games){ lc.textContent = (d.games || []).length; }
+        })(d.profile);
       }).catch(function(){});
 
     /* Email confirmation (soft gate): card shows only when unconfirmed */
@@ -351,11 +365,13 @@
     function loadLiked() {
       var box = document.getElementById('likedList');
       if (!box) return;
+      var lc = document.getElementById('likedCount');
       fetch(apiHost() + '/api/games/liked', { headers: { 'Authorization': 'Bearer ' + t } })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           var rows = d.games || [];
-          if (!rows.length) { box.innerHTML = '<p class="sub">Nothing liked yet. Tap the heart on a game in the gallery.</p>'; return; }
+          if (!rows.length) { box.innerHTML = '<p class="sub">Nothing liked yet. Tap the heart on a game in the gallery.</p>'; if(lc) lc.textContent = '0'; return; }
+          if (lc) lc.textContent = String(rows.length);
           box.innerHTML = rows.map(function (g) {
             // Title/tags are user-authored: element content only, never raw
             // interpolated (XSS). Thumbnail comes from our API by id.
