@@ -747,7 +747,7 @@ function addChatMessage(author, text, time, avatar, userId, ts, mid, cid) {
   const av = avatar
     ? '<img src="' + escapeHtml(avatar) + '" alt="">'
     : escapeHtml(String(author || '?').substring(0, 1).toUpperCase());
-  div.innerHTML = '<div class="msg-ava"><a href="#" onclick="window.showProfileModal && window.showProfileModal(event, \'' + (userId || '') + '\'); return false;" style="display:inline-block;text-decoration:none;color:inherit;line-height:0">' + av + '</a></div>'
+  div.innerHTML = '<div class="msg-ava"><a href="#" onclick="window.showProfileModal && window.showProfileModal(event, \'' + (userId || '') + '\'); return false;" style="display:block;width:100%;height:100%;text-decoration:none;color:inherit">' + av + '</a></div>'
     + '<div class="msg-main"><span class="author" style="color:' + nameColor(author) + '">' + escapeHtml(author) + '</span>'
     + '<span class="time">' + time + '</span>'
     + '<div class="msg-text">' + escapeHtml(text) + (mine ? ' <span class="ticks" data-ts="' + escapeHtml(ts || '') + '">✓</span>' : '') + '</div></div>';
@@ -868,7 +868,7 @@ function showProfileModal(e, uid) {
       (p.bio ? '<p style="font-size:0.85rem;color:var(--text-secondary);line-height:1.55;margin-bottom:12px;">' + p.bio + '</p>' : '') +
       (p.interests && p.interests.length ? '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:6px;">' + p.interests.join(', ') + '</div>' : '') +
       (p.pack_slug ? '<div style="font-size:0.78rem;color:var(--signal);margin-top:10px;">Theme pack: <b>' + p.pack_slug + '</b></div>' : '') +
-      '<a href="/profile?id=' + encodeURIComponent(uid) + '" style="display:inline-block;margin-top:14px;padding:8px 14px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);font-size:0.85rem;font-weight:600;">View full profile →</a></div>';
+      '</div>';
   }).catch(function() { overlay.innerHTML = '<div style="background:var(--panel,#14161b);border:1px solid var(--line);border-radius:12px;padding:24px;max-width:320px;color:var(--ink);">Profile not found.</div>'; });
   overlay.addEventListener('click', function(ev) { if (ev.target === overlay) overlay.remove(); });
 }

@@ -241,7 +241,8 @@
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
     function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
     var urlId = new URLSearchParams(window.location.search).get('id');
-    var isPublic = !!urlId;
+    if (urlId) { window.location.replace('/profile'); return; }
+    var isPublic = false;
     function msg(el, text, ok){ el.textContent = text; el.className = 'status-msg ' + (ok ? 'ok' : 'err'); }
     function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
 
