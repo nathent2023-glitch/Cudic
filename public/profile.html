@@ -240,6 +240,8 @@
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
     async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
     function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+    var urlId = new URLSearchParams(window.location.search).get('id');
+    var isPublic = !!urlId;
     function msg(el, text, ok){ el.textContent = text; el.className = 'status-msg ' + (ok ? 'ok' : 'err'); }
     function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
 
@@ -256,11 +258,12 @@
     function applyMotion(off){ document.documentElement.classList.toggle('reduce-motion', !!off); }
 
     var t = await token();
-    if (!t) { document.getElementById('guestNotice').style.display = 'block'; return; }
+    if (!t && !isPublic) { document.getElementById('guestNotice').style.display = 'block'; return; }
     document.getElementById('profileBody').style.display = '';
+    if (isPublic) { try { document.getElementById('sec-security').style.display='none'; document.getElementById('sec-appearance').style.display='none'; } catch(e){} }
 
     /* Load profile + session */
-    fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + t } })
+    (isPublic ? fetch(apiHost() + '/api/user?id=' + encodeURIComponent(urlId)) : fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + (t || '') } }))
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (!d.profile) return;

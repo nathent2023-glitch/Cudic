@@ -636,6 +636,19 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (url.pathname === '/api/user' && req.method === 'GET') {
+    try {
+      const q = new URL(req.url, 'http://localhost').searchParams;
+      const userId = q.get('id') || q.get('user_id');
+      if (!userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'id required' })); return; }
+      const { data, error } = await supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug').eq('id', userId).single();
+      if (error || !data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      res.end(JSON.stringify({ profile: data }));
+    } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: 'Server error' })); }
+    return;
+  }
+
   // ── API: update display name ───────────────────────────────────
   if (url.pathname === '/api/profile' && req.method === 'PUT') {
     cors(res);

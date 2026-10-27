@@ -747,7 +747,7 @@ function addChatMessage(author, text, time, avatar, userId, ts, mid, cid) {
   const av = avatar
     ? '<img src="' + escapeHtml(avatar) + '" alt="">'
     : escapeHtml(String(author || '?').substring(0, 1).toUpperCase());
-  div.innerHTML = '<div class="msg-ava"><a href="/profile" style="display:block;text-decoration:none;color:inherit">' + av + '</a></div>'
+  div.innerHTML = '<div class="msg-ava"><a href="' + (mine ? '/profile' : ('/profile?id=' + encodeURIComponent(userId || ''))) + '" style="display:inline-block;text-decoration:none;color:inherit;line-height:0">' + av + '</a></div>'
     + '<div class="msg-main"><span class="author" style="color:' + nameColor(author) + '">' + escapeHtml(author) + '</span>'
     + '<span class="time">' + time + '</span>'
     + '<div class="msg-text">' + escapeHtml(text) + (mine ? ' <span class="ticks" data-ts="' + escapeHtml(ts || '') + '">✓</span>' : '') + '</div></div>';
