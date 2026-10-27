@@ -381,8 +381,10 @@
       if (btn) btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
     }
     var themeBtn = document.getElementById('themeBtn');
+    /* Animated swap (Magic UI pattern) lives in theme-toggle.js; fallback = the instant swap below. */
     if (themeBtn) themeBtn.addEventListener('click', function (e) {
       e.stopPropagation();
+      if (window.CudicThemeToggle) { window.CudicThemeToggle(e, themeBtn); return; }
       var dark = isDarkTheme();
       try { localStorage.setItem('glox_theme', dark ? 'light' : 'dark'); } catch (x) {}
       if (dark) delete document.documentElement.dataset.theme;
@@ -398,3 +400,6 @@
     accountRow.addEventListener('mouseleave',hideRailTip);
   }
 })();
+
+/* Animated theme toggler on every page (Magic UI pattern; fab on rail-less pages). */
+(function(){var s=document.createElement('script');s.src='/theme-toggle.js?v=1';document.head.appendChild(s);})();

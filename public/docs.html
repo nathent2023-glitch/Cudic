@@ -5,89 +5,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cudic — Docs</title>
-  <meta name="description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta name="description" content="Everything Cudic can do: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, in-game multiplayer, chat and servers, theme packs, coins, and the Cudic AI panel.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Cudic">
   <meta property="og:title" content="Cudic — Docs">
-  <meta property="og:description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta property="og:description" content="Everything Cudic can do: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, in-game multiplayer, chat and servers, theme packs, coins, and the Cudic AI panel.">
   <meta property="og:url" content="https://cudic.vercel.app/docs">
   <meta property="og:image" content="https://cudic.vercel.app/og.png?v=2">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Cudic — Docs">
-  <meta name="twitter:description" content="How Cudic works: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, chat and servers, theme packs, coins, and the Cudic AI panel.">
+  <meta name="twitter:description" content="Everything Cudic can do: Studio and its runtimes, importing Scratch projects, publishing and remixing games, cloud saves, in-game multiplayer, chat and servers, theme packs, coins, and the Cudic AI panel.">
   <meta name="twitter:image" content="https://cudic.vercel.app/twitter.png?v=2">
-  <link rel="canonical" content="https://cudic.vercel.app/docs">
+  <link rel="canonical" href="https://cudic.vercel.app/docs">
     <link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
     <link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* Docs — matched to public/brand.html (asset pack: ink/cream/lime/blue, Geist,
-           hard edges, steps()). No sidebar stack: the nav band routes the sections. */
+           hard edges, steps()). A sticky left sidebar routes the sections; one boxed
+           article pane swaps content behind the hash. */
         :root{--bg:#0d0e10;--panel:#14161b;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--lime:#b8f23a;--blue:#3f7cff;--sky:#9fd0ff;--red:#d9381e}
         @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63;--blue:#1b3fb8}
-            :root:not([data-theme="dark"]) .nav .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}}
+            :root:not([data-theme="dark"]) .docside .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}}
         :root[data-theme="light"]{--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63;--blue:#1b3fb8}
-        :root[data-theme="light"] .nav .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}
+        :root[data-theme="light"] .docside .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}
         *{box-sizing:border-box}
-        html{scroll-padding-top:76px;scroll-behavior:smooth}
+        html{scroll-padding-top:24px;scroll-behavior:smooth}
 
         /* Page scrollbar (JS adds .cuscroll): native root bar hidden, replaced by a
            synced thumb on the right — hairline track, widens on hover, lime while
            dragging. Wheel and keys stay native (momentum untouched). Inner
-           scrollers (.nav band, pre code blocks) keep a tinted native overlay bar. */
+           scrollers (sidebar, subtoc, pre code blocks) hide their native bars
+           under .cuscroll — wheel scrolling inside them still works. */
         html.cuscroll{scrollbar-width:none}
-        html.cuscroll .nav,html.cuscroll pre{scrollbar-width:none}
+        html.cuscroll #docNav,html.cuscroll .subtoc,html.cuscroll pre{scrollbar-width:none}
         #cudicScroll{position:fixed;top:0;right:0;bottom:0;width:14px;z-index:9}
         #cudicScroll::before{content:'';position:absolute;left:0;top:0;bottom:0;width:1px;background:var(--line)}
         #cudicThumb{position:absolute;right:4px;width:5px;background:var(--mute);transition:width 120ms,right 120ms,background-color 120ms}
         #cudicScroll:hover #cudicThumb{right:3px;width:7px}
         #cudicScroll.drag #cudicThumb{right:3px;width:7px;background:var(--lime)}
-
-        /* Nav band's horizontal twin: same custom treatment, hairline on top,
-           thumb widens downward on hover, lime while dragging. */
-        #cudicNavScroll{position:fixed;left:0;right:0;height:10px;z-index:9}
-        #cudicNavScroll::before{content:'';position:absolute;left:0;right:0;top:0;height:1px;background:var(--line)}
-        #cudicNavThumb{position:absolute;top:4px;height:5px;background:var(--mute);transition:height 120ms,top 120ms,background-color 120ms}
-        #cudicNavScroll:hover #cudicNavThumb{top:3px;height:7px}
-        #cudicNavScroll.drag #cudicNavThumb{top:3px;height:7px;background:var(--lime)}
         body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Geist",system-ui,sans-serif}
         ::selection{background:var(--lime);color:#0d0e10}
         .mono{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em}
 
-        .docs-layout{display:flex;flex-direction:column;min-height:100vh;background:var(--bg)}
+        .wrap{margin:0;min-height:100vh;border-left:1px solid var(--line);border-right:1px solid var(--line)}
 
-        /* Top nav band (brand-style): dividers, sticky, routes the doc sections */
-        .nav{display:flex;align-items:stretch;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;overflow-x:auto}
-        .nav a{padding:16px 18px;color:var(--ink);text-decoration:none;font-weight:500;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:10px}
-        .nav a img{display:block}
-        .nav a:hover{box-shadow:inset 0 -3px var(--blue)}
-        .nav .links{display:flex;flex:0 0 auto}
-        .nav .links a.on{box-shadow:inset 0 -3px var(--lime);font-weight:600}
-        .nav .sp{flex:1}
-        #backBtn{font:inherit;color:var(--mute);background:none;border:0;padding:16px 18px;cursor:pointer;white-space:nowrap}
-        #backBtn:hover{color:var(--ink);box-shadow:inset 0 -3px var(--blue)}
+        /* Three columns: sticky sidebar | article pane | sticky on-this-page rail.
+           Hairline separators ride on the article pane, so the lines run the full
+           document height. */
+        .docgrid{display:grid;grid-template-columns:238px minmax(0,1fr) 212px}
+        .docside{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+        .brandrow{display:flex;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:15px}
+        .brandrow .mark{display:block}
+        .brandrow:hover{background:var(--panel)}
+        #docNav{flex:1;overflow-y:auto;padding-bottom:6px}
+        #docNav a{display:flex;align-items:center;gap:9px;padding:9px 14px;color:var(--mute);text-decoration:none;font-size:13.5px;border-bottom:1px solid var(--line)}
+        #docNav a .n{font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;color:var(--mute);letter-spacing:.02em}
+        #docNav a:hover{color:var(--ink);background:var(--panel)}
+        #docNav a.on{color:var(--ink);font-weight:600;background:var(--panel);box-shadow:inset 2px 0 var(--lime)}
+        #docNav a.on .n{color:var(--lime)}
+        #backBtn{width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);color:var(--mute);font:500 12px "Geist Mono",ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;padding:15px 16px;cursor:pointer}
+        #backBtn:hover{color:var(--ink);background:var(--panel)}
 
-        .docs-scroll{flex:1 0 auto}
-        .wrap{max-width:1280px;margin:0 auto;padding:0 28px}
-
-        .lead{color:var(--mute);max-width:70ch;margin:28px 0 22px;font-size:17px;line-height:1.6}
+        .docmain{border-left:1px solid var(--line);border-right:1px solid var(--line);min-height:100vh;display:flex;flex-direction:column}
+        .docHead{padding:30px 40px 24px;border-bottom:1px solid var(--line)}
+        .docHead .kick{display:flex;align-items:center;gap:8px;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em;margin:0}
+        .docHead .kick svg{flex-shrink:0}
+        .docHead .kick .cur2{color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:2px 12px}
+        .docHead h1{margin:10px 0 0;font-weight:500;font-size:34px;letter-spacing:-.02em;line-height:1.15}
+        .lead{color:var(--mute);max-width:74ch;margin:14px 0 0;font-size:15.5px;line-height:1.6}
         .lead strong{color:var(--ink);font-weight:500}
         .lead a{color:var(--blue);text-decoration:none}
         .lead a:hover{text-decoration:underline}
 
-        .docgrid{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:44px;align-items:start;padding-bottom:40px}
+        .docbody{flex:1;padding:26px 40px 34px}
         article{min-width:0}
-
         article section{display:none}
         article section.on{display:block;opacity:0;transform:translateY(24px);animation:docsIn .48s steps(6) .02s forwards}
         @keyframes docsIn{to{opacity:1;transform:none}}
 
-        article h2{margin:26px 0 14px;font-weight:500;font-size:28px;letter-spacing:-.02em;line-height:1.25;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:14px}
+        article h2{margin:8px 0 14px;font-weight:500;font-size:27px;letter-spacing:-.02em;line-height:1.25;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:14px}
         /* Numbered like brand.html's section headers — "01", lime mono chip */
         article h2:before{content:attr(data-n);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--lime);border:1px solid var(--lime);padding:3px 7px;margin-right:14px;vertical-align:middle}
-        article h3{font-weight:600;font-size:1.02rem;margin:22px 0 6px;color:var(--ink)}
-        article p,article li{color:var(--mute);line-height:1.65;font-size:0.95rem;margin:6px 0}
+        article h3{font-weight:600;font-size:1rem;margin:22px 0 6px;color:var(--ink)}
+        article p,article li{color:var(--mute);line-height:1.65;font-size:0.94rem;margin:6px 0}
         article ul{padding-left:18px;margin:10px 0}
         article ol{padding-left:20px;margin:10px 0}
         article li{margin-bottom:6px}
@@ -95,45 +98,63 @@
         article a{color:var(--blue);text-decoration:none}
         article a:hover{text-decoration:underline}
 
-        code{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.82em;background:var(--panel);border:1px solid var(--line);padding:1px 5px;color:var(--ink)}
-        pre{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.83rem;background:var(--panel);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;color:var(--ink);line-height:1.6;margin:10px 0}
+        /* Steps — numbered like brand chips, rows of a contiguous bordered stack */
+        ol.steps{list-style:none;padding:0;counter-reset:step;margin:14px 0}
+        ol.steps li{counter-increment:step;position:relative;padding:13px 16px 13px 58px;border:1px solid var(--line);border-bottom:0;max-width:820px}
+        ol.steps li:last-child{border-bottom:1px solid var(--line)}
+        ol.steps li:before{content:counter(step,decimal-leading-zero);position:absolute;left:16px;top:12px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;color:var(--lime);border:1px solid var(--lime);padding:2px 6px}
 
-        .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--lime);padding:12px 16px;margin:14px 0}
+        /* Cards — brand-cell lattice: one hairline grid, no gaps, no shadows */
+        .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin:16px 0}
+        .card{background:var(--bg);padding:14px 16px}
+        .card h3{margin:0 0 4px;font-size:0.92rem}
+        .card p{margin:0;font-size:0.85rem}
+        .card .mono{display:block;margin-bottom:6px}
+
+        code{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.82em;background:var(--panel);border:1px solid var(--line);padding:1px 5px;color:var(--ink)}
+        pre{font-family:"Geist Mono",ui-monospace,monospace;font-size:0.83rem;background:var(--panel);border:1px solid var(--line);padding:14px 16px;overflow-x:auto;color:var(--ink);line-height:1.6;margin:10px 0;max-width:820px}
+
+        .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--lime);padding:12px 16px;margin:14px 0;max-width:820px}
         .note p{margin:0}
 
-        .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0}
-        .card{background:var(--panel);border:1px solid var(--line);padding:14px 16px}   /* static content, no hover */
-        .card h3{margin:0 0 4px;font-size:0.95rem}
-        .card p{margin:0;font-size:0.86rem}
+        table{width:100%;max-width:820px;border-collapse:collapse;border:1px solid var(--line);margin:12px 0;font-size:0.88rem}
+        th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
+        tr:last-child td{border-bottom:0}
+        th{font-weight:600;color:var(--ink);background:var(--panel)}
+        td:first-child{white-space:nowrap}
 
-        table{width:100%;border-collapse:collapse;margin:12px 0;font-size:0.88rem}
-        th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);color:var(--mute);vertical-align:top}
-        th{font-weight:600;color:var(--ink)}
-
-        .ad-frame{border:1px solid var(--line);background:var(--panel)}
-        .ad-frame.ad-leaderboard{min-height:90px}
+        .ad-frame{border:1px solid var(--line);background:var(--panel);min-height:90px;margin:0 0 22px}
         .ad-cap{display:block;font-family:"Geist Mono",ui-monospace,monospace;font-size:10px;color:var(--mute);letter-spacing:.08em;padding:6px 10px}
 
-        .crumbs{display:flex;align-items:center;gap:8px;font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);margin:24px 0 0}
-        .crumbs svg{flex-shrink:0}
-        .crumbs .cur{color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:2px 12px;border-radius:3px}
-
-        .toc-label{font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;color:var(--mute);letter-spacing:.02em;margin-bottom:8px}
-        .subtoc{position:sticky;top:76px}
-        .subtoc a{display:block;color:var(--mute);text-decoration:none;padding:4px 0;line-height:1.35;font-size:0.85rem}
+        .subtoc{position:sticky;top:0;height:100vh;overflow-y:auto;padding-bottom:12px}
+        .toc-label{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase;padding:18px 16px 10px}
+        .subtoc a{display:block;color:var(--mute);text-decoration:none;padding:7px 16px;line-height:1.35;font-size:0.83rem;border-bottom:1px solid var(--line)}
         .subtoc a:hover{color:var(--ink)}
-        .subtoc a.lvl3{padding-left:12px;border-left:1px solid var(--line)}
+        .subtoc a.lvl3{padding-left:28px}
 
-        footer{border-top:1px solid var(--line);padding:22px 0 30px;text-align:center;color:var(--mute);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.02em}
+        footer{border-top:1px solid var(--line);padding:20px 40px 26px;color:var(--mute);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.02em}
         footer a{color:var(--mute);text-decoration:none}
         footer a:hover{color:var(--ink)}
 
         a:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
+        @media (max-width:1180px){
+            .docgrid{grid-template-columns:238px minmax(0,1fr)}
+            .subtoc{display:none}
+            .docmain{border-right:0}
+        }
         @media (max-width:960px){
             .docgrid{grid-template-columns:1fr}
-            .subtoc{display:none}
-            .lead{font-size:0.95rem}
+            .docside{position:static;height:auto;border-bottom:1px solid var(--line)}
+            #docNav{max-height:none;overflow:visible;columns:2;column-gap:0;column-rule:1px solid var(--line)}
+            #docNav a{break-inside:avoid}
+            #docNav a:last-child{border-bottom:1px solid var(--line)}
+            #backBtn{border-top:0}
+            .docmain{border-left:0;min-height:0}
+            .docHead,.docbody{padding-left:22px;padding-right:22px}
+            .docHead{padding-top:22px}
+            .docHead h1{font-size:27px}
+            footer{padding-left:22px;padding-right:22px}
         }
         @media (prefers-reduced-motion:reduce){
             *,*:before,*:after{animation:none!important;transition:none!important}
@@ -145,39 +166,52 @@
 
 <body data-page="docs">
 
-    <div class="docs-layout">
-        <nav class="nav" aria-label="Docs sections">
-            <button id="backBtn" aria-label="Go back">← Back</button>
-            <a href="/"><img class="mark" src="/cudic-assets/brand/logo/cudic-mark-cream.svg" width="20" height="24" alt="Cudic home">Cudic</a>
-            <div class="links" id="docNav"></div>
-            <span class="sp"></span>
-            <span class="mono" style="padding:16px 18px;border-left:1px solid var(--line)">docs</span>
-        </nav>
+    <div class="wrap">
+        <div class="docgrid">
+            <aside class="docside">
+                <a class="brandrow" href="/"><img class="mark" src="/cudic-assets/brand/logo/cudic-mark-cream.svg" width="20" height="24" alt="Cudic home">Cudic</a>
+                <nav id="docNav" aria-label="Docs sections"></nav>
+                <button id="backBtn" aria-label="Go back">← Back</button>
+            </aside>
 
-        <div class="docs-scroll">
-            <div class="wrap">
-                <p class="lead">Everything Cudic can do, in the order you'll probably need it. Build in Studio, publish to the gallery, chat in servers, and restyle the whole site with theme packs. Want longer, step-by-step tutorials? The <a href="/cookbook/">Cookbook</a> walks you through building real games, one pasteable page at a time.</p>
+            <div class="docmain">
+                <header class="docHead">
+                    <p class="kick"><svg width="14" height="14" viewBox="0 0 8 8" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><use href="/cudic-assets/icons/svg/navigation/home.svg"/></svg><span>›</span><span class="cur2" id="crumbSec">Getting started</span></p>
+                    <h1>Docs</h1>
+                    <p class="lead">Everything Cudic can do, in the order you'll probably need it. Build in Studio, publish to the gallery, play with other people in real time, chat in servers, and restyle the whole site with theme packs. Want longer, step-by-step tutorials? The <a href="/cookbook/">Cookbook</a> walks you through building real games, one pasteable page at a time.</p>
+                </header>
+                <div class="docbody">
+                    <article>
 
-                <div class="ad-frame ad-leaderboard" style="grid-column:1/-1"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
-
-            <div class="docgrid">
-            <article>
-                <nav class="crumbs" aria-label="Breadcrumb"><svg width="14" height="14" viewBox="0 0 8 8" fill="currentColor" shape-rendering="crispEdges" aria-hidden="true"><use href="/cudic-assets/icons/svg/navigation/home.svg"/></svg><span>›</span><span class="cur" id="crumbSec">Getting started</span></nav>
                 <section id="start">
                     <h2>Getting started</h2>
-                    <p>Cudic is a place to hang out and a place to build. Servers and channels for chat, a gallery of games made in Cudic Studio, theme packs that restyle the whole site, and coins you spend on packs.</p>
-                    <ol>
-                        <li><strong>Sign in</strong> — email + password, GitHub, or continue as a guest to look around. Saving, publishing, coins and saved progress need an account.</li>
-                        <li><strong>Open <a href="/studio">Studio</a></strong> — a full code editor with a live preview.</li>
-                        <li><strong>Build something</strong> — write HTML/CSS/JS, or import an existing project, or bring a Scratch game across.</li>
-                        <li><strong>Save, then Publish</strong> — saving keeps the project in your account; publishing puts it in the <a href="/games">gallery</a>.</li>
+                    <p>Cudic is a place to hang out and a place to build. Servers and direct messages for chat, a gallery of games anyone can play, a Studio for making your own, theme packs that restyle the whole site, and coins that buy the packs. Everything runs in the browser — nothing to install, nothing to build.</p>
+                    <ol class="steps">
+                        <li><strong>Sign in</strong> — email + password (we email you a short code to verify the address), GitHub, or continue as a guest to look around. Saving, publishing, coins and saved progress need an account.</li>
+                        <li><strong>Open <a href="/studio">Studio</a></strong> — a VS&nbsp;Code-style workbench with a live preview. Press <code>Ctrl+Shift+P</code> for the command palette.</li>
+                        <li><strong>Build something</strong> — write HTML/CSS/JS by hand, import existing files or a whole folder, or bring a Scratch game across.</li>
+                        <li><strong>Save, then Publish</strong> — saving keeps the project in your account; publishing puts it in the <a href="/games">gallery</a> with its own playable page.</li>
                     </ol>
-                    <div class="note"><p>Guests can play games and read chat. Progress in a game isn't stored for guests — the game will offer you a sign-in the first time you play.</p></div>
+                    <h3>What's on Cudic</h3>
+                    <div class="cards">
+                        <div class="card"><span class="mono">THE RAIL</span><h3>One nav everywhere</h3><p>Most pages share a rail on the left — Chat, Servers, Games, Themes and your account at the bottom. The rail follows whatever theme pack you've bought; these docs use their own list on the left instead.</p></div>
+                        <div class="card"><span class="mono">CHAT</span><h3>Servers &amp; DMs</h3><p>Public servers with channels, servers you make yourself, and private direct messages. Your servers live in the rail so switching is one click.</p></div>
+                        <div class="card"><span class="mono">GAMES</span><h3>The gallery</h3><p>Browse, search, play, comment, like and remix. Every published game gets a permanent page with its card art and credits.</p></div>
+                        <div class="card"><span class="mono">THEMES</span><h3>Theme packs</h3><p>Full site restyles: colours, fonts, rail icons, motion and a live background scene. Try any pack for free before spending coins.</p></div>
+                    </div>
+                    <div class="note"><p>Guests can play games and read chat. Progress isn't stored for a guest — the first time you play a game with saving, it offers a sign-in, and your bests attach to the account you pick.</p></div>
                 </section>
 
                 <section id="studio">
                     <h2>Studio</h2>
-                    <p>Studio is a VS&nbsp;Code-style workbench: file Explorer on the left, editor in the middle, live Preview on the right, and the Cudic AI panel along the bottom.</p>
+                    <p>Studio is a VS&nbsp;Code-style workbench in the browser: the file Explorer on the left, editor tabs in the middle, the live Preview on the right, and the Cudic AI panel along the bottom bar. Nothing is compiled — the preview assembles your files into a real web page and runs it.</p>
+                    <div class="cards">
+                        <div class="card"><span class="mono">EXPLORER</span><h3>Project tree</h3><p>A tree of your files. Right-click a file for commands, and drag in files to import.</p></div>
+                        <div class="card"><span class="mono">EDITOR</span><h3>Tabs &amp; palette</h3><p>Full editor with syntax highlighting, find &amp; replace, and every command in <code>Ctrl+Shift+P</code>.</p></div>
+                        <div class="card"><span class="mono">PREVIEW</span><h3>Live page</h3><p>The real thing, updating on Run. The console at the bottom catches errors and <code>console.log</code> output.</p></div>
+                        <div class="card"><span class="mono">CUDIC AI</span><h3>AI panel</h3><p>Chat with a model about your project. Apply code suggestions straight into files. See <a href="#ai">Cudic AI</a>.</p></div>
+                    </div>
+                    <h3>Commands</h3>
                     <table>
                         <tr><th>Command</th><th>What it does</th></tr>
                         <tr><td><strong>Save project</strong></td><td>Saves the workspace to your Cudic account (needs a sign-in).</td></tr>
@@ -191,16 +225,18 @@
                         <tr><td><strong>Open Preview / Run</strong></td><td>Runs the project in the preview pane. A <code>.py</code> file runs with Python.</td></tr>
                         <tr><td><strong>Add package / Install Python package</strong></td><td>Adds the import line for an npm or Python package to the open file.</td></tr>
                     </table>
-                    <p>The import and export commands live in the palette, the <strong>File</strong> menu, and the right-click menu in the Explorer or the editor.</p>
+                    <p>The import and export commands live in the palette, the <strong>File</strong> menu, and the right-click menu in the Explorer or the editor — all three routes do the same thing.</p>
                 </section>
 
                 <section id="files">
                     <h2>Project files</h2>
+                    <p>A project is just a folder of files, and the browser is the only machine:</p>
                     <ul>
-                        <li><strong><code>index.html</code> is the entry point.</strong> If your project doesn't have one, the preview won't run.</li>
+                        <li><strong><code>index.html</code> is the entry point.</strong> If your project doesn't have one, the preview won't run. Legacy single-file games (from the old editor) are still served, but new projects should start with an <code>index.html</code>.</li>
                         <li>Local <code>.css</code> and <code>.js</code> siblings are inlined into the preview automatically, so you can keep styles and scripts in separate files and still get one working page.</li>
+                        <li><strong>Files can import each other.</strong> A relative <code>import './helpers.js'</code> inside your own project works in the preview and in the published game — the platform wires each file up under an internal id.</li>
                         <li>Images, audio and other binaries are uploaded separately from your text files, so big media doesn't slow saves down.</li>
-                        <li>Bare imports like <code>import confetti from 'canvas-confetti'</code> are resolved from a public CDN for previews. Publish uses the same URLs, so a published game needs no build step.</li>
+                        <li>Bare imports like <code>import confetti from 'canvas-confetti'</code> are resolved from a public CDN, and publishing uses the same URLs — a published game needs no build step.</li>
                         <li>An importmap in your <code>index.html</code> pins a package to a version or path; anything you pin yourself is left alone.</li>
                     </ul>
                     <div class="note"><p>If a text file you imported shows up as a <strong>binary file</strong> in the editor, it was probably saved as UTF-16 (old Windows Notepad does this by default). Re-save it as UTF-8 and import again.</p></div>
@@ -215,7 +251,13 @@ await micropip.install("cowsay")
 import cowsay
 cowsay.cow("hello from Cudic")</pre>
                     <p><strong>Install Python package</strong> writes that snippet to the top of the open file for you.</p>
-                    <p>Things to know: the first run downloads roughly 10&nbsp;MB of Python, so give it a second. It's a browser runtime, so no files, no network servers and no installing system packages — pure-Python and WASM wheels only.</p>
+                    <h3>Good to know</h3>
+                    <ul>
+                        <li>The first run downloads roughly 10&nbsp;MB of the Python runtime, so give it a second. After that it's cached and fast.</li>
+                        <li>It's a browser runtime: no filesystem, no servers listening on ports, no system packages. Pure-Python and WASM wheels only.</li>
+                        <li>Each run starts fresh — variables from a previous run don't carry over.</li>
+                        <li><strong>Run</strong> in Studio routes <code>.py</code> files here automatically; you don't have to change anything.</li>
+                    </ul>
                 </section>
 
                 <section id="npm">
@@ -224,10 +266,12 @@ cowsay.cow("hello from Cudic")</pre>
                     <pre>import confetti from 'canvas-confetti'
 confetti({ particleCount: 120 })</pre>
                     <p><strong>Add package</strong> inserts a fully-qualified import (optionally with a pinned version) so the file also works when someone else opens it.</p>
+                    <h3>The rules</h3>
                     <ul>
                         <li><code>import 'pkg/style.css'</code> is lifted into a stylesheet link automatically.</li>
                         <li>A <em>dynamic</em> <code>import('pkg/style.css')</code> can't be rewritten — load styles statically instead.</li>
                         <li>No build scripts, no native binaries and no Node built-ins (<code>fs</code>, <code>net</code>, <code>child_process</code>): those don't exist in a browser.</li>
+                        <li>The preview rewrites bare imports to <code>esm.sh</code> URLs. Pin a version with <code>pkg@1.2.0</code> if the latest won't do.</li>
                     </ul>
                 </section>
 
@@ -237,7 +281,7 @@ confetti({ particleCount: 120 })</pre>
                     <h3>Two ways in</h3>
                     <ul>
                         <li><strong>File</strong> — pick a <code>.sb3</code> you've downloaded from Scratch. This is the most reliable route.</li>
-                        <li><strong>Link or id</strong> — paste a shared link like <code>https://scratch.mit.edu/projects/123456789</code> or just the number. You'll be asked to confirm the project is your own or one marked “See inside”.</li>
+                        <li><strong>Link or id</strong> — paste a shared link like <code>https://scratch.mit.edu/projects/123456789</code> or just the number. You'll be asked to confirm the project is your own or one marked "See inside".</li>
                     </ul>
                     <h3>What lands in the workspace</h3>
                     <table>
@@ -256,18 +300,18 @@ confetti({ particleCount: 120 })</pre>
                         <li><strong>Text to speech and translate</strong> blocks need service keys, so they stay silent.</li>
                         <li><strong>Video sensing</strong> needs a camera; the game sandbox doesn't allow it.</li>
                         <li>Projects that use music load a bigger runtime the first time they run.</li>
-                        <li>Scratch rate-limits downloads and sometimes won't hand over a link at all — if a link fails, import the <code>.sb3</code> file instead.</li>
-                        <li>Imports are capped at 25&nbsp;MB, and a heavy project (lots of costumes or sounds) takes longer to save.</li>
+                        <li>Scratch rate-limits downloads and sometimes won't hand over a link at all — if a link fails, import the <code>.sb3</code> file instead. Heavy projects (lots of costumes or sounds) take longer to save.</li>
                     </ul>
                 </section>
 
                 <section id="publish">
                     <h2>Publishing &amp; the gallery</h2>
                     <ul>
-                        <li><strong>Publish</strong> makes your project playable at its own page and lists it in the <a href="/games">gallery</a>. <strong>Unpublish</strong> keeps the project but hides it.</li>
-                        <li>Set a title, a description, and a thumbnail — upload one or capture the preview, which is usually the fastest route to a decent card.</li>
-                        <li>Gallery cards show the thumbnail, title, author and comment count; comments are open on each game's page.</li>
-                        <li>Games play in a sandboxed frame, so nothing in your game can reach your Cudic session. That's why saved progress is handled by Cudic rather than the game (see below).</li>
+                        <li><strong>Publish</strong> makes your project playable at its own page and lists it in the <a href="/games">gallery</a>. <strong>Unpublish</strong> keeps the project but hides it — absolutely no one else can load an unpublished game.</li>
+                        <li>Set a title, a description, and a thumbnail. Upload an image, or capture the preview with one click — usually the fastest route to a decent card. Images are shrunk to fit the gallery, so any reasonable size works.</li>
+                        <li>Gallery cards show the thumbnail, title, author, playing-now count and comment count; comments are open on each game's page.</li>
+                        <li>The top of a game page shows a <strong>live strip</strong> with how many people are in the game's multiplayer rooms right now.</li>
+                        <li>Games play in a sandboxed frame, so nothing in your game can reach your Cudic session. That's why saved progress is handled by Cudic rather than the game (see <a href="#saves">Cloud saves</a>).</li>
                     </ul>
                     <h3>Finding games</h3>
                     <ul>
@@ -280,8 +324,13 @@ confetti({ particleCount: 120 })</pre>
 
                 <section id="remix">
                     <h2>Remixing</h2>
-                    <p><strong>Remix</strong> on any published game copies it into your own projects so you can change it. The game you came from is credited permanently: your copy keeps a line back to its parent and to the original, all the way up the chain, and the original page keeps crediting the parent too.</p>
-                    <p>Credits are part of the game record and don't go away if you edit or unpublish — that link stays with the remix.</p>
+                    <p><strong>Remix</strong> on any published game copies it into your own projects so you can change it. The copy is a normal project — edit every file, publish under your own name when you're ready.</p>
+                    <h3>Credits are permanent</h3>
+                    <ul>
+                        <li>The game you came from is credited forever: your copy keeps a line back to its parent and to the original, all the way up the chain.</li>
+                        <li>The original page keeps crediting the parent too, so remixed games are visible from everywhere they were copied.</li>
+                        <li>Credits are part of the game record. Editing or unpublishing your remix doesn't remove the link upstream.</li>
+                    </ul>
                 </section>
 
                 <section id="saves">
@@ -290,46 +339,81 @@ confetti({ particleCount: 120 })</pre>
                     <ul>
                         <li>Games opt in — the ones in the gallery already do. Your own game can use the same helper if you want saves.</li>
                         <li>Typical shape: best scores and a small amount of state. A clicker-style game can save its whole board; a platformer saves a level and a best.</li>
-                        <li>Each save is small (100&nbsp;KB). If something doesn't fit, save a summary instead of the full board.</li>
+                        <li>Each save is capped at 100&nbsp;KB. If something doesn't fit, save a summary instead of the full board.</li>
+                        <li>Writing your own game? Do it through <code>cudic-save.js</code> — the game frame never holds your account session, Cudic passes the save through. That's what keeps games sandboxed.</li>
+                        <li>Last write wins, so finishing on two devices at once keeps whichever was later. Mid-run boards don't sync — only bests and finished state.</li>
+                        <li>The game page has backup and restore next to the save, so a bad click doesn't lose a save forever.</li>
                         <li>Guests play normally, but nothing is stored — a sign-in prompt appears once per game.</li>
                     </ul>
                 </section>
 
                 <section id="chat">
                     <h2>Chat &amp; servers</h2>
-                    <p>A <strong>server</strong> holds channels; a <strong>channel</strong> holds messages. You can also message people directly.</p>
+                    <p>A <strong>server</strong> holds channels; a <strong>channel</strong> holds messages. You can also message people directly. Chat history is permanent — messages stay unless a moderator removes them.</p>
+                    <div class="cards">
+                        <div class="card"><span class="mono">SERVERS</span><h3>Your spaces</h3><p>Create a server from <a href="/servers">Servers</a> and pick its starting channels — add more later. A server can post rules members acknowledge once.</p></div>
+                        <div class="card"><span class="mono">ROLES</span><h3>Owner · admin · member</h3><p>Admins manage channels and members; members chat. Owners carry the keys.</p></div>
+                        <div class="card"><span class="mono">DMs</span><h3>Direct messages</h3><p>Friends can DM one-on-one: add someone, they accept, then you talk.</p></div>
+                    </div>
                     <ul>
-                        <li><strong>Create a server</strong> from <a href="/servers">Servers</a> — you pick the starting channels, and you can add more later.</li>
-                        <li><strong>Roles:</strong> owner, admin, member. Admins manage channels and members; members chat.</li>
-                        <li><strong>Friends:</strong> add someone, they accept, then you can DM them. Requests show in your profile.</li>
-                        <li><strong>Rules:</strong> a server can post rules that members acknowledge once.</li>
                         <li>Typing indicators, unread badges and read receipts are all live — no refreshing needed.</li>
                         <li>Your servers are listed in the left rail so jumping between them is one click.</li>
                         <li>The <strong>Find a conversation</strong> box filters your message list as you type. Inside a conversation, <strong>Search</strong> looks back through that conversation's history for a word or phrase.</li>
+                        <li>Sending very fast is briefly rate-limited — that's the flood guard keeping bots out of the rooms.</li>
+                        <li>Something wrong in a message? See <a href="#reports">Reports</a>.</li>
                     </ul>
+                </section>
+
+                <section id="multi">
+                    <h2>Playing together</h2>
+                    <p>With other members on Cudic in the same published game: many games run live rooms over Cudic's connection, so you play the real thing together — no extra downloads, no accounts at other services.</p>
+                    <ol class="steps">
+                        <li><strong>Open a game</strong> from the gallery. Games that support it show a live strip with the head-count and how to join.</li>
+                        <li><strong>Pick a room code</strong> if the game offers one; the default room everyone lands in is <code>main</code>.</li>
+                        <li><strong>Play.</strong> Positions, moves and chat-style messages move in real time while you stay on the page.</li>
+                    </ol>
+                    <h3>Who sees what</h3>
+                    <ul>
+                        <li><strong>Names come from Cudic, not the game.</strong> Signed-in players appear with their account name; everyone else is a <em>Guest</em>. A client can't fake a name or clone someone's session.</li>
+                        <li><strong>Rooms are anonymous on purpose</strong> — guests must be able to play along, so joining a room never requires an account.</li>
+                        <li>The game itself can only send small messages through the room; it never sees your session or your saves.</li>
+                    </ul>
+                    <div class="cards">
+                        <div class="card"><span class="mono">32</span><h3>Players per room</h3><p>The room cap per game — a server keeps any third player list honest.</p></div>
+                        <div class="card"><span class="mono">8 KB</span><h3>Message size cap</h3><p>Small packets only, so a game can't flood a room with data.</p></div>
+                        <div class="card"><span class="mono">~200 / 10s</span><h3>Send limit</h3><p>Generous for play, harsh for abuse: per-connection caps on messages and joins.</p></div>
+                    </div>
+                    <h3>Building multiplayer into your game</h3>
+                    <p>Your game uses <code>cudic-multi.js</code> — <code>CudicMulti.join('code')</code> gives you <code>net.send(obj)</code>, <code>net.on('msg')</code>, the peer list and <code>net.leave()</code>, and the platform does the connecting for you. Games running in the Studio preview get their own preview rooms so testing never collides with the published game's rooms.</p>
+                    <div class="note"><p>Nothing in a room is stored, so a room's chat isn't reviewable after the fact. Report a player from the game page's live strip (by account); guests have no account to report — report the game and describe what happened in the note.</p></div>
                 </section>
 
                 <section id="themes">
                     <h2>Theme packs</h2>
-                    <p>A theme pack restyles Cudic: colours, fonts, rail icons, rail background art, motion, and a live background scene. Anyone can try one instantly, or buy it with coins.</p>
-                    <h3>Publishing a pack</h3>
-                    <p><a href="/themes">Themes</a> has a builder that previews changes as you make them and publishes to the store when you're happy.</p>
+                    <p>A theme pack restyles Cudic: colours, fonts, rail icons, rail background art, motion, and a live background scene. Anyone can try one instantly, and buying with coins keeps it — even if the author later changes the price.</p>
+                    <h3>Using packs</h3>
                     <ul>
-                        <li>Pick colours, fonts, icon style, motion level and a scene, then preview.</li>
-                        <li><strong>Advanced</strong> lets you paste a <code>.ctheme</code> — a small text language for packs — plus your own CSS and HTML for the really specific bits.</li>
-                        <li>Set a price in coins (including free), and people who buy it keep it even if you later change the price.</li>
-                        <li>Anyone can report a pack; see <a href="#reports">Reports</a>.</li>
+                        <li>Open <a href="/themes">Themes</a>, preview any pack live-on-the-spot, then install or buy.</li>
+                        <li>Installed packs apply everywhere (rail included) and survive reloads — turn it off from your profile or the pack page.</li>
+                        <li>The store ships with its first pack, <em>anime city night</em> — a neon rail scene.</li>
                     </ul>
-                    <p>Prefer plain CSS? You don't need a pack: any project you publish can include its own stylesheet.</p>
+                    <h3>Build and sell a pack</h3>
+                    <ol class="steps">
+                        <li><strong>Open the builder</strong> on <a href="/themes">Themes</a> — pick colours, fonts, icon style, motion level and a scene. Changes preview as you make them.</li>
+                        <li><strong>Advanced</strong> — paste a <code>.ctheme</code> (a small text language for packs), plus your own CSS and HTML for the really specific bits.</li>
+                        <li><strong>Set a price</strong> in coins (including free), then publish to the store. Sellers earn coins on every sale.</li>
+                    </ol>
+                    <p>Anyone can report a pack — see <a href="#reports">Reports</a>. Prefer plain CSS? You don't need a pack: any project you publish can include its own stylesheet.</p>
                 </section>
 
                 <section id="coins">
                     <h2>Coins</h2>
-                    <p>Coins are Cudic's own currency — there is no real money and no cash-out. You earn them for being around and making things, and spend them on theme packs.</p>
+                    <p>Coins are Cudic's own currency — there is no real money and no cash-out, ever. You earn them for being around and making things, and spend them on theme packs.</p>
                     <ul>
                         <li><strong>Daily claim</strong> on your profile's Earn panel.</li>
                         <li><strong>Quests</strong> — small tasks like publishing a game or joining a server.</li>
                         <li><strong>Activity</strong> — chatting counts toward a small daily trickle.</li>
+                        <li><strong>Bonus from ads</strong> — watch an ad for coins on top, with a weekly cap.</li>
                         <li><strong>Selling packs</strong> earns coins every time someone buys one.</li>
                     </ul>
                     <p>Your balance and every transaction are listed in the same panel, so you can always see where coins came from and went.</p>
@@ -337,19 +421,26 @@ confetti({ particleCount: 120 })</pre>
 
                 <section id="reports">
                     <h2>Reports</h2>
-                    <p>Published games, theme packs, chat messages, and users can all be reported: pick the reason and add what's going on. Packs can include a screenshot. Reports go to the moderators, not to the person who made the thing. Moderators work the queue at <a href="/moderate.html">/moderate</a>.</p>
+                    <p>Published games, theme packs, chat messages, players in multiplayer rooms, and users can all be reported: pick the reason and add what's going on. Packs can include a screenshot. Reports go to the moderators, not to the person who made the thing.</p>
+                    <ul>
+                        <li><strong>Messages</strong> — the report button arms on every message you can see, and a report must say where you saw it.</li>
+                        <li><strong>Players</strong> — reported from the game page's live strip, by account. Guests are anonymous, so put what happened in the note and report the game if a guest is the problem.</li>
+                        <li><strong>Users</strong> — you can't report yourself, by design.</li>
+                        <li><strong>Rate</strong> — up to 20 reports an hour per person, which is plenty.</li>
+                        <li>Moderators work the queue at <a href="/moderate.html">/moderate</a>: review, dismiss or act, and act on a report can unpublish a game or delete a message.</li>
+                    </ul>
                 </section>
 
                 <section id="ai">
                     <h2>Cudic AI panel</h2>
                     <p>The ✦ button in the title bar (or the palette command <strong>Cudic AI: Open chat</strong>) opens a chat panel along the bottom of Studio. It works with the model provider of your choice.</p>
                     <ul>
-                        <li><strong>Bring your own key.</strong> Add a provider once, then pick any model it lists — or a local Ollama / LM Studio model. Keys are stored in this browser and are sent only to the provider you chose.</li>
+                        <li><strong>Bring your own key.</strong> Add a provider once, then pick any model it lists — including local Ollama / LM Studio models running on your own machine. Keys are stored in this browser and are sent only to the provider you chose.</li>
+                        <li><strong>Browse whole catalogs.</strong> Many providers list every model they have — expand the company row and the lineup renders inline. Catalogs auto-refresh in the background.</li>
                         <li><strong>Streaming answers</strong> with code blocks that have <strong>Apply</strong> and <strong>Copy</strong>, so a suggestion becomes an edit in one click.</li>
-                        <li><strong>Slash commands</strong> for the everyday actions (new chat, clear, help, model, keys).</li>
-                        <li><strong>Skills</strong> are reusable prompt packs you can switch on and off — one teaches it Cudic's conventions, another adds a design sensibility pass.</li>
-                        <li><strong>Ghost-text autocomplete</strong> in the editor works when you've saved a key for the model it's using.</li>
-                        <li>It can read and write files in your project, so read the diffs before applying one.</li>
+                        <li><strong>Tools.</strong> Ask it to read or change files and it does a small loop of reads and writes inside your project — read the diffs before applying one.</li>
+                        <li><strong>Slash commands</strong> for the everyday actions (new chat, clear, help, model, keys), and skills — reusable prompt packs you switch on and off. One teaches it Cudic's conventions; another adds a design sensibility pass.</li>
+                        <li><strong>Ghost-text autocomplete</strong> in the editor works when a key is saved for the model it's using.</li>
                     </ul>
                     <p>It needs to know what you're working on to be useful — open the file you're editing or mention it, and it'll answer about that instead of in generalities.</p>
                 </section>
@@ -357,7 +448,16 @@ confetti({ particleCount: 120 })</pre>
                 <section id="account">
                     <h2>Account</h2>
                     <p>Your profile at <a href="/profile">/profile</a> holds the things that follow you: display name, avatar, a short bio, a few interests, accent colour and light/dark preference. Theme, accent and reduced-motion settings are remembered in this browser and applied on every page. Games you've liked are listed there too.</p>
-                    <p>Sign out from the account row at the bottom of the rail. Signing in on a second device takes over the session there — the older device pauses and offers to take it back.</p>
+                    <h3>Verifying your email</h3>
+                    <p>Email signups get a code by mail and confirm it once. An email account still unverified after 24 hours gets removed automatically with its profile — nothing to chase. GitHub accounts are already verified through GitHub.</p>
+                    <h3>One live session</h3>
+                    <p>Signing in on a second device takes over the session there — the older device pauses and offers a <strong>Take over</strong> button to claim it back. In the same browser, your tabs share the seat quietly instead of fighting over it.</p>
+                    <h3>Onboarding &amp; leaving</h3>
+                    <ul>
+                        <li>The first sign-in walks a short wizard: username, then style — non-skippable, so new accounts always have a name people can find.</li>
+                        <li>Sign out from the account row at the bottom of the rail.</li>
+                        <li><strong>Delete your account</strong> from profile → Security: type a random code and hold the button to confirm. Your profile, projects, saves and the auth user go together.</li>
+                    </ul>
                 </section>
 
                 <section id="faq">
@@ -372,6 +472,10 @@ confetti({ particleCount: 120 })</pre>
                     <p>Games run sandboxed, so hardware access is off. It's the same reason a game can't read your account.</p>
                     <h3>Studio feels slow the first time.</h3>
                     <p>The workbench is a large download on first visit. After that it's cached and normal.</p>
+                    <h3>Are coins real money?</h3>
+                    <p>No — they're Cudic's own currency for theme packs. You can't buy them with money or cash them out; you earn them.</p>
+                    <h3>Someone is being a problem in a game.</h3>
+                    <p>Report the player from the live strip on the game page (signed-in players are reported by account). Guests can't be reported by account — describe what happened in the note and report the game.</p>
                 </section>
 
                 <section id="limits">
@@ -382,6 +486,8 @@ confetti({ particleCount: 120 })</pre>
                         <li>Guest progress isn't stored, and cloud saves are opt-in per game.</li>
                         <li>Text-to-speech and translate blocks are silent; video sensing is blocked.</li>
                         <li>Editing a Scratch <code>project.json</code> alone doesn't change what's running until you re-import or sync.</li>
+                        <li>Dynamic CSS imports (<code>import('pkg/style.css')</code>) can't be lifted — load styles statically.</li>
+                        <li>Multiplayer rooms cap at 32 players and 8&nbsp;KB per message.</li>
                         <li>Imports cap at 25&nbsp;MB and each cloud save at 100&nbsp;KB.</li>
                     </ul>
                     <p>Something missing or wrong? Tell us in a server, or report the game or pack and we'll take a look.</p>
@@ -390,21 +496,27 @@ confetti({ particleCount: 120 })</pre>
                 <section id="credits">
                     <h2>Credits</h2>
                     <ul>
-                        <li><strong>Art</strong> comes from Kenney's CC0 game assets.</li>
+                        <li><strong>Art</strong> — Kenney's CC0 game and board-game icon assets, shipped inside Studio's Insert-icon library and used across the site.</li>
+                        <li><strong>Type</strong> — Geist and Geist Mono (Vercel) carry every page.</li>
+                        <li><strong>Scratch runtime</strong> — TurboWarp's Scaffolding loader, so imported Scratch projects play as themselves.</li>
+                        <li><strong>Editor</strong> — Studio's workbench is built on the VS&nbsp;Code core (monaco), wired up in the browser.</li>
                     </ul>
+                    <p>And to everyone who publishes, remixes, sells packs and reports problems: that's the site. Keep making things.</p>
                 </section>
-            </article>
-            <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
+
+                    </article>
+                </div>
+                <div class="ad-frame ad-leaderboard"><span class="ad-cap" aria-hidden="true">Advertisement</span><!-- paused: awaiting AdSense code --></div>
+                <footer class="mono">Cudic docs · <a href="/">cudic.vercel.app</a> · <a href="/cookbook/">cookbook</a> · <a href="/brand.html">brand kit</a></footer>
             </div>
 
-            <footer class="mono">Cudic docs · <a href="/">cudic.vercel.app</a> · <a href="/cookbook/">cookbook</a></footer>
-            </div>
+            <aside class="subtoc" id="subToc"><div class="toc-label">On this page</div><div id="subTocLinks"></div></aside>
         </div>
     </div>
 
     <script>
     /* Docs section router: one section visible at a time, hash-addressed
-       (/docs#studio). Left nav + crumb + right rail build themselves from
+       (/docs#studio). Sidebar + crumb + right rail build themselves from
        the sections, so adding a section is just adding a <section>. */
     (function () {
         var secs = Array.prototype.slice.call(document.querySelectorAll('article section'));
@@ -419,12 +531,19 @@ confetti({ particleCount: 120 })</pre>
             if (h) h.dataset.n = String(i + 1).padStart(2, '0');   /* brand-style "01" counter chip */
             var a = document.createElement('a');
             a.href = '#' + s.id;
-            a.textContent = titles[s.id];
             a.dataset.sec = s.id;
+            var n = document.createElement('span');
+            n.className = 'n';
+            n.textContent = String(i + 1).padStart(2, '0');
+            var t = document.createElement('span');
+            t.textContent = titles[s.id];
+            a.appendChild(n);
+            a.appendChild(t);
             nav.appendChild(a);
         });
         secs.forEach(function (s) {
             Array.prototype.forEach.call(s.querySelectorAll('h3'), function (h, i) {
+                if (h.closest('.card')) return;   /* card-cell titles aren't TOC entries */
                 if (!h.id) h.id = s.id + '-' + (i + 1);
             });
         });
@@ -436,13 +555,14 @@ confetti({ particleCount: 120 })</pre>
             if (crumb) crumb.textContent = titles[id];
             sub.innerHTML = '';
             Array.prototype.forEach.call(sec.querySelectorAll('h3'), function (h) {
+                if (h.closest('.card')) return;
                 var l = document.createElement('a');
                 l.href = '#' + h.id;
                 l.textContent = h.textContent;
                 l.className = 'lvl3';
                 sub.appendChild(l);
             });
-            window.scrollTo(0, 0);   /* body is the scroll container now (no .docs-scroll panel) */
+            window.scrollTo(0, 0);   /* body is the scroll container */
             return true;
         }
         function route() {
@@ -522,56 +642,10 @@ confetti({ particleCount: 120 })</pre>
         });
         addEventListener('scroll', sync, { passive: true });
         addEventListener('resize', sync);
-
-        /* Nav band: custom horizontal twin (the native bar had arrows — replaced). */
-        var navBand = document.querySelector('nav.nav');
-        var navTrack = document.createElement('div');
-        navTrack.id = 'cudicNavScroll';
-        var navThumb = document.createElement('div');
-        navThumb.id = 'cudicNavThumb';
-        navTrack.appendChild(navThumb);
-        document.body.appendChild(navTrack);
-        function navDims() {
-            var w = navBand.clientWidth, overX = navBand.scrollWidth - w;
-            var th = Math.max(48, w * w / navBand.scrollWidth);
-            th = Math.min(th, w - 8);
-            return { w: w, overX: overX, th: th, avail: w - th };
-        }
-        function navSync() {
-            var d = navDims();
-            navTrack.style.display = d.overX > 0 ? '' : 'none';
-            if (!(d.overX > 0)) return;
-            navTrack.style.top = navBand.getBoundingClientRect().bottom + 'px';
-            navThumb.style.width = d.th + 'px';
-            navThumb.style.left = (navBand.scrollLeft / d.overX) * d.avail + 'px';
-        }
-        var xdrag = null;
-        navThumb.addEventListener('pointerdown', function (e) {
-            if (navDims().overX <= 0) return;
-            xdrag = { x0: e.clientX, l0: navThumb.getBoundingClientRect().left };
-            navThumb.setPointerCapture(e.pointerId);
-            navTrack.classList.add('drag');
-            e.preventDefault();
-        });
-        navThumb.addEventListener('pointermove', function (e) {
-            if (!xdrag) return;
-            var d = navDims(), left = Math.max(0, Math.min(d.avail, xdrag.l0 + e.clientX - xdrag.x0));
-            navBand.scrollLeft = (left / d.avail) * d.overX;
-        });
-        ['pointerup', 'pointercancel'].forEach(function (t) {
-            navThumb.addEventListener(t, function () { xdrag = null; navTrack.classList.remove('drag'); });
-        });
-        navTrack.addEventListener('pointerdown', function (e) {
-            if (e.target !== navTrack) return;
-            var d = navDims();
-            navBand.scrollLeft = Math.max(0, Math.min(e.clientX, d.avail)) / d.avail * d.overX;
-        });
-        navBand.addEventListener('scroll', navSync, { passive: true });
-        addEventListener('resize', navSync);
-        navSync();
         sync();
     })();
     </script>
+    <script src="/theme-toggle.js?v=1"></script>
 
 </body>
 
