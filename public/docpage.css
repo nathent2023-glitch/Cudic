@@ -60,7 +60,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Geist",sy
 @keyframes blink{50%{opacity:0}}
 .lead{color:var(--mute);max-width:74ch;margin:14px 0 0;font-size:15.5px;line-height:1.6}
 .lead strong{color:var(--ink);font-weight:500}
-.lead a{color:var(--blue);text-decoration:none}
+.lead a{color:var(--blue);text-decoration:underline}
 .lead a:hover{text-decoration:underline}
 
 .docbody{flex:1;padding:26px 40px 34px}
@@ -77,7 +77,7 @@ article ul{padding-left:18px;margin:10px 0}
 article ol{padding-left:20px;margin:10px 0}
 article li{margin-bottom:6px}
 article strong{color:var(--ink);font-weight:600}
-article a{color:var(--blue);text-decoration:none}
+article a{color:var(--blue);text-decoration:underline}
 article a:hover{text-decoration:underline}
 
 ol.steps{list-style:none;padding:0;counter-reset:step;margin:14px 0}
@@ -120,7 +120,7 @@ td:first-child{white-space:nowrap}
 .navHead{font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;color:var(--mute);letter-spacing:.08em;text-transform:uppercase;padding:18px 16px 10px}
 
 footer{border-top:1px solid var(--line);padding:20px 40px 26px;color:var(--mute);font-family:"Geist Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.02em}
-footer a{color:var(--mute);text-decoration:none}
+footer a{color:var(--mute);text-decoration:underline}
 footer a:hover{color:var(--ink)}
 
 a:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
