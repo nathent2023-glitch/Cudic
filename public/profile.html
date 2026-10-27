@@ -235,6 +235,7 @@
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
   <script src="/sidebar.js?v=18"></script>
+  <script src="/theme-toggle.js?v=1"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
@@ -243,6 +244,7 @@
     var urlId = new URLSearchParams(window.location.search).get('id');
     if (urlId) { window.location.replace('/profile'); return; }
     var isPublic = false;
+    var accountTheme = null;
     function msg(el, text, ok){ el.textContent = text; el.className = 'status-msg ' + (ok ? 'ok' : 'err'); }
     function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
 
@@ -268,6 +270,13 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (!d.profile) return;
+        if (d.profile.theme) {
+          accountTheme = d.profile.theme;
+          try { localStorage.setItem('glox_theme', accountTheme); } catch (e) {}
+          if (accountTheme !== 'light') document.documentElement.dataset.theme = 'dark';
+          else delete document.documentElement.dataset.theme;
+          paintThemeSeg();
+        }
         document.getElementById('displayName').value = d.profile.display_name;
         document.getElementById('publicName').textContent = d.profile.display_name;
         myNumericId = d.profile.user_id;
@@ -574,14 +583,16 @@
     /* Appearance: system / light / dark */
     var seg = document.getElementById('themeSeg');
     function paintThemeSeg(){
-      var v = 'dark';
-      try { v = localStorage.getItem('glox_theme') || 'dark'; } catch (e) {}
+      var v = accountTheme;
+      if (!v) { try { v = localStorage.getItem('glox_theme') || 'dark'; } catch (e) { v = 'dark'; } }
       seg.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-theme-val') === v); });
     }
     function applyThemeVal(v){
       try { localStorage.setItem('glox_theme', v); } catch (e) {}
+      accountTheme = v;
       if (v !== 'light') document.documentElement.dataset.theme = 'dark';
       else delete document.documentElement.dataset.theme;
+      if (t) { try { fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t }, body: JSON.stringify({ theme: v }) }); } catch (e) {} }
       paintThemeSeg();
       msg(document.getElementById('themeMsg'), v === 'light' ? 'Light mode on.' : 'Dark mode on.', true);
     }
