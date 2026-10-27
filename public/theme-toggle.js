@@ -22,7 +22,9 @@
     }
 
     /* ev optional: rail buttons pass their click so the reveal starts at the button */
+    var _transitioning = false;
     window.CudicThemeToggle = function (ev, btnEl) {
+        if (_transitioning) return;   // ignore rapid toggles mid-transition
         var next = isDark() ? 'light' : 'dark';
         function apply() {
             try { localStorage.setItem('glox_theme', next); } catch (x) {}
@@ -40,14 +42,16 @@
         var maxR = Math.max(Math.hypot(cx, cy), Math.hypot(w - cx, cy), Math.hypot(cx, h - cy), Math.hypot(w - cx, h - cy));
         var kx = (cx / w) * 100, ky = (cy / h) * 100,
             kr = (maxR / (Math.hypot(w, h) / Math.SQRT2)) * 100;
+        _transitioning = true;
         var t = document.startViewTransition(apply);
         t.ready.then(function () {
             /* percentages, not px — px clip coords land wrong on fractional display scales */
             document.documentElement.animate(
                 { clipPath: ['circle(0% at ' + kx + '% ' + ky + '%)', 'circle(' + kr + '% at ' + kx + '% ' + ky + '%)'] },
-                { duration: 520, easing: 'cubic-bezier(0.4,0,0.2,1)', pseudoElement: '::view-transition-new(root)' }
+                { duration: 480, easing: 'steps(6)', pseudoElement: '::view-transition-new(root)' }
             );
         });
+        t.finished.then(function () { _transitioning = false; }).catch(function () { _transitioning = false; });
     };
 
     var css = document.createElement('style');

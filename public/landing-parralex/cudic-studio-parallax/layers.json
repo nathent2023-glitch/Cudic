@@ -1,0 +1,85 @@
+{
+  "canvas": [
+    400,
+    260
+  ],
+  "visible": [
+    320,
+    180
+  ],
+  "overscan": 40,
+  "pixelScale": "1 art pixel = 4 screen px at 4x",
+  "strength": 24,
+  "layers": [
+    {
+      "file": "01-sky",
+      "depth": 0.0,
+      "z": 1,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "static backdrop"
+    },
+    {
+      "file": "02-stars",
+      "depth": 0.03,
+      "z": 2,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "tw1 / tw2 twinkle"
+    },
+    {
+      "file": "03-skyline",
+      "depth": 0.06,
+      "z": 3,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "tw1 antenna light"
+    },
+    {
+      "file": "04-clouds",
+      "depth": 0.1,
+      "z": 4,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "cl drift"
+    },
+    {
+      "file": "05-studio",
+      "depth": 0.18,
+      "z": 5,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "caret, pulse, legA/legB, eb(blink), face-*, #typed, #st-pos, .acc/.acct"
+    },
+    {
+      "file": "06-floaters",
+      "depth": 0.32,
+      "z": 6,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "class bob, id f-*"
+    },
+    {
+      "file": "07-foreground",
+      "depth": 0.65,
+      "z": 7,
+      "size": [
+        400,
+        260
+      ],
+      "animated": "id fgcur follows pointer in demo"
+    }
+  ]
+}

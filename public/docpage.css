@@ -7,7 +7,9 @@
 :root[data-theme="light"]{--bg:#f7f5ec;--panel:#efece0;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63;--blue:#1b3fb8}
 :root[data-theme="light"] .docside .mark{content:url('/cudic-assets/brand/logo/cudic-mark-ink.svg')}
 *{box-sizing:border-box}
-html{scroll-padding-top:24px;scroll-behavior:smooth}
+html{scroll-padding-top:24px;scroll-behavior:smooth;overflow-x:hidden;scrollbar-width:none}
+body{overflow-x:hidden}
+html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
 
 /* Page scrollbar (JS adds .cuscroll) */
 html.cuscroll{scrollbar-width:none}
@@ -24,7 +26,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Geist",sy
 .wrap{margin:0;min-height:100vh;border-left:1px solid var(--line);border-right:1px solid var(--line)}
 
 .docgrid{display:grid;grid-template-columns:238px minmax(0,1fr) 212px}
-.docside{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.docside{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .brandrow{display:flex;align-items:center;gap:10px;padding:15px 16px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-weight:600;font-size:15px}
 .brandrow .mark{display:block}
 .brandrow:hover{background:var(--panel)}
@@ -130,16 +132,24 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--blue);outline-offse
 }
 @media (max-width:960px){
     .docgrid{grid-template-columns:1fr}
-    .docside{position:static;height:auto;border-bottom:1px solid var(--line)}
-    #docNav{max-height:none;overflow:visible;columns:2;column-gap:0;column-rule:1px solid var(--line)}
+    .docside{position:fixed;left:-240px;top:0;height:100vh;width:238px;z-index:60;border-right:1px solid var(--line);border-bottom:0;transition:left 200ms steps(6);overflow-y:auto}
+    .docside.open{left:0}
+    .docbackdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:55}
+    .docbackdrop.open{display:block}
+    .docburger{display:flex;position:fixed;top:14px;left:14px;z-index:65;width:40px;height:40px;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:500 18px "Geist Mono",monospace;cursor:pointer}
+    .docclose{display:flex;align-self:flex-end;margin:12px 12px 0 0;width:36px;height:36px;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);color:var(--ink);font:500 16px "Geist Mono",monospace;cursor:pointer}
+    #docNav{max-height:none;overflow:visible;columns:1}
     #docNav a{break-inside:avoid}
     #docNav a:last-child{border-bottom:1px solid var(--line)}
     #backBtn{border-top:0}
-    .docmain{border-left:0;min-height:0}
+    .docmain{border-left:0;min-height:0;padding-top:56px}
     .docHead,.docbody{padding-left:22px;padding-right:22px}
     .docHead{padding-top:22px}
     .docHead h1{font-size:27px}
     footer{padding-left:22px;padding-right:22px}
+}
+@media (min-width:961px){
+    .docburger,.docbackdrop{display:none}
 }
 @media (prefers-reduced-motion:reduce){
     *,*:before,*:after{animation:none!important;transition:none!important}

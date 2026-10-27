@@ -1,0 +1,4 @@
+.px-stage{position:relative;width:min(100vw,calc(100dvh*16/9));aspect-ratio:16/9;overflow:hidden;background:#0d0e10}
+.px-stage img{position:absolute;left:-12.5%;top:-22.222%;width:125%;height:144.444%;image-rendering:pixelated;pointer-events:none;
+  transform-origin:50% 50%;will-change:transform}
+@media (prefers-reduced-motion:reduce){.px-stage img{transition:none}}

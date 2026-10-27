@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cudic Brand Kit</title>
@@ -209,7 +210,7 @@ nav a:hover{background:none;box-shadow:inset 0 -3px var(--blue)}
  </section>
 
  <section class="sec" id="pixel">
-  <div class="sh"><h2>Icon theme</h2><span class="mono">47 icons · 8×8 · click to copy SVG</span></div>
+  <div class="sh"><h2>Icon theme</h2><span class="mono">47 icons · 8×8 · click to copy SVG · right-click to copy PNG</span></div>
   <p class="intro">A complete pixel icon set drawn on an 8×8 grid. Chunky, notched and playful, with one bright spark in every icon.</p>
   <div class="grid g4">
    <div class="cell"><p class="mono">01 · GRID</p><b>8×8, one cell = one pixel</b><p>No half pixels, no anti-aliasing.</p></div>
@@ -293,12 +294,17 @@ var ib=document.getElementById('icons');
 CATS.forEach(function(c){var s='<p class="mono ch">'+c[0]+'</p><div class="ig">';c[1].split(' ').forEach(function(k){s+='<button class="ik2" data-k="'+k+'" title="Copy SVG"><svg data-i="'+k+'" width="48" height="48"></svg><span class="mono">'+k+'</span></button>'});ib.insertAdjacentHTML('beforeend',s+'</div>')});
 document.getElementById('isz').innerHTML=[16,24,32,48,64].map(function(n){return '<div><svg data-i="ghost" width="'+n+'" height="'+n+'"></svg><span class="mono">'+n+'</span></div>'}).join('');
 document.getElementById('itl').innerHTML=[['#b8f23a','#0d0e10','rocket'],['#3f7cff','#0d0e10','skull'],['#0d0e10','#f7f5ec','star'],['#f7f5ec','#0d0e10','key']].map(function(t){return '<div style="background:'+t[0]+';color:'+t[1]+';border:1px solid var(--line)"><svg data-i="'+t[2]+'" width="40" height="40"></svg></div>'}).join('');
-ib.addEventListener('click',function(ev){var b=ev.target.closest('.ik2');if(!b)return;var k=b.dataset.k,s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">'+px(IC[k],P).replace(/currentColor/g,'#0d0e10')+'</svg>';try{navigator.clipboard.writeText(s);toast(k+'.svg copied')}catch(e){toast('Copy not available here')}});
+ib.addEventListener('click',function(ev){var b=ev.target.closest('.ik2');if(!b)return;var k=b.dataset.k,base=isDarkMode()?'#f7f5ec':'#0d0e10',s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">'+px(IC[k],P).replace(/currentColor/g,base)+'</svg>';copySvgText(k,s,base)});
+ib.addEventListener('contextmenu',function(ev){var b=ev.target.closest('.ik2');if(!b)return;ev.preventDefault();var k=b.dataset.k;copyPng(k)});
 paint();
 document.documentElement.classList.add('js');
 var rv=document.querySelectorAll('.sec');rv.forEach(function(e){e.classList.add('rv')});
 if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{threshold:.05});rv.forEach(function(e){io.observe(e)})}else rv.forEach(function(e){e.classList.add('in')});
 function toast(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('on');setTimeout(function(){e.classList.remove('on')},1400)}
+function copySvgText(k,s,base){var mode=base==='#f7f5ec'?'dark':'light';try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(function(){toast(k+'.svg copied ('+mode+' mode)')}).catch(function(){dlText(k+'.svg',s,'image/svg+xml')});return}}catch(e){} dlText(k+'.svg',s,'image/svg+xml');toast(k+'.svg copied ('+mode+' mode)')}
+function dlText(name,text,mime){var b=new Blob([text],{type:mime});var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u)},1000)}
+function isDarkMode(){var t=document.documentElement.dataset.theme;if(t)return t!=='light';return !matchMedia('(prefers-color-scheme: light)').matches}function copyPng(k){var base=isDarkMode()?'#f7f5ec':'#0d0e10';var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" shape-rendering="crispEdges">'+px(IC[k],P).replace(/currentColor/g,base)+'</svg>';var img=new Image();img.onload=function(){var c=document.createElement('canvas');c.width=64;c.height=64;var cx=c.getContext('2d');cx.imageSmoothingEnabled=false;cx.drawImage(img,0,0,64,64);c.toBlob(function(blob){try{if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){toast(k+'.png copied ('+(isDarkMode()?'dark':'light')+' mode)')}).catch(function(){dlBlob(k+'.png',blob)})}else dlBlob(k+'.png',blob)}catch(e){dlBlob(k+'.png',blob)}},'image/png')};img.src='data:image/svg+xml,'+encodeURIComponent(s)}
+function dlBlob(name,blob){var u=URL.createObjectURL(blob);var a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(u)},1000);toast(name+' downloaded')}
 function copySvg(){var p=document.querySelector('#cm path').outerHTML.replace('currentColor','#0d0e10');var s='<svg xmlns="http://www.w3.org/2000/svg" viewBox="515 425 890 1070">'+p+'</svg>';try{navigator.clipboard.writeText(s);toast('SVG copied')}catch(e){toast('Copy not available here')}}
 var cols=[['Ink','#0d0e10','#f7f5ec'],['Cream','#f7f5ec','#0d0e10'],['Lime','#b8f23a','#0d0e10'],['Blue','#3f7cff','#0d0e10'],['Sky','#9fd0ff','#0d0e10'],['Panel','#14161b','#f7f5ec'],['Line','#262a33','#f7f5ec'],['Mute','#9a9a94','#0d0e10']];
 var sw=document.getElementById('swatches');
@@ -342,5 +348,6 @@ cur=function(k,sc){if(ST!='fluid')return curPx(k,sc);var d=FL[k],s=sc*16;return{
 document.getElementById('sts').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;ST=b.dataset.s;this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x==b)});drawCur()});
 drawCur();
 </script>
+<script src="/theme-toggle.js?v=1"></script>
 </body>
 </html>

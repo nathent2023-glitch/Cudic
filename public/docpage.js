@@ -174,3 +174,32 @@
         sync();
     }
 })();
+
+/* Mobile hamburger drawer for the docs sidebar */
+(function () {
+    var side = document.querySelector('.docside');
+    var nav = document.getElementById('docNav');
+    if (!side || !nav) return;
+    if (window.matchMedia('(min-width:961px)').matches) return;
+    // close button lives INSIDE the drawer so it slides with it
+    var closeBtn = document.createElement('button');
+    closeBtn.className = 'docclose';
+    closeBtn.setAttribute('aria-label', 'Close navigation');
+    closeBtn.textContent = '\u2715';
+    side.insertBefore(closeBtn, side.firstChild);
+    // fixed burger shown only when drawer is closed
+    var burger = document.createElement('button');
+    burger.className = 'docburger';
+    burger.setAttribute('aria-label', 'Open navigation');
+    burger.textContent = '\u2630';
+    var backdrop = document.createElement('div');
+    backdrop.className = 'docbackdrop';
+    document.body.appendChild(burger);
+    document.body.appendChild(backdrop);
+    function open() { side.classList.add('open'); backdrop.classList.add('open'); burger.style.display = 'none'; }
+    function close() { side.classList.remove('open'); backdrop.classList.remove('open'); burger.style.display = ''; }
+    burger.addEventListener('click', function (e) { e.stopPropagation(); open(); });
+    closeBtn.addEventListener('click', function (e) { e.stopPropagation(); close(); });
+    backdrop.addEventListener('click', close);
+    nav.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'A') close(); });
+})();

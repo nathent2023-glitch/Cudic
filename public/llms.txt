@@ -1,0 +1,31 @@
+# Cudic
+
+> Cudic is a browser studio for making games, sites, and themes, with saves, multiplayer, and a community built in. Nothing to install.
+
+## About
+Cudic combines a chat/community layer with a full browser-based game studio, a gallery of playable games, theme packs that restyle the whole site, and a small currency (coins) for rewarding creators. Everything runs in the browser.
+
+## Key features
+- Studio: VS Code-style workbench with file explorer, tabs, live preview, command palette. HTML/CSS/JS, import files/folders, Scratch import, Python (WebAssembly), npm via CDN.
+- Gallery: publish games with permanent pages, card art, comments, likes, remix. Browse/search/sort.
+- Chat & servers: public/private servers with channels, roles, DMs.
+- Theme packs: full site restyles (colours, fonts, icons, motion, live scene). Try free, buy with coins.
+- Cloud saves: progress follows the player's account. One script tag, 100 KB budget.
+- Multiplayer: live rooms over Cudic's connection. Up to 32 players/room. Guests join without an account.
+- Coins: earned via daily claims, quests, activity, ad bonuses, selling packs. Not real money.
+- Cudic AI panel: chat with your model of choice about your project; apply code suggestions.
+- Remix: fork any published game; credits carry up the chain.
+
+## Links
+- Home: https://cudic.vercel.app/
+- Studio: https://cudic.vercel.app/studio
+- Games gallery: https://cudic.vercel.app/games
+- Docs: https://cudic.vercel.app/docs
+- Cookbook: https://cudic.vercel.app/cookbook/
+- Themes: https://cudic.vercel.app/themes
+- Privacy: https://cudic.vercel.app/privacy
+- Terms: https://cudic.vercel.app/terms
+- Brand kit: https://cudic.vercel.app/brand.html
+
+## Contact
+Reach out via the site chat.
