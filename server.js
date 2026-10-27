@@ -641,8 +641,15 @@ async function handleRequest(req, res) {
       const q = new URL(req.url, 'http://localhost').searchParams;
       const userId = q.get('id') || q.get('user_id');
       if (!userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'id required' })); return; }
-      const { data, error } = await supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug').eq('id', userId).single();
-      if (error || !data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
+      const [profileRes, gamesRes, packsRes] = await Promise.all([
+        supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug').eq('id', userId).single(),
+        supabase.from('games').select('id, title').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
+        supabase.from('theme_packs').select('slug, name').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20)
+      ]);
+      const data = profileRes.data;
+      if (profileRes.error || !data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
+      data.games = gamesRes.data || [];
+      data.packs = packsRes.data || [];
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ profile: data }));
     } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: 'Server error' })); }
