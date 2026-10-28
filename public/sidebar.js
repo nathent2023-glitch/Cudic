@@ -88,6 +88,9 @@
   // Servers icon
   icons.server='<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 8h4M7 12h10"/><circle cx="17" cy="8" r="1"/><circle cx="17" cy="12" r="1"/></svg>';
 
+  // Friends icon (two people)
+  icons.users='<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 19a5 5 0 0 1 5-4.5"/></svg>';
+
   // Themes icon (palette)
   icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
 
@@ -137,6 +140,7 @@
       +'<a class="rail-brand" id="railBrand" href="/" aria-label="Cudic home"><img src="/cudic_sfsvg.svg" alt="Cudic" width="36" height="36" style="max-width:100%;object-fit:contain;"></a>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
+      +sbItem('/friends','friends','users','Friends')
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
       +sbItem('/forums','forums','forum','Forums')

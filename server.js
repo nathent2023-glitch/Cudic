@@ -2531,7 +2531,9 @@ function slugify(s) {
     else if (sort === 'old') query = query.order('created_at', { ascending: true });
     else if (sort === 'az') query = query.order('title', { ascending: true });
     else query = query.order('updated_at', { ascending: false });
-    const { data, error } = await query.limit(50);
+    // Pagination: offset is the only paging knob (size stays 50).
+    const offset = Math.max(0, parseInt(String(url.searchParams.get('offset') || '0'), 10) || 0);
+    const { data, error } = await query.range(offset, offset + 49);
     const rows = data || [];
     // Trending = plays against age: total plays weighted down by how many
     // hours the game has existed, so a fresh game with a few plays can outrank
@@ -3766,6 +3768,11 @@ function slugify(s) {
   // ── Redirect /creator to /creator.html ─────────────────────────
   if (url.pathname === '/creator') {
     url.pathname = '/creator.html';
+  }
+
+  // ── Redirect /friends to /friends.html ─────────────────────────
+  if (url.pathname === '/friends') {
+    url.pathname = '/friends.html';
   }
 
   // ── Redirect /themes to /themes.html ──────────────────────────

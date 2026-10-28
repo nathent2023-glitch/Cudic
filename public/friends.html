@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friends — Cudic</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+<link rel="stylesheet" href="/sidebar.css?v=25">
+<style>
+:root{--bg:#0d0e10;--panel:#14161b;--panel-raised:#1a1e26;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--signal:#b8f23a;--blue:#3f7cff;--danger:#d9381e;--radius:3px;--font-head:"Geist",system-ui,sans-serif;--font-body:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
+:root[data-theme="light"]{--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font-body);min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:40px 24px 64px}
+h1{font-family:var(--font-head);font-weight:600;font-size:1.5rem;letter-spacing:-.02em;margin-bottom:4px}
+.sub{color:var(--mute);font-size:.9rem;margin-bottom:24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px}
+.card h2{font-family:var(--font-head);font-weight:600;font-size:1rem;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--panel-raised);color:var(--signal);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:600;font-size:.85rem;overflow:hidden;flex-shrink:0}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.grow{flex:1;min-width:0}
+.grow b{display:block;font-weight:500}
+.grow span{font-size:.78rem;color:var(--mute)}
+.acts{display:flex;gap:8px}
+.btn{border:1px solid var(--line);background:var(--panel-raised);color:var(--ink);border-radius:var(--radius);padding:6px 12px;font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn:hover{border-color:var(--signal)}
+.btn.primary{background:var(--signal);color:#0d0e10;border-color:transparent}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+.addrow{display:flex;gap:8px}
+input[type=text]{flex:1;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font:inherit;font-size:.85rem;padding:8px 12px;outline:none}
+input[type=text]:focus{border-color:var(--signal)}
+#msg{font-size:.85rem;margin-top:10px}
+#msg.err{color:var(--danger)}
+#msg.ok{color:var(--signal)}
+.empty{color:var(--mute);font-size:.9rem;padding:6px 0}
+</style>
+</head>
+<body>
+<nav class="sidebar" id="sidebar" aria-label="Main"></nav>
+<main class="wrap">
+  <h1>Friends</h1>
+  <p class="sub">Requests you send and accept on your public profile.</p>
+
+  <div class="card">
+    <h2>Add a friend</h2>
+    <div class="addrow">
+      <input type="text" id="addInput" placeholder="Paste their profile id (cudic id # or uuid)">
+      <button class="btn primary" id="addBtn">Send request</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="card" id="incomingCard">
+    <h2>Incoming requests</h2>
+    <div id="incomingList"></div>
+  </div>
+  <div class="card" id="outgoingCard">
+    <h2>Sent</h2>
+    <div id="outgoingList"></div>
+  </div>
+  <div class="card">
+    <h2>Friends</h2>
+    <div id="friendsList"></div>
+  </div>
+</main>
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script src="/sidebar.js?v=19"></script>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(function(){
+  function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+  function initials(name){ return String(name||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase(); }
+  function apiHost(){ return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''; }
+  function token(){ try { if(window.getAuthToken) return window.getAuthToken().then(function(a){return a||null;}); var s=JSON.parse(localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token')); return Promise.resolve(s&&s.access_token||null); } catch(e){ return Promise.resolve(null); } }
+  var msgEl=document.getElementById('msg');
+  function msg(t,ok){ msgEl.textContent=t; msgEl.className=ok?'ok':'err'; }
+  function rowHtml(u, badge, acts){
+    return '<div class="row"><div class="avatar">' + (u.avatar_url?('<img src="'+esc(String(u.avatar_url).replace(/"/g,''))+'" alt="">'):initials(u.display_name)) + '</div><div class="grow"><b>' + esc(u.display_name) + '</b><span>' + esc(badge) + '</span></div><div class="acts">' + acts + '</div></div>';
+  }
+  function load(){
+    token().then(function(t){
+      if(!t){ window.location.href='/login'; return; }
+      fetch(apiHost()+'/api/friends',{headers:{'Authorization':'Bearer '+t}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          document.getElementById('friendsList').innerHTML = d.friends.length ? d.friends.map(function(u){ return rowHtml(u,'friends since '+esc(new Date(u.since).toLocaleDateString()),
+            '<button class="btn danger" data-act="remove" data-id="'+u.id+'">Remove</button>'); }).join('') : '<div class="empty">No friends yet — send someone a request.</div>';
+          document.getElementById('incomingList').innerHTML = d.incoming.length ? d.incoming.map(function(u){ return rowHtml(u,'wants to be friends',
+            '<button class="btn primary" data-act="accept" data-id="'+u.id+'">Accept</button><button class="btn danger" data-act="decline" data-id="'+u.id+'">Decline</button>'); }).join('') : '<div class="empty">No incoming requests.</div>';
+          document.getElementById('outgoingList').innerHTML = d.outgoing.length ? d.outgoing.map(function(u){ return rowHtml(u,'request sent',
+            '<button class="btn danger" data-act="cancel" data-id="'+u.id+'">Cancel</button>'); }).join('') : '<div class="empty">No sent requests.</div>';
+          document.querySelectorAll('[data-act]').forEach(function(b){
+            b.addEventListener('click', function(){
+              var act=b.dataset.act, uid=b.dataset.id;
+              if(act==='remove') api('DELETE','/api/friends/'+uid);
+              else if(act==='accept') api('POST','/api/friends/'+uid+'/accept');
+              else if(act==='decline') api('POST','/api/friends/'+uid+'/decline');
+              else if(act==='cancel') api('DELETE','/api/friends/'+uid);
+            });
+          });
+        })
+        .catch(function(){ msg('Could not load friends.',false); });
+    });
+  }
+  function api(method, path){
+    token().then(function(t){
+      fetch(apiHost()+path,{method:method,headers:{'Authorization':'Bearer '+t}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.error){ msg(d.error,false); } else load(); })
+        .catch(function(){ msg('Request failed.',false); });
+    });
+  }
+  document.getElementById('addBtn').addEventListener('click', function(){
+    var raw=document.getElementById('addInput').value.trim();
+    if(!raw){ msg('Paste their id first.',false); return; }
+    var m=/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(raw);
+    var uid=m?m[0].toLowerCase():raw;
+    token().then(function(t){
+      if(!t){ window.location.href='/login'; return; }
+      fetch(apiHost()+'/api/friends',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({userId:uid})})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.error){ msg(d.error,false); return; } msg('Request sent.',true); document.getElementById('addInput').value=''; load(); })
+        .catch(function(){ msg('Request failed.',false); });
+    });
+  });
+  load();
+})();
+</script>
+</body>
+</html>
