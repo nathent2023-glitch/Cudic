@@ -1219,6 +1219,13 @@ async function handleRequest(req, res) {
   function chanSlug(s) { return String(s || '').toLowerCase().trim().replace(/[^a-z0-9-_]/g, '').substring(0, 30); }
   function chanDisplay(name) { var p = String(name || '').split(':'); return '#' + (p[p.length - 1] || name); }
   function isUuid(s) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s || '')); }
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'game';
+}
 
   // ── API: my conversations (chat sidebar) ───────────────────────
   if (url.pathname === '/api/conversations' && req.method === 'GET') {
@@ -2896,6 +2903,7 @@ async function handleRequest(req, res) {
     const body = await readBody(req, 25 * 1024 * 1024); // projects can carry MB-scale file JSON, but bound it
     const { data, error } = await supabase.from('games').insert({
       owner_id: user.id,
+      slug: slugify(body.title || 'Untitled Game'),
       title: String(body.title || 'Untitled Game').slice(0, 100),
       description: String(body.description || '').slice(0, 500),
       credits: String(body.credits || '').slice(0, 200),
@@ -3458,6 +3466,9 @@ async function handleRequest(req, res) {
     if (body.files !== undefined) updates.files = body.files;
     if (body.assets !== undefined) updates.assets = body.assets;
     if (body.published !== undefined) updates.published = body.published;
+    if (body.published && body.slug === undefined && !(await supabase.from('games').select('slug').eq('id', id).single()).data?.slug) {
+      updates.slug = slugify(body.title ?? (await supabase.from('games').select('title').eq('id', id).single()).data?.title);
+    }
     // Thumbnails arrive as ≤1000px JPEG data URLs; reject anything else
     // instead of storing a multi-MB blob the view page would re-fetch.
     if (body.thumbnail !== undefined) {
@@ -3661,16 +3672,21 @@ async function handleRequest(req, res) {
   // share-host URL (the Vercel rewrite proxies both paths to this server).
   if (url.pathname.startsWith('/g/')) {
     const parts = url.pathname.slice(3).split('/');
-    const gid = parts[0];
-    if (!isUuid(gid)) { res.writeHead(302, { Location: '/games' }); res.end(); return; }
-    const { data: g } = await supabase.from('games')
-      .select('id, title, description, thumbnail, published, users!games_owner_id_fkey(display_name)')
-      .eq('id', gid).single();
+    const raw = parts[0];
+    // Resolve by slug (/g/snake) or id (/g/<uuid>); keep the URL as-is so
+    // share cards and canonicals show the prettier slug when present.
+    const isId = isUuid(raw);
+    const query = supabase.from('games')
+      .select('id, slug, title, description, thumbnail, published, users!games_owner_id_fkey(display_name)');
+    const { data: g } = isId
+      ? await query.eq('id', raw).single()
+      : await query.eq('slug', raw).single();
     if (!g || !g.published) {
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('<!DOCTYPE html><meta charset="utf-8"><title>Game not found — Cudic</title><body style="font-family:sans-serif;background:#141414;color:#fff;display:grid;place-items:center;height:100vh;margin:0"><p>That game is not on Cudic. <a href="/games" style="color:#FF8C1A">Browse the gallery</a>.</p></body>');
       return;
     }
+    const gid = g.slug || g.id;
     const attr = (s) => escHtml(s).replace(/"/g, '&quot;');
     if (parts[1] === 'thumb') {
       const m = typeof g.thumbnail === 'string' ? /^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i.exec(g.thumbnail) : null;
@@ -3682,7 +3698,7 @@ async function handleRequest(req, res) {
     }
     const host = String(req.headers.host || 'cudic.vercel.app');
     const base = (/^(localhost|127\.)/.test(host) ? 'http://' : 'https://') + host;
-    const viewUrl = '/view?id=' + gid;
+    const viewUrl = '/view?id=' + g.id;
     const title = String(g.title || 'Untitled');
     const by = g.users && g.users.display_name ? ' by ' + g.users.display_name : '';
     const desc = String(g.description || '').trim().slice(0, 180) ||
@@ -3719,7 +3735,6 @@ async function handleRequest(req, res) {
     res.end(page);
     return;
   }
-
   let filePath = path.join(__dirname, 'public', url.pathname === '/' ? 'index.html' : url.pathname);
   // Directory URLs (/cookbook/, /game/<id>/) resolve to their index.html on
   // Vercel; mirror that here so local testing sees the same pages.
