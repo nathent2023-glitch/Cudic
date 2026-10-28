@@ -319,6 +319,22 @@ export async function bootProject(): Promise<BootProject> {
       // fall through to demo
     }
   }
+  // Starter templates: /studio?template=snake starts a fresh untitled
+  // project from the template's files (unsaved snapshot below still wins).
+  if (projectId == null) {
+    const tpl = new URLSearchParams(location.search).get('template');
+    if (tpl) {
+      try {
+        const res = await fetch('/studio-templates/' + encodeURIComponent(tpl) + '.json');
+        if (res.ok) {
+          const t = await res.json();
+          if (t?.files != null) result = { id: null, title: t.title || tpl, files: t.files };
+        }
+      } catch {
+        // fall through to demo
+      }
+    }
+  }
   // Unsaved local work wins over the backend copy — a frozen tab shouldn't
   // cost anyone their edits.
   const snap = await snapGet(snapKey()).catch(() => null);
@@ -1094,6 +1110,54 @@ async function exportProject(): Promise<void> {
 }
 
 export function registerProjectCommands(): void {
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.startFromTemplate',
+          title: {
+            value: 'Cudic: Start from template',
+            original: 'Cudic: Start from template'
+          },
+          menu: [
+            { id: MenuId.CommandPalette },
+            { id: MenuId.MenubarFileMenu, group: '5_glox' }
+          ]
+        });
+      }
+      async run(): Promise<void> {
+        const qp = vscode.window.createQuickPick<{ label: string; description: string; id: string }>();
+        try {
+          const r = await fetch('/studio-templates/index.json');
+          const list = r.ok ? await r.json() : [];
+          qp.items = list.map((t: { name?: string; description?: string; id?: string }) => ({
+            label: t.name || t.id || 'Template',
+            description: t.description || '',
+            id: t.id || ''
+          }));
+          qp.placeholder = 'Choose a starter template';
+          qp.show();
+          await new Promise<void>((resolve) => {
+            qp.onDidAccept(() => {
+              const sel = qp.selectedItems[0];
+              qp.hide();
+              if (sel && sel.id) {
+                const url = new URL(location.href);
+                url.searchParams.set('template', sel.id);
+                url.searchParams.delete('id');
+                location.href = url.toString();
+              }
+              resolve();
+            });
+            qp.onDidHide(() => resolve());
+          });
+        } catch {
+          qp.dispose();
+        }
+      }
+    }
+  );
+
   registerAction2(
     class extends Action2 {
       constructor() {

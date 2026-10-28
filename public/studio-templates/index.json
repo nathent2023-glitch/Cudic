@@ -1,0 +1,5 @@
+[
+  { "id": "snake", "name": "Snake", "description": "Classic grid snake — arrow keys, eat, grow." },
+  { "id": "pong", "name": "Pong", "description": "Two-player pong — W/S vs arrow keys." },
+  { "id": "breakout", "name": "Breakout", "description": "Bricks, paddle, ball — clear the rows." }
+]

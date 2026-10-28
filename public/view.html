@@ -88,6 +88,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg>
         <span id="likeCount">0</span>
       </button>
+      <span id="ratingWidget" style="display:none;align-self:center;display:inline-flex;align-items:center;gap:6px">
+        <span id="ratingStars" title="Rate this game"></span>
+        <span id="ratingMeta" style="font-size:0.78rem;color:var(--text-tertiary)"></span>
+      </span>
       <span id="playCount" style="font-size:0.8rem;color:var(--text-tertiary);align-self:center"></span>
       <span id="livePill" class="live-pill" style="display:none"></span>
     </div>
@@ -231,6 +235,39 @@ setInterval(function () {
 }, 15000);
     function paintLikes(n, on) { likeCount.textContent = n; likeBtn.classList.toggle('btn-primary', !!on); likeBtn.querySelector('svg').setAttribute('fill', on ? 'currentColor' : 'none'); }
     function paintPlays(n) { playCount.textContent = n > 0 ? n + (n === 1 ? ' play' : ' plays') : ''; }
+    function paintRating(avg, count, mine) {
+      var widget = document.getElementById('ratingWidget');
+      if (!widget) return;
+      widget.style.display = 'inline-flex';
+      var stars = document.getElementById('ratingStars');
+      var meta = document.getElementById('ratingMeta');
+      stars.innerHTML = '';
+      for (var i = 1; i <= 5; i++) {
+        (function (v) {
+          var s = document.createElement('button');
+          s.type = 'button';
+          s.textContent = v <= mine ? '★' : '☆';
+          s.style.cssText = 'background:none;border:0;font-size:16px;line-height:1;cursor:pointer;padding:0 1px;color:' + (v <= mine ? 'var(--signal)' : 'var(--text-tertiary)') + ';transition:color .12s';
+          s.title = v + ' star' + (v === 1 ? '' : 's');
+          s.addEventListener('click', function () {
+            getTokenAsync().then(function (tok) {
+              if (!tok) { location.href = '/login'; return; }
+              fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/rate', { method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'X-Seat': seatId(), 'Content-Type': 'application/json' }, body: JSON.stringify({ rating: v }) })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { if (d.error) throw new Error(d.error); paintRating(d.rating_avg, d.rating_count, d.rating); })
+                .catch(function (e) { alert(e.message || 'Could not save rating.'); });
+            });
+          });
+          stars.appendChild(s);
+        })(i);
+      }
+      if (avg > 0) {
+        meta.textContent = avg.toFixed(1) + ' (' + count + (count === 1 ? ' rating)' : ' ratings)');
+        stars.title = 'Rated ' + avg.toFixed(1) + '/5';
+      } else {
+        meta.textContent = 'No ratings yet';
+      }
+    }
     likeBtn.addEventListener('click', function(){
       getTokenAsync().then(function (tok) {
         if (!tok) { location.href = '/login'; return; }
@@ -454,6 +491,7 @@ setInterval(function () {
         document.getElementById('islReportSlot').style.display = '';
         paintLikes(game.likes || 0, !!game.liked);
         paintPlays(game.play_count || 0);
+        paintRating(game.rating_avg || 0, game.rating_count || 0, game.my_rating || 0);
         // Room head-count from the fetch: shown until the game itself joins a
         // room, at which point the live peer list takes over (it is per-room
         // and exact, where this number spans every room code).

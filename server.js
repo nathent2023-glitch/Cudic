@@ -2939,8 +2939,17 @@ function slugify(s) {
       const { data: mine } = await supabase.from('game_likes').select('user_id').eq('game_id', id).eq('user_id', viewer.id).maybeSingle();
       liked = !!mine;
     }
+    // Rating summary: average + count, plus this viewer's rating.
+    const { data: ratingRows } = await supabase.from('game_ratings').select('rating').eq('game_id', id);
+    const ratings = ratingRows || [];
+    const avg = ratings.length ? ratings.reduce((a, r) => a + r.rating, 0) / ratings.length : 0;
+    let myRating = 0;
+    if (viewer) {
+      const { data: mine } = await supabase.from('game_ratings').select('rating').eq('game_id', id).eq('user_id', viewer.id).maybeSingle();
+      myRating = (mine && mine.rating) || 0;
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ game: { ...data, likes: likeCount || 0, liked, playing: liveCount(id) } }));
+    res.end(JSON.stringify({ game: { ...data, likes: likeCount || 0, liked, playing: liveCount(id), rating_avg: Math.round(avg * 10) / 10, rating_count: ratings.length, my_rating: myRating } }));
     return;
   }
 
@@ -2969,6 +2978,33 @@ function slugify(s) {
     const { count } = await supabase.from('game_likes').select('user_id', { count: 'exact', head: true }).eq('game_id', gid);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ liked: req.method === 'POST', likes: count || 0 }));
+    return;
+  }
+
+  // ── API: rate a game (1–5) ──────────────────────────────────────
+  // One rating per user per game; posting again changes it. Seat-checked.
+  const rateMatch = /^\/api\/games\/([^/]+)\/rate$/.exec(url.pathname);
+  if (rateMatch && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const gid = rateMatch[1];
+    if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
+    const { data: g } = await supabase.from('games').select('published, owner_id').eq('id', gid).single();
+    if (!g || !g.published) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const rating = Math.round(Number(body.rating));
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Rating must be 1–5.' })); return;
+    }
+    const { error } = await supabase.from('game_ratings').upsert({ game_id: gid, user_id: user.id, rating }, { onConflict: 'game_id,user_id' });
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not save rating.' })); return; }
+    const { data: ratingRows } = await supabase.from('game_ratings').select('rating').eq('game_id', gid);
+    const ratings = ratingRows || [];
+    const avg = ratings.length ? ratings.reduce((a, r) => a + r.rating, 0) / ratings.length : 0;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ rating: rating, rating_avg: Math.round(avg * 10) / 10, rating_count: ratings.length }));
     return;
   }
 
