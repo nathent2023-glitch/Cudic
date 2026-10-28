@@ -49,7 +49,9 @@
     "jszip": "^3.10.1",
     "mammoth": "^1.12.3",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@37.1.0",
-    "vscode": "npm:@codingame/monaco-vscode-extension-api@37.1.0"
+    "vscode": "npm:@codingame/monaco-vscode-extension-api@37.1.0",
+    "y-webrtc": "^10.3.0",
+    "yjs": "^13.6.33"
   },
   "devDependencies": {
     "@codingame/esbuild-import-meta-url-plugin": "latest",

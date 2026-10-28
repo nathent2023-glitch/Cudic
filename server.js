@@ -902,6 +902,76 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // ── API: project revision history (owner only) ──────────────────
+  // POST /api/games/:id/revisions — snapshot {label}
+  // GET  /api/games/:id/revisions — list (id, label, created_at)
+  // GET  /api/games/:id/revisions/:revId — full snapshot
+  // POST /api/games/:id/revisions/:revId/restore — restore files
+  const revList = url.pathname.match(/^\/api\/games\/([^/]+)\/revisions$/);
+  const revOne = url.pathname.match(/^\/api\/games\/([^/]+)\/revisions\/([^/]+)(?:\/restore)?$/);
+  if (revList && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    const gid = revList[1];
+    const { data: g } = await supabase.from('games').select('owner_id, files').eq('id', gid).single();
+    if (!g || g.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    const files = g.files || {};
+    if (Object.keys(files).length > 500) { res.writeHead(413, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Project too large to snapshot.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const label = String(body.label || '').trim().substring(0, 80);
+    const { data: cap } = await supabase.from('project_revisions').select('id').eq('game_id', gid).order('created_at', { ascending: false }).limit(1);
+    const { data: countRow } = await supabase.from('project_revisions').select('id', { count: 'exact', head: true }).eq('game_id', gid);
+    const total = countRow && countRow.count || 0;
+    if (total >= 20) {
+      // keep the newest 20: delete the oldest row first
+      const { data: oldest } = await supabase.from('project_revisions').select('id').eq('game_id', gid).order('created_at', { ascending: true }).limit(1);
+      if (oldest && oldest[0]) await supabase.from('project_revisions').delete().eq('id', oldest[0].id);
+    }
+    const { data, error } = await supabase.from('project_revisions').insert({ game_id: gid, owner_id: user.id, label: label || 'Snapshot ' + new Date().toLocaleString(), files }).select('id, label, created_at').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not snapshot.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ revision: data }));
+    return;
+  }
+  if (revList && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const gid = revList[1];
+    const { data: g } = await supabase.from('games').select('owner_id').eq('id', gid).single();
+    if (!g || g.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    const { data: rows } = await supabase.from('project_revisions').select('id, label, created_at').eq('game_id', gid).order('created_at', { ascending: false }).limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ revisions: rows || [] }));
+    return;
+  }
+  if (revOne) {
+    const gid = revOne[1], revId = revOne[2];
+    const restore = /\/restore$/.test(url.pathname);
+    if (req.method === 'GET' || (req.method === 'POST' && restore)) {
+      cors(res);
+      const user = await requireUser(req, res); if (!user) return;
+      const { data: rev } = await supabase.from('project_revisions').select('*').eq('id', revId).single();
+      if (!rev || rev.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+      if (restore) {
+        await supabase.from('games').update({ files: rev.files, updated_at: new Date().toISOString() }).eq('id', gid);
+        res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true })); return;
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ revision: rev }));
+      return;
+    }
+    if (req.method === 'DELETE') {
+      cors(res);
+      const user = await requireUser(req, res); if (!user) return;
+      const { data: rev } = await supabase.from('project_revisions').select('id').eq('id', revId).single();
+      if (!rev) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+      await supabase.from('project_revisions').delete().eq('id', revId);
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+      return;
+    }
+  }
+
   // ── API: update display name ───────────────────────────────────
   if (url.pathname === '/api/profile' && req.method === 'PUT') {
     cors(res);

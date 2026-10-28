@@ -24,6 +24,8 @@ import {
   registerProjectCommands,
   startSnapshotWatcher
 } from './project';
+import { registerRevisionCommands } from './revisions';
+import { registerCollabCommands } from './collab';
 import { registerCudicAi, setSupaToken } from './cudic-ai/extension';
 import * as monaco from 'monaco-editor';
 import * as vscode from 'vscode';
@@ -249,6 +251,8 @@ try {
 
 // Phase 2 — Cudic: Save project / Import files / Import folder / Export as zip
 registerProjectCommands();
+registerRevisionCommands();
+registerCollabCommands();
 
 // Cudic AI built-in (right-side chat panel + ghost autocomplete).
 void registerCudicAi(shadowRoot);

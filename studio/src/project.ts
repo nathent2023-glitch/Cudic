@@ -52,7 +52,7 @@ export function getToken(): string | null {
   return null;
 }
 
-async function apiBase(): Promise<string> {
+export async function apiBase(): Promise<string> {
   try {
     // Mirror config.js: local dev talks to the local backend (same host)
     // so new endpoints work before they deploy.
@@ -77,7 +77,7 @@ export async function relayWsUrl(): Promise<string> {
   return cfg.api.replace(/^https/, 'wss');
 }
 
-function headers(json: boolean): Record<string, string> {
+export function headers(json: boolean): Record<string, string> {
   const h: Record<string, string> = {};
   if (json) h['Content-Type'] = 'application/json';
   const t = getToken();
@@ -340,6 +340,14 @@ export async function bootProject(): Promise<BootProject> {
   const snap = await snapGet(snapKey()).catch(() => null);
   if (snap != null) result = { ...result, title: snap.title, files: snap.files };
   return result;
+}
+
+export function getProjectId(): string | null {
+  return projectId;
+}
+
+export function getProjectTitle(): string {
+  return projectTitle;
 }
 
 export function applyProjectToProvider(
