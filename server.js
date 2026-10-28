@@ -759,6 +759,149 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // ── API: moderator feature/unfeature a game ─────────────────────
+  if (/^\/api\/games\/[^/]+\/feature$/.test(url.pathname) && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const gid = url.pathname.split('/')[3];
+    const { data: g } = await supabase.from('games').select('featured').eq('id', gid).single();
+    if (!g) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    const next = !g.featured;
+    const { data, error } = await supabase.from('games').update({ featured: next, featured_until: next ? new Date(Date.now() + 7 * 864e5).toISOString() : null }).eq('id', gid).select('featured').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not update.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ featured: data.featured }));
+    return;
+  }
+
+  // ── API: collections ────────────────────────────────────────────
+  // GET /api/collections?mine=1 — my collections (auth)
+  // GET /api/collections/:id — one collection + its games (public/unlisted, or owner)
+  // POST /api/collections — create; PATCH /api/collections/:id — edit
+  // DELETE /api/collections/:id — delete; POST/DELETE /api/collections/:id/items
+  if (url.pathname === '/api/collections' && req.method === 'GET') {
+    cors(res);
+    const me = await requireUser(req, res); if (!me) return;
+    const { data: rows } = await supabase.from('collections').select('id, title, description, visibility, created_at').eq('owner_id', me.id).order('created_at', { ascending: false }).limit(100);
+    const ids = (rows || []).map(c => c.id);
+    const counts = {};
+    const has = {};
+    const gameId = String(url.searchParams.get('game_id') || '');
+    if (ids.length) {
+      const q = supabase.from('collection_items').select('collection_id').in('collection_id', ids);
+      if (gameId) q.eq('game_id', gameId);
+      const { data: items } = await q;
+      (items || []).forEach(i => {
+        counts[i.collection_id] = (counts[i.collection_id] || 0) + 1;
+        if (gameId) has[i.collection_id] = true;
+      });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ collections: (rows || []).map(c => ({ ...c, count: counts[c.id] || 0, has_game: !!has[c.id] })) }));
+    return;
+  }
+  if (url.pathname === '/api/collections' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const body = await readBody(req).catch(() => ({}));
+    const title = String(body.title || '').trim().substring(0, 80);
+    if (!title) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Name your collection.' })); return; }
+    const visibility = ['public', 'unlisted', 'private'].includes(body.visibility) ? body.visibility : 'public';
+    const { data, error } = await supabase.from('collections').insert({ owner_id: user.id, title, description: String(body.description || '').substring(0, 500), visibility }).select('id, title, description, visibility, created_at').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not create.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ collection: { ...data, count: 0 } }));
+    return;
+  }
+  const collMatch = url.pathname.match(/^\/api\/collections\/([^/]+)(?:\/items(?:\/([^/]+))?)?$/);
+  if (collMatch && req.method === 'GET') {
+    cors(res);
+    const cid = collMatch[1];
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: viewer } } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
+    const { data: c } = await supabase.from('collections').select('*').eq('id', cid).single();
+    if (!c) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    if (c.visibility === 'private' && (!viewer || c.owner_id !== viewer.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    const { data: rows } = await supabase.from('collection_items').select('game_id, position').eq('collection_id', cid).order('position', { ascending: true }).limit(100);
+    const gids = (rows || []).map(r => r.game_id);
+    let games = [];
+    if (gids.length) {
+      const { data: gs } = await supabase.from('games').select('id, title, slug, play_count, thumbnail, published').in('id', gids);
+      const byId = {};
+      (gs || []).forEach(g => { byId[g.id] = g; });
+      games = (rows || []).map(r => byId[r.game_id]).filter(Boolean);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ collection: c, games, owner_view: !!(viewer && c.owner_id === viewer.id) }));
+    return;
+  }
+  if (collMatch && !collMatch[2] && (req.method === 'PATCH' || req.method === 'DELETE')) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const cid = collMatch[1];
+    const { data: c } = await supabase.from('collections').select('owner_id').eq('id', cid).single();
+    if (!c || c.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    if (req.method === 'DELETE') {
+      await supabase.from('collections').delete().eq('id', cid);
+      res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true })); return;
+    }
+    const body = await readBody(req).catch(() => ({}));
+    const updates = { updated_at: new Date().toISOString() };
+    if (body.title !== undefined) { const t = String(body.title || '').trim().substring(0, 80); if (!t) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Name your collection.' })); return; } updates.title = t; }
+    if (body.description !== undefined) updates.description = String(body.description || '').substring(0, 500);
+    if (body.visibility !== undefined) updates.visibility = ['public', 'unlisted', 'private'].includes(body.visibility) ? body.visibility : 'public';
+    const { data, error } = await supabase.from('collections').update(updates).eq('id', cid).select('*').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not save.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ collection: data }));
+    return;
+  }
+  if (collMatch && collMatch[2] && (req.method === 'POST' || req.method === 'DELETE')) {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const cid = collMatch[1], gid = collMatch[2];
+    const { data: c } = await supabase.from('collections').select('owner_id').eq('id', cid).single();
+    if (!c || c.owner_id !== user.id) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+    if (req.method === 'POST') {
+      const { data: g } = await supabase.from('games').select('id').eq('id', gid).eq('published', true).single();
+      if (!g) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Game not found.' })); return; }
+      const { data: existing } = await supabase.from('collection_items').select('position').eq('collection_id', cid).order('position', { ascending: false }).limit(1);
+      const pos = (existing && existing[0] ? existing[0].position : -1) + 1;
+      await supabase.from('collection_items').upsert({ collection_id: cid, game_id: gid, position: pos }, { onConflict: 'collection_id,game_id' });
+    } else {
+      await supabase.from('collection_items').delete().eq('collection_id', cid).eq('game_id', gid);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: notifications ──────────────────────────────────────────
+  if (url.pathname === '/api/notifications' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data: rows, error } = await supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50);
+    const unread = (rows || []).filter(n => !n.read_at).length;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ notifications: rows || [], unread }));
+    return;
+  }
+  if (url.pathname === '/api/notifications/read' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const body = await readBody(req).catch(() => ({}));
+    const now = new Date().toISOString();
+    if (body.id) {
+      await supabase.from('notifications').update({ read_at: now }).eq('id', String(body.id)).eq('user_id', user.id);
+    } else {
+      await supabase.from('notifications').update({ read_at: now }).eq('user_id', user.id).is('read_at', null);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   // ── API: update display name ───────────────────────────────────
   if (url.pathname === '/api/profile' && req.method === 'PUT') {
     cors(res);
@@ -1506,6 +1649,15 @@ function slugify(s) {
     if (accept) {
       await supabase.from('friendships').update({ status: 'accepted' }).eq('user_id', otherId).eq('friend_id', me);
       await supabase.from('friendships').upsert({ user_id: me, friend_id: otherId, status: 'accepted' }, { onConflict: 'user_id,friend_id' });
+      // Notify the requester that their request was accepted.
+      try { await supabase.from('notifications').insert({
+        user_id: otherId,
+        kind: 'friend',
+        title: 'Friend request accepted',
+        body: 'You are now friends.',
+        ref_type: 'user',
+        ref_id: me
+      }); } catch (e) {}
     } else {
       await supabase.from('friendships').delete().eq('user_id', otherId).eq('friend_id', me);
     }
@@ -2530,7 +2682,7 @@ function slugify(s) {
     else if (trending) query = query.order('play_count', { ascending: false });
     else if (sort === 'old') query = query.order('created_at', { ascending: true });
     else if (sort === 'az') query = query.order('title', { ascending: true });
-    else query = query.order('updated_at', { ascending: false });
+    else query = query.order('featured', { ascending: false }).order('updated_at', { ascending: false });
     // Pagination: offset is the only paging knob (size stays 50).
     const offset = Math.max(0, parseInt(String(url.searchParams.get('offset') || '0'), 10) || 0);
     const { data, error } = await query.range(offset, offset + 49);
@@ -2691,6 +2843,20 @@ function slugify(s) {
       text
     }).select().single();
     if (error) console.error('comment insert error:', error.message);
+    // Notify the game owner (if they're not the commenter).
+    if (data && data.id) {
+      const { data: game } = await supabase.from('games').select('owner_id').eq('id', id).single();
+      if (game && game.owner_id && game.owner_id !== user.id) {
+        try { await supabase.from('notifications').insert({
+          user_id: game.owner_id,
+          kind: 'comment',
+          title: 'New comment on your game',
+          body: (prof && prof.display_name || 'Someone') + ' commented: ' + text.substring(0, 100),
+          ref_type: 'game',
+          ref_id: id
+        }); } catch (e) {}
+      }
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ comment: data, error: error ? 'Could not post the comment.' : undefined }));
     return;
@@ -3773,6 +3939,16 @@ function slugify(s) {
   // ── Redirect /friends to /friends.html ─────────────────────────
   if (url.pathname === '/friends') {
     url.pathname = '/friends.html';
+  }
+
+  // ── Redirect /notifications to /notifications.html ────────────
+  if (url.pathname === '/notifications') {
+    url.pathname = '/notifications.html';
+  }
+
+  // ── Redirect /collections to /collections.html ────────────────
+  if (url.pathname === '/collections') {
+    url.pathname = '/collections.html';
   }
 
   // ── Redirect /themes to /themes.html ──────────────────────────

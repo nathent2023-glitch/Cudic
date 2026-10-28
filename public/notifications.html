@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications — Cudic</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+<link rel="stylesheet" href="/sidebar.css?v=25">
+<style>
+:root{--bg:#0d0e10;--panel:#14161b;--panel-raised:#1a1e26;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--signal:#b8f23a;--blue:#3f7cff;--radius:3px;--font-head:"Geist",system-ui,sans-serif;--font-body:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
+:root[data-theme="light"]{--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font-body);min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:40px 24px 64px}
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px}
+h1{font-family:var(--font-head);font-weight:600;font-size:1.5rem;letter-spacing:-.02em}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+.row{display:flex;gap:14px;padding:12px 0;border-top:1px solid var(--line);align-items:flex-start}
+.row:first-of-type{border-top:0}
+.row .dot{width:8px;height:8px;border-radius:50%;background:var(--signal);margin-top:6px;flex-shrink:0}
+.row.read .dot{background:transparent}
+.row .body{flex:1;min-width:0}
+.row .body b{font-weight:600;display:block;font-size:.95rem}
+.row .body span{color:var(--mute);font-size:.85rem;display:block;margin-top:2px}
+.row .when{font-size:.75rem;color:var(--mute);flex-shrink:0}
+.empty{color:var(--mute);font-size:.9rem;padding:8px 0}
+.btn{border:1px solid var(--line);background:var(--panel-raised);color:var(--ink);border-radius:var(--radius);padding:7px 14px;font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn:hover{border-color:var(--signal)}
+.btn.primary{background:var(--signal);color:#0d0e10;border-color:transparent}
+a.ref{color:var(--blue);text-decoration:none}
+a.ref:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<nav class="sidebar" id="sidebar" aria-label="Main"></nav>
+<main class="wrap">
+  <div class="top">
+    <h1>Notifications</h1>
+    <button class="btn" id="readAllBtn">Mark all read</button>
+  </div>
+  <div class="card" id="list"></div>
+</main>
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script src="/sidebar.js?v=21"></script>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(function(){
+  function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+  function apiHost(){ return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''; }
+  function token(){ try { if(window.getAuthToken) return window.getAuthToken().then(function(a){return a||null;}); var s=JSON.parse(localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token')); return Promise.resolve(s&&s.access_token||null); } catch(e){ return Promise.resolve(null); } }
+  var list=document.getElementById('list');
+  function refUrl(n){
+    if(n.ref_type==='game'&&n.ref_id) return '/view.html?id='+encodeURIComponent(n.ref_id);
+    if(n.ref_type==='user'&&n.ref_id) return '/creator?id='+encodeURIComponent(n.ref_id);
+    return null;
+  }
+  function load(){
+    token().then(function(t){
+      if(!t){ window.location.href='/login'; return; }
+      fetch(apiHost()+'/api/notifications',{headers:{'Authorization':'Bearer '+t}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var ns=d.notifications||[];
+          document.title='Notifications — Cudic';
+          if(!ns.length){ list.innerHTML='<div class="empty">No notifications yet.</div>'; return; }
+          list.innerHTML = ns.map(function(n){
+            var u=refUrl(n);
+            return '<div class="row'+(n.read_at?' read':'')+'"><div class="dot"></div><div class="body"><b>'+esc(n.title)+'</b><span>'+esc(n.body)+'</span></div><div class="when">'+esc(new Date(n.created_at).toLocaleDateString())+'</div>'+(u?'<a class="ref" href="'+esc(u)+'">Open</a>':'')+'</div>';
+          }).join('');
+        })
+        .catch(function(){ list.innerHTML='<div class="empty">Could not load.</div>'; });
+    });
+  }
+  document.getElementById('readAllBtn').addEventListener('click', function(){
+    token().then(function(t){
+      fetch(apiHost()+'/api/notifications/read',{method:'POST',headers:{'Authorization':'Bearer '+t}})
+        .then(function(){ load(); });
+    });
+  });
+  load();
+})();
+</script>
+</body>
+</html>

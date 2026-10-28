@@ -13,6 +13,8 @@
     { "source": "/quests", "destination": "/quests.html" },
     { "source": "/creator", "destination": "/creator.html" },
     { "source": "/friends", "destination": "/friends.html" },
+    { "source": "/notifications", "destination": "/notifications.html" },
+    { "source": "/collections", "destination": "/collections.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/faq", "destination": "/faq.html" },

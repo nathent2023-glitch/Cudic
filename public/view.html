@@ -83,6 +83,7 @@
       <a class="btn btn-primary" id="studioBtn" href="#" style="display:none">Open in Studio</a>
       <button class="btn btn-secondary" id="forkBtn" style="display:none">Fork</button>
       <button class="btn btn-secondary" id="shareBtn">Share</button>
+      <button class="btn btn-secondary" id="collBtn" style="display:none">Save</button>
       <div data-island="report-button" id="islReportSlot" style="display:none"></div>
       <button class="btn btn-secondary" id="likeBtn" style="display:none" title="Like this game">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-2px"><path d="M12 20s-7-4.6-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.4 12 20 12 20Z"/></svg>
@@ -153,6 +154,17 @@
       </div>
       <p id="commentSignin" class="dim" style="display:none;margin-top:12px">Sign in to comment.</p>
     </div>
+    <div class="modal-overlay" id="collModal">
+      <div class="modal" style="width:420px">
+        <h2>Save to collection</h2>
+        <div id="collList" style="max-height:260px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input type="text" id="collNew" placeholder="New collection name" maxlength="80" style="flex:1">
+          <button class="btn btn-primary" id="collCreate">Create</button>
+        </div>
+        <div class="modal-actions"><button class="btn btn-secondary" id="collClose">Done</button></div>
+      </div>
+    </div>
     <div class="modal-overlay" id="shareModal">
       <div class="modal" style="width:480px">
         <h2>Share this game</h2>
@@ -195,7 +207,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=20"></script>
+  <script src="/sidebar.js?v=21"></script>
   <script src="/islands/islands.js?v=8"></script>
   <script>
   (function(){
@@ -290,6 +302,53 @@ setInterval(function () {
       } catch (e) { return Promise.resolve(null); }
     }
     function seatId() { try { return localStorage.getItem('cudic_seat') || ''; } catch (e) { return ''; } }
+    /* Save to collection */
+    var collModal = document.getElementById('collModal');
+    var collBtn = document.getElementById('collBtn');
+    function collOpen() {
+      getSession().then(function (s) {
+        if (!s) { location.href = '/login'; return; }
+        fetch(apiBase() + '/api/collections?mine=1&game_id=' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + s.token } })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            var list = document.getElementById('collList');
+            var cs = d.collections || [];
+            if (!cs.length) { list.innerHTML = '<p class="dim">No collections yet — create one below.</p>'; }
+            else {
+              list.innerHTML = cs.map(function (c) {
+                return '<div class="row" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><div style="flex:1"><b>' + escapeHtml(c.title) + '</b><div class="dim" style="font-size:0.75rem">' + c.count + ' game' + (c.count === 1 ? '' : 's') + '</div></div><button class="btn btn-secondary" data-coll="' + c.id + '" data-in="' + (c.has_game ? 1 : 0) + '">' + (c.has_game ? 'Remove' : 'Add') + '</button></div>';
+              }).join('');
+              list.querySelectorAll('[data-coll]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                  var inColl = b.dataset.in === '1';
+                  fetch(apiBase() + '/api/collections/' + encodeURIComponent(b.dataset.coll) + '/items/' + encodeURIComponent(id), { method: inColl ? 'DELETE' : 'POST', headers: { Authorization: 'Bearer ' + s.token } })
+                    .then(function (r) { return r.json(); })
+                    .then(function () { collOpen(); });
+                });
+              });
+            }
+            collModal.classList.add('open');
+          });
+      });
+    }
+    collBtn.addEventListener('click', collOpen);
+    document.getElementById('collClose').addEventListener('click', function () { collModal.classList.remove('open'); });
+    collModal.addEventListener('click', function (e) { if (e.target === collModal) collModal.classList.remove('open'); });
+    document.getElementById('collCreate').addEventListener('click', function () {
+      var t = document.getElementById('collNew').value.trim();
+      if (!t) return;
+      getSession().then(function (s) {
+        fetch(apiBase() + '/api/collections', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.token }, body: JSON.stringify({ title: t, visibility: 'public' }) })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            if (!d.collection) return;
+            document.getElementById('collNew').value = '';
+            fetch(apiBase() + '/api/collections/' + encodeURIComponent(d.collection.id) + '/items/' + encodeURIComponent(id), { method: 'POST', headers: { Authorization: 'Bearer ' + s.token } })
+              .then(function () { collOpen(); });
+          });
+      });
+    });
+    getSession().then(function (s) { collBtn.style.display = s ? '' : 'none'; });
     function countPlay() {
       fetch(apiBase() + '/api/games/' + encodeURIComponent(id) + '/play', { method: 'POST' })
         .then(function (r) { return r.json(); })

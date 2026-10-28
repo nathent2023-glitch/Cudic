@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Collections — Cudic</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+<link rel="stylesheet" href="/sidebar.css?v=25">
+<style>
+:root{--bg:#0d0e10;--panel:#14161b;--panel-raised:#1a1e26;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--signal:#b8f23a;--blue:#3f7cff;--danger:#d9381e;--radius:3px;--font-head:"Geist",system-ui,sans-serif;--font-body:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
+:root[data-theme="light"]{--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font-body);min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:40px 24px 64px}
+h1{font-family:var(--font-head);font-weight:600;font-size:1.5rem;letter-spacing:-.02em;margin-bottom:4px}
+.sub{color:var(--mute);font-size:.9rem;margin-bottom:24px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px}
+.card h2{font-family:var(--font-head);font-weight:600;font-size:1rem;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.grow{flex:1;min-width:0}
+.grow b{display:block;font-weight:500}
+.grow span{font-size:.78rem;color:var(--mute)}
+.acts{display:flex;gap:8px;flex-shrink:0}
+.btn{border:1px solid var(--line);background:var(--panel-raised);color:var(--ink);border-radius:var(--radius);padding:6px 12px;font-size:.8rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none}
+.btn:hover{border-color:var(--signal)}
+.btn.primary{background:var(--signal);color:#0d0e10;border-color:transparent}
+.btn.danger{color:var(--danger)}
+input[type=text],select,textarea{background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font:inherit;font-size:.85rem;padding:8px 12px;outline:none;margin-bottom:8px}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--signal)}
+.newrow{display:flex;gap:8px;flex-wrap:wrap}
+.newrow input[type=text]{flex:1;min-width:140px;margin:0}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px}
+.game{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel-raised);display:block;color:var(--ink);text-decoration:none}
+.game:hover{border-color:var(--signal)}
+.game .t{height:74px;background:#0d0e10;display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:1.6rem}
+.game .t img{width:100%;height:100%;object-fit:cover}
+.game .n{padding:8px 10px;font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{color:var(--mute);font-size:.9rem;padding:6px 0}
+#viewTitle{display:none}
+</style>
+</head>
+<body>
+<nav class="sidebar" id="sidebar" aria-label="Main"></nav>
+<main class="wrap">
+  <h1 id="mainTitle">Collections</h1>
+  <p class="sub" id="mainSub">Curate lists of games and share them.</p>
+
+  <div class="card" id="viewCard" style="display:none">
+    <h2 id="viewTitle"></h2>
+    <p class="sub" id="viewDesc" style="margin-bottom:8px"></p>
+    <div class="games" id="viewGames"></div>
+    <div class="acts" id="viewActs" style="margin-top:12px;display:none"></div>
+  </div>
+
+  <div class="card" id="mineCard">
+    <h2>My collections</h2>
+    <div class="newrow">
+      <input type="text" id="newTitle" placeholder="New collection name" maxlength="80">
+      <select id="newVis"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option></select>
+      <button class="btn primary" id="createBtn">Create</button>
+    </div>
+    <div id="mineList" style="margin-top:10px"></div>
+  </div>
+</main>
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script src="/sidebar.js?v=21"></script>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(function(){
+  function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
+  function apiHost(){ return (typeof WS_URL!=='undefined'&&WS_URL)?WS_URL.replace(/^wss?:\/\//,'https://'):''; }
+  function token(){ try { if(window.getAuthToken) return window.getAuthToken().then(function(a){return a||null;}); var s=JSON.parse(localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token')); return Promise.resolve(s&&s.access_token||null); } catch(e){ return Promise.resolve(null); } }
+  function api(method, path, body){
+    return token().then(function(t){
+      return fetch(apiHost()+path,{method:method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+(t||'')},body:body?JSON.stringify(body):undefined}).then(function(r){ return r.json(); });
+    });
+  }
+  var viewId = new URLSearchParams(location.search).get('id');
+
+  function gameHtml(g){
+    return '<a class="game" href="/g/' + encodeURIComponent(g.slug || g.id) + '"><div class="t">' + (g.has_thumb!==false?'':'') + '</div><div class="n">' + esc(g.title) + '</div></a>';
+  }
+
+  function loadView(){
+    api('GET','/api/collections/'+encodeURIComponent(viewId)).then(function(d){
+      if(!d.collection){ return; }
+      var c=d.collection;
+      document.getElementById('mainTitle').textContent = c.title;
+      document.getElementById('viewTitle').style.display = '';
+      document.getElementById('viewTitle').textContent = c.title + ' <span style="font-weight:400;color:var(--mute);font-size:.85rem">(' + esc(c.visibility) + ')</span>';
+      document.getElementById('viewDesc').textContent = c.description || '';
+      var vg=document.getElementById('viewGames');
+      vg.innerHTML = d.games.length ? d.games.map(gameHtml).join('') : '<div class="empty">No games in this collection yet.</div>';
+      var acts=document.getElementById('viewActs');
+      if(d.owner_view){
+        acts.style.display='flex';
+        acts.innerHTML='<button class="btn danger" id="delCollBtn">Delete collection</button>';
+        document.getElementById('delCollBtn').addEventListener('click', function(){
+          api('DELETE','/api/collections/'+encodeURIComponent(viewId)).then(function(){ location.href='/collections'; });
+        });
+      }
+      document.getElementById('viewCard').style.display='';
+      document.getElementById('mineCard').style.display='none';
+    });
+  }
+
+  function loadMine(){
+    api('GET','/api/collections?mine=1').then(function(d){
+      var cs=d.collections||[];
+      var box=document.getElementById('mineList');
+      if(!cs.length){ box.innerHTML='<div class="empty">No collections yet.</div>'; return; }
+      box.innerHTML = cs.map(function(c){
+        return '<div class="row"><div class="grow"><b>'+esc(c.title)+'</b><span>'+esc(c.visibility)+' · '+c.count+' game'+(c.count===1?'':'s')+'</span></div><div class="acts">'+
+          '<a class="btn" href="/collections?id='+encodeURIComponent(c.id)+'">View</a>'+
+          '<button class="btn danger" data-del="'+c.id+'">Delete</button></div></div>';
+      }).join('');
+      box.querySelectorAll('[data-del]').forEach(function(b){
+        b.addEventListener('click', function(){
+          api('DELETE','/api/collections/'+encodeURIComponent(b.dataset.del)).then(loadMine);
+        });
+      });
+    });
+  }
+
+  document.getElementById('createBtn').addEventListener('click', function(){
+    var title=document.getElementById('newTitle').value.trim();
+    if(!title) return;
+    api('POST','/api/collections',{title:title,visibility:document.getElementById('newVis').value}).then(function(d){
+      if(d.collection){ document.getElementById('newTitle').value=''; loadMine(); location.href='/collections?id='+encodeURIComponent(d.collection.id); }
+    });
+  });
+
+  if(viewId) loadView(); else loadMine();
+})();
+</script>
+</body>
+</html>

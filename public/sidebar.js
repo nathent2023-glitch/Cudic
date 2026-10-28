@@ -91,6 +91,9 @@
   // Friends icon (two people)
   icons.users='<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 19a5 5 0 0 1 5-4.5"/></svg>';
 
+  // Bell icon (notifications)
+  icons.bell='<svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 2 5 2 5H4s2-1 2-5Z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>';
+
   // Themes icon (palette)
   icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
 
@@ -141,6 +144,7 @@
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
       +sbItem('/friends','friends','users','Friends')
+      +sbItem('/notifications','notifs','bell','Notifications')
       +sbItem('/servers','servers','server','Servers')
       +sbItem('/games','games','games','Games')
       +sbItem('/forums','forums','forum','Forums')
@@ -155,6 +159,29 @@
     +'</div>';
 
   if(!noRail)document.body.insertBefore(nav,document.body.firstChild);
+
+  // Unread notification badge on the bell (quiet: no badge when signed out).
+  (function(){
+    try {
+      var s = localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token');
+      var tok = s ? (function(){ try { var j = JSON.parse(s); return j && j.access_token || s; } catch(e){ return s; } })() : '';
+      if (!tok) return;
+      fetch('/api/notifications', { headers: { 'Authorization': 'Bearer ' + tok } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var n = d.unread || 0;
+          if (!n) return;
+          var item = nav.querySelector('[data-p="notifs"]');
+          if (!item) return;
+          var dot = document.createElement('span');
+          dot.textContent = n > 9 ? '9+' : n;
+          dot.style.cssText = 'position:absolute;top:4px;right:4px;min-width:14px;height:14px;border-radius:8px;background:var(--signal,#b8f23a);color:#0d0e10;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px';
+          item.style.position = 'relative';
+          item.appendChild(dot);
+        })
+        .catch(function(){});
+    } catch (e) {}
+  })();
 
   // Floating account button: bottom-left of the main panel. Same IDs as
   // before, so the login/logout hover, tooltip, and profile wiring below
