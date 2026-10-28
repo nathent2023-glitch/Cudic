@@ -191,7 +191,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=18"></script>
+  <script src="/sidebar.js?v=19"></script>
   <script src="/islands/islands.js?v=8"></script>
   <script>
   (function(){
@@ -460,7 +460,11 @@ setInterval(function () {
         liveOnPage = game.playing || 0;
         paintLive();        var author = game.users || {};
         var name = author.display_name || 'Unknown';
-        document.getElementById('authorName').textContent = name + (author.user_id ? ' #' + author.user_id : '');
+        var authorEl = document.getElementById('authorName');
+        authorEl.textContent = name + (author.user_id ? ' #' + author.user_id : '');
+        if (author.id) {
+          authorEl.innerHTML = '<a href="/creator?id=' + encodeURIComponent(author.id) + '" style="color:inherit">' + authorEl.textContent + '</a>';
+        }
         var avEl = document.getElementById('authorAvatar');
         if (author.avatar_url && String(author.avatar_url).indexOf('"') === -1) avEl.innerHTML = '<img src="' + author.avatar_url + '" alt="">';
         else avEl.textContent = name.substring(0, 2).toUpperCase();

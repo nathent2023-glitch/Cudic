@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Profile — Cudic</title>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+<style>
+:root{--bg:#0d0e10;--panel:#14161b;--panel-raised:#1a1e26;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--signal:#b8f23a;--blue:#3f7cff;--danger:#d9381e;--radius:3px;--font-head:"Geist",system-ui,sans-serif;--font-body:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
+:root[data-theme="light"]{--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--font-body);display:flex;flex-direction:column;min-height:100vh}
+.wrap{max-width:920px;margin:0 auto;padding:40px 24px 64px;width:100%}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:28px}
+.head{display:flex;gap:20px;align-items:center;margin-bottom:28px}
+.avatar{width:72px;height:72px;border-radius:50%;background:var(--panel-raised);color:var(--signal);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:600;font-size:1.6rem;flex-shrink:0;overflow:hidden;border:1px solid var(--line)}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+h1{font-family:var(--font-head);font-weight:600;font-size:1.6rem;letter-spacing:-.02em;line-height:1.1}
+.idline{color:var(--mute);font-family:var(--font-mono);font-size:.8rem;margin-top:4px}
+.bio{color:var(--ink);white-space:pre-wrap;margin-top:12px;font-size:.95rem}
+.interests{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.tag{border:1px solid var(--line);border-radius:999px;padding:3px 12px;font-size:.78rem;color:var(--mute);font-family:var(--font-mono)}
+.sec-title{font-family:var(--font-head);font-weight:600;font-size:1rem;margin:28px 0 12px;display:flex;align-items:baseline;gap:8px}
+.sec-title .n{color:var(--mute);font-family:var(--font-mono);font-size:.75rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.game{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel);display:block;color:var(--ink);transition:border-color .15s}
+.game:hover{border-color:var(--signal);text-decoration:none}
+.thumb{height:120px;background:var(--panel-raised);display:flex;align-items:center;justify-content:center;font-size:2rem;color:var(--mute);overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.gbody{padding:12px 14px}
+.gbody b{display:block;font-family:var(--font-head);font-weight:600;font-size:.95rem;margin-bottom:2px}
+.gbody span{color:var(--mute);font-size:.78rem}
+.empty{color:var(--mute);font-size:.9rem;padding:8px 0}
+.err{color:var(--danger);margin-top:16px}
+.back{display:inline-block;margin-bottom:24px;font-size:.85rem}
+.packs{margin-top:8px}
+.packs a{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 14px;font-size:.8rem;margin:0 8px 8px 0;color:var(--ink)}
+footer{padding:24px;text-align:center;color:var(--mute);font-size:.78rem;border-top:1px solid var(--line);font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <a class="back" href="/games">&larr; Gallery</a>
+  <div class="card">
+    <div class="head">
+      <div class="avatar" id="avatar">?</div>
+      <div>
+        <h1 id="name">Loading…</h1>
+        <div class="idline" id="idline"></div>
+      </div>
+    </div>
+    <div id="bio" class="bio" hidden></div>
+    <div id="interests" class="interests" hidden></div>
+  </div>
+
+  <div id="packsSec" hidden>
+    <div class="sec-title" id="packsTitle">Published packs <span class="n" id="packsCount"></span></div>
+    <div class="packs" id="packsList"></div>
+  </div>
+
+  <div class="sec-title" id="gamesTitle">Games <span class="n" id="gamesCount"></span></div>
+  <div class="grid" id="gamesGrid"></div>
+  <div id="err" class="err" hidden></div>
+
+  <div class="sec-title" id="commentsTitle" style="margin-top:36px">Comments <span class="n" id="commentsCount"></span></div>
+  <div class="card" id="commentsCard">
+    <div id="commentForm" hidden>
+      <textarea id="commentInput" maxlength="500" rows="3" placeholder="Say something constructive…" style="width:100%;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font:inherit;padding:10px 12px;resize:vertical;margin-bottom:10px"></textarea>
+      <button class="btn" id="commentSend" style="background:var(--signal);color:#0d0e10;font-weight:600;border:0;border-radius:var(--radius);padding:8px 16px;cursor:pointer">Post comment</button>
+      <span id="commentMsg" class="err" style="margin-left:10px" hidden></span>
+    </div>
+    <div id="commentList"></div>
+  </div>
+</main>
+<footer>Made with Cudic · <a href="/">cudic.vercel.app</a> · <a href="/privacy">privacy</a> · <a href="/terms">terms</a></footer>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(function(){
+  var urlId = new URLSearchParams(window.location.search).get('id');
+  if (!urlId) { window.location.replace('/games'); return; }
+  function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
+  function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+  fetch(apiHost() + '/api/user?id=' + encodeURIComponent(urlId))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var p = d.profile;
+      if (!p) { document.getElementById('err').hidden = false; document.getElementById('err').textContent = 'Creator not found.'; return; }
+      document.title = p.display_name + ' — Profile on Cudic';
+      var av = document.getElementById('avatar');
+      if (p.avatar_url) av.innerHTML = '<img src="' + esc(String(p.avatar_url).replace(/"/g,'')) + '" alt="">';
+      else av.textContent = initials(p.display_name || '?');
+      document.getElementById('name').textContent = p.display_name || 'Unknown';
+      document.getElementById('idline').textContent = 'cudic id #' + (p.user_id || '?') + ' · joined ' + (p.created_at ? new Date(p.created_at).toLocaleDateString() : '?');
+      if (p.bio) { var b = document.getElementById('bio'); b.hidden = false; b.textContent = p.bio; }
+      if (p.interests && p.interests.length) {
+        var it = document.getElementById('interests'); it.hidden = false;
+        p.interests.forEach(function(t){ var s = document.createElement('span'); s.className='tag'; s.textContent = t; it.appendChild(s); });
+      }
+      if (p.packs && p.packs.length) {
+        var ps = document.getElementById('packsSec'); ps.hidden = false;
+        document.getElementById('packsCount').textContent = '(' + p.packs.length + ')';
+        var pl = document.getElementById('packsList');
+        p.packs.forEach(function(pk){ var a = document.createElement('a'); a.href = '/themes'; a.textContent = pk.name || pk.slug; pl.appendChild(a); });
+      }
+      /* ── Creator page customization ── */
+      var pg = p.page || {};
+      if (pg.custom_css) {
+        var st = document.createElement('style'); st.id = 'customCss'; st.textContent = pg.custom_css; document.head.appendChild(st);
+      }
+      if (pg.accent) {
+        document.documentElement.style.setProperty('--signal', pg.accent);
+      }
+      if (pg.banner_url) {
+        var hero = document.querySelector('.card');
+        hero.style.backgroundImage = 'linear-gradient(rgba(13,14,16,.55), rgba(13,14,16,.55)), url("' + esc(String(pg.banner_url).replace(/"/g,'')) + '")';
+        hero.style.backgroundSize = 'cover';
+        hero.style.backgroundPosition = 'center';
+      }
+      if (pg.links && pg.links.length) {
+        var linksEl = document.createElement('div');
+        linksEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:14px';
+        pg.links.forEach(function(l){
+          var a = document.createElement('a');
+          a.href = l.url; a.target = '_blank'; a.rel = 'noopener';
+          a.textContent = l.label;
+          a.style.cssText = 'display:inline-block;border:1px solid var(--line);border-radius:999px;padding:3px 14px;font-size:.8rem;color:var(--ink);text-decoration:none';
+          linksEl.appendChild(a);
+        });
+        document.getElementById('interests').after(linksEl);
+      }
+      var showGames = pg.show_games !== false;
+      var showPacks = pg.show_packs !== false;
+      var showComments = pg.show_comments !== false;
+      if (!showPacks) document.getElementById('packsSec').style.display = 'none';
+      if (!showComments) { document.getElementById('commentsCard').style.display = 'none'; document.getElementById('commentsTitle').style.display = 'none'; }
+      var games = p.games || [];
+      if (pg.pinned_game_id) {
+        games = games.slice().sort(function(a, b){ return (a.id === pg.pinned_game_id ? -1 : 0) - (b.id === pg.pinned_game_id ? -1 : 0); });
+      }
+      document.getElementById('gamesCount').textContent = '(' + games.length + ')';
+      var grid = document.getElementById('gamesGrid');
+      if (!showGames) { grid.style.display = 'none'; document.getElementById('gamesTitle').style.display = 'none'; }
+      if (!games.length) { grid.innerHTML = '<div class="empty">No published games yet.</div>'; return; }
+      games.forEach(function(g){
+        var a = document.createElement('a');
+        a.className = 'game';
+        a.href = '/g/' + encodeURIComponent(g.slug || g.id);
+        var t = document.createElement('div'); t.className = 'thumb';
+        var img = document.createElement('img');
+        img.src = '/g/' + encodeURIComponent(g.slug || g.id) + '/thumb';
+        img.onerror = function(){ img.remove(); };
+        t.appendChild(img);
+        var b = document.createElement('div'); b.className = 'gbody';
+        var bd = document.createElement('b'); bd.textContent = g.title;
+        var pl = document.createElement('span'); pl.textContent = (g.play_count || 0) + ' plays';
+        b.appendChild(bd); b.appendChild(pl);
+        a.appendChild(t); a.appendChild(b);
+        grid.appendChild(a);
+      });
+      loadComments();
+    })
+    .catch(function(){
+      var e = document.getElementById('err'); e.hidden = false; e.textContent = 'Could not load creator.';
+    });
+
+  function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
+  function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+  function authToken(){
+    try {
+      if (window.getAuthToken) return window.getAuthToken().then(function(a){ return a || null; });
+      var s = JSON.parse(localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token'));
+      return Promise.resolve(s && s.access_token || null);
+    } catch (e) { return Promise.resolve(null); }
+  }
+  var ME = null;
+  var commentList = document.getElementById('commentList');
+  var commentForm = document.getElementById('commentForm');
+  var commentInput = document.getElementById('commentInput');
+  var commentMsg = document.getElementById('commentMsg');
+
+  function loadComments(){
+    fetch(apiHost() + '/api/creators/' + encodeURIComponent(urlId) + '/comments')
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var comments = d.comments || [];
+        document.getElementById('commentsCount').textContent = '(' + comments.length + ')';
+        commentList.innerHTML = '';
+        if (!comments.length) { commentList.innerHTML = '<div class="empty">No comments yet.</div>'; return; }
+        comments.forEach(function(c){
+          var row = document.createElement('div');
+          row.style.cssText = 'padding:10px 0;border-top:1px solid var(--line);font-size:.9rem';
+          var head = document.createElement('div');
+          head.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:.78rem;color:var(--mute)';
+          var av = document.createElement('span');
+          av.style.cssText = 'width:22px;height:22px;border-radius:50%;background:var(--panel-raised);color:var(--signal);display:inline-flex;align-items:center;justify-content:center;font-size:.65rem;overflow:hidden;flex-shrink:0';
+          if (c.users && c.users.avatar_url) av.innerHTML = '<img src="' + esc(String(c.users.avatar_url).replace(/"/g,'')) + '" style="width:100%;height:100%;object-fit:cover">';
+          else av.textContent = initials((c.users && c.users.display_name) || '?');
+          var nm = document.createElement('b'); nm.textContent = (c.users && c.users.display_name) || 'Unknown'; nm.style.color = 'var(--ink)';
+          var dt = document.createElement('span'); dt.textContent = new Date(c.created_at).toLocaleDateString();
+          head.appendChild(av); head.appendChild(nm); head.appendChild(dt);
+          if (ME && c.author_id === ME) {
+            var del = document.createElement('button');
+            del.textContent = 'delete';
+            del.style.cssText = 'margin-left:auto;background:none;border:0;color:var(--danger);cursor:pointer;font-size:.75rem';
+            del.onclick = function(){
+              authToken().then(function(t){
+                fetch(apiHost() + '/api/creators/' + encodeURIComponent(urlId) + '/comments/' + c.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (t || '') } })
+                  .then(function(r){ return r.json(); })
+                  .then(function(){ loadComments(); });
+              });
+            };
+            head.appendChild(del);
+          }
+          var body = document.createElement('div'); body.textContent = c.body;
+          row.appendChild(head); row.appendChild(body);
+          commentList.appendChild(row);
+        });
+      });
+  }
+
+  authToken().then(function(t){
+    ME = null;
+    if (t) {
+      fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.profile && d.profile.id === urlId) return; // can't comment on own page
+          ME = d.profile && d.profile.id;
+          commentForm.hidden = false;
+        });
+    }
+  });
+
+  document.getElementById('commentSend').addEventListener('click', function(){
+    var text = commentInput.value.trim();
+    if (!text) { commentMsg.hidden = false; commentMsg.textContent = 'Say something first.'; return; }
+    commentMsg.hidden = true;
+    authToken().then(function(t){
+      if (!t) { commentMsg.hidden = false; commentMsg.textContent = 'Sign in to comment.'; return; }
+      fetch(apiHost() + '/api/creators/' + encodeURIComponent(urlId) + '/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + t },
+        body: JSON.stringify({ body: text })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.error) { commentMsg.hidden = false; commentMsg.textContent = d.error; return; }
+        commentInput.value = '';
+        loadComments();
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -120,7 +120,7 @@
             padding: 9px; border-radius: 10px; border: none; cursor: pointer;
             background: var(--signal); color: var(--on-signal, #fff);
         }
-        .pack-install.installed { background: var(--panel-raised); color: var(--signal); border: 1px solid var(--signal); cursor: default; }
+        .pack-install.installed { background: var(--panel-raised); color: var(--signal); border: 1px solid var(--signal); cursor: pointer; }
         .price-badge { font-size: 0.75rem; font-weight: 700; color: var(--signal); margin-left: 8px; }
         .pack-report { background: none; border: none; color: var(--text-tertiary); font-size: 0.72rem; cursor: pointer; padding: 6px 0 0; align-self: flex-start; }
         .pack-report:hover { color: var(--text-secondary); text-decoration: underline; }
@@ -357,7 +357,7 @@
     <script src="/auth.js"></script>
     <script src="/ctheme.js?v=1"></script>
     <script src="/csel.js?v=1"></script>
-    <script src="/sidebar.js?v=18"></script>
+    <script src="/sidebar.js?v=19"></script>
     <script>
     (function () {
       var grid = document.getElementById('packGrid'), resetBtn = document.getElementById('resetPack'), toastEl = document.getElementById('packToast');
@@ -423,7 +423,7 @@
         var price = (mt && mt.price) ? mt.price : 0;
         var owned = !mt || price === 0 || !!mt.owned;
         var btn;
-        if (installed) btn = '<button class="pack-install installed" data-action="install" data-slug="' + slug + '" disabled>✓ Installed</button>';
+        if (installed) btn = '<button class="pack-install installed" data-action="uninstall" data-slug="' + slug + '">Uninstall</button>';
         else if (price > 0 && !owned) btn = '<button class="pack-install" data-action="buy" data-slug="' + slug + '">Buy · ' + price + ' coins</button>';
         else btn = '<button class="pack-install" data-action="install" data-slug="' + slug + '">Install</button>';
         var dots = (m && m.colors) ? dotsHtml(m) : '';
@@ -527,6 +527,12 @@
         var b = e.target.closest('.pack-install');
         if (!b || b.disabled || !window.CudicTheme) return;
         if (b.getAttribute('data-action') === 'buy') { openBuy(b.getAttribute('data-slug')); return; }
+        if (b.getAttribute('data-action') === 'uninstall') {
+          CudicTheme.clearPack();
+          renderPacks();
+          toast('Pack uninstalled — back to the default look.');
+          return;
+        }
         installSlug(b.getAttribute('data-slug'));
       });
       /* ── Reports: reason required, picture optional ── */

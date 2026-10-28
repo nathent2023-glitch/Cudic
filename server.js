@@ -621,7 +621,7 @@ async function handleRequest(req, res) {
 
     const { data: profile, error: profErr } = await supabase
       .from('users')
-      .select('user_id, display_name, avatar_url, bio, interests, setup_done, theme, pack_slug, created_at')
+      .select('id, user_id, display_name, avatar_url, bio, interests, setup_done, theme, pack_slug, created_at')
       .eq('id', user.id)
       .single();
 
@@ -641,18 +641,121 @@ async function handleRequest(req, res) {
       const q = new URL(req.url, 'http://localhost').searchParams;
       const userId = q.get('id') || q.get('user_id');
       if (!userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'id required' })); return; }
-      const [profileRes, gamesRes, packsRes] = await Promise.all([
+      const [profileRes, gamesRes, packsRes, pageRes] = await Promise.all([
         supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug').eq('id', userId).single(),
-        supabase.from('games').select('id, title').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
-        supabase.from('theme_packs').select('slug, name').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20)
+        supabase.from('games').select('id, title, play_count').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
+        supabase.from('theme_packs').select('slug, name').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
+        supabase.from('creator_pages').select('accent, banner_url, pinned_game_id, links, show_games, show_packs, show_comments, custom_css').eq('user_id', userId).maybeSingle()
       ]);
       const data = profileRes.data;
       if (profileRes.error || !data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
       data.games = gamesRes.data || [];
       data.packs = packsRes.data || [];
+      data.page = pageRes.data || {};
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ profile: data }));
     } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: 'Server error' })); }
+    return;
+  }
+
+  // ── API: creator page comments ──────────────────────────────────
+  // GET: public list (auth not required). POST: signed-in + verified +
+  // seat-checked, rate-limited. DELETE: author (or moderator) only.
+  const creatorCommentsMatch = url.pathname.match(/^\/api\/creators\/([^/]+)\/comments(?:\/([^/]+))?$/);
+  if (creatorCommentsMatch && req.method === 'GET') {
+    cors(res);
+    const creatorId = creatorCommentsMatch[1];
+    const { data: comments } = await supabase.from('creator_comments')
+      .select('id, author_id, body, created_at, users!creator_comments_author_id_fkey(display_name, avatar_url)')
+      .eq('creator_id', creatorId)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ comments: comments || [] }));
+    return;
+  }
+  if (creatorCommentsMatch && creatorCommentsMatch[2] && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const commentId = creatorCommentsMatch[2];
+    const { data: target } = await supabase.from('creator_comments').select('id, author_id').eq('id', commentId).single();
+    if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Comment not found.' })); return; }
+    if (target.author_id !== user.id && !(await isModerator(user.id))) {
+      res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not yours to delete.' })); return;
+    }
+    await supabase.from('creator_comments').delete().eq('id', commentId);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (creatorCommentsMatch && !creatorCommentsMatch[2] && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    if (!rateLimit('ccom:' + user.id, 20, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Slow down — 20 comments an hour max.' })); return; }
+    const creatorId = creatorCommentsMatch[1];
+    if (creatorId === user.id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You cannot comment on your own page.' })); return; }
+    const { data: creator } = await supabase.from('users').select('id').eq('id', creatorId).single();
+    if (!creator) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Creator not found.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const text = String(body.body || '').trim().substring(0, 500);
+    if (!text) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Say something first.' })); return; }
+    const { data, error } = await supabase.from('creator_comments').insert({ creator_id: creatorId, author_id: user.id, body: text }).select('id, body, created_at').single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not post.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ comment: data }));
+    return;
+  }
+
+  // ── API: save creator page customization ────────────────────────
+  // Structured fields + custom CSS only — no scripts. Validation is strict
+  // so a bad value can't break the public page or anyone viewing it.
+  if (url.pathname === '/api/creator/custom' && req.method === 'PUT') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await seatAlive(user.id, seatFromReq(req)))) { seatDead(res); return; }
+    if (!(await needVerified(user, res))) return;
+    const body = await readBody(req).catch(() => ({}));
+    const updates = {};
+    if (body.accent !== undefined) {
+      const a = String(body.accent || '').trim();
+      if (!/^#[0-9a-fA-F]{6}$/.test(a)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Accent must be a hex color like #b8f23a.' })); return; }
+      updates.accent = a.toLowerCase();
+    }
+    if (body.banner_url !== undefined) {
+      const b = String(body.banner_url || '').trim().substring(0, 500);
+      const prefix = (process.env.SUPABASE_URL || '') + '/storage/v1/object/public/avatars/';
+      if (b && (!b.startsWith(prefix) || /["'<>]/.test(b))) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid banner URL.' })); return; }
+      updates.banner_url = b;
+    }
+    if (body.pinned_game_id !== undefined) {
+      if (!body.pinned_game_id) updates.pinned_game_id = null;
+      else {
+        const { data: pg } = await supabase.from('games').select('id').eq('id', String(body.pinned_game_id)).eq('owner_id', user.id).eq('published', true).single();
+        if (!pg) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Pin a published game you own.' })); return; }
+        updates.pinned_game_id = pg.id;
+      }
+    }
+    if (body.links !== undefined) {
+      const links = (Array.isArray(body.links) ? body.links : []).slice(0, 6).map(l => ({
+        label: String((l && l.label) || '').trim().substring(0, 24),
+        url: String((l && l.url) || '').trim().substring(0, 500)
+      })).filter(l => l.label && /^https:\/\//i.test(l.url));
+      updates.links = links;
+    }
+    if (body.show_games !== undefined) updates.show_games = !!body.show_games;
+    if (body.show_packs !== undefined) updates.show_packs = !!body.show_packs;
+    if (body.show_comments !== undefined) updates.show_comments = !!body.show_comments;
+    if (body.custom_css !== undefined) {
+      const css = String(body.custom_css || '').replace(/<\/style/gi, '<\\/style').substring(0, 20000);
+      updates.custom_css = css;
+    }
+    updates.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('creator_pages').upsert({ user_id: user.id, ...updates }).select().single();
+    if (error) { console.error('creator page save error:', error.message); res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not save.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ page: data }));
     return;
   }
 
@@ -2817,7 +2920,7 @@ function slugify(s) {
   if (url.pathname.startsWith('/api/games/') && req.method === 'GET') {
     cors(res);
     const id = url.pathname.split('/')[3];
-    const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(display_name, user_id, avatar_url)').eq('id', id).single();
+    const { data, error } = await supabase.from('games').select('*, users!games_owner_id_fkey(id, display_name, user_id, avatar_url)').eq('id', id).single();
     if (!data) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     // Like count + whether this viewer liked it (optional token).
     const authH = req.headers.authorization || '';
@@ -3613,9 +3716,20 @@ function slugify(s) {
     return;
   }
 
+  // ── Redirect /view to /view.html ──────────────────────────────
+  // Share cards (/g/<slug>) bounce here; without this the player 404s.
+  if (url.pathname === '/view') {
+    url.pathname = '/view.html';
+  }
+
   // ── Redirect /games to /games.html ────────────────────────────
   if (url.pathname === '/games') {
     url.pathname = '/games.html';
+  }
+
+  // ── Redirect /creator to /creator.html ─────────────────────────
+  if (url.pathname === '/creator') {
+    url.pathname = '/creator.html';
   }
 
   // ── Redirect /themes to /themes.html ──────────────────────────

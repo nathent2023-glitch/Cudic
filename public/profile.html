@@ -81,7 +81,15 @@
     .swatch-custom { width: 36px; height: 36px; box-sizing: border-box; align-self: center; background: none; border: 2px solid var(--line); border-radius: 50%; padding: 0; cursor: pointer; -webkit-appearance: none; appearance: none; }
     .swatch-custom::-webkit-color-swatch-wrapper { padding: 0; }
     .swatch-custom::-webkit-color-swatch { border: none; border-radius: 50%; }
-    .pref-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+    .pref-row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    .cp-seg { padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: var(--panel-raised); color: var(--mute); font: 500 0.85rem var(--font-body); cursor: pointer; }
+    .cp-seg:hover { color: var(--text-primary); }
+    .cp-seg.on { border-color: var(--signal); background: var(--signal-tint); color: var(--signal); }
+    .cp-sw { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; display: inline-block; }
+    .cp-sw.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+    .cp-chip { font-size: 0.82rem; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; color: var(--mute); text-decoration: none; }
+    .cp-chip:hover { color: var(--text-primary); }
+    .cp-chip.on { color: var(--signal); border-color: var(--signal); } padding: 10px 0; border-top: 1px solid var(--line); }
     .pref-row:first-of-type { border-top: none; }
     .pref-row .label { font-size: 0.88rem; font-weight: 600; }
     .pref-row .desc { font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px; }
@@ -129,6 +137,7 @@
         <a href="#sec-stats">Analytics</a>
         <a href="#sec-liked">Liked games</a>
         <a href="#sec-appearance">Appearance</a>
+        <a href="#sec-creatorpage">Public profile</a>
         <div class="toc-label" style="margin-top:12px">Site</div>
         <a href="/privacy">Privacy</a>
         <a href="/docs">Guide</a>
@@ -210,6 +219,53 @@
         <p class="sub">Your installed theme pack — applies to Studio, themes, and profile preview.</p>
         <div class="pref-row" id="packRow"><div><b id="packName">—</b><span class="sub" id="packSlug" style="font-family:'Geist Mono',monospace;font-size:0.78rem"></span></div><a href="/themes" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem">Edit →</a></div>
       </div>
+      <div class="profile-card" id="sec-creatorpage">
+        <h2>Public profile</h2>
+        <p class="sub">Your public profile is the page others see — accent, banner, links, pinned game, sections, and CSS.</p>
+        <div class="field"><label>Accent color</label>
+          <div style="display:flex;gap:8px;margin:6px 0" id="cpPresets">
+            <a href="#" class="cp-sw on" data-c="#b8f23a" style="background:#b8f23a" title="Lime"></a>
+            <a href="#" class="cp-sw" data-c="#3f7cff" style="background:#3f7cff" title="Blue"></a>
+            <a href="#" class="cp-sw" data-c="#9fd0ff" style="background:#9fd0ff" title="Sky"></a>
+            <a href="#" class="cp-sw" data-c="#ff8c1a" style="background:#ff8c1a" title="Ember"></a>
+            <a href="#" class="cp-sw" data-c="#14a468" style="background:#14a468" title="Mint"></a>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input type="color" id="cpAccent" value="#b8f23a" style="width:56px;height:36px;border:1px solid var(--line);border-radius:6px;background:none;cursor:pointer">
+            <input type="text" id="cpAccentText" value="#b8f23a" maxlength="7" style="width:90px;font-family:'Geist Mono',monospace">
+          </div>
+        </div>
+        <div class="field"><label>Banner <span class="sub">(behind your header)</span></label>
+          <div id="cpBannerPrev" style="display:none;margin-bottom:8px;max-width:320px;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden"><img id="cpBannerImg" alt="" style="display:block;width:100%;max-height:120px;object-fit:cover"></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button type="button" class="btn btn-secondary" id="cpBannerPick" style="padding:6px 12px;font-size:0.78rem">Choose image</button>
+            <button type="button" class="btn btn-danger" id="cpBannerClear" style="padding:6px 12px;font-size:0.78rem;display:none">Remove</button>
+            <input type="file" id="cpBannerFile" accept="image/*" style="display:none">
+          </div>
+        </div>
+        <div class="field"><label>Pinned game <span class="sub">(shows first)</span></label>
+          <div id="cpPinnedChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"></div>
+        </div>
+        <div class="field"><label>Links <span class="sub">(label + https:// URL, up to 6)</span></label>
+          <div id="cpLinks" style="display:flex;flex-direction:column;gap:8px;max-width:480px"></div>
+          <button type="button" class="btn btn-secondary" id="cpAddLink" style="margin-top:8px;padding:6px 12px;font-size:0.78rem">+ Add link</button>
+        </div>
+        <div class="field"><label>Show sections</label>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" class="cp-seg on" id="cpShowGames">Games</button>
+            <button type="button" class="cp-seg on" id="cpShowPacks">Packs</button>
+            <button type="button" class="cp-seg on" id="cpShowComments">Comments</button>
+          </div>
+        </div>
+        <div class="field"><label>Custom CSS <span class="sub">(no scripts — max 20KB)</span></label>
+          <textarea id="cpCss" rows="6" placeholder="/* e.g. */&#10;.card { border-radius: 24px; }&#10;h1 { letter-spacing: .2em; }" style="width:100%;box-sizing:border-box;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--text-primary);font-family:'Geist Mono',monospace;font-size:0.85rem;padding:10px 12px;resize:vertical"></textarea>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:14px;align-items:center">
+          <button class="btn btn-primary" id="cpSave" style="padding:8px 18px">Save</button>
+          <a href="/creator?id=" id="cpView" target="_blank" style="font-size:0.85rem;display:none">View my profile →</a>
+          <span class="status-msg" id="cpMsg" style="padding:0"></span>
+        </div>
+      </div>
       <div class="profile-card" id="sec-liked-count">
         <h2>Liked games</h2>
         <p class="sub">Your saved favorites.</p>
@@ -223,7 +279,7 @@
       </div>
       </div>
       <aside class="profside"><div class="preview-card" aria-label="Public profile preview">
-        <div class="toc-label">What others see</div>
+        <div class="toc-label">Public profile</div>
         <div class="pv-head">
           <div class="avatar-lg" id="avatarLg">?</div>
           <div>
@@ -233,17 +289,18 @@
         </div>
         <div id="publicBio"></div>
         <div id="publicInterests" style="display:none;margin-top:8px"></div>
-        <div class="pv-picrow">
-          <label for="avatarFile" class="btn btn-secondary" style="padding:6px 12px;font-size:0.78rem;cursor:pointer">Change picture</label>
+        <div style="margin-top:12px"><a id="creatorLink" href="#" style="font-size:0.8rem;display:none">View public profile →</a></div>
+        <div class="pv-picrow" style="margin-top:10px">
+          <label for="avatarFile" class="btn btn-secondary" style="padding:5px 10px;font-size:0.75rem;cursor:pointer">Change picture</label>
+          <button type="button" class="btn btn-danger" id="avatarRemove" style="padding:5px 10px;font-size:0.75rem;display:none">Remove</button>
           <input type="file" id="avatarFile" accept="image/*" style="display:none">
-          <button class="btn btn-danger" id="avatarRemove" style="padding:6px 12px;font-size:0.78rem;display:none">Remove</button>
         </div>
       </div></aside>
     </div>
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=18"></script>
+  <script src="/sidebar.js?v=19"></script>
   <script src="/theme-toggle.js?v=1"></script>
   <script>
   (async function(){
@@ -288,6 +345,12 @@
         }
         document.getElementById('displayName').value = d.profile.display_name;
         document.getElementById('publicName').textContent = d.profile.display_name;
+        if (d.profile.id) {
+          var cl = document.getElementById('creatorLink');
+          cl.href = '/creator?id=' + encodeURIComponent(d.profile.id);
+          cl.style.display = 'inline-block';
+          if (typeof myUuid !== 'undefined') { myUuid = d.profile.id; cpLoad(); }
+        }
         myNumericId = d.profile.user_id;
         paintAvatar(d.profile.avatar_url, d.profile.display_name);
         document.getElementById('publicId').textContent = '#' + d.profile.user_id;
@@ -481,7 +544,8 @@
         });
       }).catch(function(e){ msg(m, (e && e.message) || 'Upload failed.', false); });
     });
-    document.getElementById('avatarRemove').addEventListener('click', function(){
+    document.getElementById('avatarRemove').addEventListener('click', function(e){
+      e.preventDefault();
       var m = document.getElementById('nameMsg');
       var btn = this;
       btn.disabled = true;
@@ -497,6 +561,178 @@
         btn.disabled = false;
         msg(m, 'Profile picture removed.', true);
       }).catch(function(e){ btn.disabled = false; msg(m, (e && e.message) || 'Remove failed.', false); });
+    });
+
+    /* Creator page builder */
+    var myUuid = null;
+    var cpState = { links: [] };
+    var cpMsg = document.getElementById('cpMsg');
+    function cpResetLinks(){
+      var wrap = document.getElementById('cpLinks');
+      wrap.innerHTML = '';
+      cpState.links.forEach(function(l, i){
+        var row = document.createElement('div');
+        row.style.display = 'flex'; row.style.gap = '8px'; row.style.alignItems = 'center';
+        var lab = document.createElement('input');
+        lab.placeholder = 'Label'; lab.maxLength = 24; lab.value = l.label;
+        lab.style.cssText = 'flex:1 1 120px;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;padding:8px 10px';
+        var url = document.createElement('input');
+        url.placeholder = 'https://…'; url.maxLength = 500; url.value = l.url;
+        url.style.cssText = 'flex:2 1 220px;background:var(--panel-raised);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85rem;padding:8px 10px';
+        var rm = document.createElement('button');
+        rm.textContent = 'Remove'; rm.type = 'button';
+        rm.style.cssText = 'flex-shrink:0;padding:6px 10px;font-size:0.75rem;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--panel-raised);color:var(--danger);cursor:pointer';
+        rm.onclick = function(){ cpState.links.splice(i, 1); cpResetLinks(); };
+        row.appendChild(lab); row.appendChild(url); row.appendChild(rm);
+        wrap.appendChild(row);
+        lab.addEventListener('input', function(){ cpState.links[i].label = lab.value; });
+        url.addEventListener('input', function(){ cpState.links[i].url = url.value; });
+      });
+    }
+    document.getElementById('cpAddLink').addEventListener('click', function(ev){
+      ev.preventDefault();
+      if (cpState.links.length >= 6) { msg(cpMsg, 'Max 6 links.', false); return; }
+      cpState.links.push({ label: '', url: '' });
+      cpResetLinks();
+    });
+    function cpTg(id, on){ document.getElementById(id).classList.toggle('on', !!on); }
+    ['cpShowGames','cpShowPacks','cpShowComments'].forEach(function(id){
+      document.getElementById(id).addEventListener('click', function(ev){ ev.preventDefault(); this.classList.toggle('on'); });
+    });
+    function cpLoad(){
+      if (!myUuid) { if (myNumericId) { /* uuid comes from profile fetch */ } return; }
+      document.getElementById('cpView').href = '/creator?id=' + encodeURIComponent(myUuid);
+      document.getElementById('cpView').style.display = 'inline-block';
+      fetch(apiHost() + '/api/user?id=' + encodeURIComponent(myUuid))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var p = d.profile || {};
+          var pg = p.page || {};
+          if (pg.accent) { document.getElementById('cpAccent').value = pg.accent; document.getElementById('cpAccentText').value = pg.accent; }
+          cpState.links = (pg.links || []).map(function(l){ return { label: l.label || '', url: l.url || '' }; });
+          cpResetLinks();
+          cpTg('cpShowGames', pg.show_games !== false);
+          cpTg('cpShowPacks', pg.show_packs !== false);
+          cpTg('cpShowComments', pg.show_comments !== false);
+          document.getElementById('cpCss').value = pg.custom_css || '';
+          /* banner preview */
+          if (pg.banner_url) {
+            document.getElementById('cpBannerImg').src = String(pg.banner_url).replace(/"/g, '');
+            document.getElementById('cpBannerPrev').style.display = '';
+            document.getElementById('cpBannerClear').style.display = '';
+          }
+          /* accent preset highlight */
+          var presetOn = document.querySelector('#cpPresets .cp-sw.on');
+          if (presetOn) presetOn.classList.remove('on');
+          if (pg.accent) {
+            var match = document.querySelector('#cpPresets .cp-sw[data-c="' + pg.accent + '"]');
+            if (match) match.classList.add('on');
+          }
+          /* pinned game chips */
+          var chips = document.getElementById('cpPinnedChips');
+          chips.innerHTML = '';
+          function addChip(id, label, selected){
+            var c = document.createElement('a');
+            c.href = '#'; c.className = 'cp-chip' + (selected ? ' on' : '');
+            c.textContent = label; c.dataset.id = id || '';
+            c.addEventListener('click', function(ev){
+              ev.preventDefault();
+              chips.querySelectorAll('.cp-chip').forEach(function(x){ x.classList.remove('on'); });
+              c.classList.add('on');
+            });
+            chips.appendChild(c);
+          }
+          addChip('', 'None', !pg.pinned_game_id);
+          (p.games || []).forEach(function(g){ addChip(g.id, g.title, pg.pinned_game_id === g.id); });
+        })
+        .catch(function(){});
+    }
+    document.getElementById('cpAccent').addEventListener('input', function(){
+      document.getElementById('cpAccentText').value = this.value;
+      var presetOn = document.querySelector('#cpPresets .cp-sw.on');
+      if (presetOn) presetOn.classList.remove('on');
+    });
+    document.getElementById('cpAccentText').addEventListener('input', function(){
+      if (/^#[0-9a-fA-F]{6}$/.test(this.value)) {
+        document.getElementById('cpAccent').value = this.value;
+        var presetOn = document.querySelector('#cpPresets .cp-sw.on');
+        if (presetOn) presetOn.classList.remove('on');
+      }
+    });
+    document.querySelectorAll('#cpPresets .cp-sw').forEach(function(sw){
+      sw.addEventListener('click', function(ev){
+        ev.preventDefault();
+        document.querySelectorAll('#cpPresets .cp-sw').forEach(function(x){ x.classList.remove('on'); });
+        sw.classList.add('on');
+        var c = sw.dataset.c;
+        document.getElementById('cpAccent').value = c;
+        document.getElementById('cpAccentText').value = c;
+      });
+    });
+    document.getElementById('cpBannerPick').addEventListener('click', function(ev){
+      ev.preventDefault();
+      document.getElementById('cpBannerFile').click();
+    });
+    function cpSaveBanner(file, next){
+      if (!myNumericId) { msg(cpMsg, 'Reload and try again.', false); return; }
+      msg(cpMsg, 'Uploading banner…', true);
+      downscaleImage(file, 1600).then(function(blob){
+        return getSupabase().then(function(db){
+          if (!db) throw new Error('Auth unavailable');
+          return db.storage.from('avatars').upload(myNumericId + '/banner.jpg', blob, { upsert: true, contentType: 'image/jpeg' })
+            .then(function(up){ if (up.error) throw up.error; return db.storage.from('avatars').getPublicUrl(myNumericId + '/banner.jpg'); });
+        });
+      }).then(function(pub){
+        var url = pub.data && pub.data.publicUrl;
+        if (!url) throw new Error('Upload failed');
+        next(url);
+      }).catch(function(e){ msg(cpMsg, (e && e.message) || 'Banner upload failed.', false); });
+    }
+    document.getElementById('cpBannerFile').addEventListener('change', function(){
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      if (!file.type || file.type.indexOf('image/') !== 0) { msg(cpMsg, 'Pick an image file.', false); return; }
+      if (file.size > 10 * 1024 * 1024) { msg(cpMsg, 'Image must be under 10MB.', false); return; }
+      cpSaveBanner(file, function(url){
+        fetch(apiHost() + '/api/creator/custom', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ banner_url: url }) })
+          .then(function(r){ return r.json(); })
+          .then(function(d){ if (d.error) { msg(cpMsg, d.error, false); return; }
+            document.getElementById('cpBannerImg').src = url;
+            document.getElementById('cpBannerPrev').style.display = '';
+            document.getElementById('cpBannerClear').style.display = '';
+            msg(cpMsg, 'Banner saved.', true); })
+          .catch(function(){ msg(cpMsg, 'Save failed.', false); });
+      });
+    });
+    document.getElementById('cpBannerClear').addEventListener('click', function(ev){
+      ev.preventDefault();
+      fetch(apiHost() + '/api/creator/custom', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ banner_url: '' }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if (d.error) { msg(cpMsg, d.error, false); return; }
+          document.getElementById('cpBannerPrev').style.display = 'none';
+          document.getElementById('cpBannerClear').style.display = 'none';
+          msg(cpMsg, 'Banner removed.', true); })
+        .catch(function(){ msg(cpMsg, 'Save failed.', false); });
+    });
+    document.getElementById('cpSave').addEventListener('click', function(){
+      var body = {
+        accent: document.getElementById('cpAccentText').value.trim() || null,
+        pinned_game_id: (document.querySelector('#cpPinnedChips .cp-chip.on') || {}).dataset ? document.querySelector('#cpPinnedChips .cp-chip.on').dataset.id : null,
+        links: cpState.links.filter(function(l){ return l.label && l.url; }),
+        show_games: document.getElementById('cpShowGames').classList.contains('on'),
+        show_packs: document.getElementById('cpShowPacks').classList.contains('on'),
+        show_comments: document.getElementById('cpShowComments').classList.contains('on'),
+        custom_css: document.getElementById('cpCss').value
+      };
+      msg(cpMsg, 'Saving…', true);
+      fetch(apiHost() + '/api/creator/custom', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error) { msg(cpMsg, d.error, false); return; }
+          msg(cpMsg, 'Creator page saved.', true);
+        })
+        .catch(function(){ msg(cpMsg, 'Save failed.', false); });
     });
 
     /* Personalization: accent swatches + custom color */
@@ -688,7 +924,7 @@
   /* Tabbed settings nav: one section visible at a time, preview stays put.
      Site links (Privacy/Guide/Terms) navigate away untouched. */
   (function(){
-    var SECTIONS = ['sec-profile', 'sec-security', 'sec-coins', 'sec-stats', 'sec-liked', 'sec-appearance'];
+    var SECTIONS = ['sec-profile', 'sec-security', 'sec-coins', 'sec-stats', 'sec-liked', 'sec-appearance', 'sec-creatorpage'];
     var links = Array.prototype.slice.call(document.querySelectorAll('.pnav a[href^="#sec-"]'));
     if (!links.length) return;
     function show(id, push) {

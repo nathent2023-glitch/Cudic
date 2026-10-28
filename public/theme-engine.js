@@ -360,6 +360,8 @@
     applyIcons(m && m.icons);
   }
 
+  var currentSlug = null;
+
   /* ── Public API ── */
   function applyPack(manifest, slug) {
     state.manifest = manifest; state.slug = slug || manifest.slug || null;
@@ -378,16 +380,18 @@
     }
   }
   function installPack(manifest, slug) {
-    persist(slug || manifest.slug, manifest);
+    currentSlug = slug || manifest.slug;
+    persist(currentSlug, manifest);
     applyPack(manifest, slug);
   }
   function clearPack() {
     state.manifest = null; state.slug = null;
+    currentSlug = null;
     persist(null);
     clearVars(); teardownBg(); teardownCustom(); mountSidebar();
   }
   function storedSlug() {
-    return null; // no local storage; account-only via profile boot
+    return currentSlug;
   }
   async function boot() {
     var tokRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem('sb-opimjwmgmzwapkzgxvhk-auth-token') : '';
@@ -404,6 +408,7 @@
     try {
       var res = await fetch('/packs/' + encodeURIComponent(slug) + '/manifest.json', { cache: 'no-store' });
       if (!res.ok) throw 0;
+      currentSlug = slug;
       applyPack(await res.json(), slug);
       return;
     } catch (e) {}
@@ -411,7 +416,7 @@
     // (free packs boot signed-out; entitled ones boot from cache below).
     try {
       var api = await fetch('/api/packs/' + encodeURIComponent(slug) + '/manifest', { cache: 'no-store' });
-      if (api.ok) { var jm = await api.json(); applyPack(jm.manifest, jm.slug || slug); return; }
+      if (api.ok) { var jm = await api.json(); currentSlug = jm.slug || slug; applyPack(jm.manifest, jm.slug || slug); return; }
     } catch (e2) {}
     // Don't clear DB on boot failure — keep user's saved pack
   }
