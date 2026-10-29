@@ -352,6 +352,15 @@ platform uses them as the canonical inbox. New senders wired in this batch:
 them, deduping same-(user,kind,ref) within 24h. RLS enabled, no policies
 (service-key only) — `20261029130000_notifications_rls.sql`.
 
+### Changelog (update log, `/updlog`)
+
+`public.changelog` backs `/updlog`. Seeded from git history (256 commits);
+future commits auto-post via `POST /api/webhooks/github` (HMAC-verified with
+`GITHUB_WEBHOOK_SECRET`) and a mod fallback `POST /api/mod/changelog/sync`
+(needs `GITHUB_TOKEN`). Mod-only `POST /api/changelog` for hand-written entries.
+RLS on, no policies — `20261029150000_changelog.sql` +
+`20261029160000_changelog_commit_sha.sql`.
+
 RLS: read-for-all on most, insert for authenticated, delete for owner.
 Storage policies let anyone read game assets, authenticated upload, owners manage/delete.
 
