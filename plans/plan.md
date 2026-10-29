@@ -1921,9 +1921,9 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
 | 8 | Star ratings alongside comments | **Gap** | `game_comments` or new `game_ratings` |
 | 9 | Achievements / badges on profiles | **Gap** | Profile page; �6.2 is per-game only |
 | 10 | In-game "beat a friend's score" challenges | Planned-ish | �6.2 leaderboards + existing rooms |
-| 11 | Studio starter templates | Planned | �4.1 |
+| 11 | Studio starter templates | ✅ Shipped | `glox.startFromTemplate` + `public/studio-templates/` |
 | 12 | Creator analytics dashboard | Planned | �3.1 |
-| 13 | Project version history | Planned | �6.1 |
+| 13 | Project version history | ✅ Shipped | snapshot/restore palette commands + `/api/games/:id/revisions` |
 | 14 | Collab editing (room-code P2P) | ✅ Shipped | Yjs/y-webrtc rooms in Studio (`studio/src/collab.ts`) |
 | 15 | Coin gifting / tips | Planned | �3.2 |
 | 16 | 2FA | **Gap** | Auth flow (email code TOTP) |

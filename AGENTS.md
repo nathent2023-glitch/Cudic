@@ -803,9 +803,9 @@ panel, theme packs, sidebar push-aside, editor context menus, gallery motion.
 **Live and verified after push**: server probes pass (malformed `%` → 404 not
 crash, oversized body bounded, server stays alive); Studio build ✓ 56.64s.
 
-**Deferred**: starter templates (A3), pack atomicity (needs migration), preview
-zombie timers, `public/3d_models/` deletion (confirm first), `public/_next/`
-must stay (live landing).
+**Deferred**: pack atomicity (needs migration), preview zombie timers,
+`public/3d_models/` deletion (confirm first), `public/_next/` must stay
+(live landing).
 
 **Blocked / needs the user**: manual two-window collab test (chat display,
 same-file co-edit, guest aliases); real end-to-end AI inference call (sign in,
