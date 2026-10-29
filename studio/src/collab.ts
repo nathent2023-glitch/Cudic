@@ -1,8 +1,6 @@
 // Collab editing: peer-to-peer via Yjs + y-webrtc (open source).
-// Edits, cursors and chat flow directly between browsers; the server only
-// brokers the initial WebRTC connection (Yjs public signaling), so this adds
-// near-zero load to the backend. Room peers = same code; files sync via a
-// Y.Map (text files only; binaries stay local), presence via awareness.
+// Mounted as a left-sidebar panel (like Explorer/Search) instead of a
+// floating widget. Auto-reconnects on reload using the saved room code.
 import * as vscode from 'vscode';
 import * as monaco from 'monaco-editor';
 import * as Y from 'yjs';
@@ -25,8 +23,9 @@ let localColor = '#b8f23a';
 let applyingRemote = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSent = new Map<string, string>();
+let perceived = new Map<string, string>();
 let peerDecorations = new Map<number, vscode.TextEditorDecorationType>();
-let widget: HTMLDivElement | null = null;
+let panel: HTMLDivElement | null = null;
 let msgList: HTMLUListElement | null = null;
 let peopleEl: HTMLDivElement | null = null;
 let disposed = false;
@@ -54,11 +53,16 @@ async function flushLocal() {
     next.add(p);
     if (lastSent.get(p) !== text) {
       lastSent.set(p, text);
+      perceived.set(p, text);
       try { filesMap.set(p, text); } catch (e) {}
     }
   }
   for (const p of Array.from(lastSent.keys())) {
-    if (!next.has(p)) { lastSent.delete(p); try { filesMap.delete(p); } catch (e) {} }
+    if (!next.has(p)) {
+      lastSent.delete(p); perceived.delete(p);
+      try { filesMap.delete(p); } catch (e) {}
+      try { await vscode.workspace.fs.delete(vscode.Uri.file('/workspace/' + p)); } catch (e) {}
+    }
   }
 }
 
@@ -68,8 +72,21 @@ async function applyRemoteFile(path: string, text: string | undefined) {
     const uri = vscode.Uri.file('/workspace/' + path);
     if (text === undefined) {
       try { await vscode.workspace.fs.delete(uri); } catch (e) {}
-    } else {
-      try { await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text)); } catch (e) {}
+      return;
+    }
+    let doc: vscode.TextDocument;
+    try {
+      doc = await vscode.workspace.openTextDocument(uri);
+    } catch (e) {
+      try { await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text)); } catch (e2) {}
+      return;
+    }
+    const full = new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length));
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(uri, full, text);
+    const ok = await vscode.workspace.applyEdit(edit);
+    if (!ok) {
+      try { await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text)); } catch (e2) {}
     }
   } finally {
     applyingRemote = false;
@@ -97,7 +114,7 @@ function clearPeerDecorations() {
 }
 
 function renderPeerCursors() {
-  if (!provider || !widget) return;
+  if (!provider || !panel) return;
   const states = provider.awareness.getStates();
   const ed = vscode.window.activeTextEditor;
   const openPath = ed ? wsPath(ed.document.uri) : null;
@@ -164,37 +181,52 @@ function sendChat() {
   input.value = '';
 }
 
-function buildWidget(code: string) {
-  if (widget) { widget.style.display = ''; return; }
-  widget = document.createElement('div');
-  widget.id = 'collabWidget';
-  widget.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:9998;width:280px;background:#14161b;border:1px solid #262a33;border-radius:6px;color:#f7f5ec;font:400 12px/1.5 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden';
-  widget.innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262a33;background:#0d0e10">' +
+function buildSidebarPanel(code: string) {
+  const part = (shadowRoot as ShadowRoot).querySelector('.part.sidebar') as HTMLElement | null;
+  if (!part) return false;
+  if (panel) { panel.style.display = ''; return true; }
+  if (getComputedStyle(part).position === 'static') part.style.position = 'relative';
+
+  // Container for our panel — appended into the sidebar
+  panel = document.createElement('div');
+  panel.id = 'cudic-collab-panel';
+  panel.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;font:400 12px/1.5 system-ui,sans-serif;color:#f7f5ec;background:#14161b;border-top:1px solid #262a33;';
+
+  panel.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #262a33;background:#0d0e10">' +
     '<b style="font-size:12px">Collab</b>' +
-    '<code id="collabCode" style="flex:1;font-size:11px;color:#9a9a94;background:#0d0e10;border:1px solid #262a33;border-radius:4px;padding:2px 6px">' + code + '</code>' +
-    '<button id="collabCopy" title="Copy room code" style="background:none;border:1px solid #262a33;color:#f7f5ec;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:11px">copy</button>' +
-    '<button id="collabClose" title="Close" style="background:none;border:0;color:#9a9a94;cursor:pointer;font-size:14px;line-height:1">×</button>' +
+    '<code id="collabCode" style="flex:1;font-size:10px;color:#9a9a94;background:#0d0e10;border:1px solid #262a33;border-radius:4px;padding:2px 6px;overflow:hidden;text-overflow:ellipsis">' + code + '</code>' +
+    '<span id="collabStatus" title="Connection status" style="font-size:10px;color:#9a9a94">…</span>' +
+    '<button id="collabCopy" title="Copy room code" style="background:none;border:1px solid #262a33;color:#f7f5ec;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:10px">copy</button>' +
     '</div>' +
-    '<div id="collabPeople" style="padding:6px 10px;color:#9a9a94;font-size:11px;border-bottom:1px solid #1c2027"></div>' +
-    '<ul id="collabMsgs" style="flex:1;margin:0;padding:8px 10px;list-style:none;max-height:150px;overflow-y:auto;font-size:12px"></ul>' +
-    '<div style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid #262a33">' +
-    '<input id="collabChatInput" placeholder="Message…" style="flex:1;background:#0d0e10;border:1px solid #262a33;border-radius:4px;color:#f7f5ec;font:inherit;padding:5px 8px;outline:none">' +
+    '<div id="collabPeople" style="padding:6px 12px;color:#9a9a94;font-size:11px;border-bottom:1px solid #1c2027"></div>' +
+    '<ul id="collabMsgs" style="flex:1;margin:0;padding:8px 12px;list-style:none;max-height:none;overflow-y:auto;font-size:12px"></ul>' +
+    '<div style="display:flex;gap:6px;padding:8px 12px;border-top:1px solid #262a33">' +
+    '<input id="collabChatInput" placeholder="Message…" style="flex:1;background:#0d0e10;border:1px solid #262a33;border-radius:4px;color:#f7f5ec;font:inherit;padding:5px 8px;outline:none;font-size:12px">' +
     '<button id="collabSend" style="background:#b8f23a;color:#0d0e10;border:0;border-radius:4px;cursor:pointer;padding:0 10px;font-weight:600;font-size:11px">Send</button>' +
+    '</div>' +
+    '<div style="padding:8px 12px;border-top:1px solid #1c2027;font-size:11px;color:#9a9a94">' +
+    '<button id="collabLeave" style="background:none;border:1px solid #262a33;color:#f7f5ec;border-radius:4px;cursor:pointer;padding:3px 10px;font-size:11px">Leave session</button>' +
     '</div>';
-  document.body.appendChild(widget);
-  msgList = widget.querySelector('#collabMsgs') as HTMLUListElement;
-  peopleEl = widget.querySelector('#collabPeople') as HTMLDivElement;
-  widget.querySelector('#collabCopy')!.addEventListener('click', () => {
+
+  part.appendChild(panel);
+  msgList = panel.querySelector('#collabMsgs') as HTMLUListElement;
+  peopleEl = panel.querySelector('#collabPeople') as HTMLDivElement;
+
+  panel.querySelector('#collabCopy')!.addEventListener('click', () => {
     try { navigator.clipboard.writeText(code); } catch (e) {}
   });
-  widget.querySelector('#collabClose')!.addEventListener('click', () => {
-    if (widget) widget.style.display = 'none';
-  });
-  widget.querySelector('#collabSend')!.addEventListener('click', sendChat);
-  widget.querySelector('#collabChatInput')!.addEventListener('keydown', (e) => {
+  panel.querySelector('#collabSend')!.addEventListener('click', sendChat);
+  panel.querySelector('#collabChatInput')!.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendChat();
   });
+  panel.querySelector('#collabLeave')!.addEventListener('click', () => {
+    teardown();
+    try { localStorage.removeItem('cudic_collab_room'); } catch (e) {}
+    vscode.window.showInformationMessage('Left the collab session.');
+  });
+
+  return true;
 }
 
 function teardown() {
@@ -204,7 +236,7 @@ function teardown() {
   if (provider) { try { provider.destroy(); } catch (e) {} }
   if (doc) { try { doc.destroy(); } catch (e) {} }
   provider = null; doc = null; filesMap = null; chatArr = null;
-  if (widget) { widget.remove(); widget = null; }
+  if (panel) { panel.remove(); panel = null; }
   msgList = null; peopleEl = null;
 }
 
@@ -242,10 +274,15 @@ function connectRoom(code: string) {
 
   filesMap.observeDeep(() => {
     if (!filesMap) return;
-    const local = new Set(lastSent.keys());
     filesMap.forEach((text, path) => {
-      if (local.has(path)) return;
-      if (typeof text === 'string') void applyRemoteFile(path, text);
+      const known = perceived.get(path);
+      if (known === text) return;
+      perceived.set(path, text);
+      if (text === undefined) {
+        void applyRemoteFile(path, undefined);
+      } else if (typeof text === 'string') {
+        void applyRemoteFile(path, text);
+      }
     });
   });
 
@@ -263,7 +300,21 @@ function connectRoom(code: string) {
     flushTimer = setTimeout(() => void flushLocal(), 400);
   });
 
-  buildWidget(code);
+  if (!buildSidebarPanel(roomCode)) {
+    const timer = setInterval(() => {
+      if (buildSidebarPanel(roomCode)) clearInterval(timer);
+    }, 500);
+    setTimeout(() => clearInterval(timer), 10000);
+  }
+  const statusEl = panel?.querySelector('#collabStatus');
+  if (statusEl) {
+    (statusEl as HTMLElement).textContent = 'connecting';
+    provider.on('status', (e: { connected: boolean }) => {
+      (statusEl as HTMLElement).textContent = e.connected ? '●' : '○';
+      (statusEl as HTMLElement).style.color = e.connected ? '#b8f23a' : '#9a9a94';
+      (statusEl as HTMLElement).title = e.connected ? 'Connected to room' : 'Not connected (P2P blocked?)';
+    });
+  }
   updatePeople();
   renderChat();
   void flushLocal();
@@ -310,4 +361,30 @@ export function registerCollabCommands(): void {
       }
     }
   );
+  registerAction2(
+    class extends Action2 {
+      constructor() {
+        super({
+          id: 'glox.stopCollab',
+          title: { value: 'Cudic: Leave collab session', original: 'Cudic: Leave collab session' },
+          menu: [{ id: MenuId.CommandPalette }]
+        });
+      }
+      async run(): Promise<void> {
+        teardown();
+        try { localStorage.removeItem('cudic_collab_room'); } catch (e) {}
+        vscode.window.showInformationMessage('Left the collab session.');
+      }
+    }
+  );
+  // Auto-reconnect on reload if a room was active.
+  (async () => {
+    try {
+      const saved = localStorage.getItem('cudic_collab_room');
+      if (!saved) return;
+      // small delay to let the workbench + project load first
+      await new Promise((r) => setTimeout(r, 1500));
+      connectRoom(saved);
+    } catch (e) {}
+  })();
 }
