@@ -1911,14 +1911,14 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
 
 | # | Idea | Status | Where it belongs |
 |---|---|---|---|
-| 1 | Named game URLs (`/g/snake` slugs, not `?id=` only) | **Gap** | Gallery + `vercel.json` rewrites |
-| 2 | Per-game share cards (OG image from thumbnail) | **Gap** | `view.html` head / SSR meta |
-| 3 | Embed with "Made in Cudic" badge | **Gap** | `embed.html` |
-| 4 | Public creator pages | Planned | �5.3 (`/creator?id=`) |
+| 1 | Named game URLs (`/g/snake` slugs) | ✅ Shipped | `games.slug` + `/g/:id` rewrites; library links and view share URL |
+| 2 | Per-game share cards (OG image from thumbnail) | ✅ Shipped | `/g/:id` SSR meta — title, desc, `/g/:id/thumb`, twitter card (server.js) |
+| 3 | Embed with "Made in Cudic" badge | ✅ Shipped | `embed.html` at `/embed` carries the brand chip |
+| 4 | Public creator pages | ✅ Shipped | �5.3 (`/creator?id=`) |
 | 5 | Monthly Build-Off challenge | Planned | �5.5 jams |
-| 6 | Friends UI (table exists, no page) | **Gap** | New `/friends` page + endpoint |
+| 6 | Friends UI | ✅ Shipped | `friends.html` at `/friends` + `/api/friends` (list, request, accept/decline) |
 | 7 | Follow + activity feed of followed creators | Planned | �5.3 (gallery filter/feed) |
-| 8 | Star ratings alongside comments | **Gap** | `game_comments` or new `game_ratings` |
+| 8 | Star ratings alongside comments | ✅ Shipped | `game_ratings` migration (20261028150000) + view.html star widget |
 | 9 | Achievements / badges on profiles | **Gap** | Profile page; �6.2 is per-game only |
 | 10 | In-game "beat a friend's score" challenges | Planned-ish | �6.2 leaderboards + existing rooms |
 | 11 | Studio starter templates | ✅ Shipped | `glox.startFromTemplate` + `public/studio-templates/` |
@@ -1933,15 +1933,15 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
 
 ### 13.2 New-gap specs (one line each, expanded when scheduled)
 
-- **1. Slugs:** add `slug` to `games` (unique, nullable), `GET /api/games/:slug`
+- **1. Slugs** *(shipped)*: add `slug` to `games` (unique, nullable), `GET /api/games/:slug`
   fallback, `vercel.json` rewrite `/g/:slug` ? `/view.html?id=�`-by-slug.
-- **2. Share cards:** runtime OG tags on `view.html` (title, thumbnail, author) �
+- **2. Share cards** *(shipped)*: runtime OG tags on `view.html` (title, thumbnail, author) �
   Vercel serves static HTML, so use a small SSR pass or `?id=` meta swap script.
-- **3. Embed badge:** `embed.html` already ships a brand strip; add a fixed
+- **3. Embed badge** *(shipped)*: `embed.html` already ships a brand strip; add a fixed
   "Made in Cudic" chip linking back to the game page.
-- **6. Friends UI:** list/invite/accept on a `/friends` page using the existing
+- **6. Friends UI** *(shipped)*: list/invite/accept on a `/friends` page using the existing
   `friendships` table; DM shortcut per friend.
-- **8. Ratings:** 1�5 stars on `view.html`, one per user per game, rendered with
+- **8. Ratings** *(shipped)*: 1�5 stars on `view.html`, one per user per game, rendered with
   comments; aggregate into gallery sort.
 - **9. Badges:** profile badge row (first publish, 100 plays, jam winner, etc.),
   backed by a `badges` table + award on event.
