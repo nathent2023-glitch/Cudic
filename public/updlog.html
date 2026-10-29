@@ -51,11 +51,14 @@
     <textarea id="uBody" placeholder="What changed, in plain words."></textarea>
     <div class="row">
       <button class="btn btn-primary" id="uPost" style="padding:8px 16px;font-size:0.82rem">Post</button>
+      <button class="btn btn-secondary" id="uSync" style="padding:8px 16px;font-size:0.82rem;display:none">Sync from GitHub</button>
     </div>
     <div class="u-status" id="uStatus"></div>
   </div>
   <div class="u-filters" id="uFilters"></div>
-  <div id="uList"><div class="u-empty">Loading…</div></div>
+  <div id="uNote" class="u-empty" style="display:none;margin-top:18px;font-size:0.78rem">
+    Auto-update: add a GitHub webhook (Payload URL <code>https://glox-o7rr.onrender.com/api/webhooks/github</code>, content type JSON, secret = <code>GITHUB_WEBHOOK_SECRET</code> env var, event: push) and every future push posts itself. Or use <em>Sync from GitHub</em> (needs <code>GITHUB_TOKEN</code> env var) to pull the latest 100 commits on demand.
+  </div>
 </main></div></div>
 <script src="/config.js"></script>
 <script src="/auth.js"></script>
@@ -75,7 +78,18 @@
       isMod = pr.ok;
     } catch (e) {}
   }
-  if (isMod) document.getElementById('uForm').style.display = 'block';
+  if (isMod) { document.getElementById('uForm').style.display = 'block'; document.getElementById('uSync').style.display = ''; document.getElementById('uNote').style.display = 'block'; }
+
+  document.getElementById('uSync').addEventListener('click', async function(){
+    var btn = this; var st = document.getElementById('uStatus');
+    btn.disabled = true; st.textContent = 'Syncing…'; st.className = 'u-status';
+    var r = await fetch(apiHost()+'/api/mod/changelog/sync', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t } });
+    var d = await r.json();
+    btn.disabled = false;
+    if (!r.ok || d.error) { st.textContent = d.error || 'Failed.'; st.className = 'u-status err'; return; }
+    st.textContent = 'Synced — ' + d.inserted + ' new entries (' + d.fetched + ' fetched).'; st.className = 'u-status ok';
+    load();
+  });
 
   var all = [];
   var filter = 'all';

@@ -1989,6 +1989,38 @@ function slugify(s) {
     return;
   }
 
+  // ── API: mod — pull recent commits from GitHub (fallback) ─────
+  if (url.pathname === '/api/mod/changelog/sync' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) { res.writeHead(503, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Set GITHUB_TOKEN in Render env to use sync.' })); return; }
+    let ghRes;
+    try { ghRes = await fetch('https://api.github.com/repos/nathent2023-glitch/Cudic/commits?per_page=100', { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'User-Agent': 'Cudic' } }); }
+    catch (e) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'GitHub unreachable.' })); return; }
+    if (!ghRes.ok) { res.writeHead(502, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'GitHub ' + ghRes.status })); return; }
+    const commits = await ghRes.json();
+    let inserted = 0;
+    for (const c of (Array.isArray(commits) ? commits : [])) {
+      const subject = String((c.commit && c.commit.message) || '').split('\n')[0].slice(0, 140);
+      if (!subject) continue;
+      let kind = 'change';
+      const m = subject.match(/^(\w+)(\(.+\))?!?:/);
+      const prefix = m ? m[1].toLowerCase() : '';
+      if (prefix === 'feat' || prefix === 'feature' || prefix === 'add') kind = 'feature';
+      else if (prefix === 'fix') kind = 'fix';
+      else if (prefix === 'perf' || prefix === 'improve') kind = 'improvement';
+      const body = String((c.commit && c.commit.message) || '').split('\n').slice(1).join('\n').trim().slice(0, 2000);
+      const { error } = await supabase.from('changelog').insert({ kind, title: subject, body: body || ('by ' + ((c.commit && c.commit.author && c.commit.author.name) || 'unknown')), commit_sha: c.sha, created_at: (c.commit && c.commit.author && c.commit.author.date) || new Date().toISOString(), author_id: null });
+      if (!error) inserted++;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, inserted, fetched: Array.isArray(commits) ? commits.length : 0 }));
+    return;
+  }
+
   // ── API: mod — send a message to a player's inbox ────────────
   if (url.pathname === '/api/mod/message' && req.method === 'POST') {
     cors(res);
@@ -2081,6 +2113,55 @@ function slugify(s) {
     if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not post.' })); return; }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, entry: data }));
+    return;
+  }
+
+  // ── API: GitHub webhook — auto-post commits to the changelog ──
+  if (url.pathname === '/api/webhooks/github' && req.method === 'POST') {
+    cors(res);
+    const secret = process.env.GITHUB_WEBHOOK_SECRET;
+    let raw = '';
+    try {
+      raw = await new Promise((resolve, reject) => {
+        const chunks = []; let size = 0;
+        req.on('data', c => { chunks.push(c); size += c.length; if (size > 2 * 1024 * 1024) reject(new Error('too_large')); });
+        req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+        req.on('error', reject);
+      });
+    } catch (e) { res.writeHead(413, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Payload too large.' })); return; }
+    if (secret) {
+      const sig = req.headers['x-hub-signature-256'];
+      if (!sig) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Missing signature.' })); return; }
+      const hmac = crypto.createHmac('sha256', secret).update(raw).digest('hex');
+      const expected = 'sha256=' + hmac;
+      let ok = false;
+      try { ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected)); } catch (e) { ok = false; }
+      if (!ok) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Bad signature.' })); return; }
+    } else {
+      res.writeHead(503, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Webhook secret not configured (set GITHUB_WEBHOOK_SECRET).' }));
+      return;
+    }
+    if (req.headers['x-github-event'] === 'ping') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, pong: true })); return; }
+    if (req.headers['x-github-event'] !== 'push') { res.writeHead(204); res.end(); return; }
+    let payload; try { payload = JSON.parse(raw); } catch (e) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid JSON.' })); return; }
+    const commits = Array.isArray(payload.commits) ? payload.commits : [];
+    let inserted = 0;
+    for (const c of commits) {
+      const subject = String(c.message || '').split('\n')[0].slice(0, 140);
+      if (!subject) continue;
+      let kind = 'change';
+      const m = subject.match(/^(\w+)(\(.+\))?!?:/);
+      const prefix = m ? m[1].toLowerCase() : '';
+      if (prefix === 'feat' || prefix === 'feature' || prefix === 'add') kind = 'feature';
+      else if (prefix === 'fix') kind = 'fix';
+      else if (prefix === 'perf' || prefix === 'improve') kind = 'improvement';
+      const body = String(c.message || '').split('\n').slice(1).join('\n').trim().slice(0, 2000) || ('by ' + ((c.author && c.author.name) || 'unknown'));
+      const { error } = await supabase.from('changelog').insert({ kind, title: subject, body, commit_sha: c.id, created_at: c.timestamp || new Date().toISOString(), author_id: null });
+      if (!error) inserted++;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, inserted, ref: payload.ref || '' }));
     return;
   }
 
