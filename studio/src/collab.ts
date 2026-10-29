@@ -18,7 +18,7 @@ let provider: WebrtcProvider | null = null;
 let filesMap: Y.Map<string> | null = null;
 let chatArr: Y.Array<{ name: string; color: string; text: string; ts: number }> | null = null;
 let roomCode = '';
-let localName = 'Me';
+let localName = 'guest';
 let localColor = '#b8f23a';
 let applyingRemote = false;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -28,9 +28,29 @@ let peerDecorations = new Map<number, vscode.TextEditorDecorationType>();
 let panel: HTMLDivElement | null = null;
 let msgList: HTMLUListElement | null = null;
 let peopleEl: HTMLDivElement | null = null;
+let tabIcon: HTMLButtonElement | null = null;
 let disposed = false;
+// Workbench shadow root, injected from main.ts (same pattern as registerCudicAi).
+let sr: ShadowRoot | null = null;
 
 const PALETTE = ['#b8f23a', '#3f7cff', '#9fd0ff', '#ff8c1a', '#ff5b3d', '#c77dff', '#f2c94c', '#5bd695'];
+
+const GUEST_ADJ = ['brave', 'zippy', 'quiet', 'cosmic', 'lucky', 'fuzzy', 'bold', 'pixel', 'mellow', 'tidy', 'noble', 'nimble', 'snappy', 'soft'];
+const GUEST_NOUN = ['otter', 'tortoise', 'falcon', 'gecko', 'panda', 'ferret', 'walrus', 'raven', 'axolotl', 'lemur', 'puffin', 'badger', 'ocelot', 'ibex'];
+
+// Guests get an anonymous two-word name, kept across reloads so peers see one
+// stable identity; signed-in users override it with their display name.
+function guestName(): string {
+  try {
+    const saved = localStorage.getItem('cudic_collab_name');
+    if (saved) return saved;
+    const n = GUEST_ADJ[(Math.random() * GUEST_ADJ.length) | 0] + ' ' + GUEST_NOUN[(Math.random() * GUEST_NOUN.length) | 0];
+    localStorage.setItem('cudic_collab_name', n);
+    return n;
+  } catch (e) {
+    return 'guest ' + ((Math.random() * 90 + 10) | 0);
+  }
+}
 
 function colorFor(id: number): string {
   return PALETTE[id % PALETTE.length];
@@ -81,12 +101,28 @@ async function applyRemoteFile(path: string, text: string | undefined) {
       try { await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text)); } catch (e2) {}
       return;
     }
-    const full = new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length));
+    // Partial replace: trim the common prefix/suffix so only the changed middle
+    // region is edited. Whole-file replacement yanked the peer's cursor and ate
+    // keystrokes when two people typed in the same file.
+    const cur = doc.getText();
+    if (cur === text) return;
+    const min = Math.min(cur.length, text.length);
+    let start = 0;
+    while (start < min && cur.charCodeAt(start) === text.charCodeAt(start)) start++;
+    let suffix = 0;
+    while (
+      suffix < cur.length - start && suffix < text.length - start &&
+      cur.charCodeAt(cur.length - 1 - suffix) === text.charCodeAt(text.length - 1 - suffix)
+    ) suffix++;
+    const rep = text.slice(start, text.length - suffix);
+    const end = cur.length - suffix;
     const edit = new vscode.WorkspaceEdit();
-    edit.replace(uri, full, text);
+    edit.replace(uri, new vscode.Range(doc.positionAt(start), doc.positionAt(end)), rep);
     const ok = await vscode.workspace.applyEdit(edit);
     if (!ok) {
-      try { await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text)); } catch (e2) {}
+      const full = new vscode.WorkspaceEdit();
+      full.replace(uri, new vscode.Range(doc.positionAt(0), doc.positionAt(cur.length)), text);
+      try { await vscode.workspace.applyEdit(full); } catch (e2) {}
     }
   } finally {
     applyingRemote = false;
@@ -166,50 +202,140 @@ function renderChat() {
     who.style.color = m.color;
     const txt = document.createElement('span');
     txt.textContent = m.text;
-    li.appendChild(who); li.appendChild(txt);
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    li.appendChild(who); li.appendChild(txt); li.appendChild(t);
     msgList.appendChild(li);
   });
   if (msgList.scrollHeight) msgList.scrollTop = msgList.scrollHeight;
 }
 
 function sendChat() {
-  const input = document.getElementById('collabChatInput') as HTMLInputElement | null;
+  // Panel lives in the workbench shadow root — document.getElementById can't see it.
+  const input = panel?.querySelector('#collabChatInput') as HTMLInputElement | null;
   if (!input || !chatArr || !provider) return;
   const text = input.value.trim();
   if (!text) return;
-  chatArr.push([{ name: localName, color: localColor, text, ts: Date.now() }]);
-  input.value = '';
+  try {
+    chatArr.push([{ name: localName, color: localColor, text, ts: Date.now() }]);
+    input.value = '';
+    renderChat(); // local echo now, don't wait on the observer wiring
+    input.focus();
+  } catch (err) {
+    // Surface instead of vanishing silently.
+    const st = panel?.querySelector('#collabStatus') as HTMLElement | null;
+    if (st) { st.textContent = '!'; st.title = 'Send failed: ' + String(err); }
+  }
+}
+
+// Permanent activity-bar tab (like Explorer/Search icons). Click toggles the
+// session panel; clicking with no session starts one.
+// Active state = left accent bar + faint tint (VS Code item style) — never a
+// filled background, that painted a big pale box over the icon.
+function setTabActive(on: boolean): void {
+  if (!tabIcon) return;
+  tabIcon.style.borderLeft = on ? '3px solid #b8f23a' : '3px solid transparent';
+  tabIcon.style.background = on ? 'rgba(184,242,58,.08)' : 'transparent';
+  tabIcon.style.color = on ? '#f7f5ec' : 'var(--vscode-activityBar-foreground,#a6abb2)';
+}
+
+function buildTabIcon(): boolean {
+  if (tabIcon || !sr) return true;
+  const act = sr.querySelector('.part.activitybar') as HTMLElement | null;
+  if (!act) return false;
+  tabIcon = document.createElement('button');
+  tabIcon.id = 'cudic-collab-tab';
+  tabIcon.title = 'Collab';
+  tabIcon.setAttribute('aria-label', 'Collab');
+  tabIcon.style.cssText =
+    'position:absolute;left:0;bottom:76px;width:48px;height:48px;display:flex;align-items:center;justify-content:center;' +
+    'border:3px solid transparent;outline:none;color:var(--vscode-activityBar-foreground,#a6abb2);cursor:pointer;z-index:60;';
+  tabIcon.innerHTML =
+    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+    '<circle cx="9" cy="8" r="3.4"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/>' +
+    '<circle cx="17" cy="9" r="2.6"/><path d="M14.8 19.8c.3-2.9 2.3-4.6 4.9-4.6 1 0 2 .3 2.8.8"/></svg>';
+  tabIcon.addEventListener('click', () => {
+    if (panel) {
+      const show = panel.style.display === 'none';
+      panel.style.display = show ? 'flex' : 'none';
+      setTabActive(show);
+    } else {
+      connectRoom(defaultRoom());
+    }
+  });
+  tabIcon.addEventListener('mouseenter', () => {
+    if (panel && panel.style.display !== 'none') return;
+    tabIcon!.style.background = 'rgba(184,242,58,.06)';
+  });
+  tabIcon.addEventListener('mouseleave', () => {
+    if (panel && panel.style.display !== 'none') return;
+    tabIcon!.style.background = 'transparent';
+  });
+  if (getComputedStyle(act).position === 'static') act.style.position = 'relative';
+  act.appendChild(tabIcon);
+  return true;
 }
 
 function buildSidebarPanel(code: string) {
-  const part = (shadowRoot as ShadowRoot).querySelector('.part.sidebar') as HTMLElement | null;
-  if (!part) return false;
-  if (panel) { panel.style.display = ''; return true; }
-  if (getComputedStyle(part).position === 'static') part.style.position = 'relative';
+  if (!sr) return false;
+  const side = sr.querySelector('.part.sidebar') as HTMLElement | null;
+  if (!side) return false;
+  if (getComputedStyle(side).position === 'static') side.style.position = 'relative';
 
-  // Container for our panel — appended into the sidebar
+  // Panel overlays the sidebar content (Explorer etc.) while visible.
+  if (panel) { panel.style.display = 'flex'; setTabActive(true); return true; }
+
+  // Cudic brand tokens (same set as brand.html / design.md v2), declared on the
+  // panel itself so they resolve inside the workbench shadow root.
   panel = document.createElement('div');
   panel.id = 'cudic-collab-panel';
-  panel.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;font:400 12px/1.5 system-ui,sans-serif;color:#f7f5ec;background:#14161b;border-top:1px solid #262a33;';
+  panel.style.cssText =
+    'position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;z-index:100;' +
+    '--bg:#0d0e10;--panel:#14161b;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--lime:#b8f23a;' +
+    'font:400 13px/1.5 "Geist",system-ui,sans-serif;color:var(--ink);background:var(--panel);';
 
+  const MONO = '"Geist Mono",ui-monospace,monospace';
+  const BTN =
+    'font-family:' + MONO + ';font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;' +
+    'cursor:pointer;border-radius:0;transition:background .12s steps(2),color .12s steps(2),border-color .12s steps(2);';
   panel.innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #262a33;background:#0d0e10">' +
-    '<b style="font-size:12px">Collab</b>' +
-    '<code id="collabCode" style="flex:1;font-size:10px;color:#9a9a94;background:#0d0e10;border:1px solid #262a33;border-radius:4px;padding:2px 6px;overflow:hidden;text-overflow:ellipsis">' + code + '</code>' +
-    '<span id="collabStatus" title="Connection status" style="font-size:10px;color:#9a9a94">…</span>' +
-    '<button id="collabCopy" title="Copy room code" style="background:none;border:1px solid #262a33;color:#f7f5ec;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:10px">copy</button>' +
+    '<style>' +
+    '#cudic-collab-panel .cl-row{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}' +
+    '#collabChatInput{flex:1;min-width:0;background:var(--bg);color:var(--ink);border:1px solid var(--line);' +
+    'border-radius:0;font:inherit;padding:7px 10px;outline:none}' +
+    '#collabChatInput:focus{border-color:var(--lime)}' +
+    '#collabSend{background:var(--lime);color:#0d0e10;border:1px solid var(--lime);padding:8px 14px;' + BTN + '}' +
+    '#collabSend:hover{background:var(--ink);color:var(--bg);border-color:var(--ink)}' +
+    '#collabCopy{background:var(--panel);color:var(--ink);border:1px solid var(--ink);padding:5px 10px;' + BTN + '}' +
+    '#collabCopy:hover{background:var(--ink);color:var(--bg)}' +
+    '#collabLeave{background:transparent;color:var(--ink);border:1px solid var(--ink);padding:8px 14px;width:100%;' + BTN + '}' +
+    '#collabLeave:hover{background:var(--ink);color:var(--bg)}' +
+    '#collabMsgs{flex:1;margin:0;padding:10px 12px;list-style:none;overflow-y:auto;background:var(--bg)}' +
+    '#collabMsgs li{margin:0 0 10px;font-size:12px}' +
+    '#collabMsgs b{font-weight:600}' +
+    '#collabMsgs .t{font-family:' + MONO + ';font-size:10px;color:var(--mute);margin-left:6px}' +
+    '</style>' +
+    '<div class="cl-row">' +
+    '<span aria-hidden="true" style="width:8px;height:8px;background:var(--lime);flex:none"></span>' +
+    '<b style="font-weight:500;letter-spacing:-.02em;font-size:14px">Collab</b>' +
+    '<code id="collabCode" title="' + code + '" style="flex:1;min-width:0;font-family:' + MONO + ';font-size:11px;' +
+    'letter-spacing:.02em;color:var(--mute);background:var(--bg);border:1px solid var(--line);padding:3px 8px;' +
+    'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + code + '</code>' +
+    '<button id="collabCopy" title="Copy room code">copy</button>' +
+    '<span id="collabStatus" title="Connection status" style="font-family:' + MONO + ';font-size:10px;color:var(--mute)">…</span>' +
     '</div>' +
-    '<div id="collabPeople" style="padding:6px 12px;color:#9a9a94;font-size:11px;border-bottom:1px solid #1c2027"></div>' +
-    '<ul id="collabMsgs" style="flex:1;margin:0;padding:8px 12px;list-style:none;max-height:none;overflow-y:auto;font-size:12px"></ul>' +
-    '<div style="display:flex;gap:6px;padding:8px 12px;border-top:1px solid #262a33">' +
-    '<input id="collabChatInput" placeholder="Message…" style="flex:1;background:#0d0e10;border:1px solid #262a33;border-radius:4px;color:#f7f5ec;font:inherit;padding:5px 8px;outline:none;font-size:12px">' +
-    '<button id="collabSend" style="background:#b8f23a;color:#0d0e10;border:0;border-radius:4px;cursor:pointer;padding:0 10px;font-weight:600;font-size:11px">Send</button>' +
+    '<div id="collabPeople" class="cl-row" style="font-family:' + MONO + ';font-size:11px;color:var(--mute)"></div>' +
+    '<ul id="collabMsgs"></ul>' +
+    '<div class="cl-row" style="border-bottom:0">' +
+    '<input id="collabChatInput" placeholder="Message…"/>' +
+    '<button id="collabSend">Send</button>' +
     '</div>' +
-    '<div style="padding:8px 12px;border-top:1px solid #1c2027;font-size:11px;color:#9a9a94">' +
-    '<button id="collabLeave" style="background:none;border:1px solid #262a33;color:#f7f5ec;border-radius:4px;cursor:pointer;padding:3px 10px;font-size:11px">Leave session</button>' +
+    '<div class="cl-row" style="border-bottom:0;border-top:1px solid var(--line)">' +
+    '<button id="collabLeave">Leave session</button>' +
     '</div>';
 
-  part.appendChild(panel);
+  side.appendChild(panel);
   msgList = panel.querySelector('#collabMsgs') as HTMLUListElement;
   peopleEl = panel.querySelector('#collabPeople') as HTMLDivElement;
 
@@ -237,6 +363,7 @@ function teardown() {
   if (doc) { try { doc.destroy(); } catch (e) {} }
   provider = null; doc = null; filesMap = null; chatArr = null;
   if (panel) { panel.remove(); panel = null; }
+  setTabActive(false);
   msgList = null; peopleEl = null;
 }
 
@@ -244,6 +371,7 @@ function connectRoom(code: string) {
   teardown();
   disposed = false;
   roomCode = code;
+  localName = guestName(); // display_name replaces this below when signed in
   try { localStorage.setItem('cudic_collab_room', code); } catch (e) {}
   doc = new Y.Doc();
   filesMap = doc.getMap('files');
@@ -294,10 +422,21 @@ function connectRoom(code: string) {
 
   vscode.window.onDidChangeTextEditorSelection(() => { publishCursor(); renderPeerCursors(); });
   vscode.window.onDidChangeActiveTextEditor(() => { publishCursor(); renderPeerCursors(); });
-  vscode.workspace.onDidChangeTextDocument(() => {
-    if (applyingRemote) return;
+  vscode.workspace.onDidChangeTextDocument((e) => {
+    if (applyingRemote || !filesMap) return;
+    const raw = e.document.uri.path;
+    if (!raw.startsWith('/workspace/')) return; // ignore non-project docs
+    const p = wsPath(e.document.uri);
+    // Fast path: exactly the changed doc goes out now (no full rescan delay).
+    const text = e.document.getText();
+    if (lastSent.get(p) !== text) {
+      lastSent.set(p, text);
+      perceived.set(p, text);
+      try { filesMap.set(p, text); } catch (err) {}
+    }
+    // Slow path: housekeeping for file adds/deletes only.
     if (flushTimer) clearTimeout(flushTimer);
-    flushTimer = setTimeout(() => void flushLocal(), 400);
+    flushTimer = setTimeout(() => void flushLocal(), 1500);
   });
 
   if (!buildSidebarPanel(roomCode)) {
@@ -311,7 +450,9 @@ function connectRoom(code: string) {
     (statusEl as HTMLElement).textContent = 'connecting';
     provider.on('status', (e: { connected: boolean }) => {
       (statusEl as HTMLElement).textContent = e.connected ? '●' : '○';
-      (statusEl as HTMLElement).style.color = e.connected ? '#b8f23a' : '#9a9a94';
+      (statusEl as HTMLElement).style.color = e.connected
+        ? 'var(--vscode-terminal-ansiGreen,#23d18b)'
+        : 'var(--vscode-descriptionForeground,#9d9d9d)';
       (statusEl as HTMLElement).title = e.connected ? 'Connected to room' : 'Not connected (P2P blocked?)';
     });
   }
@@ -331,7 +472,21 @@ function defaultRoom(): string {
   return 'r-' + rnd;
 }
 
-export function registerCollabCommands(): void {
+export function registerCollabCommands(shadowRoot: ShadowRoot): void {
+  sr = shadowRoot;
+  // The panel uses the Cudic brand type (Geist / Geist Mono) — load once per page.
+  try {
+    if (!document.querySelector('link[data-cudic-fonts]')) {
+      const lf = document.createElement('link');
+      lf.rel = 'stylesheet';
+      lf.href = 'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap';
+      lf.setAttribute('data-cudic-fonts', '1');
+      document.head.appendChild(lf);
+    }
+  } catch (e) {}
+  // The tab icon races the workbench mount — retry until the part exists.
+  const icoTimer = setInterval(() => { if (buildTabIcon()) clearInterval(icoTimer); }, 400);
+  setTimeout(() => clearInterval(icoTimer), 15000);
   registerAction2(
     class extends Action2 {
       constructor() {

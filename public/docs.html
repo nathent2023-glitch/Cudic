@@ -92,6 +92,52 @@
                     <p>The import and export commands live in the palette, the <strong>File</strong> menu, and the right-click menu in the Explorer or the editor — all three routes do the same thing.</p>
                 </section>
 
+                <section id="palette">
+                    <h2>Command palette</h2>
+                    <p>Press <code>Ctrl+Shift+P</code> in Studio — every Cudic command lives there, grouped here by what it's for. Most also appear in the File menu or the right-click menu in the Explorer and the editor.</p>
+                    <h3>Project</h3>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Save project</strong></td><td>Saves the workspace to your Cudic account.</td></tr>
+                        <tr><td><strong>Import files / Import folder</strong></td><td>Pulls files or a whole folder into the workspace, merging over what's there.</td></tr>
+                        <tr><td><strong>Import Scratch project</strong></td><td>Turns a <code>.sb3</code> or shared Scratch link into a playable project.</td></tr>
+                        <tr><td><strong>Export project as zip</strong></td><td>Downloads the workspace.</td></tr>
+                        <tr><td><strong>Publish project / Unpublish project</strong></td><td>Puts the project in the gallery, or takes it back out.</td></tr>
+                        <tr><td><strong>Set thumbnail</strong></td><td>Upload, capture or clear the gallery card art.</td></tr>
+                        <tr><td><strong>Start from template</strong></td><td>Drops a starter game (snake, pong, breakout) into the workspace to build from.</td></tr>
+                        <tr><td><strong>Delete project</strong></td><td>Permanently removes the project from your account.</td></tr>
+                    </table>
+                    <h3>Version history</h3>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Save snapshot</strong></td><td>Copies every file in the project into version history (the last 20 are kept).</td></tr>
+                        <tr><td><strong>Restore snapshot…</strong> / <strong>Restore a previous version</strong></td><td>Picks a snapshot and puts its files back.</td></tr>
+                    </table>
+                    <h3>Collab</h3>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Start collab session</strong></td><td>Opens a shared room for the current project — see <a href="#collab">Collab editing</a>.</td></tr>
+                        <tr><td><strong>Join collab session…</strong></td><td>Asks for a room code and joins that room.</td></tr>
+                        <tr><td><strong>Leave collab session</strong></td><td>Exits the room and clears the saved code.</td></tr>
+                    </table>
+                    <h3>Run &amp; packages</h3>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Open Cudic Preview</strong> / <strong>Run active file</strong></td><td>Runs the project in the preview; a <code>.py</code> active file runs with Python instead.</td></tr>
+                        <tr><td><strong>Run Python file</strong></td><td>Runs the open <code>.py</code> file in the preview (Pyodide, no real Python needed).</td></tr>
+                        <tr><td><strong>Add npm package</strong></td><td>Inserts the <code>https://esm.sh</code> import line for a package.</td></tr>
+                        <tr><td><strong>Install Python package</strong></td><td>Inserts the <code>micropip.install()</code> lines for a package.</td></tr>
+                        <tr><td><strong>Insert asset</strong></td><td>Browses 670+ ready-made icons; drops the file plus an <code>&lt;img&gt;</code> at the cursor.</td></tr>
+                    </table>
+                    <h3>Window &amp; AI</h3>
+                    <table>
+                        <tr><th>Command</th><th>What it does</th></tr>
+                        <tr><td><strong>Toggle sidebar</strong></td><td>Collapse or open the file Explorer column.</td></tr>
+                        <tr><td><strong>Leave Studio</strong></td><td>Back to the website.</td></tr>
+                        <tr><td><strong>Cudic AI: Open chat</strong></td><td>Opens the AI panel along the bottom.</td></tr>
+                    </table>
+                </section>
+
                 <section id="files">
                     <h2>Project files</h2>
                     <p>A project is just a folder of files, and the browser is the only machine:</p>
@@ -250,6 +296,28 @@ confetti({ particleCount: 120 })</pre>
                     <h3>Building multiplayer into your game</h3>
                     <p>Your game uses <code>cudic-multi.js</code> — <code>CudicMulti.join('code')</code> gives you <code>net.send(obj)</code>, <code>net.on('msg')</code>, the peer list and <code>net.leave()</code>, and the platform does the connecting for you. Games running in the Studio preview get their own preview rooms so testing never collides with the published game's rooms.</p>
                     <div class="note"><p>Nothing in a room is stored, so a room's chat isn't reviewable after the fact. Report a player from the game page's live strip (by account); guests have no account to report — report the game and describe what happened in the note.</p></div>
+                </section>
+
+                <section id="collab">
+                    <h2>Collab editing</h2>
+                    <p>Build together, Live Share-style. Everyone in a collab room sees the project's files in their own Studio, and edits merge live — even when two people type in the same file. Connections are peer-to-peer (browser&nbsp;→ browser), so a room barely touches Cudic's servers.</p>
+                    <ol class="steps">
+                        <li><strong>Start a session</strong> — in Studio, click the <em>people icon</em> on the left icon rail, or run <code>Cudic: Start collab session</code>. A room code appears in the panel header.</li>
+                        <li><strong>Share the code</strong> — the copy button puts it on the clipboard. Others run <code>Cudic: Join collab session…</code>, paste it, and their Studio joins the same room.</li>
+                        <li><strong>Build.</strong> Text files merge as everyone types, each person's cursor shows with their name on it, and the session panel carries the room's chat.</li>
+                    </ol>
+                    <h3>Names, chat and rejoining</h3>
+                    <ul>
+                        <li><strong>Names come from Cudic.</strong> Signed-in builders appear with their display name; guests get a temporary alias of two random words (<em>cosmic otter</em>, <em>zippy puffin</em>…) that sticks until they sign in.</li>
+                        <li>The people-icon panel holds the chat, the in-room list, the room code and a connection dot — green <code>●</code> means the room is live.</li>
+                        <li><strong>Reloading rejoins</strong> — a reload or crash recovery returns you to the same room with chat and peers intact. <code>Cudic: Leave collab session</code> is the real exit.</li>
+                    </ul>
+                    <div class="cards">
+                        <div class="card"><span class="mono">~20</span><h3>People per room</h3><p>A WebRTC mesh — every peer is in your browser, not on a relay server.</p></div>
+                        <div class="card"><span class="mono">P2P</span><h3>Server load</h3><p>The public signaling servers only broker each handshake; nothing after that flows through Cudic.</p></div>
+                        <div class="card"><span class="mono">TEXT</span><h3>What syncs</h3><p>Text files merge live. Images and audio stay local — a snapshot sent alongside carries bigger assets.</p></div>
+                    </div>
+                    <div class="note"><p>Handing someone the room code shares that session's files, not ownership of the project. If a playtest goes wrong, the owner has <a href="#palette">version history</a> as a safety net — save a snapshot before starting a big collab.</p></div>
                 </section>
 
                 <section id="themes">

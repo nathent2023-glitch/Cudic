@@ -1905,7 +1905,7 @@ filter.
 
 Status: **Recorded. Not scheduled.** A 19-item shortlist from a planning pass.
 Items already owned by an earlier section are flagged "planned" with the pointer;
-gaps are new and get a one-line spec. Sequencing stays governed by §9 milestones.
+gaps are new and get a one-line spec. Sequencing stays governed by ï¿½9 milestones.
 
 ### 13.1 The 19 items
 
@@ -1914,39 +1914,40 @@ gaps are new and get a one-line spec. Sequencing stays governed by §9 milestones
 | 1 | Named game URLs (`/g/snake` slugs, not `?id=` only) | **Gap** | Gallery + `vercel.json` rewrites |
 | 2 | Per-game share cards (OG image from thumbnail) | **Gap** | `view.html` head / SSR meta |
 | 3 | Embed with "Made in Cudic" badge | **Gap** | `embed.html` |
-| 4 | Public creator pages | Planned | §5.3 (`/creator?id=`) |
-| 5 | Monthly Build-Off challenge | Planned | §5.5 jams |
+| 4 | Public creator pages | Planned | ï¿½5.3 (`/creator?id=`) |
+| 5 | Monthly Build-Off challenge | Planned | ï¿½5.5 jams |
 | 6 | Friends UI (table exists, no page) | **Gap** | New `/friends` page + endpoint |
-| 7 | Follow + activity feed of followed creators | Planned | §5.3 (gallery filter/feed) |
+| 7 | Follow + activity feed of followed creators | Planned | ï¿½5.3 (gallery filter/feed) |
 | 8 | Star ratings alongside comments | **Gap** | `game_comments` or new `game_ratings` |
-| 9 | Achievements / badges on profiles | **Gap** | Profile page; §6.2 is per-game only |
-| 10 | In-game "beat a friend's score" challenges | Planned-ish | §6.2 leaderboards + existing rooms |
-| 11 | Studio starter templates | Planned | §4.1 |
-| 12 | Creator analytics dashboard | Planned | §3.1 |
-| 13 | Project version history | Planned | §6.1 |
-| 14 | Collab editing (shared project link) | **Gap** | Studio + new share/access endpoint |
-| 15 | Coin gifting / tips | Planned | §3.2 |
+| 9 | Achievements / badges on profiles | **Gap** | Profile page; ï¿½6.2 is per-game only |
+| 10 | In-game "beat a friend's score" challenges | Planned-ish | ï¿½6.2 leaderboards + existing rooms |
+| 11 | Studio starter templates | Planned | ï¿½4.1 |
+| 12 | Creator analytics dashboard | Planned | ï¿½3.1 |
+| 13 | Project version history | Planned | ï¿½6.1 |
+| 14 | Collab editing (room-code P2P) | âœ… Shipped | Yjs/y-webrtc rooms in Studio (Â§10.9) |
+| 15 | Coin gifting / tips | Planned | ï¿½3.2 |
 | 16 | 2FA | **Gap** | Auth flow (email code TOTP) |
-| 17 | Studio first-run onboarding tour | Planned-ish | §4.2 first-publish checklist |
+| 17 | Studio first-run onboarding tour | Planned-ish | ï¿½4.2 first-publish checklist |
 | 18 | Creator-built comment controls (own game) | **Gap** | `view.html` / My Projects |
 | 19 | PWA / offline install | **Gap** | Manifest + service worker for Studio/gallery |
 
 ### 13.2 New-gap specs (one line each, expanded when scheduled)
 
 - **1. Slugs:** add `slug` to `games` (unique, nullable), `GET /api/games/:slug`
-  fallback, `vercel.json` rewrite `/g/:slug` ? `/view.html?id=…`-by-slug.
-- **2. Share cards:** runtime OG tags on `view.html` (title, thumbnail, author) —
+  fallback, `vercel.json` rewrite `/g/:slug` ? `/view.html?id=ï¿½`-by-slug.
+- **2. Share cards:** runtime OG tags on `view.html` (title, thumbnail, author) ï¿½
   Vercel serves static HTML, so use a small SSR pass or `?id=` meta swap script.
 - **3. Embed badge:** `embed.html` already ships a brand strip; add a fixed
   "Made in Cudic" chip linking back to the game page.
 - **6. Friends UI:** list/invite/accept on a `/friends` page using the existing
   `friendships` table; DM shortcut per friend.
-- **8. Ratings:** 1–5 stars on `view.html`, one per user per game, rendered with
+- **8. Ratings:** 1ï¿½5 stars on `view.html`, one per user per game, rendered with
   comments; aggregate into gallery sort.
 - **9. Badges:** profile badge row (first publish, 100 plays, jam winner, etc.),
   backed by a `badges` table + award on event.
-- **14. Collab editing:** share token per project with read/write role;
-  Studio polling or WS broadcast for live co-edit (behind a cap).
+- **14. Collab editing** *(shipped Â§10.9)*: P2P Yjs rooms over public signaling
+  â€” room codes (not share tokens), live text merge, chat, awareness names; no
+  server relay on our infra.
 - **16. 2FA:** opt-in TOTP or email-code on sign-in; seat gates unchanged.
 - **18. Comment controls:** owner toggles comments on/off and can delete
   comments on own games (reuse moderation delete pattern).

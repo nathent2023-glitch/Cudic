@@ -252,7 +252,7 @@ try {
 // Phase 2 — Cudic: Save project / Import files / Import folder / Export as zip
 registerProjectCommands();
 registerRevisionCommands();
-registerCollabCommands();
+registerCollabCommands(shadowRoot);
 
 // Cudic AI built-in (right-side chat panel + ghost autocomplete).
 void registerCudicAi(shadowRoot);
