@@ -106,6 +106,7 @@ public/                   # the classic app (served at Vercel output root)
   profile.html            # profile
   themes.html             # theme pack store
   editor.html             # classic editor (65KB, legacy)
+  docs.html               # /docs knowledge base; docpage.js builds its section nav
   sidebar.css  sidebar.js # shared rail nav on every page
   theme-engine.js         # window.CudicTheme — pack boot/apply/install/clear
   config.js  auth.js  client.js   # shared client helpers
@@ -124,6 +125,7 @@ studio/
   src/glox.ts             # Preview tab, Run, context menus, preview assembly
   src/project.ts          # save/import/export/publish/delete project commands
   src/cudic-ai/           # ← the AI panel (see §7)
+  src/collab.ts           # ← collab editing panel: P2P co-edit, chat, names (see §7b)
 supabase/
   schema.sql              # base schema
   migrations/             # 4 dated migrations
@@ -136,7 +138,8 @@ render.yaml               # Render service (PORT 10000)
 ### Pages & routes
 Vercel rewrites (`vercel.json`) map extensionless paths → `.html`:
 `/` → index (landing), `/login` → login.html, `/profile`, `/chat`, `/games`,
-`/themes`, `/editor`, `/servers`, `/lobbies`, `/studio` → `studio/index.html`.
+`/themes`, `/editor`, `/servers`, `/lobbies`, `/docs`,
+`/studio` → `studio/index.html`.
 `server.js` mirrors all of these for local dev.
 
 Cache rules: `.html` = `no-cache`; `.js`/`.css` = `max-age=0, must-revalidate`;
@@ -452,6 +455,35 @@ and an active key.
 
 ---
 
+## 7b. Collab editing (P2P, `studio/src/collab.ts`)
+
+Live co-edit, Live Share style, with **no server load** — everything runs
+browser↔browser over WebRTC; Cudic's servers do nothing.
+
+- **Mount**: same shadow-root pattern as the AI panel — `registerCollabCommands(shadowRoot)`
+  from `main.ts` (the §7 webview-rule applies here too). The panel is an absolute
+  overlay (`inset:0`) in `.part.sidebar`; a permanent people-icon tab at
+  `bottom:76px` in `.part.activitybar` toggles it, or starts/joins a room when
+  none is active.
+- **Sync**: Yjs — `Y.Map('files')` (string per text file) + `Y.Array('chat')`,
+  `WebrtcProvider` on public signaling (`wss://signaling.yjs.dev`,
+  `wss://y-webrtc-signaling-eu.herokuapp.com`; community-run — first suspect if
+  rooms won't connect). Local edits broadcast via a 400ms full-rescan **plus an
+  instant keystroke fast-path**; awareness carries names/colors/cursors; ~20
+  peers (default mesh cap — add a `maxConns` provider option only if a cap is
+  wanted).
+- **Remote apply is a partial diff**: common prefix/suffix trimmed, only the
+  changed middle replaced, full-replace fallback — two people typing in one file
+  don't yank each other's cursors.
+- **Names**: signed-in = real `display_name` via `/api/profile`; guests = a
+  two-word alias persisted in `localStorage['cudic_collab_name']`. The room code
+  lives in `localStorage['cudic_collab_room']` → auto-rejoin on reload. Chat
+  echoes locally and surfaces send failures as `!` on the status dot.
+- **Commands**: `glox.startCollab` / `glox.joinCollab` / `glox.stopCollab`.
+  User-facing doc: `/docs` §Collab editing; plan.md row 14 = Shipped.
+
+---
+
 ## 8. Studio (`studio/`)
 
 - `vite.config.js`: `base: '/studio/'`, `outDir: '../public/studio'`,
@@ -467,7 +499,7 @@ and an active key.
   one typically kills a workbench part silently.
 - Workers: editor, extensionHost, textmate, search, outputLink.
 - `main.ts` also: `registerProjectCommands()`, `registerCudicAi(shadowRoot)`,
-  `pushSupaToken()`, `mountTitleBarCudicIcon()`.
+  `registerCollabCommands(shadowRoot)`, `pushSupaToken()`, `mountTitleBarCudicIcon()`.
 
 ### Commands
 ```
@@ -477,6 +509,7 @@ glox.setThumbnail | glox.openPreview | glox.run | glox.leaveStudio | glox.toggle
 glox.runPython | glox.installPythonPackage | glox.addPackage
 glox.importScratch   (.sb3 file or shared Scratch link → playable project)
 glox.insertIcon       (Kenney CC0 icon library → assets/icons + <img> at cursor)
+glox.startCollab | glox.joinCollab | glox.stopCollab   (P2P collab rooms, §7b)
 cudic ai:  Cudic AI: Open chat
 ```
 Note the **`glox.` prefix is intentional and kept** — command IDs and storage keys
@@ -750,24 +783,20 @@ Pushing to `master` deploys both. Verify locally first.
 
 ## 16. Work state at time of writing
 
-**Clean tree.** `master` = `origin` = `1fa91dd`, pushed 2026-10-23.
+**Clean tree.** `master` = `origin` = `ea76000`, pushed 2026-10-29.
 Verify with `git status` before assuming this still holds.
 
-**Shipped in `1fa91dd`** (audit-fix + additions batch):
-- Security: XSS fixes (chat avatar, servers icon, profile Liked), unpublished-draft
-  leak gated to owner (+ thumbnail), WS message source guards, token scrub from
-  URL, OAuth redirect no longer carries JWT, rightmost-XFF rate-limit keying,
-  readBody caps, safeDecode (no process crash on bad `%`), generic error strings.
-- Reliability: handleRequest crash wrapper, chat flood guard + typing cap,
-  sendConversationsDirty throttle, sidebar N+1 parallelized, private servers
-  beyond page-1 fetched for members, lobby list hides DM/channel names, reset
-  scan loop 3→50, game field caps, thumbnail size cap, saves PUT errors surfaced.
-- Additions: AI multi-turn memory, WS reconnect w/ backoff + re-join, save
-  backup/restore on game page, related-games links on prerendered pages.
-- Studio: model override dup removed, package pins to 37.1.0, bootProject sends
-  owner token. client.js bumped to v10.
+**Shipped in `ea76000`** (collab + docs batch):
+- Studio: P2P collab panel (`collab.ts` — Yjs/y-webrtc room codes, partial-diff
+  co-editing in one file, live chat, guest aliases, auto-rejoin), mounted as a
+  sidebar tab via `registerCollabCommands(shadowRoot)`. Architecture: §7b.
+- `/docs`: new "Command palette" guide (all Cudic commands grouped) and
+  "Collab editing" sections; plan.md row 14 marked Shipped.
 
-**Shipped earlier**: `d3cb2dc` marketing landing + `/login` split + SEO;
+**Shipped earlier**: `1fa91dd` audit-fix + reliability batch (XSS fixes, WS
+message guards, rightmost-XFF rate-limit keying, readBody caps, AI multi-turn
+memory, WS reconnect w/ backoff, save backup/restore — details in git history);
+`d3cb2dc` marketing landing + `/login` split + SEO;
 `7de42e7` thumbnails + model catalogs + rail animation; `17b6043` Cudic AI
 panel, theme packs, sidebar push-aside, editor context menus, gallery motion.
 
@@ -778,5 +807,6 @@ crash, oversized body bounded, server stays alive); Studio build ✓ 56.64s.
 zombie timers, `public/3d_models/` deletion (confirm first), `public/_next/`
 must stay (live landing).
 
-**Blocked / needs the user**: real end-to-end AI inference call (sign in, add key,
-hit Test). AdSense resubmission needs custom domain + 2–3 weeks.
+**Blocked / needs the user**: manual two-window collab test (chat display,
+same-file co-edit, guest aliases); real end-to-end AI inference call (sign in,
+add key, hit Test). AdSense resubmission needs custom domain + 2–3 weeks.

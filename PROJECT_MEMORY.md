@@ -47,6 +47,7 @@
 - Supabase integration (auth, message persistence)
 - Login page redesigned with split layout
 - GitHub OAuth configured in Supabase
+- P2P collab editing in Studio (Yjs/y-webrtc rooms, live co-edit, chat, guest aliases) — pushed ea76000, 2026-10-29
 
 ## Remaining Work
 - Enable GitHub provider toggle in Supabase (client ID + secret pasted, need to toggle ON and save)

@@ -1,6 +1,6 @@
 # Cudic
 
-**Cudic** is a browser tool for building and playing small games and sites: chat lobbies, a game gallery, a scene/game editor, theme packs, and a VS Code workbench shell at `/studio`.
+**Cudic** is a browser tool for building and playing small games and sites: chat lobbies, a game gallery, a scene/game editor, theme packs, and a VS Code workbench shell at `/studio` with peer-to-peer collaborative editing.
 
 > Proprietary — see [LICENSE.md](LICENSE.md). You may not use, copy, modify, distribute, or host this code without permission.
 
@@ -14,6 +14,7 @@
 | `/games` `/view` | Game gallery + play page |
 | `/editor` | Classic editor (legacy, dark IDE chrome) |
 | `/studio` | **Cudic Studio** — VS Code workbench (Vite + monaco-vscode-api). Where active work happens |
+| `/docs` | Knowledge base — features, Studio guide, command palette, collab editing |
 | `/themes` | Theme pack store |
 | `/profile` | Profile (display name, avatar, bio, interests, theme, likes) |
 | `/servers` `/moderate` `/music` | Community servers, moderation queue, account music tracks |
@@ -24,7 +25,7 @@ Two editors exist: `/editor` (classic, dark) and `/studio` (workbench, dark IDE 
 
 - **Backend**: Node + `server.js` — one hand-rolled HTTP server (static files, REST API, WebSocket, email verification, AI proxy). No Express. `ws` for realtime, `@supabase/supabase-js` for auth + DB + storage, `nodemailer`/`resend` for verification mail.
 - **Frontend**: plain HTML/CSS/JS in `public/` — no framework, no bundler for classic pages.
-- **Studio**: Vite 6 → `public/studio/` (gitignored build output), monaco-vscode-api 37.x.
+- **Studio**: Vite 6 → `public/studio/` (gitignored build output), monaco-vscode-api 37.x. Collab editing is Yjs + y-webrtc over public signaling (P2P — no relay on our servers).
 - **Islands**: React components compiled to a single IIFE bundle (`public/islands/`) for interactive bits inside classic pages.
 
 ## Getting started

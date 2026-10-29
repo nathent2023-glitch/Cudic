@@ -1924,7 +1924,7 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
 | 11 | Studio starter templates | Planned | �4.1 |
 | 12 | Creator analytics dashboard | Planned | �3.1 |
 | 13 | Project version history | Planned | �6.1 |
-| 14 | Collab editing (room-code P2P) | ✅ Shipped | Yjs/y-webrtc rooms in Studio (§10.9) |
+| 14 | Collab editing (room-code P2P) | ✅ Shipped | Yjs/y-webrtc rooms in Studio (`studio/src/collab.ts`) |
 | 15 | Coin gifting / tips | Planned | �3.2 |
 | 16 | 2FA | **Gap** | Auth flow (email code TOTP) |
 | 17 | Studio first-run onboarding tour | Planned-ish | �4.2 first-publish checklist |
@@ -1945,7 +1945,7 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
   comments; aggregate into gallery sort.
 - **9. Badges:** profile badge row (first publish, 100 plays, jam winner, etc.),
   backed by a `badges` table + award on event.
-- **14. Collab editing** *(shipped §10.9)*: P2P Yjs rooms over public signaling
+- **14. Collab editing** *(shipped 2026-10-29)*: P2P Yjs rooms over public signaling
   — room codes (not share tokens), live text merge, chat, awareness names; no
   server relay on our infra.
 - **16. 2FA:** opt-in TOTP or email-code on sign-in; seat gates unchanged.
