@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="en"><head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cudic — Grant awards</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+<link rel="stylesheet" href="/sidebar.css?v=25">
+<style>
+  body { display: flex; overflow: hidden; height: 100%; }
+  .g-layout { flex: 1; width: 0; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: var(--panel); }
+  .g-content { flex: 1; overflow-y: auto; padding: 28px 32px; max-width: 980px; }
+  .g-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 4px; }
+  .g-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; }
+  .g-gate { display: none; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 12px; }
+  .g-body { display: none; }
+  .g-search { display: flex; gap: 8px; margin-bottom: 16px; }
+  .g-search input { flex: 1; background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; outline: none; }
+  .g-search input:focus { border-color: var(--signal); }
+  .g-search button { padding: 9px 16px; font-size: 0.82rem; }
+  .g-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .g-user { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+  .g-user:hover { border-color: var(--signal); }
+  .g-user.on { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
+  .g-user .av { width: 30px; height: 30px; border-radius: 50%; background: var(--panel); color: var(--signal); display: flex; align-items: center; justify-content: center; font-family: var(--font-head); font-weight: 600; font-size: 0.8rem; overflow: hidden; flex-shrink: 0; }
+  .g-user .av img { width: 100%; height: 100%; object-fit: cover; }
+  .g-user .nm { font-weight: 600; font-size: 0.85rem; }
+  .g-user .id { font-family: var(--font-mono, monospace); font-size: 0.72rem; color: var(--text-secondary); }
+  .g-target { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 16px; }
+  .g-target h2 { font-family: var(--font-head); font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+  .g-target .sub { font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px; }
+  .g-owned { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .g-owned .chip { font-family: var(--font-mono, monospace); font-size: 0.72rem; padding: 2px 7px; border: 1px solid var(--line); color: var(--signal); }
+  .g-owned .empty { font-size: 0.8rem; color: var(--text-secondary); }
+  .g-awards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .g-award { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+  .g-award .ic { width: 22px; height: 22px; image-rendering: pixelated; }
+  .g-award .nm { font-weight: 600; font-size: 0.85rem; }
+  .g-award .how { font-size: 0.72rem; color: var(--text-secondary); }
+  .g-award.owned { border-color: var(--signal); }
+  .g-award button { margin-left: auto; padding: 5px 10px; font-size: 0.75rem; cursor: pointer; }
+  .g-status { font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+  .g-status.ok { color: var(--signal); }
+  .g-status.err { color: var(--danger); }
+  .g-note { font-size: 0.78rem; color: var(--text-secondary); margin-top: 18px; }
+</style><link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+</head>
+<body data-page="grant">
+<div class="g-layout page-panel"><div class="g-content">
+  <h1>Grant awards</h1>
+  <p class="g-sub">Moderators only. Pick a player, then grant or revoke any badge, flair, or title. Granted awards land in their inbox; revoking also unequips the code.</p>
+  <div id="gGate" class="g-gate"><div id="gGateText">Sign in to continue.</div></div>
+  <div id="gBody" class="g-body">
+    <div class="g-search">
+      <input type="text" id="gQ" placeholder="Search by name or cudic id #">
+      <button class="btn btn-secondary" id="gSearchBtn">Search</button>
+    </div>
+    <div class="g-results" id="gResults"></div>
+    <div id="gTarget" class="g-target" style="display:none">
+      <h2 id="gName">—</h2>
+      <div class="sub" id="gIdline">—</div>
+      <div class="g-owned" id="gOwned"></div>
+      <div class="g-awards" id="gAwards" style="margin-top:12px"></div>
+      <div class="g-status" id="gStatus"></div>
+    </div>
+    <div id="gMsg" class="g-target" style="display:none">
+      <h2>Send a message</h2>
+      <div class="sub">Lands in their inbox as a moderator message.</div>
+      <input type="text" id="msgTitle" placeholder="Subject" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text-primary);font-family:inherit;font-size:0.85rem;outline:none;margin-bottom:8px">
+      <textarea id="msgBody" rows="4" placeholder="Message" style="width:100%;box-sizing:border-box;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text-primary);font-family:inherit;font-size:0.85rem;outline:none;resize:vertical;margin-bottom:8px"></textarea>
+      <button class="btn btn-secondary" id="msgSend" style="padding:8px 16px;font-size:0.82rem">Send</button>
+      <div class="g-status" id="msgStatus"></div>
+    </div>
+    <div id="gBan" class="g-target" style="display:none">
+      <h2>Bans (chat &amp; comments)</h2>
+      <div class="sub" id="banStatus">No active ban.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <select id="banHours" style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:inherit;font-size:0.82rem">
+          <option value="1">1 hour</option>
+          <option value="24" selected>24 hours</option>
+          <option value="168">7 days</option>
+          <option value="720">30 days</option>
+          <option value="8760">1 year</option>
+        </select>
+        <input type="text" id="banReason" placeholder="Reason (optional)" style="flex:1;min-width:180px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text-primary);font-family:inherit;font-size:0.82rem;outline:none">
+        <button class="btn btn-danger" id="banBtn" style="padding:8px 16px;font-size:0.82rem">Ban</button>
+        <button class="btn btn-secondary" id="unbanBtn" style="padding:8px 16px;font-size:0.82rem">Unban</button>
+      </div>
+      <div class="g-status" id="banMsg"></div>
+    </div>
+  </div>
+</div></div>
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script src="/sidebar.js?v=22"></script>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(async function(){
+  var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+  async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
+  function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+  function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+  function msg(t, ok){ var e=document.getElementById('gStatus'); e.textContent=t; e.className='g-status '+(ok?'ok':'err'); }
+  var t = await token();
+  if (!t) { document.getElementById('gGate').style.display='block'; document.getElementById('gGateText').textContent='Sign in to continue.'; return; }
+  // Gate: any mod endpoint 403s non-mods.
+  var probe;
+  try {
+    var pr = await fetch(apiHost()+'/api/mod/users', { headers: { 'Authorization': 'Bearer ' + t } });
+    if (pr.status === 403) { document.getElementById('gGate').style.display='block'; document.getElementById('gGateText').textContent='Moderators only.'; return; }
+    if (!pr.ok) { document.getElementById('gGate').style.display='block'; document.getElementById('gGateText').textContent='Could not load.'; return; }
+    probe = await pr.json();
+  } catch (e) { document.getElementById('gGate').style.display='block'; document.getElementById('gGateText').textContent='Could not load.'; return; }
+  document.getElementById('gBody').style.display='block';
+
+  var catalog = null;
+  fetch(apiHost()+'/api/badges').then(function(r){ return r.json(); }).then(function(d){ catalog = d.awards || {}; });
+
+  var selected = null, owned = new Set(), equips = { b:[], f:[], t:[] };
+
+  function initials(name){ return String(name||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase(); }
+
+  async function loadTarget(u) {
+    selected = u;
+    document.getElementById('gName').textContent = u.display_name || 'Unknown';
+    document.getElementById('gIdline').textContent = 'cudic id #' + (u.user_id || '?') + ' · joined ' + (u.created_at ? new Date(u.created_at).toLocaleDateString() : '?');
+    document.getElementById('gTarget').style.display = 'block';
+    document.getElementById('gMsg').style.display = 'block';
+    document.getElementById('gBan').style.display = 'block';
+    msg('', true);
+    var r = await fetch(apiHost()+'/api/mod/user-awards?id='+encodeURIComponent(u.id), { headers: { 'Authorization': 'Bearer ' + t } });
+    var d = await r.json();
+    owned = new Set((d.awards || []).map(function(a){ return a.code; }));
+    equips = d.equips || { b:[], f:[], t:[] };
+    paintOwned();
+    paintAwards();
+  }
+
+  function paintOwned() {
+    var el = document.getElementById('gOwned');
+    if (!owned.size) { el.innerHTML = '<span class="empty">No awards yet.</span>'; return; }
+    el.innerHTML = Array.from(owned).map(function(c){ return '<span class="chip">' + esc(c) + '</span>'; }).join('');
+  }
+
+  function slotOf(kind){ return kind === 'title' ? 't' : kind === 'flair' ? 'f' : 'b'; }
+
+  function paintAwards() {
+    if (!catalog) { setTimeout(paintAwards, 120); return; }
+    var el = document.getElementById('gAwards');
+    el.innerHTML = Object.keys(catalog).map(function(code){
+      var a = catalog[code];
+      var isOwned = owned.has(code);
+      return '<div class="g-award' + (isOwned ? ' owned' : '') + '">' +
+        '<img class="ic" src="/cudic-assets/icons/svg/' + a.icon + '.svg" alt="">' +
+        '<div><div class="nm">' + esc(a.label) + '</div><div class="how">' + esc(a.how || '') + ' · ' + esc(a.kind) + '</div></div>' +
+        '<button data-code="' + code + '" data-owned="' + (isOwned ? '1' : '0') + '">' + (isOwned ? 'Revoke' : 'Grant') + '</button>' +
+        '</div>';
+    }).join('');
+    el.querySelectorAll('button[data-code]').forEach(function(b){
+      b.addEventListener('click', async function(){
+        var code = b.dataset.code;
+        var action = b.dataset.owned === '1' ? 'revoke' : 'grant';
+        b.disabled = true;
+        var r = await fetch(apiHost()+'/api/mod/grant', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: selected.id, code: code, action: action }) });
+        var d = await r.json();
+        b.disabled = false;
+        if (!r.ok || d.error) { msg(d.error || 'Failed.', false); return; }
+        if (action === 'grant') owned.add(code); else owned.delete(code);
+        paintOwned(); paintAwards(); loadBans();
+        msg((action === 'grant' ? 'Granted ' : 'Revoked ') + code + '.', true);
+      });
+    });
+  }
+
+  function renderResults(users) {
+    var el = document.getElementById('gResults');
+    if (!users || !users.length) { el.innerHTML = '<div style="color:var(--text-secondary);font-size:0.85rem">No matches.</div>'; return; }
+    el.innerHTML = users.map(function(u){
+      return '<div class="g-user" data-id="' + u.id + '">' +
+        '<div class="av">' + (u.avatar_url ? '<img src="' + esc(String(u.avatar_url).replace(/"/g,'')) + '" alt="">' : initials(u.display_name)) + '</div>' +
+        '<div><div class="nm">' + esc(u.display_name || 'Unknown') + '</div><div class="id">#' + (u.user_id || '?') + '</div></div>' +
+        '</div>';
+    }).join('');
+    el.querySelectorAll('.g-user').forEach(function(row){
+      row.addEventListener('click', function(){
+        el.querySelectorAll('.g-user').forEach(function(x){ x.classList.remove('on'); });
+        row.classList.add('on');
+        var u = users.find(function(x){ return x.id === row.dataset.id; });
+        if (u) loadTarget(u);
+      });
+    });
+  }
+
+  async function search() {
+    var q = document.getElementById('gQ').value.trim();
+    var r = await fetch(apiHost()+'/api/mod/users?q='+encodeURIComponent(q), { headers: { 'Authorization': 'Bearer ' + t } });
+    var d = await r.json();
+    renderResults(d.users || []);
+  }
+  function loadBans() {
+    if (!selected) return;
+    fetch(apiHost()+'/api/mod/bans?userId='+encodeURIComponent(selected.id), { headers: { 'Authorization': 'Bearer ' + t } })
+      .then(function(r){ return r.json(); }).then(function(d){
+        var bs = (d.bans || []).filter(function(b){ return new Date(b.banned_until).getTime() > Date.now(); });
+        var st = document.getElementById('banStatus');
+        if (!bs.length) { st.textContent = 'No active ban.'; st.style.color = 'var(--text-secondary)'; return; }
+        var b = bs[0];
+        st.textContent = 'Banned until ' + new Date(b.banned_until).toLocaleString() + (b.reason ? ' — ' + b.reason : '');
+        st.style.color = 'var(--danger)';
+      }).catch(function(){});
+  }
+
+  document.getElementById('msgSend').addEventListener('click', async function(){
+    if (!selected) { msg('Select a player first.', false); return; }
+    var title = document.getElementById('msgTitle').value.trim();
+    var body = document.getElementById('msgBody').value.trim();
+    var st = document.getElementById('msgStatus');
+    var r = await fetch(apiHost()+'/api/mod/message', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: selected.id, title: title, body: body }) });
+    var d = await r.json();
+    if (!r.ok || d.error) { st.textContent = d.error || 'Failed.'; st.className = 'g-status err'; return; }
+    st.textContent = 'Sent.'; st.className = 'g-status ok';
+    document.getElementById('msgTitle').value = ''; document.getElementById('msgBody').value = '';
+  });
+
+  document.getElementById('banBtn').addEventListener('click', async function(){
+    if (!selected) { msg('Select a player first.', false); return; }
+    var hours = parseInt(document.getElementById('banHours').value, 10);
+    var reason = document.getElementById('banReason').value.trim();
+    var r = await fetch(apiHost()+'/api/mod/ban', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: selected.id, kind: 'chat', hours: hours, reason: reason }) });
+    var d = await r.json();
+    var st = document.getElementById('banMsg');
+    if (!r.ok || d.error) { st.textContent = d.error || 'Failed.'; st.className = 'g-status err'; return; }
+    st.textContent = 'Banned until ' + new Date(d.banned_until).toLocaleString() + '.'; st.className = 'g-status ok';
+    loadBans();
+  });
+
+  document.getElementById('unbanBtn').addEventListener('click', async function(){
+    if (!selected) { msg('Select a player first.', false); return; }
+    var r = await fetch(apiHost()+'/api/mod/unban', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: selected.id, kind: 'chat' }) });
+    var d = await r.json();
+    var st = document.getElementById('banMsg');
+    if (!r.ok || d.error) { st.textContent = d.error || 'Failed.'; st.className = 'g-status err'; return; }
+    st.textContent = 'Unbanned.'; st.className = 'g-status ok';
+    document.getElementById('banStatus').textContent = 'No active ban.';
+    document.getElementById('banStatus').style.color = 'var(--text-secondary)';
+  });
+
+  document.getElementById('gSearchBtn').addEventListener('click', search);
+  document.getElementById('gQ').addEventListener('keydown', function(e){ if (e.key === 'Enter') search(); });
+  // Initial list (most recent 20) so the page isn't empty.
+  search();
+})();
+</script>
+</body></html>

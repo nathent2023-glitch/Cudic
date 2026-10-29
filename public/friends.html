@@ -9,12 +9,10 @@
 <link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
 <link rel="stylesheet" href="/sidebar.css?v=25">
 <style>
-:root{--bg:#0d0e10;--panel:#14161b;--panel-raised:#1a1e26;--line:#262a33;--ink:#f7f5ec;--mute:#9a9a94;--signal:#b8f23a;--blue:#3f7cff;--danger:#d9381e;--radius:3px;--font-head:"Geist",system-ui,sans-serif;--font-body:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}}
-:root[data-theme="light"]{--bg:#f7f5ec;--panel:#fffdf6;--panel-raised:#fff;--line:#d6d2c2;--ink:#0d0e10;--mute:#6b6a63}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font-body);min-height:100vh}
-.wrap{max-width:760px;margin:0 auto;padding:40px 24px 64px}
+:root{--radius:3px}
+body{display:flex;overflow:hidden;height:100%}
+.f-layout{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.f-content{flex:1;min-height:0;overflow-y:auto;padding:28px 32px}
 h1{font-family:var(--font-head);font-weight:600;font-size:1.5rem;letter-spacing:-.02em;margin-bottom:4px}
 .sub{color:var(--mute);font-size:.9rem;margin-bottom:24px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px}
@@ -41,9 +39,8 @@ input[type=text]:focus{border-color:var(--signal)}
 .empty{color:var(--mute);font-size:.9rem;padding:6px 0}
 </style>
 </head>
-<body>
-<nav class="sidebar" id="sidebar" aria-label="Main"></nav>
-<main class="wrap">
+<body data-page="friends">
+<div class="page-panel"><div class="f-layout"><main class="f-content">
   <h1>Friends</h1>
   <p class="sub">Requests you send and accept on your public profile.</p>
 
@@ -68,10 +65,26 @@ input[type=text]:focus{border-color:var(--signal)}
     <h2>Friends</h2>
     <div id="friendsList"></div>
   </div>
-</main>
+  <div class="card">
+    <h2>Following</h2>
+    <div class="addrow" style="margin-bottom:6px">
+      <input type="text" id="addFollow" placeholder="Paste their profile id (cudic id # or uuid)">
+      <button class="btn primary" id="followBtn">Follow</button>
+    </div>
+    <div id="followList"></div>
+  </div>
+  <div class="card">
+    <h2>Followers</h2>
+    <div id="followersList"></div>
+  </div>
+  <div class="card">
+    <h2>Activity</h2>
+    <div id="feedList"></div>
+  </div>
+</main></div></div>
 <script src="/config.js"></script>
 <script src="/auth.js"></script>
-<script src="/sidebar.js?v=21"></script>
+<script src="/sidebar.js?v=22"></script>
 <script src="/theme-toggle.js?v=1"></script>
 <script>
 (function(){
@@ -96,6 +109,9 @@ input[type=text]:focus{border-color:var(--signal)}
             '<button class="btn primary" data-act="accept" data-id="'+u.id+'">Accept</button><button class="btn danger" data-act="decline" data-id="'+u.id+'">Decline</button>'); }).join('') : '<div class="empty">No incoming requests.</div>';
           document.getElementById('outgoingList').innerHTML = d.outgoing.length ? d.outgoing.map(function(u){ return rowHtml(u,'request sent',
             '<button class="btn danger" data-act="cancel" data-id="'+u.id+'">Cancel</button>'); }).join('') : '<div class="empty">No sent requests.</div>';
+          document.getElementById('followList').innerHTML = d.following.length ? d.following.map(function(u){ return rowHtml(u,'following since '+esc(new Date(u.since).toLocaleDateString()),
+            '<button class="btn danger" data-act="unfollow" data-id="'+u.id+'">Unfollow</button>'); }).join('') : '<div class="empty">Not following anyone yet.</div>';
+          document.getElementById('followersList').innerHTML = d.followers.length ? d.followers.map(function(u){ return rowHtml(u,'follows you','<a class="btn" href="/creator?id='+encodeURIComponent(u.id)+'">View →</a>'); }).join('') : '<div class="empty">No followers yet.</div>';
           document.querySelectorAll('[data-act]').forEach(function(b){
             b.addEventListener('click', function(){
               var act=b.dataset.act, uid=b.dataset.id;
@@ -103,10 +119,22 @@ input[type=text]:focus{border-color:var(--signal)}
               else if(act==='accept') api('POST','/api/friends/'+uid+'/accept');
               else if(act==='decline') api('POST','/api/friends/'+uid+'/decline');
               else if(act==='cancel') api('DELETE','/api/friends/'+uid);
+              else if(act==='unfollow') api('DELETE','/api/follow/'+uid);
             });
           });
         })
         .catch(function(){ msg('Could not load friends.',false); });
+      fetch(apiHost()+'/api/feed',{headers:{'Authorization':'Bearer '+t}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var rows=(d.feed||[]);
+          document.getElementById('feedList').innerHTML = rows.length ? rows.map(function(r){
+            var u=(r.users||{});
+            return rowHtml(u, esc(r.text)+' · '+esc(new Date(r.created_at).toLocaleDateString()),
+              '<a class="btn" href="/creator?id='+encodeURIComponent(u.id||r.user_id)+'">View →</a>');
+          }).join('') : '<div class="empty">Nothing yet — publish a game, earn a badge, or follow someone.</div>';
+        })
+        .catch(function(){});
     });
   }
   function api(method, path){
@@ -127,6 +155,19 @@ input[type=text]:focus{border-color:var(--signal)}
       fetch(apiHost()+'/api/friends',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'},body:JSON.stringify({userId:uid})})
         .then(function(r){ return r.json(); })
         .then(function(d){ if(d.error){ msg(d.error,false); return; } msg('Request sent.',true); document.getElementById('addInput').value=''; load(); })
+        .catch(function(){ msg('Request failed.',false); });
+    });
+  });
+  document.getElementById('followBtn').addEventListener('click', function(){
+    var raw=document.getElementById('addFollow').value.trim();
+    if(!raw){ msg('Paste their id first.',false); return; }
+    var m=/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(raw);
+    var uid=m?m[0].toLowerCase():raw;
+    token().then(function(t){
+      if(!t){ window.location.href='/login'; return; }
+      fetch(apiHost()+'/api/follow/'+encodeURIComponent(uid),{method:'POST',headers:{'Authorization':'Bearer '+t}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ if(d.error){ msg(d.error,false); return; } msg('Now following.',true); document.getElementById('addFollow').value=''; load(); })
         .catch(function(){ msg('Request failed.',false); });
     });
   });

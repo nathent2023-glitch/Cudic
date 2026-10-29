@@ -94,8 +94,8 @@
   // Bell icon (notifications)
   icons.bell='<svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 4 2 5 2 5H4s2-1 2-5Z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>';
 
-  // Themes icon (palette)
-  icons.palette='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.2"/><circle cx="14" cy="9" r="1.2"/><circle cx="15.5" cy="14" r="1.2"/><path d="M12 3a9 9 0 0 1 0 18c-1.5 0-2-1-1.4-2.2.7-1.4-.1-3-1.7-3H7a3.5 3.5 0 0 1-2.6-5.8A9 9 0 0 1 12 3Z"/></svg>';
+  // News / update log icon (megaphone-ish)
+  icons.news = '<svg viewBox="0 0 24 24"><path d="M4 11V5h2l10-2v18L6 19H4v-6"/><path d="M6 19v2"/><path d="M18 9a3 3 0 0 1 0 6"/></svg>';
 
   // Quests icon (coin)
   icons.coin='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -143,6 +143,7 @@
       +'<a class="rail-brand" id="railBrand" href="/" aria-label="Cudic home"><img src="/cudic_sfsvg.svg" alt="Cudic" width="36" height="36" style="max-width:100%;object-fit:contain;"></a>'
       +'<div class="nav-section-label">Navigate</div>'
       +sbItem('/chat','chat','chat','Chat')
+      +sbItem('/updlog','updates','news','Updates')
       +sbItem('/friends','friends','users','Friends')
       +sbItem('/notifications','notifs','bell','Notifications')
       +sbItem('/servers','servers','server','Servers')

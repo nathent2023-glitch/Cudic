@@ -1917,9 +1917,9 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
 | 4 | Public creator pages | ✅ Shipped | �5.3 (`/creator?id=`) |
 | 5 | Monthly Build-Off challenge | Planned | �5.5 jams |
 | 6 | Friends UI | ✅ Shipped | `friends.html` at `/friends` + `/api/friends` (list, request, accept/decline) |
-| 7 | Follow + activity feed of followed creators | Planned | �5.3 (gallery filter/feed) |
+| 7 | Follow + activity feed of followed creators | ✅ Shipped | `follows`/`activity` tables; `/api/follow/:id`, `/api/feed`, `/api/friends` returns following/followers; friends.html cards |
 | 8 | Star ratings alongside comments | ✅ Shipped | `game_ratings` migration (20261028150000) + view.html star widget |
-| 9 | Achievements / badges on profiles | **Gap** | Profile page; �6.2 is per-game only |
+| 9 | Achievements / badges on profiles | ✅ Shipped | `user_badges` + `users.equips`; 6 free flairs, 5 badges, 2 titles (`AWARDS` in server.js); equip 5/10/2 on profile |
 | 10 | In-game "beat a friend's score" challenges | Planned-ish | �6.2 leaderboards + existing rooms |
 | 11 | Studio starter templates | ✅ Shipped | `glox.startFromTemplate` + `public/studio-templates/` |
 | 12 | Creator analytics dashboard | Planned | �3.1 |
@@ -1941,10 +1941,15 @@ gaps are new and get a one-line spec. Sequencing stays governed by �9 mileston
   "Made in Cudic" chip linking back to the game page.
 - **6. Friends UI** *(shipped)*: list/invite/accept on a `/friends` page using the existing
   `friendships` table; DM shortcut per friend.
+- **7. Follow + feed** *(shipped 2026-10-29)*: one-way `follows`, feed = own + followed
+  `activity` rows (publish lines, badge/title awards, 60 newest) on `/friends`.
 - **8. Ratings** *(shipped)*: 1�5 stars on `view.html`, one per user per game, rendered with
   comments; aggregate into gallery sort.
-- **9. Badges:** profile badge row (first publish, 100 plays, jam winner, etc.),
-  backed by a `badges` table + award on event.
+- **9. Badges** *(shipped 2026-10-29)*: static `AWARDS` catalog in server.js — 6 free flairs,
+  5 badges (first publish, host, 30/365 days, 100 plays), 2 titles (5 games = Worldbuilder,
+  100 plays = Renowned); credits in `user_badges`, equipped set in `users.equips`
+  (caps 5 badges / 10 flairs / 2 titles, ownership-checked on PUT); profile equip grid,
+  creator page shows the name line.
 - **14. Collab editing** *(shipped 2026-10-29)*: P2P Yjs rooms over public signaling
   — room codes (not share tokens), live text merge, chat, awareness names; no
   server relay on our infra.

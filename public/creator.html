@@ -55,6 +55,11 @@ footer{padding:24px;text-align:center;color:var(--mute);font-size:.78rem;border-
         <div class="idline" id="idline"></div>
       </div>
     </div>
+    <div id="creatorAwards" style="display:none;margin-top:12px"></div>
+    <div id="followWrap" hidden style="margin-top:14px">
+      <button id="followBtn" style="border:1px solid var(--line);background:var(--panel-raised);color:var(--ink);font:inherit;font-weight:500;font-size:.8rem;padding:7px 14px;border-radius:var(--radius);cursor:pointer">Follow</button>
+      <span id="followerCount" style="font-size:.78rem;color:var(--mute);margin-left:10px"></span>
+    </div>
     <div id="bio" class="bio" hidden></div>
     <div id="interests" class="interests" hidden></div>
   </div>
@@ -87,6 +92,32 @@ footer{padding:24px;text-align:center;color:var(--mute);font-size:.78rem;border-
   function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
   function initials(name){ return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase(); }
   function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+  var viewerFollows = false, isSelf = false, followersN = 0;
+  function paintFollow() {
+    var fw = document.getElementById('followWrap'), fb = document.getElementById('followBtn');
+    if (isSelf) { fw.hidden = true; return; }
+    fw.hidden = false;
+    fb.textContent = viewerFollows ? 'Following ✓' : 'Follow';
+    document.getElementById('followerCount').textContent = followersN + ' follower' + (followersN === 1 ? '' : 's');
+  }
+  document.getElementById('followBtn').addEventListener('click', function(){
+    var fb = this;
+    authToken().then(function(t){
+      if (!t) { window.location.href = '/login'; return; }
+      fb.disabled = true;
+      fetch(apiHost() + '/api/follow/' + encodeURIComponent(urlId), { method: viewerFollows ? 'DELETE' : 'POST', headers: { 'Authorization': 'Bearer ' + t } })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          fb.disabled = false;
+          if (d.error) { fb.textContent = d.error; setTimeout(paintFollow, 1800); return; }
+          viewerFollows = !!d.following;
+          followersN += viewerFollows ? 1 : -1;
+          if (followersN < 0) followersN = 0;
+          paintFollow();
+        })
+        .catch(function(){ fb.disabled = false; });
+    });
+  });
   fetch(apiHost() + '/api/user?id=' + encodeURIComponent(urlId))
     .then(function(r){ return r.json(); })
     .then(function(d){
@@ -98,6 +129,20 @@ footer{padding:24px;text-align:center;color:var(--mute);font-size:.78rem;border-
       else av.textContent = initials(p.display_name || '?');
       document.getElementById('name').textContent = p.display_name || 'Unknown';
       document.getElementById('idline').textContent = 'cudic id #' + (p.user_id || '?') + ' · joined ' + (p.created_at ? new Date(p.created_at).toLocaleDateString() : '?');
+      /* Equipped awards right under the name: title chips + badge/flair icons */
+      var awEl = document.getElementById('creatorAwards');
+      var aw = p.awards || {};
+      var chips = [], cells = [];
+      Object.keys(aw).forEach(function(code){
+        var a = aw[code];
+        if (a.kind === 'title') chips.push('<span style="font-family:var(--font-mono,monospace);font-size:.72rem;padding:2px 7px;border:1px solid var(--line);color:var(--signal)">' + esc(a.label) + '</span>');
+        else cells.push('<img src="/cudic-assets/icons/svg/' + a.icon + '.svg" alt="" title="' + esc(a.label) + '" style="width:16px;height:16px;image-rendering:pixelated;margin-right:4px;vertical-align:middle">');
+      });
+      var both = chips.concat(cells);
+      if (both.length) { awEl.innerHTML = both.join(''); awEl.style.display = ''; }
+      viewerFollows = !!p.viewer_follows;
+      followersN = p.followers || 0;
+      paintFollow();
       if (p.bio) { var b = document.getElementById('bio'); b.hidden = false; b.textContent = p.bio; }
       if (p.interests && p.interests.length) {
         var it = document.getElementById('interests'); it.hidden = false;
@@ -232,7 +277,7 @@ footer{padding:24px;text-align:center;color:var(--mute);font-size:.78rem;border-
       fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + t } })
         .then(function(r){ return r.json(); })
         .then(function(d){
-          if (d.profile && d.profile.id === urlId) return; // can't comment on own page
+          if (d.profile && d.profile.id === urlId) { isSelf = true; paintFollow(); return; } // can't comment on own page
           ME = d.profile && d.profile.id;
           commentForm.hidden = false;
         });

@@ -26,11 +26,12 @@
     .rep-acts { display: flex; gap: 8px; flex-wrap: wrap; }
     .rep-acts button { padding: 7px 14px; font-size: 0.78rem; }
     .rep-acts .danger { color: var(--danger); border-color: var(--line); }
-  </style></head>
+  </style><link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+</head>
 <body data-page="moderate">
   <div class="mod-layout page-panel"><div class="mod-content">
     <h1>Moderation</h1>
-    <p class="mod-sub">Reports queue. Every action is logged. <a href="/docs#reports" style="color:var(--signal)">How reporting works</a></p>
+    <p class="mod-sub">Reports queue. Every action is logged. <a href="/docs#reports" style="color:var(--signal)">How reporting works</a> · <a href="/grant" style="color:var(--signal)">Grant awards</a></p>
     <div id="modGate" style="display:none" class="rep-card">
       <div class="rep-prev" id="modGateText">Sign in to continue.</div>
     </div>
@@ -59,7 +60,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=21"></script>
+  <script src="/sidebar.js?v=22"></script>
   <script>
   (async function(){
     var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';

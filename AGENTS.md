@@ -178,6 +178,11 @@ GET  /themes                    theme pack store
 POST /api/session/claim|heartbeat  DELETE /api/session
 GET|PUT|DELETE /api/saves/:gameId  ← account-bound saves (100KB cap)
 POST /api/scratch/import           ← .sb3 / Scratch URL → split player files
+POST/DELETE /api/follow/:id        ← one-way follow (30/h). GET /api/feed (me+followed, 60)
+GET  /api/badges                   ← public award catalog + equip caps
+GET  /api/friends                  ← also returns `following`/`followers` lists
+GET  /api/notifications            ← per-user inbox; POST /api/notifications/read marks all
+GET  /api/mod/*                    ← mod-only: users search, user-awards, grant/revoke, message, ban/unban/bans
 + static file serving from public/
 ```
 WebSocket: `new WebSocketServer({ server })` — lobby presence, typing, broadcast,
@@ -328,6 +333,24 @@ Migrations:
 - `20261003120000_chat_channels_dm.sql` — lobbies get `kind`/`server_id`/`topic`/`is_private`, `server_members.role`, `conversation_members` (access), `conversation_state` (read receipts), `friendships`; legacy rooms deleted
 - `20261003130000_avatars.sql` — public `avatars` storage bucket + policies
 - `20261003140000_server_rules.sql` — `servers.rules`, `server_members.rules_accepted_at` (grandfathered); server create endpoint reads channel bundles from the `SERVER_TEMPLATES` map in `server.js` (`GET /api/server-templates` serves the picker)
+- `20261029120000_follows_badges.sql` — `follows`, `user_badges` (PK `(user_id, code)`), `activity` (feed, FK `activity_user_fk`), `users.equips jsonb` — all RLS-locked, **no policies** (service-role only, same shape as `active_sessions`)
+
+### Awards (badges / flairs / titles — static catalog in `server.js`)
+
+`AWARDS` (next to the supabase client) is the canon: **6 flairs** (spark/check/heart/cube/bolt/gem — free, granted lazily by `autoGrant()` on `GET /api/profile`), **5 badges** (first_game, host, settler 30d, veteran 1y, viral 100 plays), **2 titles** (worldbuilder = 5 games published, renowned = a game hits 100 plays). Codes are a stable API — never rename one, and the client renders icons from `/cudic-assets/icons/svg/<icon>.svg` paths baked in the catalog.
+
+- Hooks: publish flip → `onPublished()` (feed line + first_game + worldbuilder); server create → `host`; scratch import → `bolt`; play bump ≥100 → `viral` + `renowned` (both fire-and-forget). `awardUser()` dedupes via the PK; feed lines only for badges/titles, never flairs.
+- Equip caps **5 badges / 10 flairs / 2 titles**, validated server-side in `PUT /api/profile` (`equips` block) — codes must match their slot and be owned, else 403 "Not yours to equip." Client grid: profile `#sec-awards`, public display on `creator.html`, feed/follow lists on `friends.html`.
+
+### Notifications (inbox, `notifications` table)
+
+`public/notifications` + `/notifications` page + sidebar bell already existed; the
+platform uses them as the canonical inbox. New senders wired in this batch:
+**like** (game owner), **follow** (followed user), **friend request** (target),
+**award** (you earned a badge/title — flairs stay quiet), plus the pre-existing
+**comment** and **friend accepted**. `notify()` (next to `logActivity`) writes
+them, deduping same-(user,kind,ref) within 24h. RLS enabled, no policies
+(service-key only) — `20261029130000_notifications_rls.sql`.
 
 RLS: read-for-all on most, insert for authenticated, delete for owner.
 Storage policies let anyone read game assets, authenticated upload, owners manage/delete.
@@ -792,6 +815,17 @@ Verify with `git status` before assuming this still holds.
   sidebar tab via `registerCollabCommands(shadowRoot)`. Architecture: §7b.
 - `/docs`: new "Command palette" guide (all Cudic commands grouped) and
   "Collab editing" sections; plan.md row 14 marked Shipped.
+
+**Shipped local, uncommitted** (follows + awards — applies to rows 7 and 9):
+Migration `20261029120000_follows_badges.sql` **already applied to the remote
+Supabase**. server.js: `AWARDS` catalog + `awardUser`/`autoGrant`/`onPublished`,
+`PUT /api/profile` equips validation, follow/follow-unfollow/feed/badges
+endpoints, hooks on server create / scratch import / play bump / publish flip.
+Pages: profile `#sec-awards` equip grid (5/10/2 caps, brand-styled), friends
+Following + Followers + Activity cards, creator page title/flairs/badges +
+Follow button. Server probes pass locally (`/api/badges` public catalog,
+401s on feed/follow unauth). plan.md rows 7/9 flipped. Do not re-apply the
+migration — check `follows` exists first.
 
 **Shipped earlier**: `1fa91dd` audit-fix + reliability batch (XSS fixes, WS
 message guards, rightmost-XFF rate-limit keying, readBody caps, AI multi-turn

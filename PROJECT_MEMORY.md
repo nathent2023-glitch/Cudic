@@ -48,6 +48,11 @@
 - Login page redesigned with split layout
 - GitHub OAuth configured in Supabase
 - P2P collab editing in Studio (Yjs/y-webrtc rooms, live co-edit, chat, guest aliases) — pushed ea76000, 2026-10-29
+- Follows + activity feed + awards system (badges/flairs/titles, equip 5/10/2 on profile; follow buttons on friends + creator pages) — local build 2026-10-29, migration applied, awaiting user OK to commit/push
+- Mod grant page `/grant` (moderators only): search players, grant/revoke any award, inbox notify on grant; plus `/moderate` link
+- Mod tools on `/grant` extended: send a message to a player's inbox, and temp-ban from chat & comments (`user_bans` table, `activeBan()` check in WS send + comment POST; unban lifts)
+- Profile preview no longer silently stays at dashes on a failed/expired session — shows a sign-in nudge
+- In-app inbox senders extended: like, follow, friend request, award (plus pre-existing comment/friend-accept); `notify()` helper + RLS hardened on `notifications` (was open to anon via PostgREST)
 
 ## Remaining Work
 - Enable GitHub provider toggle in Supabase (client ID + secret pasted, need to toggle ON and save)

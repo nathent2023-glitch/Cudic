@@ -110,7 +110,24 @@
     .holdbtn { position: relative; overflow: hidden; }
     .holdbtn .holdfill { position: absolute; inset: 0 auto 0 0; background: var(--danger); width: 0%; opacity: 0.35; pointer-events: none; }
     .holdbtn span { position: relative; }
-  </style></head>
+    /* Awards: hairline cell grid, lime = equipped, dim = not earned yet. */
+    .aw-group { margin-bottom: 16px; }
+    .aw-group .toc-label { font-family: var(--font-head); font-weight: 600; font-size: 0.82rem; color: var(--text-primary); margin-bottom: 6px; }
+    .aw-cap { font-family: var(--font-mono, 'Geist Mono', monospace); font-size: 0.72rem; color: var(--text-secondary); font-weight: 400; }
+    .aw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .aw-cell { background: var(--panel-raised); padding: 10px 8px 9px; text-align: center; cursor: pointer; }
+    .aw-cell b { display: block; font-family: var(--font-head); font-weight: 600; font-size: 0.8rem; margin-top: 6px; }
+    .aw-ic { width: 24px; height: 24px; image-rendering: pixelated; }
+    .aw-how { display: block; font-family: var(--font-mono, 'Geist Mono', monospace); font-size: 0.7rem; color: var(--text-secondary); margin-top: 3px; }
+    .aw-cell.locked { cursor: default; opacity: 0.42; }
+    .aw-cell.locked .aw-ic { filter: grayscale(1); }
+    .aw-cell.eq { box-shadow: inset 0 0 0 2px var(--signal); }
+    .aw-cell:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+    .aw-preview { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+    .aw-mini { width: 16px; height: 16px; image-rendering: pixelated; }
+    .aw-titlechip { font-family: var(--font-mono, 'Geist Mono', monospace); font-size: 0.72rem; padding: 2px 7px; border: 1px solid var(--line); color: var(--signal); }
+  </style><link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+</head>
 <body data-page="profile">
   <div class="profile-layout page-panel"><div class="profile-content" id="profileContent">
     <h1>Profile</h1>
@@ -134,6 +151,7 @@
       <nav class="pnav" aria-label="Profile sections"><div class="toc-label">Settings</div>
         <a href="#sec-profile">Public profile</a>
         <a href="#sec-security">Security</a>
+        <a href="#sec-awards">Awards</a>
         <a href="#sec-stats">Analytics</a>
         <a href="#sec-liked">Liked games</a>
         <a href="#sec-appearance">Appearance</a>
@@ -174,6 +192,15 @@
         <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
           <button class="btn btn-danger" id="delAccountBtn">Delete my account</button>
         </div>
+      </div>
+      <div class="profile-card" id="sec-awards">
+        <h2>Awards</h2>
+        <p class="sub">Equip up to 5 badges, 10 flairs, and 2 titles. Flairs are free — use the site and they arrive. Badges are earned doing something long-time or really hard, titles are the rare ones.</p>
+        <div class="aw-group"><div class="toc-label">Titles</div><div class="aw-grid" id="awTitles"></div></div>
+        <div class="aw-group"><div class="toc-label">Flairs <span class="aw-cap" id="capF"></span></div><div class="aw-grid" id="awFlairs"></div></div>
+        <div class="aw-group"><div class="toc-label">Badges <span class="aw-cap" id="capB"></span></div><div class="aw-grid" id="awBadges"></div></div>
+        <button class="btn btn-primary" id="saveEquips">Save awards</button>
+        <div class="status-msg" id="awardsMsg"></div>
       </div>
       <div id="delOverlay" hidden>
         <div class="del-card">
@@ -287,6 +314,7 @@
             <div class="meta">cudic id <b id="publicId">—</b> · joined <b id="publicSince">—</b></div>
           </div>
         </div>
+        <div id="publicAwards" class="aw-preview" style="display:none"></div>
         <div id="publicBio"></div>
         <div id="publicInterests" style="display:none;margin-top:8px"></div>
         <div style="margin-top:12px"><a id="creatorLink" href="#" style="font-size:0.8rem;display:none">View public profile →</a></div>
@@ -300,7 +328,7 @@
   </div></div>
   <script src="/config.js"></script>
   <script src="/auth.js"></script>
-  <script src="/sidebar.js?v=21"></script>
+  <script src="/sidebar.js?v=22"></script>
   <script src="/theme-toggle.js?v=1"></script>
   <script>
   (async function(){
@@ -333,7 +361,7 @@
 
     /* Load profile + session */
     (isPublic ? fetch(apiHost() + '/api/user?id=' + encodeURIComponent(urlId)) : fetch(apiHost() + '/api/profile', { headers: { 'Authorization': 'Bearer ' + (t || '') } }))
-      .then(function(r){ return r.json(); })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(d){
         if (!d.profile) return;
         if (d.profile.theme) {
@@ -359,6 +387,7 @@
         document.getElementById('bioField').value = d.profile.bio || '';
         document.getElementById('interestField').value = (d.profile.interests || []).join(', ');
         paintBioCard(d.profile);
+        initAwards(d);
         loadLiked();
         /* Pack + liked count */
         (function(p){
@@ -371,7 +400,7 @@
           var lc = document.getElementById('likedCount');
           if(lc && d.games){ lc.textContent = (d.games || []).length; }
         })(d.profile);
-      }).catch(function(){});
+      }).catch(function(e){ console.warn('profile load failed:', e && e.message); var gn = document.getElementById('guestNotice'); if (gn) { gn.style.display = 'block'; var h = gn.querySelector('h2'); var p = gn.querySelector('p'); if (h) h.textContent = 'Could not load your profile'; if (p) p.textContent = 'Your session may have expired — sign in again.'; } });
 
     /* Email confirmation (soft gate): card shows only when unconfirmed */
     (function(){
@@ -447,6 +476,86 @@
     }
 
     function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    /* Awards: badge/flair/title catalog, equip toggles, preview render. */
+    var AWD = { cat: null, owned: {}, eq: { b: [], f: [], t: [] }, caps: { b: 5, f: 10, t: 2 } };
+    function awSlot(kind) { return kind === 'title' ? 't' : kind === 'flair' ? 'f' : 'b'; }
+    function initAwards(d) {
+      AWD.owned = {};
+      (d.awards || []).forEach(function (a) { AWD.owned[a.code] = true; });
+      var eq = d.profile && d.profile.equips;
+      AWD.eq = { b: [], f: [], t: [] };
+      if (eq && typeof eq === 'object') ['b', 'f', 't'].forEach(function (k) { if (Array.isArray(eq[k])) AWD.eq[k] = eq[k].slice(); });
+      fetch(apiHost() + '/api/badges').then(function (r) { return r.json(); }).then(function (c) { AWD.cat = c.awards || {}; paintAwards(); }).catch(function () {});
+    }
+    function awCellHtml(code, a) {
+      var owned = !!AWD.owned[code];
+      var eq = AWD.eq[awSlot(a.kind)].indexOf(code) !== -1;
+      return '<div class="aw-cell' + (owned ? (eq ? ' eq' : '') : ' locked') + '" data-code="' + code + '" tabindex="0" role="button" aria-pressed="' + (owned ? eq : false) + '">' +
+        '<img class="aw-ic" src="/cudic-assets/icons/svg/' + a.icon + '.svg" alt="">' +
+        '<b>' + esc(a.label) + '</b>' +
+        (owned ? '' : '<span class="aw-how">' + esc(a.how || '') + '</span>') +
+        '</div>';
+    }
+    function paintAwards() {
+      if (!AWD.cat) return;
+      ['t', 'f', 'b'].forEach(function (slot) {
+        var want = awSlot('title') === slot ? 'title' : slot === 'f' ? 'flair' : 'badge';
+        AWD.eq[slot] = AWD.eq[slot].filter(function (c) { return AWD.cat[c] && AWD.cat[c].kind === want; });
+        var findEl = document.getElementById(slot === 't' ? 'awTitles' : slot === 'f' ? 'awFlairs' : 'awBadges');
+        var out = [];
+        Object.keys(AWD.cat).forEach(function (code) { if (AWD.cat[code].kind === want) out.push(awCellHtml(code, AWD.cat[code])); });
+        findEl.innerHTML = out.join('');
+      });
+      document.getElementById('capF').textContent = AWD.eq.f.length + '/' + AWD.caps.f + ' equipped';
+      document.getElementById('capB').textContent = AWD.eq.b.length + '/' + AWD.caps.b + ' equipped';
+      document.querySelectorAll('#sec-awards .aw-cell').forEach(function (c) {
+        c.addEventListener('click', function () { toggleAward(c.dataset.code); });
+      });
+      paintAwardsPanel();
+    }
+    function toggleAward(code) {
+      var a = AWD.cat && AWD.cat[code];
+      var m = document.getElementById('awardsMsg');
+      if (!a) return;
+      if (!AWD.owned[code]) { msg(m, 'Locked — ' + (a.how || 'keep going') + '.', false); return; }
+      var slot = awSlot(a.kind);
+      var i = AWD.eq[slot].indexOf(code);
+      if (i !== -1) AWD.eq[slot].splice(i, 1);
+      else {
+        if (AWD.eq[slot].length >= AWD.caps[slot]) { msg(m, 'You can equip ' + AWD.caps[slot] + ' of those — unequip one first.', false); return; }
+        AWD.eq[slot].push(code);
+      }
+      paintAwards();
+    }
+    function paintAwardsPanel() {
+      var el = document.getElementById('publicAwards');
+      if (!el) return;
+      var out = [];
+      AWD.eq.t.forEach(function (c) { out.push('<span class="aw-titlechip">' + esc(AWD.cat[c].label) + '</span>'); });
+      ['b', 'f'].forEach(function (slot) {
+        AWD.eq[slot].forEach(function (c) {
+          var a = AWD.cat[c];
+          out.push('<img class="aw-mini" src="/cudic-assets/icons/svg/' + a.icon + '.svg" alt="" title="' + esc(a.label) + '">');
+        });
+      });
+      el.innerHTML = out.join('');
+      el.style.display = out.length ? '' : 'none';
+    }
+    document.getElementById('saveEquips').addEventListener('click', function(){
+      var btn = this, m = document.getElementById('awardsMsg');
+      btn.disabled = true;
+      fetch(apiHost() + '/api/profile', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ equips: AWD.eq }) })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (!res.ok) { msg(m, res.d.error || 'Could not save.', false); return; }
+          if (res.d.equips) { AWD.eq = { b: res.d.equips.b || [], f: res.d.equips.f || [], t: res.d.equips.t || [] }; paintAwards(); }
+          msg(m, 'Awards saved.', true);
+        })
+        .catch(function () { btn.disabled = false; msg(m, 'Could not save.', false); });
+    });
+
     function loadLiked() {
       var box = document.getElementById('likedList');
       if (!box) return;
@@ -924,7 +1033,7 @@
   /* Tabbed settings nav: one section visible at a time, preview stays put.
      Site links (Privacy/Guide/Terms) navigate away untouched. */
   (function(){
-    var SECTIONS = ['sec-profile', 'sec-security', 'sec-coins', 'sec-stats', 'sec-liked', 'sec-appearance', 'sec-creatorpage'];
+    var SECTIONS = ['sec-profile', 'sec-security', 'sec-awards', 'sec-coins', 'sec-stats', 'sec-liked', 'sec-appearance', 'sec-creatorpage'];
     var links = Array.prototype.slice.call(document.querySelectorAll('.pnav a[href^="#sec-"]'));
     if (!links.length) return;
     function show(id, push) {

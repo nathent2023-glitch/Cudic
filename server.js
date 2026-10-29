@@ -151,6 +151,100 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ''
 );
 
+// ── Awards: badges, flairs, titles ───────────────────────────────
+// Static catalog, no table — codes are a stable API. Flairs are free:
+// they come from ordinary actions. Badges are earned long-time or hard.
+// Titles are the rare ones, shown nearest the name. `icon` is a path
+// under /cudic-assets/icons/svg/ (asset pack manifest is the canon).
+const AWARDS = {
+  spark:        { kind: 'flair', label: 'Spark', icon: 'studio/sparkle', how: 'Join Cudic' },
+  check:        { kind: 'flair', label: 'Check', icon: 'navigation/check', how: 'Confirm your email' },
+  heart:        { kind: 'flair', label: 'Heart', icon: 'social/heart', how: 'Like a game' },
+  cube:         { kind: 'flair', label: 'Cube', icon: 'game/cube', how: 'Build something in Studio' },
+  bolt:         { kind: 'flair', label: 'Bolt', icon: 'game/bolt', how: 'Import a Scratch project' },
+  gem:          { kind: 'flair', label: 'Gem', icon: 'game/gem', how: 'Rate a game' },
+  first_game:   { kind: 'badge', label: 'First Game', icon: 'studio/rocket', how: 'Publish your first game' },
+  host:         { kind: 'badge', label: 'Host', icon: 'studio/flag', how: 'Create your own server' },
+  settler:      { kind: 'badge', label: 'Settler', icon: 'social/pin', how: 'Be around for 30 days' },
+  veteran:      { kind: 'badge', label: 'Veteran', icon: 'game/shield', how: 'Be around for a whole year' },
+  viral:        { kind: 'badge', label: 'Viral', icon: 'social/star', how: 'One of your games reaches 100 plays' },
+  worldbuilder: { kind: 'title', label: 'Worldbuilder', icon: 'social/crown', how: 'Publish five games' },
+  renowned:     { kind: 'title', label: 'Renowned', icon: 'social/trophy', how: 'One of your games reaches 100 plays' },
+};
+// Equip caps per kind — b badges / f flairs / t titles.
+const EQUIP_CAPS = { b: 5, f: 10, t: 2 };
+const EQ_KIND = { b: 'badge', f: 'flair', t: 'title' };
+
+// Award a code once. A repeat insert fails on the (user_id, code) key —
+// that's "already earned", not an error.
+async function awardUser(userId, code) {
+  const a = AWARDS[code];
+  if (!a) return false;
+  const { error } = await supabase.from('user_badges').insert({ user_id: userId, code });
+  if (error) return false;
+  // Flairs are free and common; earning them isn't feed-worthy.
+  if (a.kind !== 'flair') {
+    const line = 'Earned ' + (a.kind === 'title' ? 'the title ' : 'the badge ') + a.label;
+    await logActivity(userId, 'award', line);
+    notify(userId, 'award', (a.kind === 'title' ? 'New title: ' : 'New badge: ') + a.label, line);
+  }
+  return true;
+}
+
+// Feed line. Failures are swallowed — the feed is nice-to-have.
+async function logActivity(userId, kind, text) {
+  try { await supabase.from('activity').insert({ user_id: userId, kind, text: String(text).slice(0, 140) }); } catch {}
+}
+
+// Inbox row for /notifications. A same-(user, kind, ref) row inside the
+// last day skips, so like-toggles and re-events can't pile up. The older
+// comment / friend-accept senders long predating this kept their inline
+// inserts — don't migrate them for its own sake.
+async function notify(userId, kind, title, body, refType, refId) {
+  if (!userId) return;
+  try {
+    if (refId) {
+      const since = new Date(Date.now() - 86400000).toISOString();
+      const { count } = await supabase.from('notifications').select('id', { count: 'exact', head: true })
+        .eq('user_id', userId).eq('kind', kind).eq('ref_id', refId).gte('created_at', since);
+      if (count) return;
+    }
+    await supabase.from('notifications').insert({
+      user_id: userId, kind, title: String(title).slice(0, 120), body: String(body || '').slice(0, 240),
+      ref_type: refType || null, ref_id: refId || null
+    });
+  } catch {}
+}
+
+// Free claim, on own-profile reads only: flairs and longevity badges
+// arrive without effort, so they are granted lazily whenever the user
+// opens their profile settings.
+async function autoGrant(user, profile) {
+  const codes = ['spark'];
+  if (!userUnconfirmed(user)) codes.push('check');
+  const [likes, built, rated] = await Promise.all([
+    supabase.from('game_likes').select('user_id').eq('user_id', profile.id).limit(1),
+    supabase.from('games').select('id').eq('owner_id', profile.id).limit(1),
+    supabase.from('game_ratings').select('user_id').eq('user_id', profile.id).limit(1),
+  ]);
+  if (likes.data && likes.data.length) codes.push('heart');
+  if (built.data && built.data.length) codes.push('cube');
+  if (rated.data && rated.data.length) codes.push('gem');
+  const days = (Date.now() - new Date(profile.created_at || 0).getTime()) / 86400000;
+  if (days >= 365) codes.push('settler', 'veteran');
+  else if (days >= 30) codes.push('settler');
+  await Promise.all(codes.filter(Boolean).map(c => awardUser(profile.id, c)));
+}
+
+// A game just went live: feed line, first-publish badge, milestone title.
+async function onPublished(userId, gid, title) {
+  await logActivity(userId, 'game', 'Published ' + (title || 'a game'));
+  await awardUser(userId, 'first_game');
+  const { count } = await supabase.from('games').select('id', { count: 'exact', head: true })
+    .eq('owner_id', userId).eq('published', true);
+  if (count >= 5) await awardUser(userId, 'worldbuilder');
+}
+
 // ── Static file server ───────────────────────────────────────────
 const MIME = {
   '.html': 'text/html',
@@ -621,7 +715,7 @@ async function handleRequest(req, res) {
 
     const { data: profile, error: profErr } = await supabase
       .from('users')
-      .select('id, user_id, display_name, avatar_url, bio, interests, setup_done, theme, pack_slug, created_at')
+      .select('id, user_id, display_name, avatar_url, bio, interests, setup_done, theme, pack_slug, equips, created_at')
       .eq('id', user.id)
       .single();
 
@@ -631,8 +725,26 @@ async function handleRequest(req, res) {
       return;
     }
 
+    // Free flairs + longevity badges are claimed just by opening profile.
+    try { await autoGrant(user, profile); } catch {}
+
+    const [badgeRes, fRes, gRes, frRes] = await Promise.all([
+      supabase.from('user_badges').select('code, awarded_at').eq('user_id', profile.id),
+      supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('followed_id', profile.id),
+      supabase.from('follows').select('followed_id', { count: 'exact', head: true }).eq('follower_id', profile.id),
+      supabase.from('friendships').select('user_id', { count: 'exact', head: true })
+        .or('user_id.eq.' + profile.id + ',friend_id.eq.' + profile.id).eq('status', 'accepted')
+    ]);
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ profile, email: user.email || '' }));
+    res.end(JSON.stringify({
+      profile,
+      email: user.email || '',
+      awards: badgeRes.data || [],
+      followers: fRes.count || 0,
+      following: gRes.count || 0,
+      friends: frRes.count || 0
+    }));
     return;
   }
 
@@ -641,17 +753,40 @@ async function handleRequest(req, res) {
       const q = new URL(req.url, 'http://localhost').searchParams;
       const userId = q.get('id') || q.get('user_id');
       if (!userId) { res.writeHead(400); res.end(JSON.stringify({ error: 'id required' })); return; }
-      const [profileRes, gamesRes, packsRes, pageRes] = await Promise.all([
-        supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug').eq('id', userId).single(),
+      const [profileRes, gamesRes, packsRes, pageRes, badgeRes, folRes] = await Promise.all([
+        supabase.from('users').select('id, user_id, display_name, avatar_url, bio, interests, created_at, pack_slug, equips').eq('id', userId).single(),
         supabase.from('games').select('id, title, play_count').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
         supabase.from('theme_packs').select('slug, name').eq('owner_id', userId).eq('published', true).order('updated_at', { ascending: false }).limit(20),
-        supabase.from('creator_pages').select('accent, banner_url, pinned_game_id, links, show_games, show_packs, show_comments, custom_css').eq('user_id', userId).maybeSingle()
+        supabase.from('creator_pages').select('accent, banner_url, pinned_game_id, links, show_games, show_packs, show_comments, custom_css').eq('user_id', userId).maybeSingle(),
+        supabase.from('user_badges').select('code').eq('user_id', userId),
+        supabase.from('follows').select('follower_id', { count: 'exact', head: true }).eq('followed_id', userId)
       ]);
       const data = profileRes.data;
       if (profileRes.error || !data) { res.writeHead(404); res.end(JSON.stringify({ error: 'Not found' })); return; }
       data.games = gamesRes.data || [];
       data.packs = packsRes.data || [];
       data.page = pageRes.data || {};
+      data.followers = folRes.count || 0;
+      // Resolve only equipped codes into catalog rows; the client doesn't
+      // need the whole catalog to draw the name line and badge row.
+      const eq = data.equips && typeof data.equips === 'object' ? data.equips : {};
+      const equipped = [...(Array.isArray(eq.t) ? eq.t : []), ...(Array.isArray(eq.b) ? eq.b : []), ...(Array.isArray(eq.f) ? eq.f : [])];
+      const owned = new Set((badgeRes.data || []).map(r => r.code));
+      data.awards = {};
+      equipped.forEach(code => {
+        const a = AWARDS[code];
+        if (a) data.awards[code] = { label: a.label, kind: a.kind, icon: a.icon };
+      });
+      // The viewer shows Follow/Following only when they're signed in.
+      const vtoken = (req.headers.authorization || '').replace('Bearer ', '');
+      if (vtoken) {
+        const { data: { user: viewer } } = await supabase.auth.getUser(vtoken).catch(() => ({ data: { user: null } }));
+        if (viewer) {
+          const { data: vf } = await supabase.from('follows').select('follower_id')
+            .eq('follower_id', viewer.id).eq('followed_id', userId).maybeSingle();
+          data.viewer_follows = !!vf;
+        }
+      }
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       res.end(JSON.stringify({ profile: data }));
     } catch (e) { res.writeHead(500); res.end(JSON.stringify({ error: 'Server error' })); }
@@ -1032,10 +1167,44 @@ async function handleRequest(req, res) {
         if (theme !== undefined && (theme === 'light' || theme === 'dark')) {
           updates.theme = theme;
         }
-        if (pack_slug !== undefined && (typeof pack_slug === 'string')) {
-          updates.pack_slug = pack_slug.trim().substring(0, 64);
-        } else if (pack_slug === undefined || pack_slug === '') {
-          updates.pack_slug = null;
+        if (pack_slug !== undefined) {
+          updates.pack_slug = (typeof pack_slug === 'string' && pack_slug.trim())
+            ? pack_slug.trim().substring(0, 64)
+            : null;
+        }
+        // Equipped awards: caps are 5 badges / 10 flairs / 2 titles, every
+        // code must exist, match its slot, and be owned. Fails closed.
+        if (parsed.equips !== undefined) {
+          const in_ = parsed.equips && typeof parsed.equips === 'object' ? parsed.equips : {};
+          const ownedCodes = await supabase.from('user_badges').select('code').eq('user_id', user.id);
+          const owned = new Set((ownedCodes.data || []).map(r => r.code));
+          const eq = { b: [], f: [], t: [] };
+          let bad = null;
+          for (const slot of ['b', 'f', 't']) {
+            const list = Array.isArray(in_[slot]) ? in_[slot] : [];
+            const seen = new Set();
+            for (const raw of list) {
+              const code = String(raw || '').trim();
+              const a = AWARDS[code];
+              if (!a || EQ_KIND[slot] !== a.kind) { bad = 'Unknown ' + EQ_KIND[slot] + ' code.'; break; }
+              if (!owned.has(code)) { bad = 'Not yours to equip.'; break; }
+              if (seen.has(code)) continue;
+              seen.add(code);
+              eq[slot].push(code);
+            }
+            if (bad) break;
+            if (eq[slot].length > EQUIP_CAPS[slot]) {
+              bad = 'You can equip ' + EQUIP_CAPS[slot] + ' ' +
+                (slot === 'b' ? 'badges' : slot === 'f' ? 'flairs' : 'titles') + ' at once.';
+              break;
+            }
+          }
+          if (bad) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: bad }));
+            return;
+          }
+          updates.equips = eq;
         }
         // Onboarding completion is one-way: the welcome wizard flips it
         // true, and nothing flips it back.
@@ -1328,6 +1497,7 @@ async function handleRequest(req, res) {
     if (error) { console.error('servers insert error:', error.message); res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not create the server.' })); return; }
     // Add owner as member with the owner role
     await supabase.from('server_members').insert({ server_id: data.id, user_id: user.id, role: 'owner' });
+    await awardUser(user.id, 'host');
     // Channels from the picked template (blank = general + random)
     const tpl = SERVER_TEMPLATES[body.template] || SERVER_TEMPLATES.blank;
     await supabase.from('lobbies').insert(tpl.channels.map(c => ({
@@ -1653,8 +1823,17 @@ function slugify(s) {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
     const me = user.id;
-    const { data: rows } = await supabase.from('friendships').select('user_id, friend_id, status, created_at').or('user_id.eq.' + me + ',friend_id.eq.' + me);
-    const ids = [...new Set((rows || []).map(f => (f.user_id === me ? f.friend_id : f.user_id)))];
+    const [fRes, outF, inF] = await Promise.all([
+      supabase.from('friendships').select('user_id, friend_id, status, created_at').or('user_id.eq.' + me + ',friend_id.eq.' + me),
+      supabase.from('follows').select('followed_id, created_at').eq('follower_id', me),
+      supabase.from('follows').select('follower_id, created_at').eq('followed_id', me)
+    ]);
+    const rows = fRes.data;
+    const ids = [...new Set([
+      ...((rows || []).map(f => (f.user_id === me ? f.friend_id : f.user_id))),
+      ...((outF.data || []).map(r => r.followed_id)),
+      ...((inF.data || []).map(r => r.follower_id))
+    ])];
     var byId = {};
     if (ids.length) {
       const { data: us } = await supabase.from('users').select('id, display_name, avatar_url, user_id').in('id', ids);
@@ -1671,12 +1850,240 @@ function slugify(s) {
       else if (f.user_id === me) outgoing.push(entry);
       else incoming.push(entry);
     });
+    var following = [], followers = [];
+    (outF.data || []).forEach(r => {
+      const u = byId[r.followed_id];
+      if (u) following.push({ id: u.id, display_name: u.display_name, avatar_url: u.avatar_url, user_id: u.user_id, since: r.created_at });
+    });
+    (inF.data || []).forEach(r => {
+      const u = byId[r.follower_id];
+      if (u) followers.push({ id: u.id, display_name: u.display_name, avatar_url: u.avatar_url, user_id: u.user_id, since: r.created_at });
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ friends, incoming, outgoing }));
+    res.end(JSON.stringify({ friends, incoming, outgoing, following, followers }));
+    return;
+  }
+
+  // ── API: follow a creator ──────────────────────────────────────
+  // One-way, no approval: the poster always decides who they see.
+  const followMatch = /^\/api\/follow\/([^/]+)$/.exec(url.pathname);
+  if (followMatch && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!rateLimit('follow:' + user.id, 30, 3600000)) { res.writeHead(429, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Slow down — 30 follows an hour max.' })); return; }
+    const targetId = followMatch[1];
+    if (!isUuid(targetId) || targetId === user.id) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const { data: target } = await supabase.from('users').select('id').eq('id', targetId).single();
+    if (!target) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'User not found.' })); return; }
+    // A repeat insert fails on the (follower, followed) key — already following.
+    await supabase.from('follows').insert({ follower_id: user.id, followed_id: targetId });
+    const { data: fn } = await supabase.from('users').select('display_name').eq('id', user.id).single();
+    notify(targetId, 'follow', (fn ? fn.display_name : 'Someone') + ' started following you', '', 'user', user.id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ following: true }));
+    return;
+  }
+  if (followMatch && req.method === 'DELETE') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const targetId = followMatch[1];
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    await supabase.from('follows').delete().eq('follower_id', user.id).eq('followed_id', targetId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ following: false }));
+    return;
+  }
+
+  // ── API: activity feed (mine + everyone I follow) ──────────────
+  if (url.pathname === '/api/feed' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    const { data: outs } = await supabase.from('follows').select('followed_id').eq('follower_id', user.id);
+    const ids = [user.id, ...((outs || []).map(r => r.followed_id))];
+    const { data: feed } = await supabase.from('activity')
+      .select('id, user_id, kind, text, created_at, users!activity_user_fk(display_name, avatar_url, user_id)')
+      .in('user_id', ids)
+      .order('created_at', { ascending: false })
+      .limit(60);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ feed: feed || [] }));
+    return;
+  }
+
+  // ── API: award catalog (public — the page needs it to draw any name) ──
+  if (url.pathname === '/api/badges' && req.method === 'GET') {
+    cors(res);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ awards: AWARDS, caps: EQUIP_CAPS }));
     return;
   }
 
   // ── API: request a friend ──────────────────────────────────────
+  // ── API: mod user search (moderators only) ─────────────────────
+  // Search by display name or cudic id #. Returns up to 20 rows.
+  if (url.pathname === '/api/mod/users' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const q = (new URL(req.url, 'http://localhost').searchParams.get('q') || '').trim().slice(0, 60);
+    var query = supabase.from('users').select('id, user_id, display_name, avatar_url, created_at').order('created_at', { ascending: false }).limit(20);
+    if (q) {
+      const num = /^\d+$/.test(q) ? parseInt(q, 10) : null;
+      if (num !== null) query = query.eq('user_id', num);
+      else query = query.ilike('display_name', '%' + q.replace(/[%_\\]/g, '') + '%');
+    }
+    const { data } = await query;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ users: data || [] }));
+    return;
+  }
+
+  // ── API: mod — a user's awards + equips ───────────────────────
+  if (url.pathname === '/api/mod/user-awards' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const uid = (new URL(req.url, 'http://localhost').searchParams.get('id') || '').trim();
+    if (!isUuid(uid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const [bRes, pRes] = await Promise.all([
+      supabase.from('user_badges').select('code, awarded_at').eq('user_id', uid),
+      supabase.from('users').select('equips, display_name, user_id').eq('id', uid).single()
+    ]);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ awards: bRes.data || [], equips: (pRes.data && pRes.data.equips) || { b: [], f: [], t: [] }, profile: pRes.data || null }));
+    return;
+  }
+
+  // ── API: mod — grant or revoke an award for a player ──────────
+  if (url.pathname === '/api/mod/grant' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    const code = String(body.code || '').trim();
+    const action = body.action === 'revoke' ? 'revoke' : 'grant';
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    if (!AWARDS[code]) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unknown award code.' })); return; }
+    if (action === 'grant') {
+      const ok = await awardUser(targetId, code);
+      notify(targetId, 'award', 'You received ' + (AWARDS[code].kind === 'title' ? 'the title ' : AWARDS[code].kind === 'badge' ? 'the badge ' : 'the flair ') + AWARDS[code].label,
+        'Granted by a moderator.', null, null);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, granted: ok, alreadyOwned: !ok }));
+      return;
+    }
+    // revoke
+    await supabase.from('user_badges').delete().eq('user_id', targetId).eq('code', code);
+    const { data: p } = await supabase.from('users').select('equips').eq('id', targetId).single();
+    const eq = (p && p.equips && typeof p.equips === 'object') ? p.equips : { b: [], f: [], t: [] };
+    const slot = AWARDS[code].kind === 'title' ? 't' : AWARDS[code].kind === 'flair' ? 'f' : 'b';
+    if (Array.isArray(eq[slot])) eq[slot] = eq[slot].filter(c => c !== code);
+    await supabase.from('users').update({ equips: eq }).eq('id', targetId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, revoked: true }));
+    return;
+  }
+
+  // ── API: mod — send a message to a player's inbox ────────────
+  if (url.pathname === '/api/mod/message' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    const title = String(body.title || '').trim().slice(0, 120);
+    const text = String(body.body || '').trim().slice(0, 500);
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    if (!title) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Give the message a subject.' })); return; }
+    if (!text) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Say something.' })); return; }
+    await supabase.from('notifications').insert({ user_id: targetId, kind: 'mod_message', title, body: text, ref_type: null, ref_id: null });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: mod — ban a player from chat (and comments) ─────────
+  if (url.pathname === '/api/mod/ban' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    const kind = String(body.kind || 'chat').trim().slice(0, 24) || 'chat';
+    const hours = Math.max(1, Math.min(8760, parseInt(body.hours, 10) || 24));
+    const reason = String(body.reason || '').trim().slice(0, 200);
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const until = new Date(Date.now() + hours * 3600000).toISOString();
+    await supabase.from('user_bans').insert({ user_id: targetId, kind, banned_until: until, reason, created_by: user.id });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, banned_until: until }));
+    return;
+  }
+
+  // ── API: mod — lift a ban ─────────────────────────────────────
+  if (url.pathname === '/api/mod/unban' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const targetId = String(body.userId || '').trim();
+    const kind = String(body.kind || 'chat').trim().slice(0, 24) || 'chat';
+    if (!isUuid(targetId)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    await supabase.from('user_bans').delete().eq('user_id', targetId).eq('kind', kind);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // ── API: mod — list active bans for a user ───────────────────
+  if (url.pathname === '/api/mod/bans' && req.method === 'GET') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const uid = (new URL(req.url, 'http://localhost').searchParams.get('userId') || '').trim();
+    if (!isUuid(uid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid user.' })); return; }
+    const { data } = await supabase.from('user_bans').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ bans: data || [] }));
+    return;
+  }
+
+  // ── API: changelog (public read, mod write) ───────────────────
+  if (url.pathname === '/api/changelog' && req.method === 'GET') {
+    cors(res);
+    const { data } = await supabase.from('changelog')
+      .select('id, kind, title, body, created_at, users!changelog_author_id_fkey(display_name)')
+      .order('created_at', { ascending: false }).limit(50);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ entries: data || [] }));
+    return;
+  }
+  if (url.pathname === '/api/changelog' && req.method === 'POST') {
+    cors(res);
+    const user = await requireUser(req, res); if (!user) return;
+    if (!(await needVerified(user, res))) return;
+    if (!(await isModerator(user.id))) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Moderators only.' })); return; }
+    const body = await readBody(req).catch(() => ({}));
+    const kind = String(body.kind || 'feature').trim().slice(0, 24) || 'feature';
+    const title = String(body.title || '').trim().slice(0, 140);
+    const text = String(body.body || '').trim().slice(0, 2000);
+    if (!title) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Give the entry a title.' })); return; }
+    const { data, error } = await supabase.from('changelog').insert({ kind, title, body: text, author_id: user.id }).select().single();
+    if (error) { res.writeHead(500, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Could not post.' })); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, entry: data }));
+    return;
+  }
+
   if (url.pathname === '/api/friends' && req.method === 'POST') {
     cors(res);
     const user = await requireUser(req, res); if (!user) return;
@@ -1699,6 +2106,8 @@ function slugify(s) {
       res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Already friends or requested.' })); return;
     }
     await supabase.from('friendships').insert({ user_id: me, friend_id: targetId, status: 'pending' });
+    const { data: rn } = await supabase.from('users').select('display_name').eq('id', me).single();
+    notify(targetId, 'friend', 'Friend request from ' + (rn ? rn.display_name : 'someone'), 'Open your Friends page to accept or decline.', 'user', me);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'pending' }));
     return;
@@ -1991,8 +2400,9 @@ function slugify(s) {
     const { data: games } = await supabase.from('games').select('id').eq('owner_id', uid);
     score += games.length * 3;
     // Friends / DMs (conversation access seeded by friends acceptance)
-    const { data: conversations } = await supabase.from('conversation_members').select('lobby_id').eq('user_id', uid).distinct();
-    score += Math.min(10, conversations.length * 2);
+    const { data: conversations } = await supabase.from('conversation_members').select('lobby_id').eq('user_id', uid);
+    const uniqueConvos = new Set((conversations || []).map(function (r) { return r.lobby_id; }));
+    score += Math.min(10, uniqueConvos.size * 2);
     return score;
   }
 
@@ -2571,6 +2981,20 @@ function slugify(s) {
     } catch { return false; }
   }
 
+  // Active (not-yet-expired) chat ban for a user, or null. kind='chat'.
+  async function activeBan(userId, kind) {
+    if (!userId) return null;
+    try {
+      const { data } = await supabase.from('user_bans').select('banned_until, reason')
+        .eq('user_id', userId).eq('kind', kind || 'chat')
+        .order('banned_until', { ascending: false }).limit(1);
+      const row = data && data[0];
+      if (!row) return null;
+      if (new Date(row.banned_until).getTime() <= Date.now()) return null;
+      return row;
+    } catch { return null; }
+  }
+
   // ── API: my reports (status of things I flagged) ──────────────
   if (url.pathname === '/api/reports/mine' && req.method === 'GET') {
     cors(res);
@@ -2905,6 +3329,8 @@ function slugify(s) {
     const body = await readBody(req);
     const text = (body.text || '').trim().substring(0, 2000);
     if (!text) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Empty comment' })); return; }
+    const cban = await activeBan(user.id, 'chat');
+    if (cban) { res.writeHead(403, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'You are muted from commenting until ' + new Date(cban.banned_until).toLocaleString() + (cban.reason ? ' — ' + cban.reason : '') + '.' })); return; }
     const { data: prof } = await supabase.from('users').select('display_name').eq('id', user.id).single();
     const { data, error } = await supabase.from('game_comments').insert({
       game_id: id,
@@ -3206,10 +3632,15 @@ function slugify(s) {
     if (!(await needVerified(user, res))) return;
     const gid = likeMatch[1];
     if (!isUuid(gid)) { res.writeHead(400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Invalid game.' })); return; }
-    const { data: g } = await supabase.from('games').select('published, owner_id').eq('id', gid).single();
+    const { data: g } = await supabase.from('games').select('published, owner_id, title').eq('id', gid).single();
     if (!g || !(g.published || g.owner_id === user.id)) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
     if (req.method === 'POST') {
       await supabase.from('game_likes').upsert({ user_id: user.id, game_id: gid }, { onConflict: 'user_id,game_id', ignoreDuplicates: true });
+      // Owner gets a line in their inbox (except on self-likes).
+      if (g.owner_id && g.owner_id !== user.id) {
+        const { data: lu } = await supabase.from('users').select('display_name').eq('id', user.id).single();
+        notify(g.owner_id, 'like', (lu ? lu.display_name : 'Someone') + ' liked ' + (g.title || 'your game'), '', 'game', gid);
+      }
     } else {
       await supabase.from('game_likes').delete().eq('user_id', user.id).eq('game_id', gid);
     }
@@ -3263,6 +3694,11 @@ function slugify(s) {
     const key = 'play:' + clientIp(req) + ':' + gid;
     if (!rateLimit(key, 1, 3600000)) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true })); return; }
     const { data: bumped } = await supabase.rpc('bump_play_count', { p_game: gid });
+    if (bumped >= 100 && g.owner_id) {
+      // Fire-and-forget: the play response must not wait on awards.
+      awardUser(g.owner_id, 'viral').catch(() => {});
+      awardUser(g.owner_id, 'renowned').catch(() => {});
+    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true, plays: bumped ?? null }));
     return;
@@ -3630,6 +4066,7 @@ function slugify(s) {
         'project.json': JSON.stringify(proj, null, 2),
         'assets.js': 'window.__SCRATCH_ASSETS__ = ' + safeAssets + ';\n'
       };
+      await awardUser(user.id, 'bolt');
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         files, binaries, warnings,
@@ -3861,9 +4298,14 @@ function slugify(s) {
         .filter(Boolean);
       updates.tags = [...new Set(list)].slice(0, 8);
     }
+    // Only a false → true flip fires the publish hook; unpublishing can't.
+    const wasPub = updates.published === true
+      ? (((await supabase.from('games').select('published').eq('id', id).eq('owner_id', user.id).single()).data || {}).published)
+      : null;
     updates.updated_at = new Date().toISOString();
     const { data, error } = await supabase.from('games').update(updates).eq('id', id).eq('owner_id', user.id).select().single();
     if (error) console.error('games update error:', error.message);
+    else if (wasPub === false && data) onPublished(user.id, id, data.title).catch(() => {});
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ game: data, error: error ? 'Could not save the game.' : undefined }));
     return;
@@ -3967,6 +4409,12 @@ function slugify(s) {
   // ── Redirect /moderate to /moderate.html ───────────────────────
   if (url.pathname === '/moderate') {
     url.pathname = '/moderate.html';
+  }
+  if (url.pathname === '/grant') {
+    url.pathname = '/grant.html';
+  }
+  if (url.pathname === '/updlog') {
+    url.pathname = '/updlog.html';
   }
 
   // ── Redirect /forums to /forums.html ───────────────────────────
@@ -4522,6 +4970,11 @@ wss.on('connection', (ws, req) => {
       }
       if (!info.confirmed) {
         ws.send(JSON.stringify({ type: 'error', code: 'email_unconfirmed', text: 'Confirm your email to chat.' }));
+        return;
+      }
+      const chatBanRow = await activeBan(info.userId, 'chat');
+      if (chatBanRow) {
+        ws.send(JSON.stringify({ type: 'error', code: 'chat_banned', text: 'You are muted from chat until ' + new Date(chatBanRow.banned_until).toLocaleString() + (chatBanRow.reason ? ' — ' + chatBanRow.reason : '') + '.' }));
         return;
       }
       const text = (msg.text || '').trim();

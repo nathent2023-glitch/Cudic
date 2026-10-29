@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="en"><head>
+<script>try{if(localStorage.getItem('glox_theme')!=='light')document.documentElement.dataset.theme='dark';}catch(e){}</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cudic — Update log</title>
+<meta name="description" content="What's new in Cudic — features, fixes, and improvements.">
+<link rel="icon" type="image/svg+xml" href="/cudic_sfsvg.svg">
+<link rel="stylesheet" href="/cudic-assets/cursors/css/fluid-cream.css">
+<link rel="stylesheet" href="/sidebar.css?v=25">
+<style>
+  body { display: flex; overflow: hidden; height: 100%; }
+  .u-layout { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .u-content { flex: 1; min-height: 0; overflow-y: auto; padding: 28px 32px; max-width: 880px; }
+  .u-content h1 { font-family: var(--font-head); font-weight: 600; font-size: 1.25rem; margin-bottom: 4px; }
+  .u-sub { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 18px; }
+  .u-entry { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 12px; }
+  .u-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .u-kind { font-family: var(--font-mono, monospace); font-size: 0.7rem; padding: 2px 7px; border: 1px solid var(--line); color: var(--signal); text-transform: uppercase; letter-spacing: 0.06em; }
+  .u-kind.fix { color: var(--danger); border-color: var(--danger); }
+  .u-kind.change { color: var(--text-secondary); }
+  .u-kind.improvement { color: var(--blue); border-color: var(--blue); }
+  .u-title { font-family: var(--font-head); font-weight: 600; font-size: 1rem; }
+  .u-body { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.55; white-space: pre-wrap; margin-top: 6px; }
+  .u-meta { font-size: 0.72rem; color: var(--text-tertiary); margin-top: 8px; font-family: var(--font-mono, monospace); }
+  .u-date { font-family: var(--font-head); font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin: 18px 0 8px; }
+  .u-empty { color: var(--text-secondary); font-size: 0.9rem; padding: 8px 0; }
+  .u-form { background: var(--panel-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 18px; display: none; }
+  .u-form h2 { font-family: var(--font-head); font-weight: 600; font-size: 1rem; margin-bottom: 10px; }
+  .u-form input, .u-form textarea, .u-form select { width: 100%; box-sizing: border-box; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; outline: none; margin-bottom: 8px; }
+  .u-form textarea { resize: vertical; min-height: 80px; }
+  .u-form .row { display: flex; gap: 8px; }
+  .u-status { font-size: 0.85rem; margin-top: 6px; min-height: 1.2em; }
+  .u-status.ok { color: var(--signal); }
+  .u-status.err { color: var(--danger); }
+  .u-filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .u-filters button { padding: 6px 12px; font-size: 0.78rem; cursor: pointer; }
+  .u-filters button.on { border-color: var(--signal); color: var(--signal); }
+</style></head>
+<body data-page="updlog">
+<div class="page-panel"><div class="u-layout"><main class="u-content">
+  <h1>Update log</h1>
+  <p class="u-sub">What's new in Cudic — features, fixes, and improvements. Posts itself; moderators add entries as they ship.</p>
+  <div id="uForm" class="u-form">
+    <h2>Post an update (moderators only)</h2>
+    <select id="uKind">
+      <option value="feature">Feature</option>
+      <option value="improvement">Improvement</option>
+      <option value="fix">Fix</option>
+      <option value="change">Change</option>
+    </select>
+    <input type="text" id="uTitle" placeholder="Title (short)" maxlength="140">
+    <textarea id="uBody" placeholder="What changed, in plain words."></textarea>
+    <div class="row">
+      <button class="btn btn-primary" id="uPost" style="padding:8px 16px;font-size:0.82rem">Post</button>
+    </div>
+    <div class="u-status" id="uStatus"></div>
+  </div>
+  <div class="u-filters" id="uFilters"></div>
+  <div id="uList"><div class="u-empty">Loading…</div></div>
+</main></div></div>
+<script src="/config.js"></script>
+<script src="/auth.js"></script>
+<script src="/sidebar.js?v=22"></script>
+<script src="/theme-toggle.js?v=1"></script>
+<script>
+(async function(){
+  var TOKEN_KEY = 'sb-opimjwmgmzwapkzgxvhk-auth-token';
+  async function token(){ try { if(window.getAuthToken){ var a=await window.getAuthToken(); if(a) return a; } var s = JSON.parse(localStorage.getItem(TOKEN_KEY)); return s && s.access_token; } catch(e){ return null; } }
+  function apiHost(){ return (typeof WS_URL !== 'undefined' && WS_URL) ? WS_URL.replace(/^wss?:\/\//, 'https://') : ''; }
+  function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+  var t = await token();
+  var isMod = false;
+  if (t) {
+    try {
+      var pr = await fetch(apiHost()+'/api/mod/users', { headers: { 'Authorization': 'Bearer ' + t } });
+      isMod = pr.ok;
+    } catch (e) {}
+  }
+  if (isMod) document.getElementById('uForm').style.display = 'block';
+
+  var all = [];
+  var filter = 'all';
+  async function load() {
+    try {
+      var r = await fetch(apiHost()+'/api/changelog');
+      var d = await r.json();
+      all = d.entries || [];
+      renderFilters();
+      render();
+    } catch (e) {
+      document.getElementById('uList').innerHTML = '<div class="u-empty">Could not load the log.</div>';
+    }
+  }
+  function kinds() { var s = {}; all.forEach(function(e){ s[e.kind]=1; }); return Object.keys(s); }
+  function renderFilters() {
+    var el = document.getElementById('uFilters');
+    var ks = ['all'].concat(kinds());
+    el.innerHTML = ks.map(function(k){ return '<button data-k="'+esc(k)+'" class="'+(k===filter?'on':'')+'">'+esc(k)+'</button>'; }).join('');
+    el.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){ filter = b.dataset.k; renderFilters(); render(); });
+    });
+  }
+  function render() {
+    var list = document.getElementById('uList');
+    var shown = filter === 'all' ? all : all.filter(function(e){ return e.kind === filter; });
+    if (!shown.length) { list.innerHTML = '<div class="u-empty">Nothing posted yet.</div>'; return; }
+    // group by day
+    var groups = {};
+    var order = [];
+    shown.forEach(function(e){
+      var day = new Date(e.created_at).toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+      if (!groups[day]) { groups[day]=[]; order.push(day); }
+      groups[day].push(e);
+    });
+    list.innerHTML = order.map(function(day){
+      return '<div class="u-date">' + esc(day) + '</div>' +
+        groups[day].map(function(e){
+          var author = (e.users && e.users.display_name) ? e.users.display_name : 'team';
+          return '<div class="u-entry">' +
+            '<div class="u-top"><span class="u-kind ' + esc(e.kind) + '">' + esc(e.kind) + '</span><span class="u-title">' + esc(e.title) + '</span></div>' +
+            (e.body ? '<div class="u-body">' + esc(e.body) + '</div>' : '') +
+            '<div class="u-meta">' + esc(author) + ' · ' + esc(new Date(e.created_at).toLocaleTimeString()) + '</div>' +
+            '</div>';
+        }).join('');
+    }).join('');
+  }
+
+  document.getElementById('uPost').addEventListener('click', async function(){
+    var btn = this; var st = document.getElementById('uStatus');
+    btn.disabled = true;
+    var r = await fetch(apiHost()+'/api/changelog', { method: 'POST', headers: { 'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: document.getElementById('uKind').value, title: document.getElementById('uTitle').value.trim(), body: document.getElementById('uBody').value.trim() }) });
+    var d = await r.json();
+    btn.disabled = false;
+    if (!r.ok || d.error) { st.textContent = d.error || 'Failed.'; st.className = 'u-status err'; return; }
+    st.textContent = 'Posted.'; st.className = 'u-status ok';
+    document.getElementById('uTitle').value = ''; document.getElementById('uBody').value = '';
+    load();
+  });
+
+  load();
+})();
+</script>
+</body></html>
